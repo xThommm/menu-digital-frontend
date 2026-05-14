@@ -1,0 +1,215 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+.lp {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0c0b09;
+  padding: 2rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+.card {
+  background: #131210;
+  border: 0.5px solid #272420;
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 380px;
+}
+
+/* Brand */
+.brand {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.logoMark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0.75rem;
+}
+
+.logoSq {
+  width: 36px;
+  height: 36px;
+  background: #c9a84c;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.brandName {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #ede4d0;
+  letter-spacing: 0.01em;
+}
+
+.brandName span {
+  color: #c9a84c;
+}
+
+.brand p {
+  font-size: 0.72rem;
+  color: #5c5649;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* Divider */
+.divider {
+  height: 0.5px;
+  background: #272420;
+  margin: 0 0 1.75rem;
+}
+
+/* Fields */
+.field {
+  margin-bottom: 1.1rem;
+}
+
+.field label {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5c5649;
+  margin-bottom: 0.45rem;
+}
+
+.fieldWrap {
+  position: relative;
+}
+
+.fieldIcon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #3d3a33;
+  pointer-events: none;
+}
+
+.field input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #0e0d0b;
+  border: 0.5px solid #272420;
+  border-radius: 10px;
+  padding: 0.75rem 2.6rem 0.75rem 2.5rem;
+  font-size: 0.9rem;
+  color: #d4c9b0;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.field input::placeholder {
+  color: #333029;
+}
+
+.field input:focus {
+  border-color: #c9a84c;
+}
+
+.field input:disabled {
+  opacity: 0.5;
+}
+
+/* Toggle password button */
+.togglePw {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #3d3a33;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.togglePw:hover {
+  color: #c9a84c;
+}
+
+/* Error */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1c1009;
+  border: 0.5px solid #4a2010;
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.82rem;
+  color: #b86040;
+  margin-bottom: 1rem;
+}
+
+/* Submit */
+.submitBtn {
+  width: 100%;
+  background: #c9a84c;
+  border: none;
+  border-radius: 10px;
+  padding: 0.85rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #0c0b09;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background 0.2s, transform 0.1s;
+  margin-top: 0.25rem;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #dabb62;
+}
+
+.submitBtn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Login link */
+.loginLink {
+  text-align: center;
+  margin-top: 1.25rem;
+  font-size: 0.8rem;
+  color: #5c5649;
+}
+
+.loginLink a {
+  color: #c9a84c;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.loginLink a:hover {
+  color: #dabb62;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.72rem;
+  color: #33302a;
+  letter-spacing: 0.06em;
+}
