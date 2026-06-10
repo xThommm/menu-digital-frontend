@@ -1,0 +1,185 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+.dash {
+  min-height: 100vh;
+  background: #0c0b09;
+  padding: 1.25rem 1rem 2rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── TOP BAR ── */
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2.5rem;
+}
+
+.logoMark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.logoSq {
+  width: 32px;
+  height: 32px;
+  background: #c9a84c;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.brandName {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: #ede4d0;
+}
+
+.brandAccent { color: #c9a84c; }
+
+.logoutBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 0.5px solid #272420;
+  border-radius: 8px;
+  padding: 0.45rem 0.85rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.8rem;
+  color: #5c5649;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.logoutBtn:hover {
+  border-color: #4a4035;
+  color: #a09070;
+}
+
+/* ── WELCOME ── */
+.welcome {
+  margin-bottom: 2rem;
+  padding: 0 0.25rem;
+}
+
+.welcome h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.75rem;
+  font-weight: 400;
+  color: #ede4d0;
+  margin: 0 0 0.3rem;
+}
+
+.welcome p {
+  font-size: 0.82rem;
+  color: #5c5649;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* ── CARDS ── */
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.navCard {
+  width: 100%;
+  background: #131210;
+  border: 0.5px solid #272420;
+  border-radius: 16px;
+  padding: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-align: left;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.navCard:hover,
+.navCard:active {
+  border-color: #c9a84c;
+  background: #181610;
+}
+
+.cardIcon {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: #1e1c17;
+  border: 0.5px solid #2e2b23;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cardBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardTitle {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ede4d0;
+  margin: 0 0 0.25rem;
+}
+
+.cardDesc {
+  font-size: 0.8rem;
+  color: #5c5649;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.cardArrow {
+  color: #3d3a33;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.navCard:hover .cardArrow,
+.navCard:active .cardArrow {
+  color: #c9a84c;
+}
+
+/* ── TABLET+ ── */
+@media (min-width: 600px) {
+  .dash {
+    padding: 2rem;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .topBar,
+  .welcome,
+  .cards {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .cards {
+    flex-direction: row;
+  }
+
+  .navCard {
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cardArrow {
+    margin-top: 0.5rem;
+  }
+}

@@ -1,18 +1,22 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 
+type Subscription = "none" | "monthly" | "semestral" | "annual";
+
 interface User {
   id: string;
   name: string;
   role: "admin" | "user";
   slug: string;
+  subscription: Subscription;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<User>;
   logout: () => void;
+  updateSubscription: (subscription: Subscription) => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -71,13 +75,16 @@ const user = {
   name: data.username,
   role: (data.admin === true ? "admin" : "user") as "admin" | "user",
   slug: data.slug,
+  subscription: (data.subscription ?? "none") as Subscription,
 };
 
 setToken(data.token);
 setUsername(user);
 localStorage.setItem("token", data.token);
 localStorage.setItem("user", JSON.stringify(user));
-localStorage.setItem("tokenExpiry", String(Date.now() + 1000 * 60 * 30)); // 30 minutos
+localStorage.setItem("tokenExpiry", String(Date.now() + 1000 * 60 * 60 * 24 * 7)); // 7 días
+
+return user;
     
   } catch (err: any) {
     console.error("Login error:", err);
@@ -95,6 +102,23 @@ localStorage.setItem("tokenExpiry", String(Date.now() + 1000 * 60 * 30)); // 30 
   localStorage.removeItem("tokenExpiry");
 };
 
+  const updateSubscription = async (subscription: Subscription) => {
+    const response = await fetch("/api/users/subscription", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ subscription }),
+    });
+
+    if (!response.ok) throw new Error("No se pudo actualizar la suscripción");
+
+    const updated = { ...username!, subscription };
+    setUsername(updated);
+    localStorage.setItem("user", JSON.stringify(updated));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -103,6 +127,7 @@ localStorage.setItem("tokenExpiry", String(Date.now() + 1000 * 60 * 30)); // 30 
         isLoading,
         login,
         logout,
+        updateSubscription,
         isAuthenticated: !!username,
       }}
     >

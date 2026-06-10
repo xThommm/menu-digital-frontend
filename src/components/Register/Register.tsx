@@ -4,10 +4,11 @@ import { useAuth } from "../../api/Auth/AuthContext";
 import styles from "./register.module.css";
 
 export default function RegisterPage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, login } = useAuth();
   const navigate = useNavigate();
 
   const [username, setUsername] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -24,7 +25,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
-    if (!username || !email || !password || !confirmPassword) {
+    if (!username || !businessName || !email || !password || !confirmPassword) {
       setError("Por favor completá todos los campos.");
       return;
     }
@@ -39,7 +40,24 @@ export default function RegisterPage() {
 
     setIsSubmitting(true);
     try {
-      // Replace with your actual register call, e.g.: await register(username, email, password);
+      // 1. Crear la cuenta en el backend
+      const res = await fetch("/api/users/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username,
+          password,
+          contactInfo: { mail: email, businessName },
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Error al registrarse");
+
+      // 2. Auto-login con las mismas credenciales
+      await login(username, password);
+
+      // 3. Ir al dashboard (subscription = "none", verá funciones limitadas)
       navigate("/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error al registrarse");
@@ -86,6 +104,26 @@ export default function RegisterPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+
+          {/* Nombre del negocio */}
+          <div className={styles.field}>
+            <label htmlFor="businessName">Nombre del negocio</label>
+            <div className={styles.fieldWrap}>
+              <svg className={styles.fieldIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+              <input
+                id="businessName"
+                type="text"
+                placeholder="Ej: Rotisería Las Palmas"
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
+                autoComplete="organization"
                 disabled={isSubmitting}
               />
             </div>

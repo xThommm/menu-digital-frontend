@@ -26,8 +26,8 @@ export default function LoginPage() {
     }
     setIsSubmitting(true);
     try {
-      await login(username, password);
-      navigate(user?.role === "admin" ? "/admin" : "/dashboard");
+      const loggedUser = await login(username, password);
+      navigate(loggedUser.role === "admin" ? "/admin" : "/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error al iniciar sesión");
     } finally {

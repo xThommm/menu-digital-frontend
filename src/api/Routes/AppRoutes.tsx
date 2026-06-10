@@ -13,7 +13,9 @@ const AdminHome = lazy(() => import("../../components/Admin/Home/AdminHome"));
 const PanelHome = lazy(() => import("../../components/Admin/Panel/PanelHome"));
 
 // User (authenticated)
-const Dashboard = lazy(() => import("../../components/User/Panel/Dashboard/UserDashboard"));
+const Dashboard  = lazy(() => import("../../components/User/Panel/Dashboard/UserDashboard"));
+const MenuEditor = lazy(() => import("../../components/User/Panel/MenuEditor/MenuEditor"));
+const UserEditor = lazy(() => import("../../components/User/Panel/UserEditor/UserEditor"));
 
 // Tenant (public slugs)
 const UserHome = lazy(() => import("../../components/User/Home/Home/UserHome"));
@@ -34,7 +36,9 @@ export default function AppRoutes() {
 
       {/* User-protected routes */}
       <Route element={<UserRoute />}>
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard"   element={<Dashboard />} />
+        <Route path="/menu/editor" element={<MenuEditor />} />
+        <Route path="/user/editor" element={<UserEditor />} />
       </Route>
 
       {/* Tenant public routes (slug-based) — must go last to avoid conflicts */}
