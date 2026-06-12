@@ -380,12 +380,28 @@ export default function HomePage() {
   }, []);
 
   const handlePay = async (plan: Plan) => {
-    console.log(plan);
     setPaying(true);
-    await new Promise((r) => setTimeout(r, 1800));
-    setPaying(false);
-    setBillingOpen(false);
-    navigate("/admin");
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/payments/crear-preferencia`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ planId: plan.id }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Error al crear la preferencia");
+
+      const { init_point } = await res.json();
+
+      // Redirigir a MercadoPago — MP devuelve a /register si el pago es exitoso
+      window.location.href = init_point;
+    } catch (err) {
+      console.error("Error en el pago:", err);
+      alert("Hubo un problema al iniciar el pago. Intentá de nuevo.");
+      setPaying(false);
+    }
   };
 
   const openBilling = (plan?: Plan) => {
