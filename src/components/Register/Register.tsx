@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../../api/Auth/AuthContext";
-import styles from "./register.module.css";
+import styles from "./Register.module.css";
 
 export default function RegisterPage() {
   const { isAuthenticated, isLoading, login } = useAuth();
