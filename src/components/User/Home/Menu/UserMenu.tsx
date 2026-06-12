@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import type { User, Item } from "../../../../types/index";
+import type { User, Item, MenuData, Tab } from "../../../../types/index";
 import styles from "./UserMenu.module.css";
 
 

@@ -99,3 +99,39 @@ export interface HiddenResponse {
 export interface AvailableResponse {
   available: boolean
 }
+
+// ─────────────────────────────────────────────
+// Tipos para el menú público agrupado
+// Usados en UserMenu.tsx — respuesta de GET /api/users/:slug/menu
+// ─────────────────────────────────────────────
+
+// Categoría con sus items ya populados (versión pública)
+export interface Categoria {
+  _id: string
+  title: string
+  items: Item[]
+}
+
+// Sección contenedora de categorías
+export interface Seccion {
+  title: string
+  categorias: Categoria[]
+}
+
+// Estructura que devuelve el endpoint /api/users/:slug/menu
+export interface MenuData {
+  secciones: Seccion[]
+  sinSeccion: Categoria[]
+}
+
+// Tab de navegación (construido en el frontend a partir de MenuData)
+export interface Tab {
+  label: string
+  categorias: Categoria[]
+}
+
+// GET /api/users/:slug/menu
+export interface UserMenuResponse {
+  user: User
+  menu: MenuData
+}
