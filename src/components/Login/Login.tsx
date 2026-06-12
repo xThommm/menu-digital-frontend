@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "../../api/Auth/AuthContext";
-import styles from "./login.module.css";
+import styles from "./Login.module.css";
 
 export default function LoginPage() {
   const { login, isAuthenticated, isLoading, user } = useAuth();
