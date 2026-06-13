@@ -339,7 +339,9 @@ function QRFrame() {
 export default function HomePage() {
   const navigate = useNavigate();
   const [billingOpen, setBillingOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(
+  PLANS.find((p) => p.id === "anual") ?? null
+);
   const [paying, setPaying] = useState(false);
   const [visible, setVisible] = useState(false);
 
@@ -404,10 +406,10 @@ export default function HomePage() {
     }
   };
 
-  const openBilling = (plan?: Plan) => {
-    setSelectedPlan(plan || PLANS[1]);
-    setBillingOpen(true);
-  };
+  const openBilling = () => {
+  setSelectedPlan(PLANS.find((p) => p.id === "anual") ?? null);
+  setBillingOpen(true);
+};
 
   return (
     <>
