@@ -48,7 +48,7 @@ export default function Contact() {
       const body = encodeURIComponent(
         `Nombre: ${form.name}\nEmail: ${form.email}\nAsunto: ${form.subject}\n\nMensaje:\n${form.message}`
       );
-      const mailtoUrl = `mailto:menudigitalapp@gmail.com?subject=${encodeURIComponent(`[Contacto Web] ${form.subject}`)}&body=${body}`;
+      const mailtoUrl = `mailto:thomlucasdev@gmail.com?subject=${encodeURIComponent(`[Contacto Web] ${form.subject}`)}&body=${body}`;
       window.location.href = mailtoUrl;
 
       // Simulamos éxito luego de abrir el cliente de mail
@@ -95,8 +95,8 @@ export default function Contact() {
             <div className={styles.infoCard}>
               <div className={styles.infoIcon}>✉️</div>
               <div className={styles.infoTitle}>Email</div>
-              <a href="mailto:menudigitalapp@gmail.com" className={styles.link}>
-                menudigitalapp@gmail.com
+              <a href="mailto:thomlucasdev@gmail.com" className={styles.link}>
+                thomlucasdev@gmail.com
               </a>
             </div>
             <div className={styles.infoCard}>
@@ -127,8 +127,8 @@ export default function Contact() {
                 <p className={styles.successText}>
                   Tu cliente de correo se abrió con el mensaje listo. Si no se abrió automáticamente,
                   escribinos directamente a{" "}
-                  <a href="mailto:menudigitalapp@gmail.com" className={styles.link}>
-                    menudigitalapp@gmail.com
+                  <a href="mailto:thomlucasdev@gmail.com" className={styles.link}>
+                    thomlucasdev@gmail.com
                   </a>
                 </p>
                 <button
@@ -206,8 +206,8 @@ export default function Contact() {
                 {formState === "error" && (
                   <div className={styles.errorBox}>
                     Hubo un problema al enviar el mensaje. Intentá de nuevo o escribinos directamente a{" "}
-                    <a href="mailto:menudigitalapp@gmail.com" className={styles.link}>
-                      menudigitalapp@gmail.com
+                    <a href="mailto:thomlucasdev@gmail.com" className={styles.link}>
+                      thomlucasdev@gmail.com
                     </a>
                   </div>
                 )}
