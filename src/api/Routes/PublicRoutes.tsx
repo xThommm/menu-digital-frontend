@@ -1,7 +1,7 @@
 import { Route } from "react-router-dom";
 import { Fragment, lazy } from "react";
 
-const AdminHome = lazy(() => import("../../components/Admin/Panel/PanelHome"));
+const AdminHome = lazy(() => import("../../components/Admin/Panel/CEODashboard"));
 const Login = lazy(() => import("../../components/Login/Login"));
 const Register = lazy(() => import("../../components/Register/Register"));
 

@@ -2,7 +2,7 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../Auth/AuthContext";
 
 export default function UserRoute() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -14,6 +14,11 @@ export default function UserRoute() {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Un admin no tiene nada que hacer en el dashboard del restaurante
+  if (user?.role === "admin") {
+    return <Navigate to="/admin" replace />;
   }
 
   return <Outlet />;
