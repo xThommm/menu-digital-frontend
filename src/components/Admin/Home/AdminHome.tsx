@@ -20,9 +20,22 @@ interface Plan {
 // ─────────────────────────────────────────────
 const PLANS: Plan[] = [
   {
+  id: "gratis",
+  name: "Gratis",
+  price: 0,
+  highlight: false,
+  period: "para siempre",
+  features: [
+    "Hasta 15 productos",
+    "QR básico",
+    "Sin dominio personalizado",
+    "Publicidad pequeña"
+  ]
+},
+  {
     id: "mensual",
-    name: "Mensual",
-    price: 4999,
+    name: "Starter",
+    price: 5999,
     period: "por mes",
     highlight: false,
     features: [
@@ -34,8 +47,8 @@ const PLANS: Plan[] = [
   },
   {
     id: "semestral",
-    name: "Semestral",
-    price: 24999,
+    name: "Pro",
+    price: 29999,
     period: "cada 6 meses",
     highlight: true,
     badge: "Más elegido",
@@ -48,9 +61,10 @@ const PLANS: Plan[] = [
   },
   {
     id: "anual",
-    name: "Anual",
-    price: 39999,
+    name: "Premium",
+    price: 49999,
     period: "por año",
+    badge: "Ahorrás $12.000",
     highlight: false,
     features: [
       "Todo lo del plan semestral",
