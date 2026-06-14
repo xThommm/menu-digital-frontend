@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import styles from "./AdminHome.module.css";
 
 // ─────────────────────────────────────────────
@@ -13,6 +13,7 @@ interface Plan {
   highlight: boolean;
   features: string[];
   badge?: string;
+  monthlyEquiv?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -20,26 +21,28 @@ interface Plan {
 // ─────────────────────────────────────────────
 const PLANS: Plan[] = [
   {
-  id: "gratis",
-  name: "Gratis",
-  price: 0,
-  highlight: false,
-  period: "para siempre",
-  features: [
-    "Hasta 15 productos",
-    "QR básico",
-    "Sin dominio personalizado",
-    "Publicidad pequeña"
-  ]
-},
+    id: "gratis",
+    name: "Gratis",
+    price: 0,
+    highlight: false,
+    period: "para siempre",
+    features: [
+      "Hasta 15 productos",
+      "QR descargable",
+      "Menú en menudigitalapp.com.ar/tu-local/menu",
+      "Incluye publicidad de Menú Digital",
+    ],
+  },
   {
     id: "mensual",
     name: "Starter",
     price: 5999,
     period: "por mes",
     highlight: false,
+    monthlyEquiv: "$5.999/mes",
     features: [
-      "Menú digital ilimitado",
+      "Sin publicidad",
+      "Productos ilimitados",
       "Landing page del local",
       "Carga masiva por Excel",
       "Soporte por WhatsApp",
@@ -53,25 +56,29 @@ const PLANS: Plan[] = [
     highlight: true,
     badge: "Más elegido",
     features: [
-      "Todo lo del plan mensual",
-      "2 meses gratis",
+      "Todo lo del Starter",
+      "2 meses gratis (= $5.000/mes)",
       "Estadísticas de visitas",
+      "Reservas online (próximamente)",
       "Prioridad en soporte",
     ],
+    monthlyEquiv: "$5.000/mes",
   },
   {
     id: "anual",
     name: "Premium",
     price: 49999,
     period: "por año",
-    badge: "Ahorrás $12.000",
     highlight: false,
+    badge: "Ahorrás $21.989",
     features: [
-      "Todo lo del plan semestral",
-      "4 meses gratis",
-      "Dominio personalizado",
-      "Onboarding personalizado",
+      "Dominio propio incluido (.com.ar)",
+      "Todo lo del Pro",
+      "4 meses gratis (= $4.167/mes)",
+      "Integración con delivery (próximamente)",
+      "Onboarding por videollamada",
     ],
+    monthlyEquiv: "$4.167/mes",
   },
 ];
 
@@ -170,6 +177,14 @@ function useCounterOnView(
   format: (n: number) => string,
   setter: (v: string) => void
 ) {
+  const formatRef = useRef(format);
+  const setterRef = useRef(setter);
+
+  useEffect(() => {
+    formatRef.current = format;
+    setterRef.current = setter;
+  });
+
   useEffect(() => {
     if (!ref.current) return;
     const obs = new IntersectionObserver(
@@ -181,7 +196,7 @@ function useCounterOnView(
         const step = (ts: number) => {
           const p = Math.min((ts - start) / dur, 1);
           const ease = 1 - Math.pow(1 - p, 3);
-          setter(format(Math.floor(target * ease)));
+          setterRef.current(formatRef.current(Math.floor(target * ease)));
           if (p < 1) requestAnimationFrame(step);
         };
         requestAnimationFrame(step);
@@ -190,6 +205,7 @@ function useCounterOnView(
     );
     obs.observe(ref.current);
     return () => obs.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
 
@@ -351,7 +367,6 @@ function QRFrame() {
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────
 export default function HomePage() {
-  const navigate = useNavigate();
   const [billingOpen, setBillingOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(
   PLANS.find((p) => p.id === "anual") ?? null
@@ -517,7 +532,7 @@ export default function HomePage() {
               {[
                 { icon: "🧾", title: "Elegís tu plan", desc: "Seleccionás el plan que mejor se ajusta a tu negocio. Sin contratos, sin letras chicas. Podés cancelar cuando quieras.", n: "1" },
                 { icon: "🍽️", title: "Cargás tu menú", desc: "Usás nuestra interfaz sencilla o subís un Excel con todos tus productos de una. Agregás fotos, precios y categorías.", n: "2" },
-                { icon: "📲", title: "Tus clientes lo ven", desc: "Tu menú queda disponible en menudigital.com.ar/tu-local. Lo compartís por WhatsApp, Instagram o imprimís el QR.", n: "3" },
+                { icon: "📲", title: "Tus clientes lo ven", desc: "Tu menú queda disponible en menudigitalapp.com.ar/tu-local/menu. Lo compartís por WhatsApp, Instagram o imprimís el QR.", n: "3" },
               ].map((s, i) => (
                 <div className={`${styles.step} ${styles.reveal}`} key={i} data-hover>
                   <div className={styles.stepNum}>{s.n}</div>
