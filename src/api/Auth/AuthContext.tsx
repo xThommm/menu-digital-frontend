@@ -48,7 +48,7 @@ useEffect(() => {
   const login = async (username: string, password: string) => {
   setIsLoading(true);
   try {
-    const response = await fetch("/api/users/login", {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
@@ -103,7 +103,7 @@ return user;
 };
 
   const updateSubscription = async (subscription: Subscription) => {
-    const response = await fetch("/api/users/subscription", {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/subscription`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
