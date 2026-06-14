@@ -3,6 +3,9 @@ import { lazy } from "react";
 
 import AdminRoute from "./AdminRoutes";
 import UserRoute from "./UserRoutes";
+import Terms    from "../../pages/Legal/Terms";
+import Privacy  from "../../pages/Legal/Privacy";
+import Contact  from "../../pages/Legal/Contact";
 
 // Public
 const Login = lazy(() => import("../../components/Login/Login"));
@@ -28,6 +31,9 @@ export default function AppRoutes() {
       <Route path="/" element={<AdminHome />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/terminos"   element={<Terms />} />
+      <Route path="/privacidad" element={<Privacy />} />
+      <Route path="/contacto"   element={<Contact />} />
 
       {/* Admin-protected routes */}
       <Route element={<AdminRoute />}>

@@ -669,10 +669,10 @@ export default function HomePage() {
           <div className={styles.footInner}>
             <div className={styles.footLogo}>Menú Digital</div>
             <div className={styles.footLinks}>
-              <a href="#">Términos</a>
-              <a href="#">Privacidad</a>
-              <a href="#">Soporte</a>
-              <a href="#">Contacto</a>
+              <Link to="/terminos">Términos</Link>
+              <Link to="/privacidad">Privacidad</Link>
+              <Link to="/contacto">Contacto</Link>
+              <Link to="/contacto">Soporte</Link>
             </div>
             <div className={styles.footCopy}>© 2026 Menú Digital. Hecho en Argentina 🇦🇷</div>
           </div>
