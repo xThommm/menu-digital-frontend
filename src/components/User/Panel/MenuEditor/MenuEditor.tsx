@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from "react";
+import { useState, useEffect, useCallback, memo, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../api/Auth/AuthContext";
 import MassiveImport from "../../../../Utils/MassiveImport";
@@ -360,10 +360,10 @@ export default function MenuEditorPage() {
   const [categoriaForm, setCategoriaForm] = useState({ title: "", description: "", code: "", seccionID: "", editingId: "" });
   const [seccionForm,   setSeccionForm]   = useState({ title: "", code: "", editingId: "" });
 
-  const authHeaders = {
+  const authHeaders = useMemo(() => ({
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
-  };
+  }), [token]);
 
   // ── Auto-clear error banner ─────────────────────────────────────────────────
 
@@ -423,7 +423,11 @@ export default function MenuEditorPage() {
   const toggleCat = useCallback((id: string) => {
     setExpandedCats(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }, []);
@@ -678,521 +682,522 @@ export default function MenuEditorPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className={styles.me}>
+      <div className={styles.me}>
 
-      {/* ══ VISTA PRINCIPAL: ACORDEÓN ══ */}
-      {view === "menu" && (
-        <>
-          <header className={styles["top-bar"]}>
-            <button className={styles["back-btn"]} onClick={() => navigate("/dashboard")} aria-label="Volver al inicio">
-              {icons.back}
-            </button>
-            <div className={styles["top-center"]}>
-              <span className={styles["top-title"]}>Menú</span>
-              {totalItems > 0 && (
-                <span className={styles["top-count"]}>{totalItems} producto{totalItems !== 1 ? "s" : ""}</span>
-              )}
-            </div>
-            <button
-              className={styles["back-btn"]}
-              onClick={() => setMenuSheetOpen(true)}
-              title="Más opciones"
-              aria-label="Abrir menú de acciones"
-              aria-haspopup="true"
-              aria-expanded={menuSheetOpen}
-            >
-              {icons.menu}
-            </button>
-          </header>
-
-          <div className={styles.content}>
-            {error && (
-              <div className={styles["error-banner"]} role="alert" aria-live="assertive">
-                {error}
-              </div>
-            )}
-
-            {/* Secciones */}
-            {menuData?.secciones.map(sec => (
-              <div key={sec._id} className={styles["seccion-block"]}>
-                <div className={styles["seccion-row"]}>
-                  <div className={styles["seccion-left"]}>
-                    <span className={styles["seccion-badge"]}>Sección</span>
-                    <span className={styles["seccion-title"]}>{sec.title}</span>
-                  </div>
-                  <div className={styles["row-actions"]}>
-                    <button className={styles["icon-btn"]} onClick={() => openEditSeccion(sec)} title="Editar sección" aria-label={`Editar ${sec.title}`}>
-                      {icons.edit}
-                    </button>
-                    <button
-                      className={`${styles["icon-btn"]} ${styles.danger}`}
-                      onClick={() => setDeleteModal({ type: "seccion", id: sec._id, name: sec.title })}
-                      title="Eliminar sección"
-                      aria-label={`Eliminar ${sec.title}`}
-                    >
-                      {icons.trash}
-                    </button>
-                  </div>
-                </div>
-
-                {sec.categorias.map(cat => (
-                  <CategoriaAcordeon
-                    key={cat._id}
-                    cat={cat}
-                    expanded={expandedCats.has(cat._id)}
-                    onToggle={() => toggleCat(cat._id)}
-                    onEditCat={() => openEditCategoria(cat)}
-                    onDeleteCat={() => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title })}
-                    onNewItem={() => openNewItem(cat)}
-                    onEditItem={item => openEditItem(item, cat)}
-                    onDeleteItem={item => setDeleteModal({ type: "item", id: item._id, name: item.title })}
-                    onToggleAvailable={toggleItemAvailable}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onDragEnd={handleDragEnd}
-                    dragOverCat={dragOverCat}
-                    draggedItem={draggedItem}
-                  />
-                ))}
-
-                {sec.categorias.length === 0 && (
-                  <p className={styles["empty-hint"]} style={{ paddingLeft: "0.25rem" }}>
-                    Sin categorías en esta sección.
-                  </p>
+        {/* ══ VISTA PRINCIPAL: ACORDEÓN ══ */}
+        {view === "menu" && (
+          <>
+            <header className={styles["top-bar"]}>
+              <button className={styles["back-btn"]} onClick={() => navigate("/dashboard")} aria-label="Volver al inicio">
+                {icons.back}
+              </button>
+              <div className={styles["top-center"]}>
+                <span className={styles["top-title"]}>Menú</span>
+                {totalItems > 0 && (
+                  <span className={styles["top-count"]}>{totalItems} producto{totalItems !== 1 ? "s" : ""}</span>
                 )}
               </div>
-            ))}
+              <button
+                className={styles["back-btn"]}
+                onClick={() => setMenuSheetOpen(true)}
+                title="Más opciones"
+                aria-label="Abrir menú de acciones"
+                aria-haspopup="true"
+                aria-expanded={menuSheetOpen}
+              >
+                {icons.menu}
+              </button>
+            </header>
 
-            {/* Categorías sin sección */}
-            {(menuData?.sinSeccion?.length ?? 0) > 0 && (
-              <div className={styles["seccion-block"]}>
-                <div className={styles["seccion-row"]}>
-                  <div className={styles["seccion-left"]}>
-                    <span className={`${styles["seccion-badge"]} ${styles["seccion-badge-dark"]}`}>
-                      Sin sección
-                    </span>
-                  </div>
+            <div className={styles.content}>
+              {error && (
+                <div className={styles["error-banner"]} role="alert" aria-live="assertive">
+                  {error}
                 </div>
-                {menuData!.sinSeccion.map(cat => (
-                  <CategoriaAcordeon
-                    key={cat._id}
-                    cat={cat}
-                    expanded={expandedCats.has(cat._id)}
-                    onToggle={() => toggleCat(cat._id)}
-                    onEditCat={() => openEditCategoria(cat)}
-                    onDeleteCat={() => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title })}
-                    onNewItem={() => openNewItem(cat)}
-                    onEditItem={item => openEditItem(item, cat)}
-                    onDeleteItem={item => setDeleteModal({ type: "item", id: item._id, name: item.title })}
-                    onToggleAvailable={toggleItemAvailable}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onDragEnd={handleDragEnd}
-                    dragOverCat={dragOverCat}
-                    draggedItem={draggedItem}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Estado vacío */}
-            {menuData?.secciones.length === 0 && menuData?.sinSeccion.length === 0 && (
-              <div className={styles["empty-state"]}>
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#272420" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
-                  <rect x="9" y="3" width="6" height="4" rx="1" />
-                  <line x1="9" y1="12" x2="15" y2="12" />
-                  <line x1="9" y1="16" x2="12" y2="16" />
-                </svg>
-                <p>Tu menú está vacío.</p>
-                <p className={styles["empty-sub"]}>Creá una categoría para empezar a agregar productos.</p>
-              </div>
-            )}
-          </div>
-
-          {/* ── Bottom sheet: Categoría / Sección / Importar ── */}
-          {menuSheetOpen && (
-            <div
-              className={styles["modal-overlay"]}
-              onClick={() => setMenuSheetOpen(false)}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="menu-sheet-title"
-            >
-              <div className={styles["sheet"]} onClick={e => e.stopPropagation()}>
-                <p id="menu-sheet-title" className={styles["sheet-title"]}>Agregar al menú</p>
-
-                <button
-                  className={styles["sheet-option"]}
-                  type="button"
-                  onClick={() => { setMenuSheetOpen(false); openNewCategoria(); }}
-                >
-                  <span className={styles["sheet-option-icon"]}>{icons.folder}</span>
-                  <span className={styles["sheet-option-text"]}>
-                    <span className={styles["sheet-option-title"]}>Nueva categoría</span>
-                    <span className={styles["sheet-option-desc"]}>Agrupa productos, ej: Pizzas</span>
-                  </span>
-                </button>
-
-                <button
-                  className={styles["sheet-option"]}
-                  type="button"
-                  onClick={() => { setMenuSheetOpen(false); openNewSeccion(); }}
-                >
-                  <span className={styles["sheet-option-icon"]}>{icons.layers}</span>
-                  <span className={styles["sheet-option-text"]}>
-                    <span className={styles["sheet-option-title"]}>Nueva sección</span>
-                    <span className={styles["sheet-option-desc"]}>Agrupa categorías, ej: Comidas</span>
-                  </span>
-                </button>
-
-                <button
-                  className={styles["sheet-option"]}
-                  type="button"
-                  onClick={() => { setMenuSheetOpen(false); setView("massive-import"); }}
-                >
-                  <span className={styles["sheet-option-icon"]}>{icons.upload}</span>
-                  <span className={styles["sheet-option-text"]}>
-                    <span className={styles["sheet-option-title"]}>Importar desde Excel</span>
-                    <span className={styles["sheet-option-desc"]}>Carga o actualiza en lote</span>
-                  </span>
-                </button>
-
-                <button className={styles["sheet-cancel"]} type="button" onClick={() => setMenuSheetOpen(false)}>
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ══ VISTA: FORMULARIO ITEM ══ */}
-      {view === "item-form" && (
-        <>
-          <TopBar
-            title={activeItem ? "Editar producto" : "Nuevo producto"}
-            onBack={() => setView("menu")}
-          />
-          <div className={`${styles.content} ${styles["form-content"]}`}>
-            {error && <div className={styles["error-banner"]} role="alert">{error}</div>}
-
-            {activeCategoria && (
-              <p className={styles["form-context"]}>
-                en <strong>{activeCategoria.title}</strong>
-              </p>
-            )}
-
-            <div className={styles.field}>
-              <label htmlFor="item-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
-              <input
-                id="item-title"
-                type="text"
-                placeholder="Ej: Pizza napolitana"
-                value={itemForm.title}
-                onChange={e => setItemForm(f => ({ ...f, title: e.target.value }))}
-                autoFocus
-                maxLength={80}
-              />
-            </div>
-
-            <div className={styles.field}>
-              <label htmlFor="item-desc">Descripción</label>
-              <textarea
-                id="item-desc"
-                placeholder="Ingredientes, alérgenos, preparación..."
-                value={itemForm.description}
-                onChange={e => setItemForm(f => ({ ...f, description: e.target.value }))}
-              />
-            </div>
-
-            <div className={styles["field-row"]}>
-              <div className={styles.field}>
-                <label htmlFor="item-price">Precio</label>
-                <input
-                  id="item-price"
-                  type="number"
-                  placeholder="0"
-                  min="0"
-                  value={itemForm.price}
-                  onChange={e => setItemForm(f => ({ ...f, price: e.target.value }))}
-                />
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="item-offer">Precio oferta</label>
-                <input
-                  id="item-offer"
-                  type="number"
-                  placeholder="0"
-                  min="0"
-                  value={itemForm.offerPrice}
-                  onChange={e => setItemForm(f => ({ ...f, offerPrice: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className={styles.field}>
-              <label htmlFor="item-code">Código interno</label>
-              <input
-                id="item-code"
-                type="text"
-                placeholder="Ej: pizza-napo"
-                value={itemForm.code}
-                onChange={e => setItemForm(f => ({ ...f, code: e.target.value }))}
-              />
-            </div>
-
-            {/* Variantes */}
-            <div className={styles.field}>
-              <div className={styles["field-label-row"]}>
-                <label>Variantes</label>
-                <button
-                  className={styles["text-btn"]}
-                  type="button"
-                  onClick={() => setItemForm(f => ({ ...f, options: [...f.options, { key: "", value: "" }] }))}
-                >
-                  + Agregar variante
-                </button>
-              </div>
-              {itemForm.options.length === 0 && (
-                <p className={styles["empty-hint"]}>Sin variantes. Útil para tamaños o presentaciones con precio distinto.</p>
               )}
-              {itemForm.options.map((opt, i) => (
-                <div key={i} className={styles["option-row"]}>
-                  <input
-                    type="text"
-                    placeholder="Nombre (ej: Grande)"
-                    value={opt.key}
-                    aria-label={`Nombre variante ${i + 1}`}
-                    onChange={e => setItemForm(f => {
-                      const opts = [...f.options];
-                      opts[i] = { ...opts[i], key: e.target.value };
-                      return { ...f, options: opts };
-                    })}
-                  />
-                  <input
-                    type="number"
-                    placeholder="Precio"
-                    value={opt.value}
-                    min="0"
-                    aria-label={`Precio variante ${i + 1}`}
-                    onChange={e => setItemForm(f => {
-                      const opts = [...f.options];
-                      opts[i] = { ...opts[i], value: e.target.value };
-                      return { ...f, options: opts };
-                    })}
-                  />
+
+              {/* Secciones */}
+              {menuData?.secciones.map(sec => (
+                <div key={sec._id} className={styles["seccion-block"]}>
+                  <div className={styles["seccion-row"]}>
+                    <div className={styles["seccion-left"]}>
+                      <span className={styles["seccion-badge"]}>Sección</span>
+                      <span className={styles["seccion-title"]}>{sec.title}</span>
+                    </div>
+                    <div className={styles["row-actions"]}>
+                      <button className={styles["icon-btn"]} onClick={() => openEditSeccion(sec)} title="Editar sección" aria-label={`Editar ${sec.title}`}>
+                        {icons.edit}
+                      </button>
+                      <button
+                        className={`${styles["icon-btn"]} ${styles.danger}`}
+                        onClick={() => setDeleteModal({ type: "seccion", id: sec._id, name: sec.title })}
+                        title="Eliminar sección"
+                        aria-label={`Eliminar ${sec.title}`}
+                      >
+                        {icons.trash}
+                      </button>
+                    </div>
+                  </div>
+
+                  {sec.categorias.map(cat => (
+                    <CategoriaAcordeon
+                      key={cat._id}
+                      cat={cat}
+                      expanded={expandedCats.has(cat._id)}
+                      onToggle={() => toggleCat(cat._id)}
+                      onEditCat={() => openEditCategoria(cat)}
+                      onDeleteCat={() => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title })}
+                      onNewItem={() => openNewItem(cat)}
+                      onEditItem={item => openEditItem(item, cat)}
+                      onDeleteItem={item => setDeleteModal({ type: "item", id: item._id, name: item.title })}
+                      onToggleAvailable={toggleItemAvailable}
+                      onDragStart={handleDragStart}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onDragEnd={handleDragEnd}
+                      dragOverCat={dragOverCat}
+                      draggedItem={draggedItem}
+                    />
+                  ))}
+
+                  {sec.categorias.length === 0 && (
+                    <p className={styles["empty-hint"]} style={{ paddingLeft: "0.25rem" }}>
+                      Sin categorías en esta sección.
+                    </p>
+                  )}
+                </div>
+              ))}
+
+              {/* Categorías sin sección */}
+              {(menuData?.sinSeccion?.length ?? 0) > 0 && (
+                <div className={styles["seccion-block"]}>
+                  <div className={styles["seccion-row"]}>
+                    <div className={styles["seccion-left"]}>
+                      <span className={`${styles["seccion-badge"]} ${styles["seccion-badge-dark"]}`}>
+                        Sin sección
+                      </span>
+                    </div>
+                  </div>
+                  {menuData!.sinSeccion.map(cat => (
+                    <CategoriaAcordeon
+                      key={cat._id}
+                      cat={cat}
+                      expanded={expandedCats.has(cat._id)}
+                      onToggle={() => toggleCat(cat._id)}
+                      onEditCat={() => openEditCategoria(cat)}
+                      onDeleteCat={() => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title })}
+                      onNewItem={() => openNewItem(cat)}
+                      onEditItem={item => openEditItem(item, cat)}
+                      onDeleteItem={item => setDeleteModal({ type: "item", id: item._id, name: item.title })}
+                      onToggleAvailable={toggleItemAvailable}
+                      onDragStart={handleDragStart}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onDragEnd={handleDragEnd}
+                      dragOverCat={dragOverCat}
+                      draggedItem={draggedItem}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Estado vacío */}
+              {menuData?.secciones.length === 0 && menuData?.sinSeccion.length === 0 && (
+                <div className={styles["empty-state"]}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#272420" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+                    <rect x="9" y="3" width="6" height="4" rx="1" />
+                    <line x1="9" y1="12" x2="15" y2="12" />
+                    <line x1="9" y1="16" x2="12" y2="16" />
+                  </svg>
+                  <p>Tu menú está vacío.</p>
+                  <p className={styles["empty-sub"]}>Creá una categoría para empezar a agregar productos.</p>
+                </div>
+              )}
+            </div>
+
+            {/* ── Bottom sheet: Categoría / Sección / Importar ── */}
+            {menuSheetOpen && (
+              <div
+                className={styles["modal-overlay"]}
+                onClick={() => setMenuSheetOpen(false)}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="menu-sheet-title"
+              >
+                <div className={styles["sheet"]} onClick={e => e.stopPropagation()}>
+                  <p id="menu-sheet-title" className={styles["sheet-title"]}>Agregar al menú</p>
+
                   <button
-                    className={styles["remove-btn"]}
+                    className={styles["sheet-option"]}
                     type="button"
-                    aria-label={`Eliminar variante ${i + 1}`}
-                    onClick={() => setItemForm(f => ({ ...f, options: f.options.filter((_, j) => j !== i) }))}
+                    onClick={() => { setMenuSheetOpen(false); openNewCategoria(); }}
                   >
-                    {icons.close}
+                    <span className={styles["sheet-option-icon"]}>{icons.folder}</span>
+                    <span className={styles["sheet-option-text"]}>
+                      <span className={styles["sheet-option-title"]}>Nueva categoría</span>
+                      <span className={styles["sheet-option-desc"]}>Agrupa productos, ej: Pizzas</span>
+                    </span>
+                  </button>
+
+                  <button
+                    className={styles["sheet-option"]}
+                    type="button"
+                    onClick={() => { setMenuSheetOpen(false); openNewSeccion(); }}
+                  >
+                    <span className={styles["sheet-option-icon"]}>{icons.layers}</span>
+                    <span className={styles["sheet-option-text"]}>
+                      <span className={styles["sheet-option-title"]}>Nueva sección</span>
+                      <span className={styles["sheet-option-desc"]}>Agrupa categorías, ej: Comidas</span>
+                    </span>
+                  </button>
+
+                  <button
+                    className={styles["sheet-option"]}
+                    type="button"
+                    onClick={() => { setMenuSheetOpen(false); setView("massive-import"); }}
+                  >
+                    <span className={styles["sheet-option-icon"]}>{icons.upload}</span>
+                    <span className={styles["sheet-option-text"]}>
+                      <span className={styles["sheet-option-title"]}>Importar desde Excel</span>
+                      <span className={styles["sheet-option-desc"]}>Carga o actualiza en lote</span>
+                    </span>
+                  </button>
+
+                  <button className={styles["sheet-cancel"]} type="button" onClick={() => setMenuSheetOpen(false)}>
+                    Cancelar
                   </button>
                 </div>
-              ))}
-            </div>
-
-            {/* Toggles */}
-            <div className={styles["toggle-group"]}>
-              {[
-                { label: "Disponible",   desc: "Se puede pedir ahora",          key: "available" },
-                { label: "Ocultar",      desc: "No aparece en la carta pública", key: "hidden" },
-                { label: "Recomendado",  desc: "Se destaca con un ícono ⭐",     key: "recommended" },
-              ].map(({ label, desc, key }) => (
-                <div key={key} className={styles["toggle-row"]}>
-                  <div>
-                    <p className={styles["toggle-label"]}>{label}</p>
-                    <p className={styles["toggle-desc"]}>{desc}</p>
-                  </div>
-                  <Toggle
-                    checked={itemForm[key as keyof typeof itemForm] as boolean}
-                    onChange={() => setItemForm(f => ({ ...f, [key]: !f[key as keyof typeof f] }))}
-                    label={label}
-                  />
-                </div>
-              ))}
-            </div>
-
-            <div className={styles["form-btns"]}>
-              <button
-                className={styles["save-btn"]}
-                onClick={saveItem}
-                disabled={saving}
-                aria-busy={saving}
-                type="button"
-              >
-                {saving ? <><Spinner /> Guardando...</> : activeItem ? "Guardar cambios" : "Crear producto"}
-              </button>
-              {activeItem && (
-                <button
-                  className={styles["delete-btn"]}
-                  type="button"
-                  onClick={() => setDeleteModal({ type: "item", id: activeItem._id, name: activeItem.title })}
-                >
-                  Eliminar producto
-                </button>
-              )}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* ══ VISTA: FORMULARIO CATEGORÍA ══ */}
-      {view === "categoria-form" && (
-        <>
-          <TopBar
-            title={categoriaForm.editingId ? "Editar categoría" : "Nueva categoría"}
-            onBack={() => setView("menu")}
-          />
-          <div className={`${styles.content} ${styles["form-content"]}`}>
-            {error && <div className={styles["error-banner"]} role="alert">{error}</div>}
-
-            <div className={styles.field}>
-              <label htmlFor="cat-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
-              <input
-                id="cat-title"
-                type="text"
-                placeholder="Ej: Pizzas"
-                value={categoriaForm.title}
-                onChange={e => setCategoriaForm(f => ({ ...f, title: e.target.value }))}
-                autoFocus
-                maxLength={60}
-              />
-            </div>
-            <div className={styles.field}>
-              <label htmlFor="cat-desc">Descripción</label>
-              <input
-                id="cat-desc"
-                type="text"
-                placeholder="Opcional"
-                value={categoriaForm.description}
-                onChange={e => setCategoriaForm(f => ({ ...f, description: e.target.value }))}
-              />
-            </div>
-            <div className={styles.field}>
-              <label htmlFor="cat-code">Código interno</label>
-              <input
-                id="cat-code"
-                type="text"
-                placeholder="Ej: pizzas"
-                value={categoriaForm.code}
-                onChange={e => setCategoriaForm(f => ({ ...f, code: e.target.value }))}
-              />
-            </div>
-            {!categoriaForm.editingId && (
-              <div className={styles.field}>
-                <label htmlFor="cat-seccion">Sección</label>
-                <select
-                  id="cat-seccion"
-                  value={categoriaForm.seccionID}
-                  onChange={e => setCategoriaForm(f => ({ ...f, seccionID: e.target.value }))}
-                >
-                  <option value="">Sin sección</option>
-                  {menuData?.secciones.map(s => (
-                    <option key={s._id} value={s._id}>{s.title}</option>
-                  ))}
-                </select>
               </div>
             )}
-            <div className={styles["form-btns"]}>
-              <button
-                className={styles["save-btn"]}
-                onClick={saveCategoria}
-                disabled={saving}
-                aria-busy={saving}
-                type="button"
-              >
-                {saving ? <><Spinner /> Guardando...</> : categoriaForm.editingId ? "Guardar cambios" : "Crear categoría"}
-              </button>
+          </>
+        )}
+
+        {/* ══ VISTA: FORMULARIO ITEM ══ */}
+        {view === "item-form" && (
+          <>
+            <TopBar
+              title={activeItem ? "Editar producto" : "Nuevo producto"}
+              onBack={() => setView("menu")}
+            />
+            <div className={`${styles.content} ${styles["form-content"]}`}>
+              {error && <div className={styles["error-banner"]} role="alert">{error}</div>}
+
+              {activeCategoria && (
+                <p className={styles["form-context"]}>
+                  en <strong>{activeCategoria.title}</strong>
+                </p>
+              )}
+
+              <div className={styles.field}>
+                <label htmlFor="item-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
+                <input
+                  id="item-title"
+                  type="text"
+                  placeholder="Ej: Pizza napolitana"
+                  value={itemForm.title}
+                  onChange={e => setItemForm(f => ({ ...f, title: e.target.value }))}
+                  autoFocus
+                  maxLength={80}
+                />
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="item-desc">Descripción</label>
+                <textarea
+                  id="item-desc"
+                  placeholder="Ingredientes, alérgenos, preparación..."
+                  value={itemForm.description}
+                  onChange={e => setItemForm(f => ({ ...f, description: e.target.value }))}
+                />
+              </div>
+
+              <div className={styles["field-row"]}>
+                <div className={styles.field}>
+                  <label htmlFor="item-price">Precio</label>
+                  <input
+                    id="item-price"
+                    type="number"
+                    placeholder="0"
+                    min="0"
+                    value={itemForm.price}
+                    onChange={e => setItemForm(f => ({ ...f, price: e.target.value }))}
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label htmlFor="item-offer">Precio oferta</label>
+                  <input
+                    id="item-offer"
+                    type="number"
+                    placeholder="0"
+                    min="0"
+                    value={itemForm.offerPrice}
+                    onChange={e => setItemForm(f => ({ ...f, offerPrice: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="item-code">Código interno</label>
+                <input
+                  id="item-code"
+                  type="text"
+                  placeholder="Ej: pizza-napo"
+                  value={itemForm.code}
+                  onChange={e => setItemForm(f => ({ ...f, code: e.target.value }))}
+                />
+              </div>
+
+              {/* Variantes */}
+              <div className={styles.field}>
+                <div className={styles["field-label-row"]}>
+                  <label>Variantes</label>
+                  <button
+                    className={styles["text-btn"]}
+                    type="button"
+                    onClick={() => setItemForm(f => ({ ...f, options: [...f.options, { key: "", value: "" }] }))}
+                  >
+                    + Agregar variante
+                  </button>
+                </div>
+                {itemForm.options.length === 0 && (
+                  <p className={styles["empty-hint"]}>Sin variantes. Útil para tamaños o presentaciones con precio distinto.</p>
+                )}
+                {itemForm.options.map((opt, i) => (
+                  <div key={i} className={styles["option-row"]}>
+                    <input
+                      type="text"
+                      placeholder="Nombre (ej: Grande)"
+                      value={opt.key}
+                      aria-label={`Nombre variante ${i + 1}`}
+                      onChange={e => setItemForm(f => {
+                        const opts = [...f.options];
+                        opts[i] = { ...opts[i], key: e.target.value };
+                        return { ...f, options: opts };
+                      })}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Precio"
+                      value={opt.value}
+                      min="0"
+                      aria-label={`Precio variante ${i + 1}`}
+                      onChange={e => setItemForm(f => {
+                        const opts = [...f.options];
+                        opts[i] = { ...opts[i], value: e.target.value };
+                        return { ...f, options: opts };
+                      })}
+                    />
+                    <button
+                      className={styles["remove-btn"]}
+                      type="button"
+                      aria-label={`Eliminar variante ${i + 1}`}
+                      onClick={() => setItemForm(f => ({ ...f, options: f.options.filter((_, j) => j !== i) }))}
+                    >
+                      {icons.close}
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Toggles */}
+              <div className={styles["toggle-group"]}>
+                {[
+                  { label: "Disponible",   desc: "Se puede pedir ahora",          key: "available" },
+                  { label: "Ocultar",      desc: "No aparece en la carta pública", key: "hidden" },
+                  { label: "Recomendado",  desc: "Se destaca con un ícono ⭐",     key: "recommended" },
+                ].map(({ label, desc, key }) => (
+                  <div key={key} className={styles["toggle-row"]}>
+                    <div>
+                      <p className={styles["toggle-label"]}>{label}</p>
+                      <p className={styles["toggle-desc"]}>{desc}</p>
+                    </div>
+                    <Toggle
+                      checked={itemForm[key as keyof typeof itemForm] as boolean}
+                      onChange={() => setItemForm(f => ({ ...f, [key]: !f[key as keyof typeof f] }))}
+                      label={label}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className={styles["form-btns"]}>
+                <button
+                  className={styles["save-btn"]}
+                  onClick={saveItem}
+                  disabled={saving}
+                  aria-busy={saving}
+                  type="button"
+                >
+                  {saving ? <><Spinner /> Guardando...</> : activeItem ? "Guardar cambios" : "Crear producto"}
+                </button>
+                {activeItem && (
+                  <button
+                    className={styles["delete-btn"]}
+                    type="button"
+                    onClick={() => setDeleteModal({ type: "item", id: activeItem._id, name: activeItem.title })}
+                  >
+                    Eliminar producto
+                  </button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ══ VISTA: FORMULARIO CATEGORÍA ══ */}
+        {view === "categoria-form" && (
+          <>
+            <TopBar
+              title={categoriaForm.editingId ? "Editar categoría" : "Nueva categoría"}
+              onBack={() => setView("menu")}
+            />
+            <div className={`${styles.content} ${styles["form-content"]}`}>
+              {error && <div className={styles["error-banner"]} role="alert">{error}</div>}
+
+              <div className={styles.field}>
+                <label htmlFor="cat-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
+                <input
+                  id="cat-title"
+                  type="text"
+                  placeholder="Ej: Pizzas"
+                  value={categoriaForm.title}
+                  onChange={e => setCategoriaForm(f => ({ ...f, title: e.target.value }))}
+                  autoFocus
+                  maxLength={60}
+                />
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="cat-desc">Descripción</label>
+                <input
+                  id="cat-desc"
+                  type="text"
+                  placeholder="Opcional"
+                  value={categoriaForm.description}
+                  onChange={e => setCategoriaForm(f => ({ ...f, description: e.target.value }))}
+                />
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="cat-code">Código interno</label>
+                <input
+                  id="cat-code"
+                  type="text"
+                  placeholder="Ej: pizzas"
+                  value={categoriaForm.code}
+                  onChange={e => setCategoriaForm(f => ({ ...f, code: e.target.value }))}
+                />
+              </div>
+              {!categoriaForm.editingId && (
+                <div className={styles.field}>
+                  <label htmlFor="cat-seccion">Sección</label>
+                  <select
+                    id="cat-seccion"
+                    value={categoriaForm.seccionID}
+                    onChange={e => setCategoriaForm(f => ({ ...f, seccionID: e.target.value }))}
+                  >
+                    <option value="">Sin sección</option>
+                    {menuData?.secciones.map(s => (
+                      <option key={s._id} value={s._id}>{s.title}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className={styles["form-btns"]}>
+                <button
+                  className={styles["save-btn"]}
+                  onClick={saveCategoria}
+                  disabled={saving}
+                  aria-busy={saving}
+                  type="button"
+                >
+                  {saving ? <><Spinner /> Guardando...</> : categoriaForm.editingId ? "Guardar cambios" : "Crear categoría"}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ══ VISTA: FORMULARIO SECCIÓN ══ */}
+        {view === "seccion-form" && (
+          <>
+            <TopBar
+              title={seccionForm.editingId ? "Editar sección" : "Nueva sección"}
+              onBack={() => setView("menu")}
+            />
+            <div className={`${styles.content} ${styles["form-content"]}`}>
+              {error && <div className={styles["error-banner"]} role="alert">{error}</div>}
+
+              <div className={styles.field}>
+                <label htmlFor="sec-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
+                <input
+                  id="sec-title"
+                  type="text"
+                  placeholder="Ej: Comidas"
+                  value={seccionForm.title}
+                  onChange={e => setSeccionForm(f => ({ ...f, title: e.target.value }))}
+                  autoFocus
+                  maxLength={60}
+                />
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="sec-code">Código interno</label>
+                <input
+                  id="sec-code"
+                  type="text"
+                  placeholder="Ej: comidas"
+                  value={seccionForm.code}
+                  onChange={e => setSeccionForm(f => ({ ...f, code: e.target.value }))}
+                />
+              </div>
+              <div className={styles["form-btns"]}>
+                <button
+                  className={styles["save-btn"]}
+                  onClick={saveSeccion}
+                  disabled={saving}
+                  aria-busy={saving}
+                  type="button"
+                >
+                  {saving ? <><Spinner /> Guardando...</> : seccionForm.editingId ? "Guardar cambios" : "Crear sección"}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ══ MODAL DE CONFIRMACIÓN ══ */}
+        {deleteModal && (
+          <div
+            className={styles["modal-overlay"]}
+            onClick={() => setDeleteModal(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-modal-title"
+          >
+            <div className={styles.modal} onClick={e => e.stopPropagation()}>
+              <p id="delete-modal-title" className={styles["modal-title"]}>
+                ¿Eliminar "{deleteModal.name}"?
+              </p>
+              <p className={styles["modal-desc"]}>
+                {deleteModal.type === "item"
+                  ? "El producto se eliminará de forma permanente. Esta acción no se puede deshacer."
+                  : deleteModal.type === "categoria"
+                    ? "La categoría se eliminará permanentemente. Debe estar vacía antes de eliminarla."
+                    : "La sección se eliminará. Solo podés hacerlo si no tiene categorías asignadas."}
+              </p>
+              <div className={styles["modal-btns"]}>
+                <button className={styles["modal-cancel"]} onClick={() => setDeleteModal(null)} type="button">
+                  Cancelar
+                </button>
+                <button className={styles["modal-confirm"]} onClick={confirmDelete} type="button" autoFocus>
+                  Eliminar
+                </button>
+              </div>
             </div>
           </div>
-        </>
-      )}
+        )}
 
-      {/* ══ VISTA: FORMULARIO SECCIÓN ══ */}
-      {view === "seccion-form" && (
-        <>
-          <TopBar
-            title={seccionForm.editingId ? "Editar sección" : "Nueva sección"}
-            onBack={() => setView("menu")}
-          />
-          <div className={`${styles.content} ${styles["form-content"]}`}>
-            {error && <div className={styles["error-banner"]} role="alert">{error}</div>}
-
-            <div className={styles.field}>
-              <label htmlFor="sec-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
-              <input
-                id="sec-title"
-                type="text"
-                placeholder="Ej: Comidas"
-                value={seccionForm.title}
-                onChange={e => setSeccionForm(f => ({ ...f, title: e.target.value }))}
-                autoFocus
-                maxLength={60}
-              />
-            </div>
-            <div className={styles.field}>
-              <label htmlFor="sec-code">Código interno</label>
-              <input
-                id="sec-code"
-                type="text"
-                placeholder="Ej: comidas"
-                value={seccionForm.code}
-                onChange={e => setSeccionForm(f => ({ ...f, code: e.target.value }))}
-              />
-            </div>
-            <div className={styles["form-btns"]}>
-              <button
-                className={styles["save-btn"]}
-                onClick={saveSeccion}
-                disabled={saving}
-                aria-busy={saving}
-                type="button"
-              >
-                {saving ? <><Spinner /> Guardando...</> : seccionForm.editingId ? "Guardar cambios" : "Crear sección"}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* ══ MODAL DE CONFIRMACIÓN ══ */}
-      {deleteModal && (
-        <div
-          className={styles["modal-overlay"]}
-          onClick={() => setDeleteModal(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-modal-title"
-        >
-          <div className={styles.modal} onClick={e => e.stopPropagation()}>
-            <p id="delete-modal-title" className={styles["modal-title"]}>
-              ¿Eliminar "{deleteModal.name}"?
-            </p>
-            <p className={styles["modal-desc"]}>
-              {deleteModal.type === "item"
-                ? "El producto se eliminará de forma permanente. Esta acción no se puede deshacer."
-                : deleteModal.type === "categoria"
-                  ? "La categoría se eliminará permanentemente. Debe estar vacía antes de eliminarla."
-                  : "La sección se eliminará. Solo podés hacerlo si no tiene categorías asignadas."}
-            </p>
-            <div className={styles["modal-btns"]}>
-              <button className={styles["modal-cancel"]} onClick={() => setDeleteModal(null)} type="button">
-                Cancelar
-              </button>
-              <button className={styles["modal-confirm"]} onClick={confirmDelete} type="button" autoFocus>
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      </div>  
   );
 }
