@@ -23,6 +23,7 @@ export interface User {
   slug: string
   active: boolean
   admin: boolean
+  subscription: string 
   menu: boolean           // true si ya creó al menos una categoría
   hasDelivery: boolean
   template: number        // número de template visual (1..N)

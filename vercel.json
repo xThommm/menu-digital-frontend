@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://tu-backend-en-koyeb.koyeb.app/api/:path*"
+      "destination": "https://menu-digital-backend.koyeb.app/api/:path*"
     },
     {
       "source": "/(.*)",

@@ -34,17 +34,6 @@ interface Stats {
   }[];
 }
 
-interface ClientUser {
-  _id: string;
-  username: string;
-  slug: string;
-  active: boolean;
-  menu: boolean;
-  hasDelivery: boolean;
-  subscription: "none" | "monthly" | "semestral" | "annual";
-  contactInfo: { businessName: string };
-  createdAt: string;
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -80,7 +69,7 @@ export default function CEODashboard() {
   const navigate = useNavigate();
 
   const [stats, setStats]     = useState<Stats | null>(null);
-  const [clients, setClients] = useState<ClientUser[]>([]);
+  const [clients, setClients] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
   const [search, setSearch]   = useState("");
