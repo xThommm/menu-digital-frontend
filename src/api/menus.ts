@@ -33,9 +33,24 @@ export const updateMenu = async (
   return res.data
 }
 
-// PUT /api/menus/hide/:menuID  →  oculta/muestra la categoría en la vista pública
-export const hideMenu = async (menuID: string, hidden: boolean): Promise<Menu> => {
-  const res = await apiClient.put<Menu>(`/menus/hide/${menuID}`, { hidden })
+// PATCH /api/menus/:menuID/hidden  →  oculta/muestra la categoría en la vista pública
+export const hideMenu = async (menuID: string, hidden: boolean): Promise<{ hidden: boolean }> => {
+  const res = await apiClient.patch<{ hidden: boolean }>(`/menus/${menuID}/hidden`, { hidden })
+  return res.data
+}
+
+// PATCH /api/menus/:menuID/move  →  mueve la categoría a otra sección (o la quita, sectionID: null)
+export const moveMenu = async (
+  menuID: string,
+  sectionID: string | null
+): Promise<Menu> => {
+  const res = await apiClient.patch<Menu>(`/menus/${menuID}/move`, { sectionID })
+  return res.data
+}
+
+// DELETE /api/menus/:menuID  →  elimina la categoría (debe estar vacía)
+export const deleteMenu = async (menuID: string): Promise<{ message: string }> => {
+  const res = await apiClient.delete<{ message: string }>(`/menus/${menuID}`)
   return res.data
 }
 

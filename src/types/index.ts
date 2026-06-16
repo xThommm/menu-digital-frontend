@@ -56,7 +56,7 @@ export interface Item {
   description: string
   price: number | null
   offerPrice: number | null
-  offerDate: string | null
+  offerRange: { from: string | null; to: string | null }
   options: Record<string, number>   // { "Tamaño chico": 800, "Grande": 1200 }
   image: string
   available: boolean
@@ -134,4 +134,34 @@ export interface Tab {
 export interface UserMenuResponse {
   user: User
   menu: MenuData
+}
+
+// ─────────────────────────────────────────────
+// Tipos para el import masivo (Excel)
+// Espejo de la forma que devuelve massiveController.js
+// ─────────────────────────────────────────────
+
+export interface MassiveRowResult {
+  fila: number
+  codigo?: string
+  titulo?: string
+  cambios?: string[]
+  razon?: string
+}
+
+// POST /api/massive/preview
+export interface MassivePreviewResponse {
+  resumen: {
+    categorias: { crear: MassiveRowResult[]; actualizar: MassiveRowResult[]; errores: MassiveRowResult[] }
+    productos: { crear: MassiveRowResult[]; actualizar: MassiveRowResult[]; errores: MassiveRowResult[] }
+  }
+  mensaje: string
+}
+
+// POST /api/massive/confirm
+export interface MassiveConfirmResponse {
+  resultado: {
+    categorias: { creadas: MassiveRowResult[]; actualizadas: MassiveRowResult[]; errores: MassiveRowResult[] }
+    productos: { creados: MassiveRowResult[]; actualizados: MassiveRowResult[]; errores: MassiveRowResult[] }
+  }
 }

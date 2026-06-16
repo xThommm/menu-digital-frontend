@@ -72,6 +72,28 @@ const icons = {
       <line x1="12" y1="3" x2="12" y2="15"/>
     </svg>
   ),
+  menu: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="17" x2="20" y2="17" />
+    </svg>
+  ),
+  folder: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+    </svg>
+  ),
+  layers: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="12 2 2 7 12 12 22 7 12 2" />
+      <polyline points="2 17 12 22 22 17" />
+      <polyline points="2 12 12 17 22 12" />
+    </svg>
+  ),
   edit: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -323,6 +345,7 @@ export default function MenuEditorPage() {
   const [dragOverCat, setDragOverCat] = useState<string | null>(null);
 
   const [view,            setView]            = useState<View>("menu");
+  const [menuSheetOpen,   setMenuSheetOpen]   = useState(false);
   const [activeCategoria, setActiveCategoria] = useState<Categoria | null>(null);
   const [activeItem,      setActiveItem]      = useState<Item | null>(null);
   const [expandedCats,    setExpandedCats]    = useState<Set<string>>(new Set());
@@ -672,11 +695,13 @@ export default function MenuEditorPage() {
             </div>
             <button
               className={styles["back-btn"]}
-              onClick={() => setView("massive-import")}
-              title="Importar desde Excel"
-              aria-label="Importar menú desde Excel"
+              onClick={() => setMenuSheetOpen(true)}
+              title="Más opciones"
+              aria-label="Abrir menú de acciones"
+              aria-haspopup="true"
+              aria-expanded={menuSheetOpen}
             >
-              {icons.upload}
+              {icons.menu}
             </button>
           </header>
 
@@ -789,14 +814,60 @@ export default function MenuEditorPage() {
             )}
           </div>
 
-          <div className={styles["fab-group"]}>
-            <button className={styles.fab} onClick={openNewCategoria} type="button">
-              + Categoría
-            </button>
-            <button className={styles["fab-secondary"]} onClick={openNewSeccion} type="button">
-              + Sección
-            </button>
-          </div>
+          {/* ── Bottom sheet: Categoría / Sección / Importar ── */}
+          {menuSheetOpen && (
+            <div
+              className={styles["modal-overlay"]}
+              onClick={() => setMenuSheetOpen(false)}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="menu-sheet-title"
+            >
+              <div className={styles["sheet"]} onClick={e => e.stopPropagation()}>
+                <p id="menu-sheet-title" className={styles["sheet-title"]}>Agregar al menú</p>
+
+                <button
+                  className={styles["sheet-option"]}
+                  type="button"
+                  onClick={() => { setMenuSheetOpen(false); openNewCategoria(); }}
+                >
+                  <span className={styles["sheet-option-icon"]}>{icons.folder}</span>
+                  <span className={styles["sheet-option-text"]}>
+                    <span className={styles["sheet-option-title"]}>Nueva categoría</span>
+                    <span className={styles["sheet-option-desc"]}>Agrupa productos, ej: Pizzas</span>
+                  </span>
+                </button>
+
+                <button
+                  className={styles["sheet-option"]}
+                  type="button"
+                  onClick={() => { setMenuSheetOpen(false); openNewSeccion(); }}
+                >
+                  <span className={styles["sheet-option-icon"]}>{icons.layers}</span>
+                  <span className={styles["sheet-option-text"]}>
+                    <span className={styles["sheet-option-title"]}>Nueva sección</span>
+                    <span className={styles["sheet-option-desc"]}>Agrupa categorías, ej: Comidas</span>
+                  </span>
+                </button>
+
+                <button
+                  className={styles["sheet-option"]}
+                  type="button"
+                  onClick={() => { setMenuSheetOpen(false); setView("massive-import"); }}
+                >
+                  <span className={styles["sheet-option-icon"]}>{icons.upload}</span>
+                  <span className={styles["sheet-option-text"]}>
+                    <span className={styles["sheet-option-title"]}>Importar desde Excel</span>
+                    <span className={styles["sheet-option-desc"]}>Carga o actualiza en lote</span>
+                  </span>
+                </button>
+
+                <button className={styles["sheet-cancel"]} type="button" onClick={() => setMenuSheetOpen(false)}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 

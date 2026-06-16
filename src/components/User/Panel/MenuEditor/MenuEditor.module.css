@@ -454,72 +454,6 @@
   outline-offset: 2px;
 }
 
-/* ── FABs ── */
-.fab-group {
-  position: fixed;
-  bottom: max(5rem, calc(4rem + env(safe-area-inset-bottom)));
-  right: max(1.25rem, calc(50% - 288px));
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  align-items: flex-end;
-}
-
-.fab {
-  background: var(--gold);
-  border: none;
-  border-radius: var(--radius-xl);
-  padding: 0.85rem 1.5rem;
-  font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--bg-base);
-  cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
-  box-shadow: var(--shadow-fab);
-}
-
-.fab:hover {
-  background: var(--gold-hover);
-}
-
-.fab:active {
-  transform: scale(0.96);
-}
-
-.fab:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 3px;
-}
-
-.fab-secondary {
-  background: var(--bg-elevated);
-  border: 0.5px solid var(--border-warm);
-  border-radius: var(--radius-xl);
-  padding: 0.85rem 1.25rem;
-  font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--gold);
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s, transform 0.1s;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
-}
-
-.fab-secondary:hover {
-  border-color: var(--gold);
-  background: #1e1a10;
-}
-
-.fab-secondary:active {
-  transform: scale(0.96);
-}
-
-.fab-secondary:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 3px;
-}
-
 /* ── Formularios ── */
 .field {
   margin-bottom: 1.1rem;
@@ -889,6 +823,102 @@
   outline-offset: 2px;
 }
 
+/* ── Sheet de opciones (Categoría / Sección / Importar) ── */
+.sheet {
+  background: #1a1816;
+  border: 0.5px solid var(--border-warm);
+  border-radius: var(--radius-2xl);
+  padding: 1.25rem;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  animation: slideUp 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sheet-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.sheet-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--bg-raised);
+  border: 0.5px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 0.75rem 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.sheet-option:hover {
+  border-color: var(--gold);
+  background: #1e1a10;
+}
+
+.sheet-option:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.sheet-option-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--gold);
+}
+
+.sheet-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sheet-option-title {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.sheet-option-desc {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.sheet-cancel {
+  margin-top: 0.4rem;
+  background: var(--bg-raised);
+  border: 0.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.9rem;
+  color: #6b6457;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.sheet-cancel:hover {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+}
+
+.sheet-cancel:focus-visible {
+  outline: 2px solid var(--border-warm);
+  outline-offset: 2px;
+}
+
 /* ── Misc ── */
 .text-btn {
   display: inline-flex;
@@ -969,11 +999,6 @@
 @media (max-width: 400px) {
   .field-row {
     grid-template-columns: 1fr;
-  }
-
-  .fab-group {
-    bottom: max(4.5rem, calc(3.5rem + env(safe-area-inset-bottom)));
-    right: 1rem;
   }
 }
 

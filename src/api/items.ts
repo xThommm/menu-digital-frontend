@@ -30,12 +30,15 @@ export const updateItem = async (
   return res.data
 }
 
-// PUT /api/items/massive  →  actualización en lote
-// Útil para reordenar o cambiar precios de múltiples items a la vez
-export const updateItemsMassive = async (
-  items: Array<{ _id: string } & Partial<Item>>
-): Promise<Item[]> => {
-  const res = await apiClient.put<Item[]>('/items/massive', { items })
+// PATCH /api/items/:itemID/move  →  mueve el item a otra categoría
+export const moveItem = async (itemID: string, menuID: string): Promise<Item> => {
+  const res = await apiClient.patch<Item>(`/items/${itemID}/move`, { menuID })
+  return res.data
+}
+
+// DELETE /api/items/:itemID  →  elimina el item
+export const deleteItem = async (itemID: string): Promise<{ message: string }> => {
+  const res = await apiClient.delete<{ message: string }>(`/items/${itemID}`)
   return res.data
 }
 
