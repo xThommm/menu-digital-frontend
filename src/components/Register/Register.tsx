@@ -40,8 +40,8 @@ export default function RegisterPage() {
 
     setIsSubmitting(true);
     try {
-      // 1. Crear la cuenta en el backend
-      const res = await fetch("/api/users/register", {
+      // ✅ URL absoluta usando variable de entorno
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -54,10 +54,10 @@ export default function RegisterPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Error al registrarse");
 
-      // 2. Auto-login con las mismas credenciales
+      // Auto-login con las mismas credenciales
       await login(username, password);
 
-      // 3. Ir al dashboard (subscription = "none", verá funciones limitadas)
+      // Ir al dashboard
       navigate("/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error al registrarse");
@@ -70,11 +70,23 @@ export default function RegisterPage() {
     <div className={styles.lp}>
       <div className={styles.card}>
 
+        {/* Botón volver al inicio */}
+        <Link to="/" className={styles.backBtn}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="1.8"
+            strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          Volver al inicio
+        </Link>
+
         {/* Brand */}
         <div className={styles.brand}>
           <div className={styles.logoMark}>
             <div className={styles.logoSq}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">                <path d="M3 2h1v6a3 3 0 0 0 6 0V2h1" />
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 2h1v6a3 3 0 0 0 6 0V2h1" />
                 <path d="M8 2v6" />
                 <path d="M15 2c0 4 3 5 3 9a3 3 0 0 1-6 0c0-4 3-5 3-9z" />
                 <path d="M8 22v-4" /><path d="M15 22v-4" /><path d="M5 22h14" />

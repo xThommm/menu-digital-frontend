@@ -368,6 +368,7 @@ function QRFrame() {
 // ─────────────────────────────────────────────
 export default function HomePage() {
   const [billingOpen, setBillingOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(
   PLANS.find((p) => p.id === "anual") ?? null
 );
@@ -448,17 +449,58 @@ export default function HomePage() {
 
         {/* ── NAV ── */}
         <nav className={styles.nav}>
-          <a className={styles.navLogo} href="/">Menú<span> Digital</span></a>
-          <ul className={styles.navLinks}>
-            <li><a href="#how">Cómo funciona</a></li>
-            <li><a href="#features">Funciones</a></li>
-            <li><a href="#reviews">Clientes</a></li>
-          </ul>
-          <div className={styles.navActions}>
-            <Link to="/register" className={styles.navRegister}>Crear cuenta</Link>
-            <button className={styles.navCta} onClick={() => openBilling()}>Ver precios</button>
-          </div>
-        </nav>
+  <a className={styles.navLogo} href="/">Menú<span> Digital</span></a>
+ 
+  {/* Links — ocultos en mobile, sin cambios en desktop */}
+  <ul className={styles.navLinks}>
+    <li><a href="#how">Cómo funciona</a></li>
+    <li><a href="#features">Funciones</a></li>
+    <li><a href="#reviews">Clientes</a></li>
+  </ul>
+ 
+  {/* Actions — ocultos en mobile, sin cambios en desktop */}
+  <div className={styles.navActions}>
+    <Link to="/login" className={styles.navLogin}>Iniciar sesión</Link>
+    <Link to="/register" className={styles.navRegister}>Crear cuenta</Link>
+    <button className={styles.navCta} onClick={() => openBilling()}>Ver precios</button>
+  </div>
+ 
+  {/* Hamburger — SOLO visible en mobile (≤900px) */}
+  <button
+    className={styles.hamburger}
+    onClick={() => setMenuOpen(o => !o)}
+    aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+    aria-expanded={menuOpen}
+  >
+    <span className={`${styles.hLine} ${menuOpen ? styles.hLineOpen1 : ""}`} />
+    <span className={`${styles.hLine} ${menuOpen ? styles.hLineOpen2 : ""}`} />
+    <span className={`${styles.hLine} ${menuOpen ? styles.hLineOpen3 : ""}`} />
+  </button>
+ 
+  {/* Dropdown mobile — SOLO visible en mobile cuando menuOpen=true */}
+  <div className={`${styles.mobileMenu} ${menuOpen ? styles.mobileMenuOpen : ""}`}>
+    <Link
+      to="/login"
+      className={styles.mobileLink}
+      onClick={() => setMenuOpen(false)}
+    >
+      Iniciar sesión
+    </Link>
+    <Link
+      to="/register"
+      className={styles.mobileLinkRegister}
+      onClick={() => setMenuOpen(false)}
+    >
+      Crear cuenta
+    </Link>
+    <button
+      className={styles.mobileLinkCta}
+      onClick={() => { setMenuOpen(false); openBilling(); }}
+    >
+      Ver precios →
+    </button>
+  </div>
+</nav>
 
         {/* ── HERO ── */}
         <section className={styles.hero}>

@@ -1,15 +1,50 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
 
+/* ── Keyframes ───────────────────────────────────────── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  15%      { transform: translateX(-7px); }
+  30%      { transform: translateX(7px); }
+  45%      { transform: translateX(-4px); }
+  60%      { transform: translateX(4px); }
+  75%      { transform: translateX(-2px); }
+  90%      { transform: translateX(2px); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Layout ──────────────────────────────────────────── */
 .lp {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0c0b09;
+  /* Glow cálido sutil centrado detrás de la card */
+  background:
+    radial-gradient(ellipse 700px 550px at 50% 48%, rgba(201, 168, 76, 0.055) 0%, transparent 65%),
+    #0c0b09;
   padding: 2rem;
   font-family: 'DM Sans', system-ui, sans-serif;
 }
 
+/* ── Card ────────────────────────────────────────────── */
 .card {
   background: #131210;
   border: 0.5px solid #272420;
@@ -17,9 +52,28 @@
   padding: 2.5rem 2rem;
   width: 100%;
   max-width: 380px;
+  position: relative;
+  /* Sombra profunda para sensación de elevación */
+  box-shadow:
+    0 0 0 0.5px rgba(201, 168, 76, 0.07),
+    0 8px 16px rgba(0, 0, 0, 0.35),
+    0 32px 64px rgba(0, 0, 0, 0.55);
+  /* Entrada suave */
+  animation: fadeSlideUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Brand */
+/* Filo dorado sutil en la parte superior de la card */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 12%; right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.35), transparent);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* ── Brand ───────────────────────────────────────────── */
 .brand {
   text-align: center;
   margin-bottom: 2rem;
@@ -41,6 +95,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 14px rgba(201, 168, 76, 0.28);
 }
 
 .brandName {
@@ -63,14 +118,14 @@
   margin: 0;
 }
 
-/* Divider */
+/* ── Divider ─────────────────────────────────────────── */
 .divider {
   height: 0.5px;
-  background: #272420;
+  background: linear-gradient(90deg, transparent, #272420 30%, #272420 70%, transparent);
   margin: 0 0 1.75rem;
 }
 
-/* Fields */
+/* ── Fields ──────────────────────────────────────────── */
 .field {
   margin-bottom: 1.1rem;
 }
@@ -82,6 +137,12 @@
   text-transform: uppercase;
   color: #5c5649;
   margin-bottom: 0.45rem;
+  transition: color 0.2s;
+}
+
+/* Label se ilumina al enfocarse */
+.field:focus-within label {
+  color: #9a8b6e;
 }
 
 .fieldWrap {
@@ -95,6 +156,12 @@
   transform: translateY(-50%);
   color: #3d3a33;
   pointer-events: none;
+  transition: color 0.2s;
+}
+
+/* El ícono del campo se vuelve dorado al enfocar */
+.field:focus-within .fieldIcon {
+  color: #c9a84c;
 }
 
 .field input {
@@ -108,7 +175,7 @@
   color: #d4c9b0;
   font-family: 'DM Sans', system-ui, sans-serif;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .field input::placeholder {
@@ -117,13 +184,34 @@
 
 .field input:focus {
   border-color: #c9a84c;
+  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.1);
 }
 
 .field input:disabled {
   opacity: 0.5;
+  cursor: not-allowed;
 }
 
-/* Toggle password */
+/* Estado de error en campo */
+.fieldWrapError .field input,
+.fieldWrapError input {
+  border-color: #7a3020 !important;
+  box-shadow: 0 0 0 3px rgba(180, 60, 30, 0.09) !important;
+}
+
+/* ── Caps lock warning ───────────────────────────────── */
+.capsWarning {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 0.4rem;
+  font-size: 0.7rem;
+  color: #9a7840;
+  letter-spacing: 0.03em;
+  animation: fadeIn 0.18s ease both;
+}
+
+/* ── Toggle password ─────────────────────────────────── */
 .togglePw {
   position: absolute;
   right: 12px;
@@ -143,21 +231,89 @@
   color: #c9a84c;
 }
 
-/* Error */
+/* ── Remember me + Olvidaste contraseña ──────────────── */
+.rememberRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.rememberLabel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.rememberNative {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+}
+
+.rememberBox {
+  width: 15px;
+  height: 15px;
+  border: 0.5px solid #3d3a33;
+  border-radius: 4px;
+  background: #0e0d0b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.rememberLabel:hover .rememberBox {
+  border-color: #9a8b6e;
+}
+
+.rememberBoxChecked {
+  background: #c9a84c;
+  border-color: #c9a84c;
+}
+
+.rememberText {
+  font-size: 0.78rem;
+  color: #5c5649;
+}
+
+.forgotBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.75rem;
+  color: #5c5649;
+  padding: 0;
+  letter-spacing: 0.02em;
+  transition: color 0.15s;
+}
+
+.forgotBtn:hover {
+  color: #c9a84c;
+}
+
+/* ── Error banner ────────────────────────────────────── */
 .errorBanner {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #1c1009;
+  background: #1a0f08;
   border: 0.5px solid #4a2010;
   border-radius: 8px;
   padding: 0.65rem 0.9rem;
   font-size: 0.82rem;
-  color: #b86040;
+  color: #c06848;
   margin-bottom: 1rem;
+  animation: slideDown 0.22s ease both;
 }
 
-/* Submit */
+/* ── Submit button ───────────────────────────────────── */
 .submitBtn {
   width: 100%;
   background: #c9a84c;
@@ -170,12 +326,14 @@
   color: #0c0b09;
   cursor: pointer;
   letter-spacing: 0.04em;
-  transition: background 0.2s, transform 0.1s;
+  transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
   margin-top: 0.25rem;
+  box-shadow: 0 2px 18px rgba(201, 168, 76, 0.22);
 }
 
 .submitBtn:hover:not(:disabled) {
-  background: #dabb62;
+  background: #d9ba5f;
+  box-shadow: 0 4px 28px rgba(201, 168, 76, 0.32);
 }
 
 .submitBtn:active:not(:disabled) {
@@ -187,11 +345,57 @@
   cursor: not-allowed;
 }
 
-/* Footer */
+.btnInner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* ── Spinner ─────────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(12, 11, 9, 0.25);
+  border-top-color: #0c0b09;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── Shake ───────────────────────────────────────────── */
+.shake {
+  animation: shake 0.48s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* ── Footer ──────────────────────────────────────────── */
 .footer {
   text-align: center;
   margin-top: 1.5rem;
   font-size: 0.72rem;
-  color: #33302a;
+  color: #2e2c27;
   letter-spacing: 0.06em;
+}
+
+/* ── Reduced motion ──────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .card, .shake, .errorBanner, .capsWarning { animation: none; }
+}
+
+.homeLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 0.6rem;
+  font-size: 0.73rem;
+  color: #302d22;
+  text-decoration: none;
+  letter-spacing: 0.05em;
+  transition: color 0.2s;
+}
+
+.homeLink:hover {
+  color: #9a8b6e;
 }

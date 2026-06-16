@@ -87,12 +87,22 @@
   font-size: .78rem; font-weight: 500; letter-spacing: .08em;
   text-transform: uppercase; text-decoration: none;
   padding: .55rem 1.2rem; border-radius: 3px;
-  border: 1px solid var(--cream-dim); color: var(--cream-mid);
   background: transparent; cursor: pointer;
   transition: border-color .25s, color .25s;
   display: inline-flex; align-items: center;
 }
 .navRegister:hover { border-color: var(--amber); color: var(--amber); }
+
+.navLogin {
+  font-size: .78rem; font-weight: 400; letter-spacing: .08em;
+  text-transform: uppercase; text-decoration: none;
+  padding: .55rem .9rem; border-radius: 3px;
+  color: var(--cream-mid);
+  background: transparent; cursor: pointer;
+  transition: color .25s;
+  display: inline-flex; align-items: center;
+}
+.navLogin:hover { color: var(--amber); }
 
 .navCta {
   font-family: 'DM Sans', sans-serif; font-size: .78rem; font-weight: 700;
@@ -682,6 +692,7 @@
 @media (max-width: 900px) {
   .nav { padding: 1rem 1.5rem; }
   .navLinks { display: none; }
+  .navLogin { display: none; }
   .hero { padding: 6rem 1.5rem 4rem; }
   .heroInner { grid-template-columns: 1fr; gap: 3rem; text-align: center; }
   .heroSub { max-width: 100%; }
@@ -698,4 +709,148 @@
   .plansGrid { grid-template-columns: 1fr; }
   .billingTitle { font-size: 1.5rem; }
   .billing { padding: 28px 20px; margin-top: 70px; }
+}
+
+/* ─────────────────────────────────────────────────────────
+   HAMBURGER + MOBILE MENU
+   Pegá esto ANTES del cierre del @media (max-width: 900px)
+   ───────────────────────────────────────────────────────── */
+
+/* Ocultar actions de desktop en mobile */
+/* (ya tenés .navLogin oculto, agregá navRegister y navCta) */
+
+/* ── Botón hamburger ── */
+.hamburger {
+  display: none; /* oculto en desktop */
+}
+
+@media (max-width: 900px) {
+
+  /* Ocultar todo lo de desktop */
+  .navActions { display: none; }
+
+  /* Mostrar hamburger */
+  .hamburger {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    width: 40px;
+    height: 40px;
+    background: transparent;
+    border: 1px solid rgba(255, 149, 0, 0.2);
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    transition: border-color 0.2s;
+    z-index: 1000;
+  }
+
+  .hamburger:hover {
+    border-color: rgba(255, 149, 0, 0.5);
+  }
+
+  /* Líneas del hamburger */
+  .hLine {
+    display: block;
+    width: 18px;
+    height: 1.5px;
+    background: var(--amber);
+    border-radius: 2px;
+    transition: transform 0.25s ease, opacity 0.2s ease;
+    transform-origin: center;
+  }
+
+  /* Estado abierto: X */
+  .hLineOpen1 { transform: translateY(6.5px) rotate(45deg); }
+  .hLineOpen2 { opacity: 0; transform: scaleX(0); }
+  .hLineOpen3 { transform: translateY(-6.5px) rotate(-45deg); }
+
+  /* ── Dropdown mobile ── */
+  .mobileMenu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: rgba(10, 6, 8, 0.98);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255, 149, 0, 0.12);
+    border-bottom: 1px solid rgba(255, 149, 0, 0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    /* Animación: cerrado por defecto */
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.25s ease;
+    pointer-events: none;
+  }
+
+  /* Abierto */
+  .mobileMenuOpen {
+    max-height: 300px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Items del menú mobile */
+  .mobileLink {
+    display: block;
+    padding: 1rem 1.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--cream-mid);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255, 149, 0, 0.07);
+    transition: color 0.2s, background 0.2s;
+  }
+
+  .mobileLink:hover {
+    color: var(--amber);
+    background: rgba(255, 149, 0, 0.04);
+  }
+
+  .mobileLinkRegister {
+    display: block;
+    padding: 1rem 1.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--amber);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255, 149, 0, 0.07);
+    transition: background 0.2s;
+  }
+
+  .mobileLinkRegister:hover {
+    background: rgba(255, 149, 0, 0.06);
+  }
+
+  .mobileLinkCta {
+    display: block;
+    width: 100%;
+    padding: 1rem 1.5rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: left;
+    color: #000;
+    background: var(--amber);
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .mobileLinkCta:hover {
+    opacity: 0.9;
+  }
 }
