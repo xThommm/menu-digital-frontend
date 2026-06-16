@@ -1,17 +1,21 @@
 /* ═══════════════════════════════════════════════════════════════
-   LOADER
+   UserHome.module.css
+   Solo estilos que son EXCLUSIVOS de esta vista:
+   loader, notFound, alturas de hero y overlays por template.
+   Todo lo demás (animaciones, .t-*, botones) vive en globals.css
    ═══════════════════════════════════════════════════════════════ */
+
+/* ── Loader ── */
 .loaderWrap {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #0b0a08;
+  animation: t-fadeIn 0.3s ease both;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   NOT FOUND
-   ═══════════════════════════════════════════════════════════════ */
+/* ── Not found ── */
 .notFound {
   min-height: 100vh;
   display: flex;
@@ -20,9 +24,9 @@
   justify-content: center;
   gap: 0.375rem;
   background: #0b0a08;
-  color: #58524a;
   font-family: 'DM Sans', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  animation: t-fadeUp 0.4s ease both;
 }
 
 .notFoundTitle {
@@ -39,24 +43,26 @@
   line-height: 1.5;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   ALTURAS DE HERO POR TEMPLATE
-   ═══════════════════════════════════════════════════════════════ */
-.heroT1 { height: 240px; }
-.heroT2 { height: 220px; }
-.heroT3 { height: 200px; }
-.heroT4 { height: 220px; }
-.heroT5 { height: 200px; }
+/* ── Alturas de hero por template ──
+   Fluid: en mobile más compacto, en desktop crece.
+   clamp(min, preferred, max)
+   ─────────────────────────────── */
+.heroT1 { height: clamp(200px, 32vw, 320px); }
+.heroT2 { height: clamp(180px, 28vw, 280px); }
+.heroT3 { height: clamp(160px, 26vw, 260px); }
+.heroT4 { height: clamp(180px, 28vw, 300px); }
+.heroT5 { height: clamp(160px, 24vw, 240px); }
 
-/* ═══════════════════════════════════════════════════════════════
-   OVERLAYS DE HERO POR TEMPLATE
-   Cada variante usa el color exacto de su --t-bg para fundir
-   ═══════════════════════════════════════════════════════════════ */
+/* ── Overlays de hero por template ──
+   Los !important son necesarios aquí porque sobreescriben
+   el gradiente genérico definido en .t-hero-overlay de globals.css.
+   Es el único lugar donde están justificados.
+   ──────────────────────────────────── */
 .overlayT1 {
   background: linear-gradient(
     to bottom,
-    transparent 20%,
-    rgba(11, 10, 8, 0.6) 60%,
+    transparent 15%,
+    rgba(11, 10, 8, 0.55) 55%,
     #0b0a08 100%
   ) !important;
 }
@@ -64,8 +70,8 @@
 .overlayT2 {
   background: linear-gradient(
     to bottom,
-    transparent 20%,
-    rgba(13, 17, 23, 0.6) 60%,
+    transparent 15%,
+    rgba(13, 17, 23, 0.55) 55%,
     #0d1117 100%
   ) !important;
 }
@@ -73,8 +79,8 @@
 .overlayT3 {
   background: linear-gradient(
     to bottom,
-    transparent 30%,
-    rgba(242, 246, 239, 0.75) 65%,
+    transparent 25%,
+    rgba(242, 246, 239, 0.70) 60%,
     #f2f6ef 100%
   ) !important;
 }
@@ -82,8 +88,8 @@
 .overlayT4 {
   background: linear-gradient(
     to bottom,
-    transparent 20%,
-    rgba(17, 6, 6, 0.65) 60%,
+    transparent 15%,
+    rgba(17, 6, 6, 0.60) 55%,
     #110606 100%
   ) !important;
 }
@@ -91,8 +97,16 @@
 .overlayT5 {
   background: linear-gradient(
     to bottom,
-    transparent 30%,
-    rgba(255, 255, 255, 0.7) 65%,
+    transparent 25%,
+    rgba(255, 255, 255, 0.65) 60%,
     #ffffff 100%
   ) !important;
+}
+
+/* ── Accesibilidad ── */
+@media (prefers-reduced-motion: reduce) {
+  .loaderWrap,
+  .notFound {
+    animation: none;
+  }
 }

@@ -1,18 +1,15 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import type { User, Item, MenuData, Tab } from "../../../../types/index";
 import styles from "./UserMenu.module.css";
 
-
 // ── Helpers de formato ────────────────────────────────────────────────────────
 
-/** Devuelve el menor valor de un mapa de opciones, o null si está vacío */
 const minOption = (options: Record<string, number>): number | null => {
   const vals = Object.values(options);
   return vals.length > 0 ? Math.min(...vals) : null;
 };
 
-/** Formatea un número como precio en pesos argentinos sin decimales */
 const fmt = (n: number) =>
   new Intl.NumberFormat("es-AR", {
     style: "currency",
@@ -22,11 +19,6 @@ const fmt = (n: number) =>
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-/**
- * MenuPage
- * Obtiene y renderiza el menú público de un negocio a partir del slug en la URL.
- * Organiza las categorías en tabs por sección para facilitar la navegación.
- */
 export default function MenuPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -37,31 +29,29 @@ export default function MenuPage() {
   const [notFound, setNotFound]   = useState(false);
   const [activeTab, setActiveTab] = useState(0);
 
-  /** Carga los datos del menú cuando cambia el slug */
   useEffect(() => {
+    const controller = new AbortController();
     const fetchMenu = async () => {
       try {
-        const res = await fetch(`/api/users/${slug}/menu`);
+        const res = await fetch(`/api/users/${slug}/menu`, { signal: controller.signal, 
+        });
         if (!res.ok) { setNotFound(true); return; }
         const data = await res.json();
         setUser(data.user);
         setMenu(data.menu);
-      } catch {
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
         setNotFound(true);
       } finally {
         setLoading(false);
       }
     };
     fetchMenu();
+    return () => controller.abort();
   }, [slug]);
 
-  /** Vuelve a la landing page del negocio */
   const goBack = useCallback(() => navigate(`/${slug}`), [slug, navigate]);
 
-  /**
-   * Construye los tabs a partir de las secciones y las categorías sin sección.
-   * Se memoiza para no recalcular en cada render.
-   */
   const tabs = useMemo<Tab[]>(() => {
     if (!menu) return [];
     return [
@@ -69,6 +59,15 @@ export default function MenuPage() {
       ...(menu.sinSeccion.length > 0 ? [{ label: "Otros", categorias: menu.sinSeccion }] : []),
     ];
   }, [menu]);
+
+  // Reinicia scroll al cambiar de tab
+  const contentRef = useRef<HTMLElement>(null);
+
+  const handleTabChange = useCallback((index: number) => {
+  setActiveTab(index);
+  contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+}, []);
+
 
   if (loading)                    return <Loader />;
   if (notFound || !menu || !user) return <NotFound />;
@@ -87,7 +86,7 @@ export default function MenuPage() {
   return (
     <div className={styles.mp} data-template={user.template ?? 1}>
 
-      {/* ── Cabecera con botón volver e info básica del negocio ── */}
+      {/* ── Cabecera ── */}
       <header className={styles.mpHeader}>
         <button className={styles.mpBack} onClick={goBack} aria-label="Volver">
           <BackIcon />
@@ -101,7 +100,7 @@ export default function MenuPage() {
         </div>
       </header>
 
-      {/* ── Tabs de navegación entre secciones (solo si hay más de una) ── */}
+      {/* ── Tabs (solo si hay más de una) ── */}
       {tabs.length > 1 && (
         <nav className={styles.mpTabs} role="tablist">
           {tabs.map((tab, i) => (
@@ -110,7 +109,7 @@ export default function MenuPage() {
               role="tab"
               aria-selected={activeTab === i}
               className={`${styles.mpTab} ${activeTab === i ? styles.active : ""}`}
-              onClick={() => setActiveTab(i)}
+              onClick={() => handleTabChange(i)}
             >
               {tab.label}
             </button>
@@ -118,8 +117,10 @@ export default function MenuPage() {
         </nav>
       )}
 
-      {/* ── Listado de categorías e items del tab activo ── */}
-      <main className={styles.mpContent}>
+      {/* ── Contenido del tab activo — key fuerza re-animación al cambiar ── */}
+      // ✅ CORRECTO — animación vía CSS, sin re-mount
+          <main className={styles.mpContent} data-tab={activeTab}>
+            <main ref={contentRef} className={styles.mpContent}></main>
         {currentTab.categorias.map(cat => {
           const visibleItems = cat.items.filter(it => !it.hidden);
           if (visibleItems.length === 0) return null;
@@ -127,8 +128,8 @@ export default function MenuPage() {
           return (
             <section key={cat._id} className={styles.mpCat}>
               <h2 className={styles.mpCatTitle}>{cat.title}</h2>
-              {visibleItems.map(item => (
-                <ItemCard key={item._id} item={item} />
+              {visibleItems.map((item, idx) => (
+                <ItemCard key={item._id} item={item} index={idx} />
               ))}
             </section>
           );
@@ -141,23 +142,18 @@ export default function MenuPage() {
 
 // ── ItemCard ──────────────────────────────────────────────────────────────────
 
-/**
- * ItemCard
- * Tarjeta de un producto individual. Muestra imagen (o placeholder),
- * nombre, descripción, precio, precio tachado si tiene oferta,
- * badge de variantes y estado de disponibilidad.
- */
-function ItemCard({ item }: { item: Item }) {
+function ItemCard({ item, index }: { item: Item; index: number }) {
   const hasOptions = Object.keys(item.options ?? {}).length > 0;
   const minPrice   = hasOptions ? minOption(item.options) : null;
-
-  /** Precio a mostrar: precio base si existe, si no el mínimo de opciones */
   const displayPrice = item.price != null ? item.price : minPrice;
+  const isOnOffer = item.offerPrice != null && item.price != null;
+  const activePrice = isOnOffer ? item.offerPrice! : (item.price ?? minPrice);
 
   return (
-    <article className={`${styles.itemCard} ${!item.available ? styles.unavailable : ""}`}>
-
-      {/* Imagen o placeholder con ícono genérico */}
+    <article
+      className={`${styles.itemCard} ${!item.available ? styles.unavailable : ""}`}
+      style={{ "--item-delay": `${Math.min(index * 0.05, 0.3)}s` } as React.CSSProperties}
+      >
       {item.image ? (
         <img src={item.image} alt={item.title} className={styles.itemImg} loading="lazy" />
       ) : (
@@ -184,30 +180,28 @@ function ItemCard({ item }: { item: Item }) {
               {hasOptions ? `Desde ${fmt(displayPrice)}` : fmt(displayPrice)}
             </span>
           )}
-
-          {/* Precio original tachado cuando hay precio de oferta */}
-          {item.offerPrice != null && item.price != null && (
-            <span className={styles.itemOffer}>{fmt(item.price)}</span>
+          {activePrice != null && (
+            <span className={styles.itemPrice}>
+          {hasOptions ? `Desde ${fmt(activePrice)}` : fmt(activePrice)}
+            </span>
           )}
-
+          {isOnOffer && (
+            <span className={styles.itemOffer}>{fmt(item.price!)}</span>
+          )}
           {hasOptions && (
             <span className={`${styles.badge} ${styles.badgeVariant}`}>Variantes disponibles</span>
           )}
-
           {!item.available && (
             <span className={styles.itemUnavail}>No disponible</span>
           )}
         </div>
       </div>
-
     </article>
   );
 }
 
-// ── Íconos inline ─────────────────────────────────────────────────────────────
-// Componentes para no repetir el SVG en cada uso.
+// ── Íconos ────────────────────────────────────────────────────────────────────
 
-/** Flecha hacia la izquierda para el botón "volver" */
 function BackIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -218,7 +212,6 @@ function BackIcon() {
   );
 }
 
-/** Ícono genérico de imagen para items sin foto */
 function ImagePlaceholderIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
@@ -232,9 +225,8 @@ function ImagePlaceholderIcon() {
   );
 }
 
-// ── Estados de carga y error ──────────────────────────────────────────────────
+// ── Estados ───────────────────────────────────────────────────────────────────
 
-/** Spinner mientras se obtienen los datos del menú */
 function Loader() {
   return (
     <div className={styles.loaderWrap}>
@@ -243,7 +235,6 @@ function Loader() {
   );
 }
 
-/** Pantalla cuando el slug no existe o la API falla */
 function NotFound() {
   return (
     <div className={styles.notFound}>
@@ -253,7 +244,6 @@ function NotFound() {
   );
 }
 
-/** Pantalla cuando el negocio existe pero aún no cargó ningún item */
 function EmptyMenu({ name, template, onBack }: { name: string; template: number; onBack: () => void }) {
   return (
     <div className={styles.emptyMenu} data-template={template}>

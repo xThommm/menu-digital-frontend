@@ -2,6 +2,7 @@ import { BrowserRouter } from "react-router-dom";
 import { Suspense } from "react";
 import { AuthProvider } from "./api/Auth/AuthContext";
 import AppRoutes from "./api/Routes/AppRoutes";
+import usePing from './hooks/usePing';
 
 const PageLoader = () => (
   <div
@@ -17,6 +18,7 @@ const PageLoader = () => (
 );
 
 export default function App() {
+  usePing();
   return (
     <BrowserRouter>
       <AuthProvider>

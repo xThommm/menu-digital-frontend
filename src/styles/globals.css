@@ -162,6 +162,28 @@ a:hover { opacity: 0.75; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   KEYFRAMES GLOBALES
+   ═══════════════════════════════════════════════════════════════ */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes t-fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes t-fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes t-slideRight {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
    SPINNER DE CARGA
    ═══════════════════════════════════════════════════════════════ */
 .loader {
@@ -172,10 +194,6 @@ a:hover { opacity: 0.75; }
   border-radius: var(--radius-full);
   animation: spin 0.65s linear infinite;
   will-change: transform;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -204,13 +222,8 @@ a:hover { opacity: 0.75; }
   transition: opacity var(--transition);
 }
 
-.item-row-ac[draggable="true"]:hover {
-  opacity: 0.88;
-}
-
-.item-row-ac[draggable="true"]:active {
-  cursor: grabbing;
-}
+.item-row-ac[draggable="true"]:hover { opacity: 0.88; }
+.item-row-ac[draggable="true"]:active { cursor: grabbing; }
 
 /* ═══════════════════════════════════════════════════════════════
    VARIABLES POR TEMPLATE
@@ -303,9 +316,9 @@ a:hover { opacity: 0.75; }
 
 /* ═══════════════════════════════════════════════════════════════
    COMPONENTES DE TEMPLATE — .t-*
+   Viven aquí para que no haya necesidad de :global() en módulos
    ═══════════════════════════════════════════════════════════════ */
 
-/* Wrapper raíz */
 .t-wrap {
   min-height: 100vh;
   background: var(--t-bg);
@@ -320,6 +333,7 @@ a:hover { opacity: 0.75; }
   display: flex;
   align-items: flex-end;
   overflow: hidden;
+  animation: t-fadeIn 0.5s var(--ease-out) both;
 }
 
 .t-hero-overlay {
@@ -337,7 +351,7 @@ a:hover { opacity: 0.75; }
   width: 100%;
 }
 
-/* ── Cabecera (sin hero) ── */
+/* ── Cabecera avatar (T2) ── */
 .t-header {
   background: var(--t-surface);
   border-bottom: 0.5px solid var(--t-border-md);
@@ -345,6 +359,7 @@ a:hover { opacity: 0.75; }
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  animation: t-fadeIn 0.5s var(--ease-out) both;
 }
 
 /* ── Avatar ── */
@@ -365,10 +380,10 @@ a:hover { opacity: 0.75; }
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--t-accent) 24%, transparent);
 }
 
-/* ── Tipografía de título ── */
+/* ── Tipografía ── */
 .t-title {
   font-family: var(--font-serif);
-  font-size: var(--text-2xl);
+  font-size: clamp(1.5rem, 5vw, var(--text-2xl));
   font-weight: 400;
   letter-spacing: -0.01em;
   line-height: 1.2;
@@ -378,7 +393,7 @@ a:hover { opacity: 0.75; }
 
 .t-title-sans {
   font-family: var(--font-sans);
-  font-size: var(--text-xl);
+  font-size: clamp(1.25rem, 4vw, var(--text-xl));
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -404,9 +419,11 @@ a:hover { opacity: 0.75; }
   white-space: nowrap;
 }
 
-/* ── Cuerpo de página ── */
+/* ── Cuerpo ── */
 .t-body {
   padding: var(--space-5);
+  animation: t-fadeUp 0.45s var(--ease-out) both;
+  animation-delay: 0.12s;
 }
 
 /* ── Lista de info ── */
@@ -428,18 +445,18 @@ a:hover { opacity: 0.75; }
 
 .t-info-icon {
   font-size: 0.9rem;
-  width: 16px;
+  width: 18px;
   flex-shrink: 0;
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
 /* ── Galería ── */
 .t-gallery {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
+  gap: 4px;
   margin-bottom: var(--space-2);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
@@ -447,6 +464,7 @@ a:hover { opacity: 0.75; }
   aspect-ratio: 1;
   overflow: hidden;
   position: relative;
+  cursor: pointer;
 }
 
 .t-gallery-item::after {
@@ -458,7 +476,7 @@ a:hover { opacity: 0.75; }
 }
 
 .t-gallery-item:hover::after {
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.10);
 }
 
 .t-gallery-img {
@@ -470,7 +488,7 @@ a:hover { opacity: 0.75; }
 }
 
 .t-gallery-item:hover .t-gallery-img {
-  transform: scale(1.04);
+  transform: scale(1.05);
 }
 
 /* ── Botón principal ── */
@@ -513,14 +531,14 @@ a:hover { opacity: 0.75; }
 
 .t-btn:hover {
   opacity: 0.92;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow:
-    0 6px 18px var(--t-accent-glow, rgba(0,0,0,0.20)),
+    0 8px 24px var(--t-accent-glow, rgba(0,0,0,0.20)),
     inset 0 1px 0 rgba(255,255,255,0.12);
 }
 
 .t-btn:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.98);
   opacity: 0.86;
   transition-duration: 0.08s;
 }
@@ -546,7 +564,7 @@ a:hover { opacity: 0.75; }
   border: none;
 }
 
-/* ── Card / superficie ── */
+/* ── Card ── */
 .t-card {
   background: var(--t-surface);
   border: 0.5px solid var(--t-border-md);
@@ -597,4 +615,22 @@ a:hover { opacity: 0.75; }
   font-size: var(--text-sm);
   color: var(--t-muted);
   line-height: 1.5;
+}
+
+/* ── Desktop: centrar y limitar ancho en pantallas grandes ── */
+@media (min-width: 768px) {
+  .t-wrap {
+    max-width: 680px;
+    margin: 0 auto;
+    min-height: 100vh;
+    box-shadow: 0 0 0 0.5px var(--t-border), 0 32px 80px rgba(0,0,0,0.18);
+  }
+
+  .t-body {
+    padding: var(--space-8) var(--space-8);
+  }
+
+  .t-gallery {
+    gap: 6px;
+  }
 }

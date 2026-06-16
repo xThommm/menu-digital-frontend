@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../api/Auth/AuthContext";
 import MassiveImport from "../../../../Utils/MassiveImport";
 import styles from "./MenuEditor.module.css";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
+
 interface Item {
   _id: string;
   title: string;
@@ -43,6 +44,7 @@ interface MenuData {
 }
 
 // ── Estado vacío para formulario de item ───────────────────────────────────────
+
 const EMPTY_ITEM = {
   title: "", description: "", price: "", offerPrice: "",
   code: "", available: true, hidden: false, recommended: false,
@@ -50,128 +52,389 @@ const EMPTY_ITEM = {
 };
 
 // ── Vistas posibles ────────────────────────────────────────────────────────────
+
 type View = "menu" | "item-form" | "categoria-form" | "seccion-form" | "massive-import";
+
+// ── Íconos ─────────────────────────────────────────────────────────────────────
+
+const icons = {
+  back: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  ),
+  upload: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+  ),
+  edit: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  ),
+  trash: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" /><path d="M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  ),
+  chevron: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  ),
+  close: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  ),
+};
+
+// ── Toggle sub-componente ──────────────────────────────────────────────────────
+
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label?: string }) {
+  return (
+    <button
+      className={`${styles.toggle} ${checked ? styles.on : ""}`}
+      onClick={onChange}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+    >
+      <span className={styles["toggle-knob"]} />
+    </button>
+  );
+}
+
+// ── TopBar sub-componente ─────────────────────────────────────────────────────
+
+function TopBar({ title, onBack, rightSlot }: { title: string; onBack: () => void; rightSlot?: React.ReactNode }) {
+  return (
+    <header className={styles["top-bar"]}>
+      <button className={styles["back-btn"]} onClick={onBack} aria-label="Volver">
+        {icons.back}
+      </button>
+      <span className={styles["top-title"]}>{title}</span>
+      <div style={{ width: 36 }} aria-hidden="true">
+        {rightSlot}
+      </div>
+    </header>
+  );
+}
+
+// ── Spinner ───────────────────────────────────────────────────────────────────
+
+function Spinner({ size = 16 }: { size?: number }) {
+  return (
+    <svg className={styles.spinner} width={size} height={size} viewBox="0 0 24 24"
+      fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5"
+        strokeDasharray="31.4" strokeDashoffset="10" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// ── CategoriaAcordeon (memoizado) ─────────────────────────────────────────────
+
+interface CategoriaAcordeonProps {
+  cat: Categoria;
+  expanded: boolean;
+  onToggle: () => void;
+  onEditCat: () => void;
+  onDeleteCat: () => void;
+  onNewItem: () => void;
+  onEditItem: (item: Item) => void;
+  onDeleteItem: (item: Item) => void;
+  onToggleAvailable: (item: Item) => void;
+  onDragStart: (e: React.DragEvent, itemId: string) => void;
+  onDragOver: (e: React.DragEvent, catId: string) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent, catId: string) => void;
+  onDragEnd: () => void;
+  dragOverCat: string | null;
+  draggedItem: string | null;
+}
+
+const CategoriaAcordeon = memo(function CategoriaAcordeon({
+  cat, expanded, onToggle, onEditCat, onDeleteCat, onNewItem,
+  onEditItem, onDeleteItem, onToggleAvailable, onDragStart,
+  onDragOver, onDragLeave, onDrop, onDragEnd, dragOverCat, draggedItem,
+}: CategoriaAcordeonProps) {
+  const isDragOver = dragOverCat === cat._id;
+  const itemCount  = cat.items?.length ?? 0;
+
+  return (
+    <div className={styles["cat-acordeon"]}>
+      {/* Header */}
+      <div className={`${styles["cat-header"]} ${expanded ? styles.open : ""}`}>
+        <button
+          className={`${styles["cat-chevron-btn"]}`}
+          onClick={onToggle}
+          aria-expanded={expanded}
+          aria-label={expanded ? `Contraer ${cat.title}` : `Expandir ${cat.title}`}
+        >
+          <span className={`${styles["cat-chevron"]} ${expanded ? styles.open : ""}`}>
+            {icons.chevron}
+          </span>
+        </button>
+
+        <button className={styles["cat-header-info"]} onClick={onToggle} type="button">
+          <span className={styles["cat-header-name"]}>{cat.title}</span>
+          <span className={styles["cat-header-meta"]}>
+            {itemCount === 0 ? "Sin productos" : `${itemCount} producto${itemCount !== 1 ? "s" : ""}`}
+            {cat.hidden ? " · oculta" : ""}
+          </span>
+        </button>
+
+        <div className={styles["row-actions"]}>
+          <button
+            className={styles["icon-btn"]}
+            onClick={onEditCat}
+            title="Editar categoría"
+            aria-label={`Editar ${cat.title}`}
+          >
+            {icons.edit}
+          </button>
+          <button
+            className={`${styles["icon-btn"]} ${styles.danger}`}
+            onClick={onDeleteCat}
+            title="Eliminar categoría"
+            aria-label={`Eliminar ${cat.title}`}
+          >
+            {icons.trash}
+          </button>
+        </div>
+      </div>
+
+      {/* Body */}
+      {expanded && (
+        <div
+          className={`${styles["cat-body"]} ${isDragOver ? styles["drag-over"] : ""}`}
+          onDragOver={e => onDragOver(e, cat._id)}
+          onDragLeave={onDragLeave}
+          onDrop={e => onDrop(e, cat._id)}
+          role="list"
+          aria-label={`Productos de ${cat.title}`}
+        >
+          {itemCount === 0 && (
+            <p className={styles["empty-hint"]} style={{ padding: "1.25rem", textAlign: "center" }}>
+              Arrastrá productos aquí o usá el botón de abajo.
+            </p>
+          )}
+
+          {cat.items?.map(item => (
+            <div
+              key={item._id}
+              role="listitem"
+              className={`${styles["item-row-ac"]} ${draggedItem === item._id ? styles.dragging : ""}`}
+              draggable
+              onDragStart={e => onDragStart(e, item._id)}
+              onDragEnd={onDragEnd}
+            >
+              {/* Handle drag */}
+              <span className={styles["drag-handle"]} aria-hidden="true">
+                <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
+                  <circle cx="4" cy="3"  r="1.5" fill="currentColor" />
+                  <circle cx="4" cy="8"  r="1.5" fill="currentColor" />
+                  <circle cx="4" cy="13" r="1.5" fill="currentColor" />
+                  <circle cx="8" cy="3"  r="1.5" fill="currentColor" />
+                  <circle cx="8" cy="8"  r="1.5" fill="currentColor" />
+                  <circle cx="8" cy="13" r="1.5" fill="currentColor" />
+                </svg>
+              </span>
+
+              <button className={styles["item-info-ac"]} onClick={() => onEditItem(item)} type="button">
+                <span className={styles["item-name-ac"]}>{item.title}</span>
+                <span className={styles["item-meta-ac"]}>
+                  {item.price != null
+                    ? `$${item.price.toLocaleString("es-AR")}`
+                    : Object.keys(item.options || {}).length > 0
+                      ? "Con variantes"
+                      : "Sin precio"}
+                  {item.offerPrice != null && (
+                    <span className={styles["item-offer"]}>
+                      {` · Oferta $${item.offerPrice.toLocaleString("es-AR")}`}
+                    </span>
+                  )}
+                  {item.hidden     ? " · oculto" : ""}
+                  {item.recommended ? " · ⭐" : ""}
+                </span>
+              </button>
+
+              <div className={styles["item-actions"]}>
+                <button
+                  className={`${styles["pill-btn"]} ${item.available ? styles["pill-on"] : styles["pill-off"]}`}
+                  onClick={() => onToggleAvailable(item)}
+                  aria-label={item.available ? `Pausar ${item.title}` : `Activar ${item.title}`}
+                  type="button"
+                >
+                  {item.available ? "Activo" : "Pausado"}
+                </button>
+                <button
+                  className={`${styles["icon-btn"]} ${styles.danger}`}
+                  onClick={() => onDeleteItem(item)}
+                  title="Eliminar"
+                  aria-label={`Eliminar ${item.title}`}
+                  type="button"
+                >
+                  {icons.trash}
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <div className={styles["cat-footer"]}>
+            <button className={styles["add-item-btn"]} onClick={onNewItem} type="button">
+              + Agregar producto
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
+// ── Componente principal ───────────────────────────────────────────────────────
 
 export default function MenuEditorPage() {
   const { token } = useAuth();
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
 
-  // Estado principal
-  const [menuData, setMenuData]     = useState<MenuData | null>(null);
-  const [slug, setSlug]             = useState("");
-  const [loading, setLoading]       = useState(true);
-  const [saving, setSaving]         = useState(false);
-  const [error, setError]           = useState("");
+  const [menuData,    setMenuData]    = useState<MenuData | null>(null);
+  const [slug,        setSlug]        = useState("");
+  const [loading,     setLoading]     = useState(true);
+  const [saving,      setSaving]      = useState(false);
+  const [error,       setError]       = useState("");
 
-  // Drag & Drop
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [dragOverCat, setDragOverCat] = useState<string | null>(null);
 
-  // Navegación
-  const [view, setView]             = useState<View>("menu");
+  const [view,            setView]            = useState<View>("menu");
   const [activeCategoria, setActiveCategoria] = useState<Categoria | null>(null);
-  const [activeItem, setActiveItem] = useState<Item | null>(null);
+  const [activeItem,      setActiveItem]      = useState<Item | null>(null);
+  const [expandedCats,    setExpandedCats]    = useState<Set<string>>(new Set());
 
-  // Acordeón: IDs de categorías expandidas
-  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
-
-  // Modal de confirmación de eliminación
   const [deleteModal, setDeleteModal] = useState<{
     type: "item" | "categoria" | "seccion";
     id: string;
     name: string;
   } | null>(null);
 
-  // Formularios
-  const [itemForm, setItemForm]         = useState(EMPTY_ITEM);
+  const [itemForm,      setItemForm]      = useState(EMPTY_ITEM);
   const [categoriaForm, setCategoriaForm] = useState({ title: "", description: "", code: "", seccionID: "", editingId: "" });
-  const [seccionForm, setSeccionForm]   = useState({ title: "", code: "", editingId: "" });
-
-  // ── Carga inicial ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    const fetchMenu = async () => {
-      try {
-        const meRes = await fetch("/api/users/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const meData = await meRes.json();
-        setSlug(meData.slug);
-
-        const menuRes = await fetch(`/api/users/${meData.slug}/menu`);
-        const menuJson = await menuRes.json();
-        setMenuData(menuJson.menu);
-      } catch {
-        setError("No se pudo cargar el menú.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchMenu();
-  }, []);
-
-  // ── Refresca el menú desde el backend ─────────────────────────────────────
-  const refetch = async () => {
-    if (!slug) return;
-    const menuRes = await fetch(`/api/users/${slug}/menu`);
-    const menuJson = await menuRes.json();
-    setMenuData(menuJson.menu);
-
-    if (activeCategoria) {
-      const todas = [
-        ...(menuJson.menu.sinSeccion ?? []),
-        ...(menuJson.menu.secciones ?? []).flatMap((s: Seccion) => s.categorias),
-      ];
-      const actualizada = todas.find((c: Categoria) => c._id === activeCategoria._id);
-      if (actualizada) setActiveCategoria(actualizada);
-    }
-  };
+  const [seccionForm,   setSeccionForm]   = useState({ title: "", code: "", editingId: "" });
 
   const authHeaders = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
 
-  // ── Acordeón ───────────────────────────────────────────────────────────────
-  const toggleCat = (id: string) => {
+  // ── Auto-clear error banner ─────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(""), 6000);
+    return () => clearTimeout(t);
+  }, [error]);
+
+  // ── Carga inicial ─────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const fetchMenu = async () => {
+      try {
+        const meRes   = await fetch("/api/users/me", { headers: { Authorization: `Bearer ${token}` } });
+        if (!meRes.ok) throw new Error();
+        const meData  = await meRes.json();
+        setSlug(meData.slug);
+
+        const menuRes  = await fetch(`/api/users/${meData.slug}/menu`);
+        if (!menuRes.ok) throw new Error();
+        const menuJson = await menuRes.json();
+        setMenuData(menuJson.menu);
+      } catch {
+        setError("No se pudo cargar el menú. Intentá recargar la página.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMenu();
+  }, [token]);
+
+  // ── Refresca el menú desde el backend ──────────────────────────────────────
+
+  const refetch = useCallback(async () => {
+    if (!slug) return;
+    try {
+      const menuRes  = await fetch(`/api/users/${slug}/menu`);
+      const menuJson = await menuRes.json();
+      setMenuData(menuJson.menu);
+
+      if (activeCategoria) {
+        const todas = [
+          ...(menuJson.menu.sinSeccion ?? []),
+          ...(menuJson.menu.secciones ?? []).flatMap((s: Seccion) => s.categorias),
+        ];
+        const actualizada = todas.find((c: Categoria) => c._id === activeCategoria._id);
+        if (actualizada) setActiveCategoria(actualizada);
+      }
+    } catch {
+      setError("No se pudo actualizar el menú.");
+    }
+  }, [slug, activeCategoria]);
+
+  // ── Acordeón ──────────────────────────────────────────────────────────────
+
+  const toggleCat = useCallback((id: string) => {
     setExpandedCats(prev => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  };
+  }, []);
 
-  // ── Handlers ITEMS ─────────────────────────────────────────────────────────
+  // ── Handlers ITEMS ────────────────────────────────────────────────────────
 
-  const openNewItem = (cat: Categoria) => {
+  const openNewItem = useCallback((cat: Categoria) => {
     setActiveCategoria(cat);
     setActiveItem(null);
     setItemForm(EMPTY_ITEM);
     setError("");
     setView("item-form");
-  };
+  }, []);
 
-  const openEditItem = (item: Item, cat: Categoria) => {
+  const openEditItem = useCallback((item: Item, cat: Categoria) => {
     setActiveCategoria(cat);
     setActiveItem(item);
     setItemForm({
-      title: item.title,
+      title:       item.title,
       description: item.description || "",
-      price: item.price?.toString() || "",
-      offerPrice: item.offerPrice?.toString() || "",
-      code: item.code || "",
-      available: item.available,
-      hidden: item.hidden,
+      price:       item.price?.toString()      || "",
+      offerPrice:  item.offerPrice?.toString() || "",
+      code:        item.code || "",
+      available:   item.available,
+      hidden:      item.hidden,
       recommended: item.recommended,
-      options: Object.entries(item.options || {}).map(([key, value]) => ({
-        key, value: value.toString(),
-      })),
+      options:     Object.entries(item.options || {}).map(([key, value]) => ({ key, value: value.toString() })),
     });
     setError("");
     setView("item-form");
-  };
+  }, []);
 
   const saveItem = async () => {
-    if (!itemForm.title.trim()) { setError("El nombre es obligatorio."); return; }
+    if (!itemForm.title.trim()) { setError("El nombre del producto es obligatorio."); return; }
     setSaving(true); setError("");
     try {
       const optionsObj: Record<string, number> = {};
@@ -179,26 +442,25 @@ export default function MenuEditorPage() {
         if (key.trim()) optionsObj[key.trim()] = Number(value) || 0;
       });
       const body = {
-        menuID: activeCategoria!._id,
-        title: itemForm.title,
+        menuID:      activeCategoria!._id,
+        title:       itemForm.title.trim(),
         description: itemForm.description,
-        price: itemForm.price !== "" ? Number(itemForm.price) : null,
-        offerPrice: itemForm.offerPrice !== "" ? Number(itemForm.offerPrice) : null,
-        code: itemForm.code,
-        available: itemForm.available,
-        hidden: itemForm.hidden,
+        price:       itemForm.price !== "" ? Number(itemForm.price) : null,
+        offerPrice:  itemForm.offerPrice !== "" ? Number(itemForm.offerPrice) : null,
+        code:        itemForm.code,
+        available:   itemForm.available,
+        hidden:      itemForm.hidden,
         recommended: itemForm.recommended,
-        options: optionsObj,
+        options:     optionsObj,
       };
-      if (activeItem) {
-        await fetch(`/api/items/${activeItem._id}`, { method: "PUT", headers: authHeaders, body: JSON.stringify(body) });
-      } else {
-        await fetch("/api/items", { method: "POST", headers: authHeaders, body: JSON.stringify(body) });
-      }
+      const url    = activeItem ? `/api/items/${activeItem._id}` : "/api/items";
+      const method = activeItem ? "PUT" : "POST";
+      const res    = await fetch(url, { method, headers: authHeaders, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error();
       await refetch();
       setView("menu");
     } catch {
-      setError("No se pudo guardar el item.");
+      setError("No se pudo guardar el producto.");
     } finally {
       setSaving(false);
     }
@@ -207,11 +469,11 @@ export default function MenuEditorPage() {
   const confirmDelete = async () => {
     if (!deleteModal) return;
     try {
-      if (deleteModal.type === "item") {
-        await fetch(`/api/items/${deleteModal.id}`, { method: "DELETE", headers: authHeaders });
-      } else {
-        await fetch(`/api/menus/${deleteModal.id}`, { method: "DELETE", headers: authHeaders });
-      }
+      const url = deleteModal.type === "item"
+        ? `/api/items/${deleteModal.id}`
+        : `/api/menus/${deleteModal.id}`;
+      const res = await fetch(url, { method: "DELETE", headers: authHeaders });
+      if (!res.ok) throw new Error();
       await refetch();
       setDeleteModal(null);
       setView("menu");
@@ -221,102 +483,103 @@ export default function MenuEditorPage() {
     }
   };
 
-  const toggleItemAvailable = async (item: Item) => {
-    await fetch(`/api/items/${item._id}/available`, {
-      method: "PATCH", headers: authHeaders,
-      body: JSON.stringify({ available: !item.available }),
+  const toggleItemAvailable = useCallback(async (item: Item) => {
+    // Actualización optimista en el estado local
+    setMenuData(prev => {
+      if (!prev) return prev;
+      const updateItems = (items: Item[]) =>
+        items.map(i => i._id === item._id ? { ...i, available: !i.available } : i);
+      return {
+        secciones: prev.secciones.map(s => ({
+          ...s,
+          categorias: s.categorias.map(c => ({ ...c, items: updateItems(c.items) })),
+        })),
+        sinSeccion: prev.sinSeccion.map(c => ({ ...c, items: updateItems(c.items) })),
+      };
     });
-    await refetch();
-  };
+    try {
+      const res = await fetch(`/api/items/${item._id}/available`, {
+        method: "PATCH", headers: authHeaders,
+        body: JSON.stringify({ available: !item.available }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setError("No se pudo cambiar la disponibilidad.");
+      await refetch(); // Revertir
+    }
+  }, [authHeaders, refetch]);
 
-  // ── Drag & Drop Handlers ───────────────────────────────────────────────────
-  const handleDragStart = (e: React.DragEvent, itemId: string) => {
+  // ── Drag & Drop ────────────────────────────────────────────────────────────
+
+  const handleDragStart = useCallback((e: React.DragEvent, itemId: string) => {
     setDraggedItem(itemId);
     e.dataTransfer.setData("text/plain", itemId);
     e.dataTransfer.effectAllowed = "move";
-  };
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent, catId: string) => {
+  const handleDragOver = useCallback((e: React.DragEvent, catId: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     setDragOverCat(catId);
-  };
+  }, []);
 
-  const handleDragLeave = () => {
-    setDragOverCat(null);
-  };
+  const handleDragLeave = useCallback(() => setDragOverCat(null), []);
 
-  const handleDrop = async (e: React.DragEvent, targetMenuID: string) => {
+  const handleDrop = useCallback(async (e: React.DragEvent, targetMenuID: string) => {
     e.preventDefault();
     setDragOverCat(null);
-
     const itemId = e.dataTransfer.getData("text/plain");
-    if (!itemId || itemId === "") return;
-
+    if (!itemId) return;
     try {
-      await fetch(`/api/items/${itemId}/move`, {
-        method: "PATCH",
-        headers: authHeaders,
+      const res = await fetch(`/api/items/${itemId}/move`, {
+        method: "PATCH", headers: authHeaders,
         body: JSON.stringify({ menuID: targetMenuID }),
       });
+      if (!res.ok) throw new Error();
       await refetch();
-    } catch (err) {
-      setError("No se pudo mover el item.");
+    } catch {
+      setError("No se pudo mover el producto.");
     } finally {
       setDraggedItem(null);
     }
-  };
+  }, [authHeaders, refetch]);
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     setDraggedItem(null);
     setDragOverCat(null);
-  };
+  }, []);
 
-  // ── Handlers CATEGORÍAS ────────────────────────────────────────────────────
+  // ── Handlers CATEGORÍAS ───────────────────────────────────────────────────
 
-  const openNewCategoria = () => {
+  const openNewCategoria = useCallback(() => {
     setCategoriaForm({ title: "", description: "", code: "", seccionID: "", editingId: "" });
     setError("");
     setView("categoria-form");
-  };
+  }, []);
 
-  const openEditCategoria = (cat: Categoria) => {
-    setCategoriaForm({
-      title: cat.title,
-      description: cat.description || "",
-      code: cat.code || "",
-      seccionID: "",
-      editingId: cat._id,
-    });
+  const openEditCategoria = useCallback((cat: Categoria) => {
+    setCategoriaForm({ title: cat.title, description: cat.description || "", code: cat.code || "", seccionID: "", editingId: cat._id });
     setError("");
     setView("categoria-form");
-  };
+  }, []);
 
   const saveCategoria = async () => {
     if (!categoriaForm.title.trim()) { setError("El nombre es obligatorio."); return; }
     setSaving(true); setError("");
     try {
+      let res: Response;
       if (categoriaForm.editingId) {
-        await fetch(`/api/menus/${categoriaForm.editingId}`, {
+        res = await fetch(`/api/menus/${categoriaForm.editingId}`, {
           method: "PUT", headers: authHeaders,
-          body: JSON.stringify({
-            title: categoriaForm.title,
-            description: categoriaForm.description,
-            code: categoriaForm.code,
-          }),
+          body: JSON.stringify({ title: categoriaForm.title.trim(), description: categoriaForm.description, code: categoriaForm.code }),
         });
       } else {
-        await fetch("/api/menus", {
+        res = await fetch("/api/menus", {
           method: "POST", headers: authHeaders,
-          body: JSON.stringify({
-            title: categoriaForm.title,
-            description: categoriaForm.description,
-            code: categoriaForm.code,
-            sectionID: categoriaForm.seccionID || null,
-            section: false,
-          }),
+          body: JSON.stringify({ title: categoriaForm.title.trim(), description: categoriaForm.description, code: categoriaForm.code, sectionID: categoriaForm.seccionID || null, section: false }),
         });
       }
+      if (!res.ok) throw new Error();
       await refetch();
       setView("menu");
     } catch {
@@ -326,35 +589,37 @@ export default function MenuEditorPage() {
     }
   };
 
-  // ── Handlers SECCIONES ─────────────────────────────────────────────────────
+  // ── Handlers SECCIONES ────────────────────────────────────────────────────
 
-  const openNewSeccion = () => {
+  const openNewSeccion = useCallback(() => {
     setSeccionForm({ title: "", code: "", editingId: "" });
     setError("");
     setView("seccion-form");
-  };
+  }, []);
 
-  const openEditSeccion = (sec: Seccion) => {
+  const openEditSeccion = useCallback((sec: Seccion) => {
     setSeccionForm({ title: sec.title, code: sec.code || "", editingId: sec._id });
     setError("");
     setView("seccion-form");
-  };
+  }, []);
 
   const saveSeccion = async () => {
     if (!seccionForm.title.trim()) { setError("El nombre es obligatorio."); return; }
     setSaving(true); setError("");
     try {
+      let res: Response;
       if (seccionForm.editingId) {
-        await fetch(`/api/menus/${seccionForm.editingId}`, {
+        res = await fetch(`/api/menus/${seccionForm.editingId}`, {
           method: "PUT", headers: authHeaders,
-          body: JSON.stringify({ title: seccionForm.title, code: seccionForm.code }),
+          body: JSON.stringify({ title: seccionForm.title.trim(), code: seccionForm.code }),
         });
       } else {
-        await fetch("/api/menus", {
+        res = await fetch("/api/menus", {
           method: "POST", headers: authHeaders,
-          body: JSON.stringify({ title: seccionForm.title, code: seccionForm.code, section: true }),
+          body: JSON.stringify({ title: seccionForm.title.trim(), code: seccionForm.code, section: true }),
         });
       }
+      if (!res.ok) throw new Error();
       await refetch();
       setView("menu");
     } catch {
@@ -364,99 +629,83 @@ export default function MenuEditorPage() {
     }
   };
 
-  // ── Componentes internos ───────────────────────────────────────────────────
+  // ── Conteo total de productos ─────────────────────────────────────────────
 
-  const TopBar = ({ title, onBack }: { title: string; onBack: () => void }) => (
-    <header className={styles["top-bar"]}>
-      <button className={styles["back-btn"]} onClick={onBack}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
-      </button>
-      <span className={styles["top-title"]}>{title}</span>
-      <div style={{ width: 36 }} />
-    </header>
-  );
+  const totalItems = menuData
+    ? (menuData.sinSeccion?.flatMap(c => c.items).length ?? 0) +
+      (menuData.secciones?.flatMap(s => s.categorias).flatMap(c => c.items).length ?? 0)
+    : 0;
 
-  const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
-    <button
-      className={`${styles.toggle} ${checked ? styles.on : ""}`}
-      onClick={onChange}
-      type="button"
-    >
-      <span className={styles["toggle-knob"]} />
-    </button>
-  );
+  // ── Pantalla de carga ─────────────────────────────────────────────────────
 
-  // ── Pantalla de carga ──────────────────────────────────────────────────────
-  if (loading) return (
-    <div className={styles["page-center"]}><div className={styles["loader-ring"]} /></div>
-  );
-
-  // ── Vista massive-import ───────────────────────────────────────────────────
-  if (view === "massive-import") {
+  if (loading) {
     return (
-      <MassiveImport
-        onBack={() => setView("menu")}
-        onSuccess={refetch}
-      />
+      <div className={styles["page-center"]}>
+        <div className={styles["loader-ring"]} aria-label="Cargando menú..." />
+      </div>
     );
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Vista massive-import ──────────────────────────────────────────────────
+
+  if (view === "massive-import") {
+    return <MassiveImport onBack={() => setView("menu")} onSuccess={refetch} />;
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <div className={styles.me}>
 
-      {/* ══════════════════════════════════════════
-          VISTA 1: ACORDEÓN PRINCIPAL
-      ══════════════════════════════════════════ */}
+      {/* ══ VISTA PRINCIPAL: ACORDEÓN ══ */}
       {view === "menu" && (
         <>
           <header className={styles["top-bar"]}>
-            <button className={styles["back-btn"]} onClick={() => navigate("/dashboard")}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
+            <button className={styles["back-btn"]} onClick={() => navigate("/dashboard")} aria-label="Volver al inicio">
+              {icons.back}
             </button>
-            <span className={styles["top-title"]}>Editor de menú</span>
-            <button className={styles["back-btn"]} onClick={() => setView("massive-import")} title="Importar desde Excel">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="17 8 12 3 7 8"/>
-                <line x1="12" y1="3" x2="12" y2="15"/>
-              </svg>
+            <div className={styles["top-center"]}>
+              <span className={styles["top-title"]}>Menú</span>
+              {totalItems > 0 && (
+                <span className={styles["top-count"]}>{totalItems} producto{totalItems !== 1 ? "s" : ""}</span>
+              )}
+            </div>
+            <button
+              className={styles["back-btn"]}
+              onClick={() => setView("massive-import")}
+              title="Importar desde Excel"
+              aria-label="Importar menú desde Excel"
+            >
+              {icons.upload}
             </button>
           </header>
 
           <div className={styles.content}>
-            {error && <div className={styles["error-banner"]}>{error}</div>}
+            {error && (
+              <div className={styles["error-banner"]} role="alert" aria-live="assertive">
+                {error}
+              </div>
+            )}
 
-            {/* Secciones con categorías y items anidados */}
+            {/* Secciones */}
             {menuData?.secciones.map(sec => (
               <div key={sec._id} className={styles["seccion-block"]}>
-
                 <div className={styles["seccion-row"]}>
                   <div className={styles["seccion-left"]}>
                     <span className={styles["seccion-badge"]}>Sección</span>
                     <span className={styles["seccion-title"]}>{sec.title}</span>
                   </div>
                   <div className={styles["row-actions"]}>
-                    <button className={styles["icon-btn"]} onClick={() => openEditSeccion(sec)} title="Editar sección">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
+                    <button className={styles["icon-btn"]} onClick={() => openEditSeccion(sec)} title="Editar sección" aria-label={`Editar ${sec.title}`}>
+                      {icons.edit}
                     </button>
                     <button
                       className={`${styles["icon-btn"]} ${styles.danger}`}
                       onClick={() => setDeleteModal({ type: "seccion", id: sec._id, name: sec.title })}
                       title="Eliminar sección"
+                      aria-label={`Eliminar ${sec.title}`}
                     >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                        <path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                      </svg>
+                      {icons.trash}
                     </button>
                   </div>
                 </div>
@@ -470,8 +719,8 @@ export default function MenuEditorPage() {
                     onEditCat={() => openEditCategoria(cat)}
                     onDeleteCat={() => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title })}
                     onNewItem={() => openNewItem(cat)}
-                    onEditItem={(item) => openEditItem(item, cat)}
-                    onDeleteItem={(item) => setDeleteModal({ type: "item", id: item._id, name: item.title })}
+                    onEditItem={item => openEditItem(item, cat)}
+                    onDeleteItem={item => setDeleteModal({ type: "item", id: item._id, name: item.title })}
                     onToggleAvailable={toggleItemAvailable}
                     onDragStart={handleDragStart}
                     onDragOver={handleDragOver}
@@ -484,7 +733,9 @@ export default function MenuEditorPage() {
                 ))}
 
                 {sec.categorias.length === 0 && (
-                  <p className={styles["empty-hint"]} style={{ paddingLeft: "1rem" }}>Sin categorías.</p>
+                  <p className={styles["empty-hint"]} style={{ paddingLeft: "0.25rem" }}>
+                    Sin categorías en esta sección.
+                  </p>
                 )}
               </div>
             ))}
@@ -508,8 +759,8 @@ export default function MenuEditorPage() {
                     onEditCat={() => openEditCategoria(cat)}
                     onDeleteCat={() => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title })}
                     onNewItem={() => openNewItem(cat)}
-                    onEditItem={(item) => openEditItem(item, cat)}
-                    onDeleteItem={(item) => setDeleteModal({ type: "item", id: item._id, name: item.title })}
+                    onEditItem={item => openEditItem(item, cat)}
+                    onDeleteItem={item => setDeleteModal({ type: "item", id: item._id, name: item.title })}
                     onToggleAvailable={toggleItemAvailable}
                     onDragStart={handleDragStart}
                     onDragOver={handleDragOver}
@@ -523,81 +774,154 @@ export default function MenuEditorPage() {
               </div>
             )}
 
+            {/* Estado vacío */}
             {menuData?.secciones.length === 0 && menuData?.sinSeccion.length === 0 && (
-              <p className={styles["empty-hint"]} style={{ textAlign: "center", marginTop: "2rem" }}>
-                Tu menú está vacío. Creá una categoría para empezar.
-              </p>
+              <div className={styles["empty-state"]}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#272420" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+                  <rect x="9" y="3" width="6" height="4" rx="1" />
+                  <line x1="9" y1="12" x2="15" y2="12" />
+                  <line x1="9" y1="16" x2="12" y2="16" />
+                </svg>
+                <p>Tu menú está vacío.</p>
+                <p className={styles["empty-sub"]}>Creá una categoría para empezar a agregar productos.</p>
+              </div>
             )}
           </div>
 
           <div className={styles["fab-group"]}>
-            <button className={styles.fab} onClick={openNewCategoria}>+ Categoría</button>
-            <button className={styles["fab-secondary"]} onClick={openNewSeccion}>+ Sección</button>
+            <button className={styles.fab} onClick={openNewCategoria} type="button">
+              + Categoría
+            </button>
+            <button className={styles["fab-secondary"]} onClick={openNewSeccion} type="button">
+              + Sección
+            </button>
           </div>
         </>
       )}
 
-      {/* ══════════════════════════════════════════
-          VISTA 2: FORMULARIO ITEM
-      ══════════════════════════════════════════ */}
+      {/* ══ VISTA: FORMULARIO ITEM ══ */}
       {view === "item-form" && (
         <>
-          <TopBar title={activeItem ? "Editar item" : "Nuevo item"} onBack={() => setView("menu")} />
+          <TopBar
+            title={activeItem ? "Editar producto" : "Nuevo producto"}
+            onBack={() => setView("menu")}
+          />
           <div className={`${styles.content} ${styles["form-content"]}`}>
-            {error && <div className={styles["error-banner"]}>{error}</div>}
+            {error && <div className={styles["error-banner"]} role="alert">{error}</div>}
+
+            {activeCategoria && (
+              <p className={styles["form-context"]}>
+                en <strong>{activeCategoria.title}</strong>
+              </p>
+            )}
 
             <div className={styles.field}>
-              <label>Nombre *</label>
-              <input type="text" placeholder="Ej: Pizza napolitana"
-                value={itemForm.title} onChange={e => setItemForm(f => ({ ...f, title: e.target.value }))} />
+              <label htmlFor="item-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
+              <input
+                id="item-title"
+                type="text"
+                placeholder="Ej: Pizza napolitana"
+                value={itemForm.title}
+                onChange={e => setItemForm(f => ({ ...f, title: e.target.value }))}
+                autoFocus
+                maxLength={80}
+              />
             </div>
+
             <div className={styles.field}>
-              <label>Descripción</label>
-              <textarea placeholder="Ingredientes, preparación..."
-                value={itemForm.description} onChange={e => setItemForm(f => ({ ...f, description: e.target.value }))} />
+              <label htmlFor="item-desc">Descripción</label>
+              <textarea
+                id="item-desc"
+                placeholder="Ingredientes, alérgenos, preparación..."
+                value={itemForm.description}
+                onChange={e => setItemForm(f => ({ ...f, description: e.target.value }))}
+              />
             </div>
+
             <div className={styles["field-row"]}>
               <div className={styles.field}>
-                <label>Precio</label>
-                <input type="number" placeholder="0" value={itemForm.price}
-                  onChange={e => setItemForm(f => ({ ...f, price: e.target.value }))} />
+                <label htmlFor="item-price">Precio</label>
+                <input
+                  id="item-price"
+                  type="number"
+                  placeholder="0"
+                  min="0"
+                  value={itemForm.price}
+                  onChange={e => setItemForm(f => ({ ...f, price: e.target.value }))}
+                />
               </div>
               <div className={styles.field}>
-                <label>Precio oferta</label>
-                <input type="number" placeholder="0" value={itemForm.offerPrice}
-                  onChange={e => setItemForm(f => ({ ...f, offerPrice: e.target.value }))} />
+                <label htmlFor="item-offer">Precio oferta</label>
+                <input
+                  id="item-offer"
+                  type="number"
+                  placeholder="0"
+                  min="0"
+                  value={itemForm.offerPrice}
+                  onChange={e => setItemForm(f => ({ ...f, offerPrice: e.target.value }))}
+                />
               </div>
             </div>
+
             <div className={styles.field}>
-              <label>Código interno</label>
-              <input type="text" placeholder="Ej: pizza-napo" value={itemForm.code}
-                onChange={e => setItemForm(f => ({ ...f, code: e.target.value }))} />
+              <label htmlFor="item-code">Código interno</label>
+              <input
+                id="item-code"
+                type="text"
+                placeholder="Ej: pizza-napo"
+                value={itemForm.code}
+                onChange={e => setItemForm(f => ({ ...f, code: e.target.value }))}
+              />
             </div>
 
             {/* Variantes */}
             <div className={styles.field}>
               <div className={styles["field-label-row"]}>
                 <label>Variantes</label>
-                <button className={styles["text-btn"]} type="button"
-                  onClick={() => setItemForm(f => ({ ...f, options: [...f.options, { key: "", value: "" }] }))}>
-                  + Agregar
+                <button
+                  className={styles["text-btn"]}
+                  type="button"
+                  onClick={() => setItemForm(f => ({ ...f, options: [...f.options, { key: "", value: "" }] }))}
+                >
+                  + Agregar variante
                 </button>
               </div>
+              {itemForm.options.length === 0 && (
+                <p className={styles["empty-hint"]}>Sin variantes. Útil para tamaños o presentaciones con precio distinto.</p>
+              )}
               {itemForm.options.map((opt, i) => (
                 <div key={i} className={styles["option-row"]}>
-                  <input type="text" placeholder="Nombre (ej: Grande)" value={opt.key}
+                  <input
+                    type="text"
+                    placeholder="Nombre (ej: Grande)"
+                    value={opt.key}
+                    aria-label={`Nombre variante ${i + 1}`}
                     onChange={e => setItemForm(f => {
-                      const opts = [...f.options]; opts[i] = { ...opts[i], key: e.target.value }; return { ...f, options: opts };
-                    })} />
-                  <input type="number" placeholder="Precio" value={opt.value}
+                      const opts = [...f.options];
+                      opts[i] = { ...opts[i], key: e.target.value };
+                      return { ...f, options: opts };
+                    })}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Precio"
+                    value={opt.value}
+                    min="0"
+                    aria-label={`Precio variante ${i + 1}`}
                     onChange={e => setItemForm(f => {
-                      const opts = [...f.options]; opts[i] = { ...opts[i], value: e.target.value }; return { ...f, options: opts };
-                    })} />
-                  <button className={styles["remove-btn"]} type="button"
-                    onClick={() => setItemForm(f => ({ ...f, options: f.options.filter((_, j) => j !== i) }))}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
+                      const opts = [...f.options];
+                      opts[i] = { ...opts[i], value: e.target.value };
+                      return { ...f, options: opts };
+                    })}
+                  />
+                  <button
+                    className={styles["remove-btn"]}
+                    type="button"
+                    aria-label={`Eliminar variante ${i + 1}`}
+                    onClick={() => setItemForm(f => ({ ...f, options: f.options.filter((_, j) => j !== i) }))}
+                  >
+                    {icons.close}
                   </button>
                 </div>
               ))}
@@ -606,9 +930,9 @@ export default function MenuEditorPage() {
             {/* Toggles */}
             <div className={styles["toggle-group"]}>
               {[
-                { label: "Disponible", desc: "Se puede pedir ahora", key: "available" },
-                { label: "Ocultar", desc: "No aparece en el menú público", key: "hidden" },
-                { label: "Recomendado", desc: "Se destaca en la carta", key: "recommended" },
+                { label: "Disponible",   desc: "Se puede pedir ahora",          key: "available" },
+                { label: "Ocultar",      desc: "No aparece en la carta pública", key: "hidden" },
+                { label: "Recomendado",  desc: "Se destaca con un ícono ⭐",     key: "recommended" },
               ].map(({ label, desc, key }) => (
                 <div key={key} className={styles["toggle-row"]}>
                   <div>
@@ -618,29 +942,37 @@ export default function MenuEditorPage() {
                   <Toggle
                     checked={itemForm[key as keyof typeof itemForm] as boolean}
                     onChange={() => setItemForm(f => ({ ...f, [key]: !f[key as keyof typeof f] }))}
+                    label={label}
                   />
                 </div>
               ))}
             </div>
 
             <div className={styles["form-btns"]}>
+              <button
+                className={styles["save-btn"]}
+                onClick={saveItem}
+                disabled={saving}
+                aria-busy={saving}
+                type="button"
+              >
+                {saving ? <><Spinner /> Guardando...</> : activeItem ? "Guardar cambios" : "Crear producto"}
+              </button>
               {activeItem && (
-                <button className={styles["delete-btn"]} type="button"
-                  onClick={() => { setDeleteModal({ type: "item", id: activeItem._id, name: activeItem.title }); }}>
-                  Eliminar item
+                <button
+                  className={styles["delete-btn"]}
+                  type="button"
+                  onClick={() => setDeleteModal({ type: "item", id: activeItem._id, name: activeItem.title })}
+                >
+                  Eliminar producto
                 </button>
               )}
-              <button className={styles["save-btn"]} onClick={saveItem} disabled={saving}>
-                {saving ? "Guardando..." : activeItem ? "Guardar cambios" : "Crear item"}
-              </button>
             </div>
           </div>
         </>
       )}
 
-      {/* ══════════════════════════════════════════
-          VISTA 3: FORMULARIO CATEGORÍA
-      ══════════════════════════════════════════ */}
+      {/* ══ VISTA: FORMULARIO CATEGORÍA ══ */}
       {view === "categoria-form" && (
         <>
           <TopBar
@@ -648,27 +980,48 @@ export default function MenuEditorPage() {
             onBack={() => setView("menu")}
           />
           <div className={`${styles.content} ${styles["form-content"]}`}>
-            {error && <div className={styles["error-banner"]}>{error}</div>}
+            {error && <div className={styles["error-banner"]} role="alert">{error}</div>}
+
             <div className={styles.field}>
-              <label>Nombre *</label>
-              <input type="text" placeholder="Ej: Pizzas" value={categoriaForm.title}
-                onChange={e => setCategoriaForm(f => ({ ...f, title: e.target.value }))} />
+              <label htmlFor="cat-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
+              <input
+                id="cat-title"
+                type="text"
+                placeholder="Ej: Pizzas"
+                value={categoriaForm.title}
+                onChange={e => setCategoriaForm(f => ({ ...f, title: e.target.value }))}
+                autoFocus
+                maxLength={60}
+              />
             </div>
             <div className={styles.field}>
-              <label>Descripción</label>
-              <input type="text" placeholder="Opcional" value={categoriaForm.description}
-                onChange={e => setCategoriaForm(f => ({ ...f, description: e.target.value }))} />
+              <label htmlFor="cat-desc">Descripción</label>
+              <input
+                id="cat-desc"
+                type="text"
+                placeholder="Opcional"
+                value={categoriaForm.description}
+                onChange={e => setCategoriaForm(f => ({ ...f, description: e.target.value }))}
+              />
             </div>
             <div className={styles.field}>
-              <label>Código interno</label>
-              <input type="text" placeholder="Ej: pizzas" value={categoriaForm.code}
-                onChange={e => setCategoriaForm(f => ({ ...f, code: e.target.value }))} />
+              <label htmlFor="cat-code">Código interno</label>
+              <input
+                id="cat-code"
+                type="text"
+                placeholder="Ej: pizzas"
+                value={categoriaForm.code}
+                onChange={e => setCategoriaForm(f => ({ ...f, code: e.target.value }))}
+              />
             </div>
             {!categoriaForm.editingId && (
               <div className={styles.field}>
-                <label>Sección (opcional)</label>
-                <select value={categoriaForm.seccionID}
-                  onChange={e => setCategoriaForm(f => ({ ...f, seccionID: e.target.value }))}>
+                <label htmlFor="cat-seccion">Sección</label>
+                <select
+                  id="cat-seccion"
+                  value={categoriaForm.seccionID}
+                  onChange={e => setCategoriaForm(f => ({ ...f, seccionID: e.target.value }))}
+                >
                   <option value="">Sin sección</option>
                   {menuData?.secciones.map(s => (
                     <option key={s._id} value={s._id}>{s.title}</option>
@@ -676,16 +1029,22 @@ export default function MenuEditorPage() {
                 </select>
               </div>
             )}
-            <button className={styles["save-btn"]} onClick={saveCategoria} disabled={saving}>
-              {saving ? "Guardando..." : categoriaForm.editingId ? "Guardar cambios" : "Crear categoría"}
-            </button>
+            <div className={styles["form-btns"]}>
+              <button
+                className={styles["save-btn"]}
+                onClick={saveCategoria}
+                disabled={saving}
+                aria-busy={saving}
+                type="button"
+              >
+                {saving ? <><Spinner /> Guardando...</> : categoriaForm.editingId ? "Guardar cambios" : "Crear categoría"}
+              </button>
+            </div>
           </div>
         </>
       )}
 
-      {/* ══════════════════════════════════════════
-          VISTA 4: FORMULARIO SECCIÓN
-      ══════════════════════════════════════════ */}
+      {/* ══ VISTA: FORMULARIO SECCIÓN ══ */}
       {view === "seccion-form" && (
         <>
           <TopBar
@@ -693,187 +1052,73 @@ export default function MenuEditorPage() {
             onBack={() => setView("menu")}
           />
           <div className={`${styles.content} ${styles["form-content"]}`}>
-            {error && <div className={styles["error-banner"]}>{error}</div>}
+            {error && <div className={styles["error-banner"]} role="alert">{error}</div>}
+
             <div className={styles.field}>
-              <label>Nombre *</label>
-              <input type="text" placeholder="Ej: Comidas" value={seccionForm.title}
-                onChange={e => setSeccionForm(f => ({ ...f, title: e.target.value }))} />
+              <label htmlFor="sec-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
+              <input
+                id="sec-title"
+                type="text"
+                placeholder="Ej: Comidas"
+                value={seccionForm.title}
+                onChange={e => setSeccionForm(f => ({ ...f, title: e.target.value }))}
+                autoFocus
+                maxLength={60}
+              />
             </div>
             <div className={styles.field}>
-              <label>Código interno</label>
-              <input type="text" placeholder="Ej: comidas" value={seccionForm.code}
-                onChange={e => setSeccionForm(f => ({ ...f, code: e.target.value }))} />
+              <label htmlFor="sec-code">Código interno</label>
+              <input
+                id="sec-code"
+                type="text"
+                placeholder="Ej: comidas"
+                value={seccionForm.code}
+                onChange={e => setSeccionForm(f => ({ ...f, code: e.target.value }))}
+              />
             </div>
-            <button className={styles["save-btn"]} onClick={saveSeccion} disabled={saving}>
-              {saving ? "Guardando..." : seccionForm.editingId ? "Guardar cambios" : "Crear sección"}
-            </button>
+            <div className={styles["form-btns"]}>
+              <button
+                className={styles["save-btn"]}
+                onClick={saveSeccion}
+                disabled={saving}
+                aria-busy={saving}
+                type="button"
+              >
+                {saving ? <><Spinner /> Guardando...</> : seccionForm.editingId ? "Guardar cambios" : "Crear sección"}
+              </button>
+            </div>
           </div>
         </>
       )}
 
-      {/* ══════════════════════════════════════════
-          MODAL DE CONFIRMACIÓN DE ELIMINACIÓN
-      ══════════════════════════════════════════ */}
+      {/* ══ MODAL DE CONFIRMACIÓN ══ */}
       {deleteModal && (
-        <div className={styles["modal-overlay"]} onClick={() => setDeleteModal(null)}>
+        <div
+          className={styles["modal-overlay"]}
+          onClick={() => setDeleteModal(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-modal-title"
+        >
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
-            <p className={styles["modal-title"]}>¿Eliminar "{deleteModal.name}"?</p>
+            <p id="delete-modal-title" className={styles["modal-title"]}>
+              ¿Eliminar "{deleteModal.name}"?
+            </p>
             <p className={styles["modal-desc"]}>
               {deleteModal.type === "item"
-                ? "El producto se eliminará permanentemente."
+                ? "El producto se eliminará de forma permanente. Esta acción no se puede deshacer."
                 : deleteModal.type === "categoria"
-                  ? "La categoría se eliminará. Debe estar vacía."
-                  : "La sección se eliminará. Debe no tener categorías."}
+                  ? "La categoría se eliminará permanentemente. Debe estar vacía antes de eliminarla."
+                  : "La sección se eliminará. Solo podés hacerlo si no tiene categorías asignadas."}
             </p>
             <div className={styles["modal-btns"]}>
-              <button className={styles["modal-cancel"]} onClick={() => setDeleteModal(null)}>Cancelar</button>
-              <button className={styles["modal-confirm"]} onClick={confirmDelete}>Eliminar</button>
+              <button className={styles["modal-cancel"]} onClick={() => setDeleteModal(null)} type="button">
+                Cancelar
+              </button>
+              <button className={styles["modal-confirm"]} onClick={confirmDelete} type="button" autoFocus>
+                Eliminar
+              </button>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Componente acordeón de categoría (con Drag & Drop) ─────────────────────
-function CategoriaAcordeon({
-  cat,
-  expanded,
-  onToggle,
-  onEditCat,
-  onDeleteCat,
-  onNewItem,
-  onEditItem,
-  onDeleteItem,
-  onToggleAvailable,
-  onDragStart,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  onDragEnd,
-  dragOverCat,
-  draggedItem,
-}: {
-  cat: any;
-  expanded: boolean;
-  onToggle: () => void;
-  onEditCat: () => void;
-  onDeleteCat: () => void;
-  onNewItem: () => void;
-  onEditItem: (item: any) => void;
-  onDeleteItem: (item: any) => void;
-  onToggleAvailable: (item: any) => void;
-  onDragStart: (e: React.DragEvent, itemId: string) => void;
-  onDragOver: (e: React.DragEvent, catId: string) => void;
-  onDragLeave: () => void;
-  onDrop: (e: React.DragEvent, catId: string) => void;
-  onDragEnd: () => void;
-  dragOverCat: string | null;
-  draggedItem: string | null;
-}) {
-  const isDragOver = dragOverCat === cat._id;
-
-  return (
-    <div className={styles["cat-acordeon"]}>
-      <div className={`${styles["cat-header"]} ${expanded ? styles.open : ""}`}>
-        <svg
-          className={`${styles["cat-chevron"]} ${expanded ? styles.open : ""}`}
-          width="16" height="16" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-          onClick={onToggle} style={{ cursor: "pointer" }}
-        >
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
-
-        <div className={styles["cat-header-info"]} onClick={onToggle}>
-          <span className={styles["cat-header-name"]}>{cat.title}</span>
-          <span className={styles["cat-header-meta"]}>
-            {cat.items?.length ?? 0} items{cat.hidden ? " · oculta" : ""}
-          </span>
-        </div>
-
-        <div className={styles["row-actions"]}>
-          <button className={styles["icon-btn"]} onClick={onEditCat} title="Editar categoría">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-          </button>
-          <button
-            className={`${styles["icon-btn"]} ${styles.danger}`}
-            onClick={onDeleteCat}
-            title="Eliminar categoría"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6" /><path d="M14 11v6" />
-              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {expanded && (
-        <div
-          className={`${styles["cat-body"]} ${isDragOver ? styles["drag-over"] : ""}`}
-          onDragOver={(e) => onDragOver(e, cat._id)}
-          onDragLeave={onDragLeave}
-          onDrop={(e) => onDrop(e, cat._id)}
-        >
-          {cat.items?.length === 0 && (
-            <p className={styles["empty-hint"]} style={{ padding: "1rem", textAlign: "center", fontStyle: "italic" }}>
-              Arrastra items aquí
-            </p>
-          )}
-
-          {cat.items?.map((item: any) => (
-            <div
-              key={item._id}
-              className={`${styles["item-row-ac"]} ${draggedItem === item._id ? styles.dragging : ""}`}
-              draggable
-              onDragStart={(e) => onDragStart(e, item._id)}
-              onDragEnd={onDragEnd}
-            >
-              <div className={styles["item-info-ac"]} onClick={() => onEditItem(item)}>
-                <span className={styles["item-name-ac"]}>{item.title}</span>
-                <span className={styles["item-meta-ac"]}>
-                  {item.price != null
-                    ? `$${item.price}`
-                    : Object.keys(item.options || {}).length > 0
-                      ? "Con variantes"
-                      : "Sin precio"}
-                  {item.hidden ? " · oculto" : ""}
-                  {item.recommended ? " · ⭐" : ""}
-                </span>
-              </div>
-
-              <div className={styles["item-actions"]}>
-                <button
-                  className={`${styles["pill-btn"]} ${item.available ? styles["pill-on"] : styles["pill-off"]}`}
-                  onClick={() => onToggleAvailable(item)}
-                >
-                  {item.available ? "Activo" : "Pausado"}
-                </button>
-                <button
-                  className={`${styles["icon-btn"]} ${styles.danger}`}
-                  onClick={() => onDeleteItem(item)}
-                  title="Eliminar"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                    <path d="M10 11v6" /><path d="M14 11v6" />
-                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          ))}
-
-          <div className={styles["cat-footer"]}>
-            <button className={styles["add-item-btn"]} onClick={onNewItem}>+ Agregar item</button>
           </div>
         </div>
       )}

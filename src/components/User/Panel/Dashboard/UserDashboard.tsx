@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../api/Auth/AuthContext";
 import s from "./UserDashboard.module.css";
@@ -14,28 +14,39 @@ interface DashData {
   categoryCount: number;
 }
 
+// ── Hook: luz que sigue al cursor en las cards ────────────────────────────────
+
+function useSpotlight(ref: React.RefObject<HTMLElement>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onMove = (e: MouseEvent) => {
+      const rect = el.getBoundingClientRect();
+      el.style.setProperty("--mx", `${e.clientX - rect.left}px`);
+      el.style.setProperty("--my", `${e.clientY - rect.top}px`);
+    };
+    el.addEventListener("mousemove", onMove);
+    return () => el.removeEventListener("mousemove", onMove);
+  }, [ref]);
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
-/**
- * UserDashboard
- * Panel de control del dueño del negocio (restaurante / cafetería).
- * Muestra la URL pública de su carta, stats rápidos y accesos a los editores.
- *
- * Nota: el dashboard de administración interna (clientes, estadísticas globales)
- * es una ruta completamente separada; este componente es solo para el cliente.
- */
 export default function UserDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const navigate = useNavigate();
 
   const [data, setData]     = useState<DashData | null>(null);
   const [copied, setCopied] = useState(false);
 
-  /** Carga el resumen del negocio para mostrar stats y URL pública */
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch("/api/me");
+        const res = await fetch("/api/users/me", {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         if (!res.ok) return;
         const json = await res.json();
         setData({
@@ -47,7 +58,7 @@ export default function UserDashboard() {
           categoryCount: json.categoryCount ?? 0,
         });
       } catch {
-        // El dashboard se sigue mostrando aunque fallen los stats
+        // El dashboard sigue mostrándose aunque fallen los stats
       }
     };
     load();
@@ -62,19 +73,15 @@ export default function UserDashboard() {
     ? `${window.location.origin}/${data.slug}`
     : null;
 
-  /** Copia la URL pública al portapapeles con feedback visual de 2 s */
   const handleCopy = useCallback(async () => {
     if (!publicUrl) return;
     try {
       await navigator.clipboard.writeText(publicUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // fallback: selección manual
-    }
+    } catch { /* fallback silencioso */ }
   }, [publicUrl]);
 
-  /** Abre la landing pública en pestaña nueva */
   const handleOpen = useCallback(() => {
     if (!publicUrl) return;
     window.open(publicUrl, "_blank", "noopener,noreferrer");
@@ -119,7 +126,7 @@ export default function UserDashboard() {
         <h1 className={s.welcomeTitle}>{displayName}</h1>
       </div>
 
-      {/* ── Tarjeta "Tu carta en línea" — elemento firma del rediseño ── */}
+      {/* ── Tarjeta storefront ── */}
       <div className={s.storefrontCard}>
         <div className={s.storefrontTop}>
           <div className={s.storefrontIcon} aria-hidden>
@@ -158,19 +165,12 @@ export default function UserDashboard() {
           </div>
         )}
 
-        {/* Stats rápidos debajo de la URL */}
         {data && (
           <div className={s.statsPills}>
-            <StatPill
-              icon={<MenuIcon />}
-              value={data.itemCount}
-              label={data.itemCount === 1 ? "producto" : "productos"}
-            />
-            <StatPill
-              icon={<GridIcon />}
-              value={data.categoryCount}
-              label={data.categoryCount === 1 ? "categoría" : "categorías"}
-            />
+            <StatPill icon={<MenuIcon />} value={data.itemCount}
+              label={data.itemCount === 1 ? "producto" : "productos"} />
+            <StatPill icon={<GridIcon />} value={data.categoryCount}
+              label={data.categoryCount === 1 ? "categoría" : "categorías"} />
             <span className={`${s.deliveryPill} ${data.hasDelivery ? s.deliveryOn : s.deliveryOff}`}>
               <span className={s.deliveryDot} />
               {data.hasDelivery ? "Delivery activo" : "Sin delivery"}
@@ -181,41 +181,27 @@ export default function UserDashboard() {
 
       {/* ── Cards de navegación ── */}
       <div className={s.cards}>
-
-        <NavCard
+        <SpotlightCard
           onClick={() => navigate("/menu/editor")}
           icon={<DocIcon />}
           title="Editor de menú"
           desc="Platos, precios, categorías y disponibilidad."
           primary
         />
-
-        <NavCard
+        <SpotlightCard
           onClick={() => navigate("/user/editor")}
           icon={<StoreIcon />}
           title="Mi negocio"
           desc="Datos de contacto, fotos y apariencia."
         />
-
       </div>
 
     </div>
   );
 }
 
-// ── Sub-componentes ───────────────────────────────────────────────────────────
+// ── SpotlightCard — card con luz que sigue al cursor ─────────────────────────
 
-/** Pill de estadística con ícono, número y label */
-function StatPill({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
-  return (
-    <span className={s.statPill}>
-      <span className={s.statPillIcon}>{icon}</span>
-      <strong>{value}</strong> {label}
-    </span>
-  );
-}
-
-/** Card de navegación reutilizable */
 interface NavCardProps {
   onClick: () => void;
   icon: React.ReactNode;
@@ -224,9 +210,13 @@ interface NavCardProps {
   primary?: boolean;
 }
 
-function NavCard({ onClick, icon, title, desc, primary }: NavCardProps) {
+function SpotlightCard({ onClick, icon, title, desc, primary }: NavCardProps) {
+  const ref = useRef<HTMLButtonElement>(null);
+  useSpotlight(ref as React.RefObject<HTMLElement>);
+
   return (
     <button
+      ref={ref}
       className={`${s.navCard} ${primary ? s.navCardPrimary : ""}`}
       onClick={onClick}
     >
@@ -247,7 +237,18 @@ function NavCard({ onClick, icon, title, desc, primary }: NavCardProps) {
   );
 }
 
-// ── Íconos inline ─────────────────────────────────────────────────────────────
+// ── Sub-componentes ───────────────────────────────────────────────────────────
+
+function StatPill({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
+  return (
+    <span className={s.statPill}>
+      <span className={s.statPillIcon}>{icon}</span>
+      <strong>{value}</strong> {label}
+    </span>
+  );
+}
+
+// ── Íconos ────────────────────────────────────────────────────────────────────
 
 function CopyIcon() {
   return (

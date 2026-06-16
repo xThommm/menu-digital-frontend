@@ -1,6 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 /* ═══════════════════════════════════════════════════════════════
+   KEYFRAMES
+   ═══════════════════════════════════════════════════════════════ */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
    CONTENEDOR PRINCIPAL
    ═══════════════════════════════════════════════════════════════ */
 .dash {
@@ -24,6 +49,8 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 2.25rem;
+  animation: fadeUp 0.45s ease both;
+  animation-delay: 0.05s;
 }
 
 .logoMark {
@@ -41,7 +68,13 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 10px rgba(201, 168, 76, 0.22);
+  box-shadow: 0 2px 10px rgba(201, 168, 76, 0.28);
+  transition: box-shadow 0.25s, transform 0.25s;
+}
+
+.logoSq:hover {
+  box-shadow: 0 4px 18px rgba(201, 168, 76, 0.42);
+  transform: scale(1.06);
 }
 
 .brandName {
@@ -68,13 +101,14 @@
   font-size: 0.8rem;
   color: #58524a;
   cursor: pointer;
-  transition: border-color 0.18s, color 0.18s;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
   line-height: 1;
 }
 
 .logoutBtn:hover {
   border-color: #4a4035;
   color: #a09070;
+  background: rgba(201, 168, 76, 0.04);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -83,6 +117,8 @@
 .welcome {
   margin-bottom: 1.5rem;
   padding: 0 0.125rem;
+  animation: fadeUp 0.45s ease both;
+  animation-delay: 0.12s;
 }
 
 .welcomeEyebrow {
@@ -106,8 +142,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   TARJETA STOREFRONT — elemento firma del rediseño
-   Muestra la URL pública del negocio con acciones de copiar y abrir.
+   TARJETA STOREFRONT
    ═══════════════════════════════════════════════════════════════ */
 .storefrontCard {
   background: #101009;
@@ -115,10 +150,36 @@
   border-radius: 18px;
   padding: 1.25rem;
   margin-bottom: 1rem;
-  /* Borde dorado muy sutil que distingue esta card de las de navegación */
   box-shadow:
-    0 0 0 0.5px rgba(201, 168, 76, 0.12) inset,
-    0 4px 24px rgba(0, 0, 0, 0.35);
+    0 0 0 0.5px rgba(201, 168, 76, 0.1) inset,
+    0 4px 32px rgba(0, 0, 0, 0.4);
+  animation: fadeUp 0.45s ease both;
+  animation-delay: 0.2s;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Destello dorado sutil en hover */
+.storefrontCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(201, 168, 76, 0.06) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+
+.storefrontCard:hover::before {
+  opacity: 1;
+}
+
+.storefrontCard:hover {
+  border-color: rgba(201, 168, 76, 0.22);
+  box-shadow:
+    0 0 0 0.5px rgba(201, 168, 76, 0.15) inset,
+    0 8px 40px rgba(0, 0, 0, 0.45);
 }
 
 .storefrontTop {
@@ -144,7 +205,6 @@
   opacity: 0.85;
 }
 
-/* URL del negocio */
 .urlRow {
   margin-bottom: 1rem;
 }
@@ -165,7 +225,6 @@
   font-style: italic;
 }
 
-/* Botones de acción del storefront */
 .storefrontActions {
   display: flex;
   gap: 0.5rem;
@@ -182,9 +241,8 @@
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.18s, border-color 0.18s, color 0.18s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s, box-shadow 0.2s;
   line-height: 1;
-  /* Botón primario: dorado sólido */
   background: #c9a84c;
   border: none;
   color: #0c0b09;
@@ -192,9 +250,13 @@
 
 .actionBtn:hover {
   background: #dabb62;
+  box-shadow: 0 2px 14px rgba(201, 168, 76, 0.3);
 }
 
-/* Estado "copiado" — verde */
+.actionBtn:active {
+  transform: scale(0.96);
+}
+
 .actionBtnSuccess {
   background: #1a3d26;
   color: #5ecf8a;
@@ -203,9 +265,9 @@
 
 .actionBtnSuccess:hover {
   background: #1f4a2e;
+  box-shadow: 0 2px 14px rgba(94, 207, 138, 0.15);
 }
 
-/* Botón secundario: outline */
 .actionBtnOutline {
   background: none;
   border: 0.5px solid #312d1e;
@@ -215,9 +277,9 @@
 .actionBtnOutline:hover {
   border-color: #c9a84c;
   color: #c9a84c;
+  background: rgba(201, 168, 76, 0.05);
 }
 
-/* Pills de stats rápidos */
 .statsPills {
   display: flex;
   flex-wrap: wrap;
@@ -247,7 +309,6 @@
   opacity: 0.5;
 }
 
-/* Pill de delivery */
 .deliveryPill {
   display: inline-flex;
   align-items: center;
@@ -274,6 +335,7 @@
 
 .deliveryOn .deliveryDot {
   background: #4caf82;
+  animation: pulse 2s ease-in-out infinite;
 }
 
 .deliveryOff {
@@ -293,6 +355,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
+  animation: fadeUp 0.45s ease both;
+  animation-delay: 0.28s;
 }
 
 .navCard {
@@ -306,30 +370,51 @@
   align-items: center;
   gap: 1rem;
   text-align: left;
-  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+  transition: border-color 0.22s, background 0.22s, box-shadow 0.22s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Luz que sigue al cursor — aplicada via JS con CSS custom property */
+.navCard::after {
+  content: '';
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201, 168, 76, 0.12) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  left: var(--mx, 50%);
+  top: var(--my, 50%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.navCard:hover::after {
+  opacity: 1;
 }
 
 .navCard:hover {
-  border-color: rgba(201, 168, 76, 0.3);
+  border-color: rgba(201, 168, 76, 0.28);
   background: #161411;
-  box-shadow: 0 4px 20px rgba(201, 168, 76, 0.07);
+  box-shadow: 0 4px 24px rgba(201, 168, 76, 0.08);
 }
 
 .navCard:active {
-  transform: scale(0.993);
-  transition-duration: 0.06s;
+  transform: scale(0.985);
+  transition-duration: 0.08s;
 }
 
-/* Variante primaria (Editor de menú): highlight más pronunciado */
 .navCardPrimary {
   background: #141210;
   border-color: #2c2916;
 }
 
 .navCardPrimary:hover {
-  border-color: rgba(201, 168, 76, 0.45);
+  border-color: rgba(201, 168, 76, 0.4);
   background: #191610;
-  box-shadow: 0 4px 24px rgba(201, 168, 76, 0.11);
+  box-shadow: 0 4px 28px rgba(201, 168, 76, 0.12);
 }
 
 .cardIcon {
@@ -343,13 +428,14 @@
   align-items: center;
   justify-content: center;
   color: #58524a;
-  transition: background 0.18s, border-color 0.18s, color 0.18s;
+  transition: background 0.22s, border-color 0.22s, color 0.22s, transform 0.22s;
 }
 
 .navCard:hover .cardIcon {
   background: #221f14;
-  border-color: rgba(201, 168, 76, 0.2);
+  border-color: rgba(201, 168, 76, 0.22);
   color: #c9a84c;
+  transform: scale(1.07);
 }
 
 .cardIconPrimary {
@@ -360,7 +446,8 @@
 
 .navCardPrimary:hover .cardIconPrimary {
   background: #252010;
-  border-color: rgba(201, 168, 76, 0.3);
+  border-color: rgba(201, 168, 76, 0.32);
+  transform: scale(1.07);
 }
 
 .cardBody {
@@ -382,21 +469,26 @@
   color: #58524a;
   margin: 0;
   line-height: 1.5;
+  transition: color 0.22s;
+}
+
+.navCard:hover .cardDesc {
+  color: #6b6050;
 }
 
 .cardArrow {
   color: #2c2916;
   flex-shrink: 0;
-  transition: color 0.18s, transform 0.18s;
+  transition: color 0.22s, transform 0.22s;
 }
 
 .navCard:hover .cardArrow {
   color: #c9a84c;
-  transform: translateX(2px);
+  transform: translateX(4px);
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   RESPONSIVE — tablet y desktop
+   RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
 @media (min-width: 600px) {
   .dash {
@@ -427,5 +519,15 @@
   .cardArrow {
     margin-top: auto;
     padding-top: 0.75rem;
+  }
+}
+
+/* Respeta preferencia de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  .topBar, .welcome, .storefrontCard, .cards {
+    animation: none;
+  }
+  .deliveryOn .deliveryDot {
+    animation: none;
   }
 }

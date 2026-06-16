@@ -369,6 +369,7 @@ function QRFrame() {
 export default function HomePage() {
   const [billingOpen, setBillingOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(
   PLANS.find((p) => p.id === "anual") ?? null
 );
@@ -411,6 +412,21 @@ export default function HomePage() {
     }
   }, []);
 
+  useEffect(() => {
+  if (!menuOpen) return;
+  const handleClick = (e: MouseEvent) => {
+    if (navRef.current && !navRef.current.contains(e.target as Node)) {
+      setMenuOpen(false);
+    }
+  };
+  document.addEventListener('mousedown', handleClick);
+  document.addEventListener('touchstart', handleClick);
+  return () => {
+    document.removeEventListener('mousedown', handleClick);
+    document.removeEventListener('touchstart', handleClick);
+  };
+}, [menuOpen]);
+
   const handlePay = async (plan: Plan) => {
     setPaying(true);
     try {
@@ -448,7 +464,7 @@ export default function HomePage() {
       <div className={styles.hpage}>
 
         {/* ── NAV ── */}
-        <nav className={styles.nav}>
+        <nav className={styles.nav} ref={navRef}>
   <a className={styles.navLogo} href="/">Menú<span> Digital</span></a>
  
   {/* Links — ocultos en mobile, sin cambios en desktop */}
