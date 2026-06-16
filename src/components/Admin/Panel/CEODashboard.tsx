@@ -91,8 +91,8 @@ export default function CEODashboard() {
     const load = async () => {
       try {
         const [statsRes, usersRes] = await Promise.all([
-          fetch("/admin/stats",    { headers }),
-          fetch("/admin/allUsers", { headers }),
+          fetch("/api/admin/stats",    { headers }),
+          fetch("/api/admin/allUsers", { headers }),
         ]);
         if (!statsRes.ok || !usersRes.ok) throw new Error("Error al cargar datos");
         const [statsData, usersData] = await Promise.all([
@@ -118,7 +118,7 @@ export default function CEODashboard() {
 
   const handleToggleActive = useCallback(async (clientId: string, current: boolean) => {
     try {
-      const res = await fetch(`/admin/users/${clientId}/active`, {
+      const res = await fetch(`/api/admin/users/${clientId}/active`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
