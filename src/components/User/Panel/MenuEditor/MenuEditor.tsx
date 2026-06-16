@@ -494,21 +494,24 @@ export default function MenuEditorPage() {
   };
 
   const confirmDelete = async () => {
-    if (!deleteModal) return;
-    try {
-      const url = deleteModal.type === "item"
-        ? `/api/items/${deleteModal.id}`
-        : `/api/menus/${deleteModal.id}`;
-      const res = await fetch(url, { method: "DELETE", headers: authHeaders });
-      if (!res.ok) throw new Error();
-      await refetch();
-      setDeleteModal(null);
-      setView("menu");
-    } catch {
-      setError("No se pudo eliminar.");
-      setDeleteModal(null);
+  if (!deleteModal) return;
+  try {
+    const url = deleteModal.type === "item"
+      ? `/api/items/${deleteModal.id}`
+      : `/api/menus/${deleteModal.id}`;
+    const res = await fetch(url, { method: "DELETE", headers: authHeaders });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.message || "No se pudo eliminar.");
     }
-  };
+    await refetch();
+    setDeleteModal(null);
+    setView("menu");
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "No se pudo eliminar.");
+    setDeleteModal(null);
+  }
+};
 
   const toggleItemAvailable = useCallback(async (item: Item) => {
     // Actualización optimista en el estado local
