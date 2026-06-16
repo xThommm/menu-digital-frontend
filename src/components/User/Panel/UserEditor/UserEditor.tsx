@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../api/Auth/AuthContext";
 import styles from "./UserEditor.module.css";
@@ -91,10 +91,10 @@ export default function UserEditorPage() {
   const [isDirty, setIsDirty] = useState(false);
   const initialFormRef = useRef(form);
 
-  const authHeaders = {
+  const authHeaders = useMemo(() => ({
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
-  };
+  }), [token]);
 
   // ── Auto-clear banners ────────────────────────────────────────────────────
 
