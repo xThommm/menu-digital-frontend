@@ -26,12 +26,12 @@ export default function LoginPage() {
 
   // Auto-focus: si ya hay usuario recordado, ir directo a contraseña
   useEffect(() => {
-    if (username) {
-      passwordRef.current?.focus();
-    } else {
-      usernameRef.current?.focus();
-    }
-  }, []);
+  if (username) {
+    passwordRef.current?.focus();
+  } else {
+    usernameRef.current?.focus();
+  }
+}, [username]);
 
   if (isAuthenticated) {
     return <Navigate to={user?.role === "admin" ? "/admin" : "/dashboard"} replace />;

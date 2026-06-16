@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../api/Auth/AuthContext";
 import s from "./CEODashboard.module.css";
+import type { User } from "../../../types/index";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
@@ -99,9 +100,10 @@ export default function CEODashboard() {
           usersRes.json(),
         ]);
         setStats(statsData);
-        setClients(usersData.filter((u: any) => !u.admin));
-      } catch (err: any) {
-        setError(err.message ?? "Error desconocido");
+        setClients(usersData.filter((u: User) => !u.admin));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Error desconocido";
+        setError(message);    
       } finally {
         setLoading(false);
       }
