@@ -98,6 +98,111 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   DESIGN TOKENS — PANEL DE ADMINISTRACIÓN (tema oscuro)
+   Usados por UserDashboard, UserEditor, MenuEditor y ErrorBoundary.
+   Prefijo --admin- para no colisionar con los tokens claros del
+   storefront público definidos arriba (--gold, --text-muted, etc.
+   significan algo distinto en cada tema).
+   Antes vivían triplicados (con pequeñas variaciones) en
+   UserEditor.module.css y MenuEditor_module.css, y como hex
+   hardcodeados en UserDashboard.module.css. Esta es la única fuente
+   de verdad ahora — superset de ambos bloques :root originales más
+   los matices propios del Dashboard (sombras con glow, variantes de
+   bg/borde/success que no tenían equivalente previo).
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --admin-bg-base:        #0c0b09;
+  --admin-bg-surface:     #0e0d0b;
+  --admin-bg-raised:      #131210;
+  --admin-bg-elevated:    #181614;
+
+  /* Matices intermedios entre raised y elevated — usados por las
+     nav cards del Dashboard para diferenciar card normal / primary /
+     hover sin saltar directo a --admin-bg-elevated. */
+  --admin-bg-raised-2:    #141210;
+  --admin-bg-raised-3:    #161411;
+  --admin-bg-raised-4:    #191610;
+
+  --admin-border-subtle:  #1e1c18;
+  --admin-border-default: #272420;
+  --admin-border-warm:    #3a3020;
+
+  /* Bordes cálidos intermedios (oro al 10-40% sobre fondo oscuro),
+     usados en hover de cards/botones donde --admin-border-warm
+     es demasiado saturado y --admin-border-default muy neutro. */
+  --admin-border-gold-soft:   rgba(201, 168, 76, 0.10);
+  --admin-border-gold-mid:    rgba(201, 168, 76, 0.22);
+  --admin-border-gold-strong: rgba(201, 168, 76, 0.4);
+
+  --admin-text-primary:   #ede4d0;
+  --admin-text-secondary: #d4c9b0;
+  --admin-text-muted:     #5c5649;
+  --admin-text-faint:     #3d3a33;
+
+  /* Texto secundario "tibio" (entre muted y secondary), usado en
+     stats pills y botones outline del Dashboard. */
+  --admin-text-warm:      #a09070;
+
+  --admin-gold:           #c9a84c;
+  --admin-gold-hover:     #dabb62;
+  --admin-gold-glow:      rgba(201, 168, 76, 0.12);
+
+  --admin-green:          #7ec850;
+  --admin-green-bg:       #0d2b18;
+  --admin-green-border:   #2a5a1e;
+
+  --admin-pill-on-bg:     #0a2416;
+  --admin-pill-on-text:   #4caf82;
+  --admin-pill-off-bg:    #2a1a0a;
+  --admin-pill-off-text:  #c9804c;
+
+  --admin-red-text:       #c97070;
+  --admin-red-bg:         #1c1009;
+  --admin-red-border:     #5a2020;
+  --admin-red-dark-border:#7a2020;
+
+  --admin-success-text:   #4caf82;
+  --admin-success-bg:     #0d2b18;
+  --admin-success-border: #1a4a2e;
+
+  /* Variante "soft" de success — fondo/borde más profundos que
+     --admin-success-*, usada en el botón "¡Copiado!" del Dashboard
+     para diferenciarlo visualmente de la pill de delivery activo. */
+  --admin-success-soft-bg:     #1a3d26;
+  --admin-success-soft-border: #2a5c38;
+  --admin-success-soft-text:   #5ecf8a;
+
+  /* Pill "apagada" (delivery sin activar) — gris cálido oscuro,
+     distinto de --admin-pill-off-* (que es para el estado rojizo). */
+  --admin-pill-muted-bg:     #1c1410;
+  --admin-pill-muted-border: #2c2416;
+  --admin-pill-muted-dot:    #3d3520;
+
+  --admin-radius-sm:      6px;
+  --admin-radius-md:      10px;
+  --admin-radius-lg:      12px;
+  --admin-radius-xl:      14px;
+  --admin-radius-2xl:     18px;
+
+  --admin-transition:     0.15s ease;
+
+  --admin-shadow-card:    0 1px 3px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.03) inset;
+  --admin-shadow-fab:     0 4px 24px rgba(201,168,76,0.18), 0 1px 8px rgba(0,0,0,0.7);
+
+  /* Sombras específicas del Dashboard — glow dorado en el logo
+     y en cards al hacer hover, y la sombra ambiental de la
+     storefront card (reposo + hover). */
+  --admin-shadow-logo:          0 2px 10px rgba(201, 168, 76, 0.28);
+  --admin-shadow-logo-hover:    0 4px 18px rgba(201, 168, 76, 0.42);
+  --admin-shadow-card-rest:     0 0 0 0.5px rgba(201, 168, 76, 0.1) inset, 0 4px 32px rgba(0, 0, 0, 0.4);
+  --admin-shadow-card-hover:    0 0 0 0.5px rgba(201, 168, 76, 0.15) inset, 0 8px 40px rgba(0, 0, 0, 0.45);
+  --admin-shadow-navcard-hover:         0 4px 24px rgba(201, 168, 76, 0.08);
+  --admin-shadow-navcard-primary-hover: 0 4px 28px rgba(201, 168, 76, 0.12);
+  --admin-shadow-action-btn-hover:         0 2px 14px rgba(201, 168, 76, 0.3);
+  --admin-shadow-action-btn-success-hover: 0 2px 14px rgba(94, 207, 138, 0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════════
    HTML & BODY
    ═══════════════════════════════════════════════════════════════ */
 html {
@@ -110,7 +215,7 @@ html {
 body {
   font-family: var(--font-sans);
   font-size: var(--text-base);
-  background: var(--cream);
+  background: var(--espresso);
   color: var(--text-main);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -181,6 +286,39 @@ a:hover { opacity: 0.75; }
 @keyframes t-slideRight {
   from { opacity: 0; transform: translateX(10px); }
   to   { opacity: 1; transform: translateX(0); }
+}
+
+/* — Compartidos por el panel de administración (Dashboard, UserEditor,
+     MenuEditor). Centralizados aquí para que no se redefinan por
+     duplicado en cada .module.css — */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ═══════════════════════════════════════════════════════════════

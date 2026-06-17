@@ -3,43 +3,15 @@
 /* ── Reset selectivo ── */
 *, *::before, *::after { box-sizing: border-box; }
 
-/* ── Token primitivos ── */
-:root {
-  --bg-base:       #0c0b09;
-  --bg-surface:    #0e0d0b;
-  --bg-raised:     #131210;
-  --bg-elevated:   #181614;
-  --border-subtle: #1e1c18;
-  --border-default: #272420;
-  --border-warm:   #3a3020;
-  --text-primary:  #ede4d0;
-  --text-secondary:#d4c9b0;
-  --text-muted:    #5c5649;
-  --text-faint:    #3d3a33;
-  --gold:          #c9a84c;
-  --gold-hover:    #dabb62;
-  --green:         #7ec850;
-  --green-bg:      #2a3d1a;
-  --green-border:  #4c7a2e;
-  --red-text:      #b86040;
-  --red-bg:        #1c1009;
-  --red-border:    #4a2010;
-  --success-text:  #4caf82;
-  --success-bg:    #0d2b18;
-  --success-border:#1a4a2e;
-  --radius-sm:     8px;
-  --radius-md:     10px;
-  --radius-lg:     12px;
-  --radius-xl:     14px;
-  --transition:    0.15s ease;
-}
+/* Tokens de diseño: ver --admin-* en globals.css (única fuente de
+   verdad, antes duplicados aquí y en MenuEditor_module.css). */
 
-/* ── Shell ── */
+── Shell ──
 .ne {
   min-height: 100vh;
-  background: var(--bg-base);
+  background: var(--admin-bg-base);
   font-family: 'DM Sans', system-ui, sans-serif;
-  color: var(--text-secondary);
+  color: var(--admin-text-secondary);
   display: flex;
   flex-direction: column;
   max-width: 600px;
@@ -52,8 +24,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.875rem 1rem;
-  border-bottom: 0.5px solid var(--border-subtle);
-  background: var(--bg-base);
+  border-bottom: 0.5px solid var(--admin-border-subtle);
+  background: var(--admin-bg-base);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -64,41 +36,41 @@
 .topTitle {
   font-size: 0.95rem;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--admin-text-primary);
   letter-spacing: -0.01em;
 }
 
 .backBtn {
   width: 36px;
   height: 36px;
-  background: var(--bg-elevated);
-  border: 0.5px solid var(--border-default);
-  border-radius: var(--radius-md);
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: #a09070;
-  transition: border-color var(--transition), color var(--transition), background var(--transition);
+  transition: border-color var(--admin-transition), color var(--admin-transition), background var(--admin-transition);
   flex-shrink: 0;
 }
 
 .backBtn:hover {
-  border-color: var(--gold);
-  color: var(--gold);
+  border-color: var(--admin-gold);
+  color: var(--admin-gold);
   background: #1e1a10;
 }
 
 .backBtn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--admin-gold);
   outline-offset: 2px;
 }
 
 /* ── Tabs ── */
 .tabs {
   display: flex;
-  border-bottom: 0.5px solid var(--border-subtle);
-  background: var(--bg-base);
+  border-bottom: 0.5px solid var(--admin-border-subtle);
+  background: var(--admin-bg-base);
   position: sticky;
   top: 57px;
   z-index: 9;
@@ -111,10 +83,10 @@
   border: none;
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.82rem;
-  color: var(--text-muted);
+  color: var(--admin-text-muted);
   cursor: pointer;
   border-bottom: 2px solid transparent;
-  transition: color var(--transition), border-color var(--transition);
+  transition: color var(--admin-transition), border-color var(--admin-transition);
   position: relative;
   display: flex;
   align-items: center;
@@ -123,13 +95,13 @@
 }
 
 .tabBtn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--admin-gold);
   outline-offset: -2px;
 }
 
 .tabBtn.active {
-  color: var(--gold);
-  border-bottom-color: var(--gold);
+  color: var(--admin-gold);
+  border-bottom-color: var(--admin-gold);
 }
 
 /* Indicador de cambios sin guardar */
@@ -138,13 +110,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--gold);
+  background: var(--admin-gold);
   animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
 }
 
 /* ── Content ── */
@@ -158,12 +125,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--red-bg);
-  border: 0.5px solid var(--red-border);
-  border-radius: var(--radius-md);
+  background: var(--admin-red-bg);
+  border: 0.5px solid var(--admin-red-border);
+  border-radius: var(--admin-radius-md);
   padding: 0.65rem 1rem;
   font-size: 0.82rem;
-  color: var(--red-text);
+  color: var(--admin-red-text);
   margin-bottom: 1rem;
   animation: slideDown 0.2s ease;
 }
@@ -172,19 +139,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--success-bg);
-  border: 0.5px solid var(--success-border);
-  border-radius: var(--radius-md);
+  background: var(--admin-success-bg);
+  border: 0.5px solid var(--admin-success-border);
+  border-radius: var(--admin-radius-md);
   padding: 0.65rem 1rem;
   font-size: 0.82rem;
-  color: var(--success-text);
+  color: var(--admin-success-text);
   margin-bottom: 1rem;
   animation: slideDown 0.2s ease;
-}
-
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Fields ── */
@@ -198,13 +160,13 @@
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--admin-text-muted);
   margin-bottom: 0.4rem;
   font-weight: 500;
 }
 
 .required {
-  color: var(--gold);
+  color: var(--admin-gold);
   margin-left: 2px;
 }
 
@@ -212,22 +174,21 @@
 .field textarea,
 .field select {
   width: 100%;
-  background: var(--bg-surface);
-  border: 0.5px solid var(--border-default);
-  border-radius: var(--radius-md);
+  background: var(--admin-bg-surface);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
   padding: 0.75rem 1rem;
   font-size: 0.9rem;
-  color: var(--text-secondary);
+  color: var(--admin-text-secondary);
   font-family: 'DM Sans', system-ui, sans-serif;
   outline: none;
   transition: border-color 0.2s, background 0.2s;
-  -webkit-appearance: none;
 }
 
 .field input:focus,
 .field textarea:focus,
 .field select:focus {
-  border-color: var(--gold);
+  border-color: var(--admin-gold);
   background: #0f0e0c;
 }
 
@@ -238,7 +199,7 @@
 
 /* Estado de error en campo */
 .field input:invalid:not(:placeholder-shown) {
-  border-color: var(--red-border);
+  border-color: var(--admin-red-border);
 }
 
 .fieldRow {
@@ -250,8 +211,8 @@
 /* ── Toggle ── */
 .toggleGroup {
   margin: 1.25rem 0;
-  border: 0.5px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border: 0.5px solid var(--admin-border-subtle);
+  border-radius: var(--admin-radius-lg);
   overflow: hidden;
 }
 
@@ -260,7 +221,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.9rem 1rem;
-  border-bottom: 0.5px solid var(--border-subtle);
+  border-bottom: 0.5px solid var(--admin-border-subtle);
   gap: 1rem;
 }
 
@@ -271,12 +232,12 @@
 .toggleLabel {
   font-size: 0.88rem;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--admin-text-primary);
 }
 
 .toggleDesc {
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--admin-text-muted);
   margin-top: 2px;
   line-height: 1.4;
 }
@@ -294,13 +255,13 @@
 }
 
 .toggle:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--admin-gold);
   outline-offset: 2px;
 }
 
 .toggle.on {
-  background: var(--green-bg);
-  border-color: var(--green-border);
+  background: var(--admin-green-bg);
+  border-color: var(--admin-green-border);
 }
 
 .toggleKnob {
@@ -310,27 +271,27 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: var(--admin-text-muted);
   transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1), background 0.2s;
   pointer-events: none;
 }
 
 .toggle.on .toggleKnob {
   transform: translateX(18px);
-  background: var(--green);
+  background: var(--admin-green);
 }
 
 /* ── Save button ── */
 .saveBtn {
   width: 100%;
-  background: var(--gold);
+  background: var(--admin-gold);
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: var(--admin-radius-lg);
   padding: 0.9rem;
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.95rem;
   font-weight: 500;
-  color: var(--bg-base);
+  color: var(--admin-bg-base);
   cursor: pointer;
   margin-top: 0.5rem;
   transition: background 0.2s, transform 0.1s, opacity 0.2s;
@@ -341,7 +302,7 @@
 }
 
 .saveBtn:hover:not(:disabled) {
-  background: var(--gold-hover);
+  background: var(--admin-gold-hover);
 }
 
 .saveBtn:active:not(:disabled) {
@@ -354,7 +315,7 @@
 }
 
 .saveBtn:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--admin-gold);
   outline-offset: 2px;
 }
 
@@ -363,10 +324,6 @@
   color: currentColor;
   animation: spin 0.7s linear infinite;
   flex-shrink: 0;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 /* ── Media ── */
@@ -381,14 +338,14 @@
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--admin-text-muted);
   margin-bottom: 0.6rem;
   font-weight: 500;
 }
 
 .mediaCount {
   font-size: 0.7rem;
-  color: var(--text-faint);
+  color: var(--admin-text-faint);
   letter-spacing: 0;
   text-transform: none;
   font-weight: 400;
@@ -407,12 +364,12 @@
   gap: 5px;
   background: none;
   border: none;
-  color: var(--gold);
+  color: var(--admin-gold);
   font-size: 0.82rem;
   cursor: pointer;
   padding: 0;
   font-family: inherit;
-  transition: opacity var(--transition);
+  transition: opacity var(--admin-transition);
 }
 
 .textBtn:hover {
@@ -427,18 +384,18 @@
 .bgPreview {
   width: 100%;
   height: 160px;
-  border-radius: var(--radius-lg);
-  border: 0.5px solid var(--border-default);
+  border-radius: var(--admin-radius-lg);
+  border: 0.5px solid var(--admin-border-default);
   background-size: cover;
   background-position: center;
-  background-color: var(--bg-surface);
+  background-color: var(--admin-bg-surface);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   overflow: hidden;
   position: relative;
-  transition: border-color var(--transition);
+  transition: border-color var(--admin-transition);
 }
 
 .bgPreview:hover {
@@ -446,7 +403,7 @@
 }
 
 .bgPreview:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--admin-gold);
   outline-offset: 2px;
 }
 
@@ -464,12 +421,12 @@
 
 .uploadPlaceholder span {
   font-size: 0.82rem;
-  color: var(--text-muted);
+  color: var(--admin-text-muted);
 }
 
 .uploadHint {
   font-size: 0.7rem !important;
-  color: var(--text-faint) !important;
+  color: var(--admin-text-faint) !important;
 }
 
 .uploadingOverlay {
@@ -477,7 +434,7 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  color: var(--text-muted);
+  color: var(--admin-text-muted);
   font-size: 0.82rem;
 }
 
@@ -500,7 +457,7 @@
 
 .overlayEdit span {
   font-size: 0.85rem;
-  color: var(--text-primary);
+  color: var(--admin-text-primary);
   font-weight: 500;
 }
 
@@ -513,9 +470,9 @@
 
 .galleryItem {
   aspect-ratio: 1;
-  border-radius: var(--radius-md);
+  border-radius: var(--admin-radius-md);
   overflow: hidden;
-  border: 0.5px solid var(--border-default);
+  border: 0.5px solid var(--admin-border-default);
   position: relative;
 }
 
@@ -544,7 +501,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--text-secondary);
+  color: var(--admin-text-secondary);
   opacity: 0;
   transition: opacity 0.15s, background 0.15s, color 0.15s;
   backdrop-filter: blur(6px);
@@ -570,24 +527,24 @@
 
 .galleryAdd {
   aspect-ratio: 1;
-  border-radius: var(--radius-md);
-  border: 0.5px dashed var(--border-default);
-  background: var(--bg-surface);
+  border-radius: var(--admin-radius-md);
+  border: 0.5px dashed var(--admin-border-default);
+  background: var(--admin-bg-surface);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: border-color var(--transition), background var(--transition);
-  color: var(--text-muted);
+  transition: border-color var(--admin-transition), background var(--admin-transition);
+  color: var(--admin-text-muted);
 }
 
 .galleryAdd:hover:not(:disabled) {
-  border-color: var(--gold);
+  border-color: var(--admin-gold);
   background: #0f0e0b;
 }
 
 .galleryAdd:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--admin-gold);
   outline-offset: 2px;
 }
 
@@ -599,7 +556,7 @@
 /* ── Templates ── */
 .templateDesc {
   font-size: 0.82rem;
-  color: var(--text-muted);
+  color: var(--admin-text-muted);
   margin-bottom: 1.25rem;
   line-height: 1.6;
 }
@@ -611,19 +568,19 @@
 }
 
 .templateCard {
-  background: var(--bg-raised);
-  border: 0.5px solid var(--border-default);
-  border-radius: var(--radius-xl);
+  background: var(--admin-bg-raised);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-xl);
   padding: 0;
   overflow: hidden;
   cursor: pointer;
-  transition: border-color var(--transition), transform 0.15s;
+  transition: border-color var(--admin-transition), transform 0.15s;
   text-align: left;
 }
 
 .templateCard.selected {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 1px var(--gold);
+  border-color: var(--admin-gold);
+  box-shadow: 0 0 0 1px var(--admin-gold);
 }
 
 .templateCard:hover:not(.selected) {
@@ -635,7 +592,7 @@
 }
 
 .templateCard:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--admin-gold);
   outline-offset: 2px;
 }
 
@@ -681,7 +638,7 @@
 .templateName {
   font-size: 0.82rem;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--admin-text-primary);
 }
 
 .templateActive {
@@ -689,8 +646,8 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   background: #1e1a10;
-  color: var(--gold);
-  border: 0.5px solid var(--border-warm);
+  color: var(--admin-gold);
+  border: 0.5px solid var(--admin-border-warm);
   padding: 2px 7px;
   border-radius: 4px;
   font-weight: 500;
@@ -699,7 +656,7 @@
 /* ── Misc ── */
 .emptyHint {
   font-size: 0.82rem;
-  color: var(--text-faint);
+  color: var(--admin-text-faint);
   padding: 0.5rem 0;
   margin-bottom: 0.75rem;
   line-height: 1.6;
@@ -710,15 +667,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-base);
+  background: var(--admin-bg-base);
 }
 
 .loaderRing {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 2px solid var(--border-default);
-  border-top-color: var(--gold);
+  border: 2px solid var(--admin-border-default);
+  border-top-color: var(--admin-gold);
   animation: spin 0.7s linear infinite;
 }
 

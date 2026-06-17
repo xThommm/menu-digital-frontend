@@ -2,6 +2,10 @@
 
 /* ═══════════════════════════════════════════════════════════════
    KEYFRAMES
+   Estos cuatro (fadeUp, shimmer, pulse, scaleIn) ya existen
+   idénticos en globals.css — quedan acá solo por si este módulo
+   se usa de forma aislada. Si globals.css siempre está presente
+   en el bundle, se pueden borrar estas definiciones locales.
    ═══════════════════════════════════════════════════════════════ */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(14px); }
@@ -30,7 +34,7 @@
    ═══════════════════════════════════════════════════════════════ */
 .dash {
   min-height: 100vh;
-  background: #0b0a08;
+  background: var(--admin-bg-base);
   padding: 1.25rem 1rem 2.5rem;
   font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
   font-size: 0.9375rem;
@@ -62,18 +66,18 @@
 .logoSq {
   width: 32px;
   height: 32px;
-  background: #c9a84c;
+  background: var(--admin-gold);
   border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 10px rgba(201, 168, 76, 0.28);
+  box-shadow: var(--admin-shadow-logo);
   transition: box-shadow 0.25s, transform 0.25s;
 }
 
 .logoSq:hover {
-  box-shadow: 0 4px 18px rgba(201, 168, 76, 0.42);
+  box-shadow: var(--admin-shadow-logo-hover);
   transform: scale(1.06);
 }
 
@@ -82,11 +86,11 @@
   font-size: 1.125rem;
   font-weight: 500;
   letter-spacing: -0.01em;
-  color: #ede3cc;
+  color: var(--admin-text-primary);
 }
 
 .brandAccent {
-  color: #c9a84c;
+  color: var(--admin-gold);
 }
 
 .logoutBtn {
@@ -94,21 +98,21 @@
   align-items: center;
   gap: 6px;
   background: none;
-  border: 0.5px solid #252219;
+  border: 0.5px solid var(--admin-border-subtle);
   border-radius: 8px;
   padding: 0.45rem 0.875rem;
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.8rem;
-  color: #58524a;
+  color: var(--admin-text-muted);
   cursor: pointer;
   transition: border-color 0.2s, color 0.2s, background 0.2s;
   line-height: 1;
 }
 
 .logoutBtn:hover {
-  border-color: #4a4035;
-  color: #a09070;
-  background: rgba(201, 168, 76, 0.04);
+  border-color: var(--admin-border-default);
+  color: var(--admin-text-warm);
+  background: var(--admin-gold-glow);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -124,7 +128,7 @@
 .welcomeEyebrow {
   font-size: 0.6875rem;
   font-weight: 500;
-  color: #3d3829;
+  color: var(--admin-text-faint);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin: 0 0 0.3rem;
@@ -136,7 +140,7 @@
   font-size: 1.75rem;
   font-weight: 400;
   letter-spacing: -0.015em;
-  color: #ede3cc;
+  color: var(--admin-text-primary);
   margin: 0;
   line-height: 1.2;
 }
@@ -145,14 +149,12 @@
    TARJETA STOREFRONT
    ═══════════════════════════════════════════════════════════════ */
 .storefrontCard {
-  background: #101009;
-  border: 0.5px solid #2c2916;
+  background: var(--admin-bg-surface);
+  border: 0.5px solid var(--admin-border-warm);
   border-radius: 18px;
   padding: 1.25rem;
   margin-bottom: 1rem;
-  box-shadow:
-    0 0 0 0.5px rgba(201, 168, 76, 0.1) inset,
-    0 4px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--admin-shadow-card-rest);
   animation: fadeUp 0.45s ease both;
   animation-delay: 0.2s;
   transition: border-color 0.3s, box-shadow 0.3s;
@@ -165,7 +167,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(201, 168, 76, 0.06) 0%, transparent 70%);
+  background: radial-gradient(ellipse 60% 40% at 50% 0%, var(--admin-gold-glow) 0%, transparent 70%);
   opacity: 0;
   transition: opacity 0.4s;
   pointer-events: none;
@@ -176,10 +178,8 @@
 }
 
 .storefrontCard:hover {
-  border-color: rgba(201, 168, 76, 0.22);
-  box-shadow:
-    0 0 0 0.5px rgba(201, 168, 76, 0.15) inset,
-    0 8px 40px rgba(0, 0, 0, 0.45);
+  border-color: var(--admin-border-gold-mid);
+  box-shadow: var(--admin-shadow-card-hover);
 }
 
 .storefrontTop {
@@ -187,7 +187,7 @@
   align-items: center;
   gap: 7px;
   margin-bottom: 0.875rem;
-  color: #c9a84c;
+  color: var(--admin-gold);
 }
 
 .storefrontIcon {
@@ -201,7 +201,7 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #c9a84c;
+  color: var(--admin-gold);
   opacity: 0.85;
 }
 
@@ -212,7 +212,7 @@
 .urlText {
   font-family: 'DM Mono', 'Fira Mono', 'SF Mono', monospace;
   font-size: 0.875rem;
-  color: #ede3cc;
+  color: var(--admin-text-primary);
   letter-spacing: -0.01em;
   word-break: break-all;
   line-height: 1.4;
@@ -221,7 +221,7 @@
 .urlPlaceholder {
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.82rem;
-  color: #3d3829;
+  color: var(--admin-text-faint);
   font-style: italic;
 }
 
@@ -243,14 +243,14 @@
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s, box-shadow 0.2s;
   line-height: 1;
-  background: #c9a84c;
+  background: var(--admin-gold);
   border: none;
-  color: #0c0b09;
+  color: var(--admin-bg-base);
 }
 
 .actionBtn:hover {
-  background: #dabb62;
-  box-shadow: 0 2px 14px rgba(201, 168, 76, 0.3);
+  background: var(--admin-gold-hover);
+  box-shadow: var(--admin-shadow-action-btn-hover);
 }
 
 .actionBtn:active {
@@ -258,26 +258,26 @@
 }
 
 .actionBtnSuccess {
-  background: #1a3d26;
-  color: #5ecf8a;
-  border: 0.5px solid #2a5c38;
+  background: var(--admin-success-soft-bg);
+  color: var(--admin-success-soft-text);
+  border: 0.5px solid var(--admin-success-soft-border);
 }
 
 .actionBtnSuccess:hover {
-  background: #1f4a2e;
-  box-shadow: 0 2px 14px rgba(94, 207, 138, 0.15);
+  background: var(--admin-bg-elevated);
+  box-shadow: var(--admin-shadow-action-btn-success-hover);
 }
 
 .actionBtnOutline {
   background: none;
-  border: 0.5px solid #312d1e;
-  color: #a09070;
+  border: 0.5px solid var(--admin-border-default);
+  color: var(--admin-text-warm);
 }
 
 .actionBtnOutline:hover {
-  border-color: #c9a84c;
-  color: #c9a84c;
-  background: rgba(201, 168, 76, 0.05);
+  border-color: var(--admin-gold);
+  color: var(--admin-gold);
+  background: var(--admin-gold-glow);
 }
 
 .statsPills {
@@ -285,7 +285,7 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   padding-top: 0.875rem;
-  border-top: 0.5px solid #1e1c12;
+  border-top: 0.5px solid var(--admin-border-subtle);
   align-items: center;
 }
 
@@ -294,12 +294,12 @@
   align-items: center;
   gap: 5px;
   font-size: 0.75rem;
-  color: #58524a;
+  color: var(--admin-text-muted);
   line-height: 1;
 }
 
 .statPill strong {
-  color: #a09070;
+  color: var(--admin-text-warm);
   font-weight: 600;
 }
 
@@ -328,24 +328,24 @@
 }
 
 .deliveryOn {
-  background: #0d2b18;
-  color: #4caf82;
-  border: 0.5px solid #1a4a2e;
+  background: var(--admin-success-bg);
+  color: var(--admin-success-text);
+  border: 0.5px solid var(--admin-success-border);
 }
 
 .deliveryOn .deliveryDot {
-  background: #4caf82;
+  background: var(--admin-success-text);
   animation: pulse 2s ease-in-out infinite;
 }
 
 .deliveryOff {
-  background: #1c1410;
-  color: #58524a;
-  border: 0.5px solid #2c2416;
+  background: var(--admin-pill-muted-bg);
+  color: var(--admin-text-muted);
+  border: 0.5px solid var(--admin-pill-muted-border);
 }
 
 .deliveryOff .deliveryDot {
-  background: #3d3520;
+  background: var(--admin-pill-muted-dot);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -361,8 +361,8 @@
 
 .navCard {
   width: 100%;
-  background: #131110;
-  border: 0.5px solid #252219;
+  background: var(--admin-bg-raised);
+  border: 0.5px solid var(--admin-border-subtle);
   border-radius: 16px;
   padding: 1.125rem;
   cursor: pointer;
@@ -382,7 +382,7 @@
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(201, 168, 76, 0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--admin-gold-glow) 0%, transparent 70%);
   transform: translate(-50%, -50%);
   left: var(--mx, 50%);
   top: var(--my, 50%);
@@ -396,9 +396,9 @@
 }
 
 .navCard:hover {
-  border-color: rgba(201, 168, 76, 0.28);
-  background: #161411;
-  box-shadow: 0 4px 24px rgba(201, 168, 76, 0.08);
+  border-color: var(--admin-border-gold-mid);
+  background: var(--admin-bg-raised-3);
+  box-shadow: var(--admin-shadow-navcard-hover);
 }
 
 .navCard:active {
@@ -407,14 +407,14 @@
 }
 
 .navCardPrimary {
-  background: #141210;
-  border-color: #2c2916;
+  background: var(--admin-bg-raised-2);
+  border-color: var(--admin-border-warm);
 }
 
 .navCardPrimary:hover {
-  border-color: rgba(201, 168, 76, 0.4);
-  background: #191610;
-  box-shadow: 0 4px 28px rgba(201, 168, 76, 0.12);
+  border-color: var(--admin-border-gold-strong);
+  background: var(--admin-bg-raised-4);
+  box-shadow: var(--admin-shadow-navcard-primary-hover);
 }
 
 .cardIcon {
@@ -422,31 +422,31 @@
   height: 48px;
   flex-shrink: 0;
   border-radius: 12px;
-  background: #1a1815;
-  border: 0.5px solid #2c2920;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-default);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #58524a;
+  color: var(--admin-text-muted);
   transition: background 0.22s, border-color 0.22s, color 0.22s, transform 0.22s;
 }
 
 .navCard:hover .cardIcon {
-  background: #221f14;
-  border-color: rgba(201, 168, 76, 0.22);
-  color: #c9a84c;
+  background: var(--admin-bg-raised-4);
+  border-color: var(--admin-border-gold-mid);
+  color: var(--admin-gold);
   transform: scale(1.07);
 }
 
 .cardIconPrimary {
-  color: #c9a84c;
-  background: #1c1910;
-  border-color: #342f1a;
+  color: var(--admin-gold);
+  background: var(--admin-bg-raised-2);
+  border-color: var(--admin-border-warm);
 }
 
 .navCardPrimary:hover .cardIconPrimary {
-  background: #252010;
-  border-color: rgba(201, 168, 76, 0.32);
+  background: var(--admin-bg-raised-2);
+  border-color: var(--admin-border-gold-strong);
   transform: scale(1.07);
 }
 
@@ -459,31 +459,31 @@
   font-size: 0.9375rem;
   font-weight: 500;
   letter-spacing: -0.01em;
-  color: #ede3cc;
+  color: var(--admin-text-primary);
   margin: 0 0 0.2rem;
   line-height: 1.3;
 }
 
 .cardDesc {
   font-size: 0.775rem;
-  color: #58524a;
+  color: var(--admin-text-muted);
   margin: 0;
   line-height: 1.5;
   transition: color 0.22s;
 }
 
 .navCard:hover .cardDesc {
-  color: #6b6050;
+  color: var(--admin-text-warm);
 }
 
 .cardArrow {
-  color: #2c2916;
+  color: var(--admin-border-warm);
   flex-shrink: 0;
   transition: color 0.22s, transform 0.22s;
 }
 
 .navCard:hover .cardArrow {
-  color: #c9a84c;
+  color: var(--admin-gold);
   transform: translateX(4px);
 }
 

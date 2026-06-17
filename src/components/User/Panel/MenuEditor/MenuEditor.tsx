@@ -46,9 +46,16 @@ interface MenuData {
 // ── Estado vacío para formulario de item ───────────────────────────────────────
 
 const EMPTY_ITEM = {
-  title: "", description: "", price: "", offerPrice: "",
-  code: "", available: true, hidden: false, recommended: false,
-  options: [] as { key: string; value: string }[],
+  title: "",
+  description: "",
+  price: "",
+  offerPrice: "",
+  code: "",
+  image: "",
+  available: true,
+  hidden: false,
+  recommended: false,
+  options: [],
 };
 
 // ── Vistas posibles ────────────────────────────────────────────────────────────
@@ -454,6 +461,7 @@ export default function MenuEditorPage() {
       available:   item.available,
       hidden:      item.hidden,
       recommended: item.recommended,
+      image: item.image || "",
       options:     Object.entries(item.options || {}).map(([key, value]) => ({ key, value: value.toString() })),
     });
     setError("");
@@ -469,17 +477,19 @@ export default function MenuEditorPage() {
         if (key.trim()) optionsObj[key.trim()] = Number(value) || 0;
       });
       const body = {
-        menuID:      activeCategoria!._id,
-        title:       itemForm.title.trim(),
+        menuID: activeCategoria!._id,
+        title: itemForm.title.trim(),
         description: itemForm.description,
-        price:       itemForm.price !== "" ? Number(itemForm.price) : null,
-        offerPrice:  itemForm.offerPrice !== "" ? Number(itemForm.offerPrice) : null,
-        code:        itemForm.code,
-        available:   itemForm.available,
-        hidden:      itemForm.hidden,
+        image: itemForm.image,
+        price: itemForm.price !== "" ? Number(itemForm.price) : null,
+        offerPrice: itemForm.offerPrice !== "" ? Number(itemForm.offerPrice) : null,
+        code: itemForm.code,
+        available: itemForm.available,
+        hidden: itemForm.hidden,
         recommended: itemForm.recommended,
-        options:     optionsObj,
+        options: optionsObj,
       };
+      console.log(itemForm);
       const url    = activeItem ? `/api/items/${activeItem._id}` : "/api/items";
       const method = activeItem ? "PUT" : "POST";
       const res    = await fetch(url, { method, headers: authHeaders, body: JSON.stringify(body) });
@@ -675,6 +685,46 @@ export default function MenuEditorPage() {
       </div>
     );
   }
+
+  //-------------------------------------------
+
+const handleImageUpload = async (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  const file = e.target.files?.[0];
+
+  if (!file) return;
+
+  try {
+    const formData = new FormData();
+
+    formData.append("file", file);
+    formData.append(
+      "upload_preset",
+      "menu_items"
+    );
+
+    const res = await fetch(
+  "https://api.cloudinary.com/v1_1/dbzqq1del/image/upload",
+  {
+    method: "POST",
+    body: formData,
+  }
+);
+
+    const data = await res.json();
+
+    console.log(data);
+
+    setItemForm(prev => ({
+      ...prev,
+      image: data.secure_url,
+    }));
+    console.log("URL:", data.secure_url);
+  } catch {
+    setError("No se pudo subir la imagen.");
+  }
+};
 
   // ── Vista massive-import ──────────────────────────────────────────────────
 
@@ -916,6 +966,30 @@ export default function MenuEditorPage() {
                   onChange={e => setItemForm(f => ({ ...f, description: e.target.value }))}
                 />
               </div>
+
+              <div className={styles.field}>
+  <label>Imagen</label>
+
+  <input
+    type="file"
+    accept="image/*"
+    onChange={handleImageUpload}
+  />
+
+  {itemForm.image && (
+    <img
+      src={itemForm.image}
+      alt="Preview"
+      style={{
+        width: "100%",
+        maxHeight: 200,
+        objectFit: "cover",
+        borderRadius: 12,
+        marginTop: 10,
+      }}
+    />
+  )}
+</div>
 
               <div className={styles["field-row"]}>
                 <div className={styles.field}>

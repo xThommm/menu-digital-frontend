@@ -201,31 +201,30 @@ function ItemCard({ item, index }: { item: Item; index: number }) {
 
   const showImage = item.image && !imgError;
 
-  return (
-    <article
-      className={`${styles.itemCard} ${!item.available ? styles.unavailable : ""}`}
-      style={{ "--item-delay": `${Math.min(index * 0.05, 0.3)}s` } as React.CSSProperties}
-    >
-      {showImage ? (
-        <img
-          src={item.image}
-          alt={item.title}
-          className={styles.itemImg}
-          loading="lazy"
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        <div className={styles.itemImgPlaceholder} aria-hidden>
-          <ImagePlaceholderIcon />
-        </div>
-      )}
+return (
+  <article
+    className={`${styles.itemCard} ${!item.available ? styles.unavailable : ""}`}
+    style={{ "--item-delay": `${Math.min(index * 0.05, 0.3)}s` } as React.CSSProperties}
+  >
+    {showImage ? (
+  <img
+    src={item.image}
+    alt={item.title}
+    className={styles.itemImg}
+    onError={() => setImgError(true)}
+  />
+) : (
+  <div className={styles.itemImgPlaceholder}>
+    <ImagePlaceholderIcon />
+  </div>
+)}
 
       <div className={styles.itemBody}>
         <div className={styles.itemTop}>
           <span className={styles.itemName}>{item.title}</span>
           {item.recommended && (
             <span className={`${styles.badge} ${styles.badgeReco}`} title="Recomendado">
-              <StarIcon /> Reco
+              <StarIcon /> Recomendado
             </span>
           )}
         </div>

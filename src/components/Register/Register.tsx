@@ -6,6 +6,7 @@ import styles from "./Register.module.css";
 export default function RegisterPage() {
   const { isAuthenticated, isLoading, login } = useAuth();
   const navigate = useNavigate();
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [username, setUsername] = useState("");
   const [businessName, setBusinessName] = useState("");
@@ -29,6 +30,10 @@ export default function RegisterPage() {
       setError("Por favor completá todos los campos.");
       return;
     }
+    if (!acceptedTerms) {
+      setError("Debes aceptar los términos y condiciones.");
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Las contraseñas no coinciden.");
       return;
@@ -47,6 +52,9 @@ export default function RegisterPage() {
         body: JSON.stringify({
           username,
           password,
+          acceptedTerms,
+          acceptedTermsVersion: "1.0",
+          acceptedTermsAt: new Date(),
           contactInfo: { mail: email, businessName },
         }),
       });
@@ -244,9 +252,38 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <button type="submit" className={styles.submitBtn} disabled={isSubmitting || isLoading}>
-            {isSubmitting ? "Creando cuenta..." : "Crear cuenta"}
-          </button>
+          <div className={styles.termsContainer}>
+  <label className={styles.termsLabel}>
+    <input
+      type="checkbox"
+      checked={acceptedTerms}
+      onChange={(e) => setAcceptedTerms(e.target.checked)}
+      disabled={isSubmitting}
+    />
+
+    <span className={styles.customCheckbox}>
+      <svg viewBox="0 0 24 24">
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    </span>
+
+    <span className={styles.termsText}>
+      Acepto los{" "}
+      <Link to="/terminos" target="_blank">
+        Términos y Condiciones
+      </Link>
+    </span>
+  </label>
+</div>
+
+<button
+  type="submit"
+  className={styles.submitBtn}
+  disabled={isSubmitting || isLoading || !acceptedTerms}
+>
+
+          {isSubmitting ? "Creando cuenta..." : "Crear cuenta"}
+</button>
         </form>
 
         <div className={styles.loginLink}>

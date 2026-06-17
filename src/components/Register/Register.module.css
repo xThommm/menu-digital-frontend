@@ -265,3 +265,81 @@
 @media (max-width: 480px) {
   .card { padding: 2rem 1.5rem; }
 }
+.termsContainer {
+  margin: 1.25rem 0;
+}
+
+.termsLabel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.termsLabel input {
+  display: none;
+}
+
+.customCheckbox {
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(255, 165, 0, 0.4);
+  border-radius: 8px;
+  background: rgba(255, 165, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .25s ease;
+  flex-shrink: 0;
+}
+
+.customCheckbox svg {
+  width: 14px;
+  height: 14px;
+  stroke: white;
+  stroke-width: 3;
+  fill: none;
+  opacity: 0;
+  transform: scale(.5);
+  transition: all .25s ease;
+}
+
+.termsLabel input:checked + .customCheckbox {
+  background: linear-gradient(
+    135deg,
+    #ffb000,
+    #ff8c00
+  );
+  border-color: #ffb000;
+  box-shadow:
+    0 0 15px rgba(255, 176, 0, 0.35),
+    0 0 30px rgba(255, 140, 0, 0.15);
+}
+
+.termsLabel input:checked + .customCheckbox svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.termsText {
+  color: rgba(255,255,255,.75);
+  font-size: .9rem;
+  line-height: 1.4;
+}
+
+.termsText a {
+  color: #ffb000;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.termsText a:hover {
+  text-decoration: underline;
+}
+
+.submitBtn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  filter: grayscale(.3);
+}

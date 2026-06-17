@@ -33,7 +33,7 @@ function useSpotlight(ref: React.RefObject<HTMLElement>) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function UserDashboard() {
-  const { user, logout, token, isLoading } = useAuth();
+  const { logout, token, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const [data, setData]     = useState<DashData | null>(null);
