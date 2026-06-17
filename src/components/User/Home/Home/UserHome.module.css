@@ -6,13 +6,61 @@
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Loader ── */
+/* Reproduce la silueta real (hero + bloque de info + botón) en vez de un
+   spinner centrado: comunica que algo concreto está cargando y evita el
+   salto de layout cuando llegan los datos. */
 .loaderWrap {
   min-height: 100vh;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   background: #0b0a08;
   animation: t-fadeIn 0.3s ease both;
+}
+
+@keyframes homeShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skelBox {
+  border-radius: 6px;
+  background: linear-gradient(100deg, #1a1712 30%, #2a2419 50%, #1a1712 70%);
+  background-size: 200% 100%;
+  animation: homeShimmer 1.6s ease-in-out infinite;
+}
+
+.heroSkeleton {
+  height: clamp(200px, 32vw, 320px);
+  background: linear-gradient(100deg, #15130f 30%, #211d15 50%, #15130f 70%);
+  background-size: 200% 100%;
+  animation: homeShimmer 1.6s ease-in-out infinite;
+}
+
+.bodySkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1.5rem 1.25rem;
+}
+
+.skelLine { height: 13px; }
+
+.skelBtn {
+  height: 46px;
+  border-radius: 10px;
+  margin-top: 0.5rem;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ── Not found ── */
@@ -106,7 +154,9 @@
 /* ── Accesibilidad ── */
 @media (prefers-reduced-motion: reduce) {
   .loaderWrap,
-  .notFound {
+  .notFound,
+  .skelBox,
+  .heroSkeleton {
     animation: none;
   }
 }
