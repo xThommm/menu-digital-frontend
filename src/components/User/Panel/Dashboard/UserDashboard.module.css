@@ -117,7 +117,7 @@
 .welcome {
   margin-bottom: 1.5rem;
   padding: 0 0.125rem;
-  animation: fadeUp 0.45s ease both;
+  animation: fadeUp 0.50s ease both;
   animation-delay: 0.12s;
 }
 
