@@ -33,36 +33,36 @@ function useSpotlight(ref: React.RefObject<HTMLElement>) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function UserDashboard() {
-  const { user, logout, token } = useAuth();
+  const { logout, token, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const [data, setData]     = useState<DashData | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch("/api/users/me", {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        if (!res.ok) return;
-        const json = await res.json();
-        setData({
-          businessName:  json.contactInfo?.businessName ?? "",
-          slug:          json.slug ?? "",
-          hasDelivery:   json.hasDelivery ?? false,
-          template:      json.template ?? 1,
-          itemCount:     json.itemCount ?? 0,
-          categoryCount: json.categoryCount ?? 0,
-        });
-      } catch {
-        // El dashboard sigue mostrándose aunque fallen los stats
-      }
-    };
-    load();
-  }, []);
+  if (isLoading) return; // espera a que se resuelva el estado de autenticación
+  if (!token) return; // evita el fetch con token undefined
+  const load = async () => {
+    try {
+      const res = await fetch("/api/users/me", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      setData({
+        businessName:  json.contactInfo?.businessName ?? "",
+        slug:          json.slug ?? "",
+        hasDelivery:   json.hasDelivery ?? false,
+        template:      json.template ?? 1,
+        itemCount:     json.itemCount ?? 0,
+        categoryCount: json.categoryCount ?? 0,
+      });
+    } catch {
+      // El dashboard sigue mostrándose aunque fallen los stats
+    }
+  };
+  load();
+}, [token, isLoading]); // ✅ ahora se re-ejecuta cuando token cambia
 
   const handleLogout = useCallback(() => {
     logout();
@@ -87,7 +87,7 @@ export default function UserDashboard() {
     window.open(publicUrl, "_blank", "noopener,noreferrer");
   }, [publicUrl]);
 
-  const displayName = data?.businessName || user?.name || "Mi negocio";
+  const displayName = data?.businessName || "Mi negocio";
 
   return (
     <div className={s.dash}>
