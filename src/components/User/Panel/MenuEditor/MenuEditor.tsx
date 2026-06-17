@@ -469,8 +469,16 @@ export default function MenuEditorPage() {
   }, []);
 
   const saveItem = async () => {
-    if (!itemForm.title.trim()) { setError("El nombre del producto es obligatorio."); return; }
+    //hacer obligatorio el nombre, codigo y precio (Siempre debe tener precio, y ser un numero entero y positivo).
+    if (!itemForm.title.trim()) { setError("El nombre es obligatorio."); return; }
+    if (!itemForm.code.trim()) { setError("El código es obligatorio."); return; }
+    if (!itemForm.price.trim()) { setError("El precio es obligatorio."); return; }  
+    if (itemForm.price !== "" && isNaN(Number(itemForm.price))) { setError("El precio debe ser un número."); return; }
+    if (itemForm.price !== "" && (!Number(itemForm.price) || Number(itemForm.price) <= 0)) { setError("El precio debe ser un número positivo."); return; }
+    if (itemForm.offerPrice !== "" && (!Number(itemForm.offerPrice) || Number(itemForm.offerPrice) <= 0)) { setError("El precio de oferta debe ser un número positivo."); return; }
+    if (itemForm.offerPrice !== "" && isNaN(Number(itemForm.offerPrice))) { setError("El precio de oferta debe ser un número."); return; }
     setSaving(true); setError("");
+
     try {
       const optionsObj: Record<string, number> = {};
       itemForm.options.forEach(({ key, value }) => {

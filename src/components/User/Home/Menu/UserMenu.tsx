@@ -106,6 +106,12 @@ export default function MenuPage() {
     );
   }
 
+ // Funcion ligera para chequear si los tabs tienen al menos un item visible. Si no, no se muestra el tab (aunque se mantiene la estructura de tabs para no romper la navegación por teclado ni el orden lógico del menú).
+ const hasVisibleItems = (tab: Tab) => {
+   return tab.categorias.some(cat => cat.items.some(it => !it.hidden));
+ };
+
+
   const info       = user.contactInfo;
   const currentTab = tabs[activeTab] ?? tabs[0];
   const totalItems = currentTab.categorias.reduce(
@@ -134,6 +140,7 @@ export default function MenuPage() {
       {tabs.length > 1 && (
         <nav className={styles.mpTabs} role="tablist" aria-label="Secciones del menú">
           {tabs.map((tab, i) => (
+            hasVisibleItems(tab) && ( 
             <button
               key={i}
               ref={el => { tabRefs.current[i] = el; }}
@@ -149,19 +156,23 @@ export default function MenuPage() {
             >
               {tab.label}
             </button>
+            )
           ))}
         </nav>
       )}
 
       {/* ── Contenido del tab activo ── */}
       {/* key=activeTab fuerza re-animación de entrada al cambiar de tab,
-          sin desmontar el <main> en sí (mantiene el ref y el scroll estables). */}
-      <main
-        ref={contentRef}
-        id="mp-tabpanel"
-        role="tabpanel"
-        aria-labelledby={`mp-tab-${activeTab}`}
-        className={styles.mpContent}
+          sin desmontar el <main> en sí (mantiene el ref y el scroll estables). 
+          No mostrar un tab si no hay items activos*/
+          }
+       {totalItems !== 0 && (
+         <main
+          ref={contentRef}
+          id="mp-tabpanel"
+          role="tabpanel"
+          aria-labelledby={`mp-tab-${activeTab}`}
+          className={styles.mpContent}
         key={activeTab}
       >
         {totalItems === 0 ? (
@@ -181,31 +192,33 @@ export default function MenuPage() {
             );
           })
         )}
-      </main>
+      </main>)}
 
     </div>
   );
 }
 
 // ── ItemCard ──────────────────────────────────────────────────────────────────
-
 function ItemCard({ item, index }: { item: Item; index: number }) {
+
   const [imgError, setImgError] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const hasOptions  = Object.keys(item.options ?? {}).length > 0;
   const minPrice    = hasOptions ? minOption(item.options) : null;
   const basePrice   = item.price ?? minPrice;
-  const isOnOffer   = item.offerPrice != null && item.price != null && !hasOptions;
+  const isOnOffer   = item.offerPrice != null && item.price != null;
   const activePrice = isOnOffer ? item.offerPrice! : basePrice;
   const pct         = isOnOffer ? offerPct(item.price!, item.offerPrice!) : null;
+
 
   const showImage = item.image && !imgError;
 
 return (
   <article
-    className={`${styles.itemCard} ${!item.available ? styles.unavailable : ""}`}
-    style={{ "--item-delay": `${Math.min(index * 0.05, 0.3)}s` } as React.CSSProperties}
-  >
+  className={`${styles.itemCard} ${!item.available ? styles.unavailable : ""}`}
+  style={{ "--item-delay": `${Math.min(index * 0.05, 0.3)}s` } as React.CSSProperties}
+>
     {showImage ? (
   <img
     src={item.image}
@@ -234,9 +247,18 @@ return (
         )}
 
         <div className={styles.itemBottom}>
-          {activePrice != null && (
+          {activePrice != null && !(hasOptions && !isOnOffer) && (
             <span className={styles.itemPrice}>
-              {hasOptions ? `Desde ${fmt(activePrice)}` : fmt(activePrice)}
+              {
+              hasOptions && !isOnOffer ? fmt(basePrice!) : fmt(activePrice)
+              }
+            </span>
+          )}
+          {hasOptions && activePrice && !isOnOffer && (
+            <span className={styles.itemPrice}>
+              {
+              hasOptions ? "Desde " + (minPrice != null ? fmt(minPrice) : "Consultar") : fmt(activePrice)
+              }
             </span>
           )}
           {isOnOffer && (
@@ -246,11 +268,33 @@ return (
             </>
           )}
           {hasOptions && (
-            <span className={`${styles.badge} ${styles.badgeVariant}`}>Variantes</span>
-          )}
+  <button
+    type="button"
+    className={`${styles.badge} ${styles.badgeVariant}`}
+    onClick={(e) => {
+      e.stopPropagation();
+      setExpanded(prev => !prev);
+    }}
+  >
+    Variantes {expanded ? "▲" : "▼"}
+  </button>
+)}
+          
+
+          
           {!item.available && (
             <span className={styles.itemUnavail}>No disponible</span>
           )}
+          {hasOptions && expanded && (
+  <div className={styles.optionsContainer}>
+    {Object.entries(item.options).map(([name, price]) => (
+      <div key={name}>
+        <span>{name + "     "} </span>
+        <span className={styles.itemPrice}>{fmt(price)}</span>
+      </div>
+    ))}
+  </div>
+)}
         </div>
       </div>
     </article>

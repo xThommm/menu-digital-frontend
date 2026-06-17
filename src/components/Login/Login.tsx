@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "../../api/Auth/AuthContext";
 import styles from "./Login.module.css";
@@ -23,15 +23,6 @@ export default function LoginPage() {
 
   const usernameRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
-
-  // Auto-focus: si ya hay usuario recordado, ir directo a contraseña
-  useEffect(() => {
-  if (username) {
-    passwordRef.current?.focus();
-  } else {
-    usernameRef.current?.focus();
-  }
-}, [username]);
 
   if (isAuthenticated) {
     return <Navigate to={user?.role === "admin" ? "/admin" : "/dashboard"} replace />;

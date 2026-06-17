@@ -267,8 +267,46 @@
 }
 
 .itemCard.unavailable {
+  background:var(--t-bg);
+  border-color: var(--t-border);
   opacity: 0.38;
   pointer-events: none;
+}
+
+.optionsContainer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: fadeInOptions .2s ease;
+}
+
+.optionRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: .92rem;
+}
+
+.optionRow span:last-child {
+  font-weight: 600;
+}
+
+@keyframes fadeInOptions {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.badgeVariant {
+  cursor: pointer;
 }
 
 /* ── Imagen ── */
