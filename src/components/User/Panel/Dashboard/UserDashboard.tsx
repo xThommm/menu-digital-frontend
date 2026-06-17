@@ -33,7 +33,7 @@ function useSpotlight(ref: React.RefObject<HTMLElement>) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function UserDashboard() {
-  const { logout, token, isLoading } = useAuth();
+  const { user, logout, token, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const [data, setData]     = useState<DashData | null>(null);
@@ -87,7 +87,7 @@ export default function UserDashboard() {
     window.open(publicUrl, "_blank", "noopener,noreferrer");
   }, [publicUrl]);
 
-  const displayName = data?.businessName || "Mi negocio";
+  const displayName = data?.businessName || user?.name || "Mi negocio";
 
   return (
     <div className={s.dash}>
