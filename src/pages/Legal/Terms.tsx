@@ -78,6 +78,17 @@ export default function Terms() {
               MenuDigitalApp se reserva el derecho de suspender o cancelar cuentas que incumplan estos
               términos, contengan información falsa o sean utilizadas de manera fraudulenta.
             </p>
+            <p>
+              MenuDigitalApp podrá suspender o cancelar cuentas, con o sin previo aviso,
+              cuando detecte actividades que comprometan la seguridad de la Plataforma,
+              incumplan estos Términos y Condiciones o constituyan un uso fraudulento,
+              abusivo o contrario a la legislación aplicable.
+            </p>
+
+            <p>
+              El Usuario declara ser mayor de 18 años o contar con la capacidad legal
+              suficiente para contratar y utilizar los servicios ofrecidos por la Plataforma.
+            </p>
           </section>
 
           <div className={styles.divider} />
@@ -97,6 +108,12 @@ export default function Terms() {
               Podés cancelar tu suscripción en cualquier momento. La cancelación tendrá efecto al
               finalizar el período pago vigente, sin reembolso proporcional por el tiempo no utilizado.
             </p>
+            <p>
+              Algunos servicios de la Plataforma dependen de proveedores externos,
+              incluyendo procesadores de pago, registradores de dominios y servicios de
+              infraestructura tecnológica. MenuDigitalApp no será responsable por
+              interrupciones, modificaciones o fallas atribuibles a dichos terceros.
+            </p>
           </section>
 
           <div className={styles.divider} />
@@ -111,6 +128,17 @@ export default function Terms() {
               <li>Reproducir, copiar o redistribuir el software sin autorización expresa</li>
               <li>Realizar ingeniería inversa o intentar extraer el código fuente</li>
             </ul>
+            <p>
+              El Usuario es el único responsable de la información publicada en sus
+              menús digitales, incluyendo precios, descripciones, promociones,
+              ingredientes, imágenes, información nutricional y cualquier otro contenido
+              cargado en la Plataforma.
+              </p>
+
+              <p>
+              MenuDigitalApp no verifica ni garantiza la exactitud, legalidad,
+              integridad o actualización del contenido publicado por los Usuarios.
+              </p>
           </section>
 
           <div className={styles.divider} />
@@ -132,27 +160,65 @@ export default function Terms() {
           <div className={styles.divider} />
 
           <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>7. Limitación de responsabilidad</h2>
-            <p>
-              MenuDigitalApp no garantiza la disponibilidad ininterrumpida del servicio, aunque se
-              compromete a mantener una disponibilidad razonable. En ningún caso seremos responsables
-              por daños indirectos, pérdida de ganancias o perjuicios derivados del uso o imposibilidad
-              de uso de la Plataforma.
-            </p>
-          </section>
+  <h2 className={styles.sectionTitle}>7 Disponibilidad del servicio</h2>
+
+  <p>
+    MenuDigitalApp realiza esfuerzos razonables para mantener la
+    disponibilidad continua de la Plataforma. Sin embargo, el servicio
+    podrá verse afectado por tareas de mantenimiento, actualizaciones,
+    mejoras técnicas o circunstancias ajenas a nuestro control.
+  </p>
+
+  <p>
+    La Plataforma podrá ser suspendida temporalmente sin previo aviso
+    cuando resulte necesario para preservar la seguridad, estabilidad o
+    correcto funcionamiento de los sistemas.
+  </p>
+</section>
 
           <div className={styles.divider} />
 
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>8. Modificaciones</h2>
             <p>
-              Nos reservamos el derecho de modificar estos Términos y Condiciones en cualquier momento.
-              Los cambios serán notificados por correo electrónico con al menos 15 días de anticipación.
-              El uso continuado de la Plataforma luego de dicho plazo implica la aceptación de los nuevos términos.
-            </p>
-          </section>
+    MenuDigitalApp podrá modificar estos Términos y Condiciones en cualquier
+    momento para adaptarlos a cambios normativos, operativos o comerciales.
+  </p>
+
+  <p>
+    Las modificaciones serán comunicadas por los medios que la Plataforma
+    considere apropiados, incluyendo correo electrónico o notificaciones
+    dentro del sistema.
+  </p>
+
+  <p>
+    Cada versión de estos Términos y Condiciones estará identificada mediante
+    una fecha o número de versión. En determinados casos podrá requerirse la
+    aceptación expresa de una nueva versión para continuar utilizando la
+    Plataforma o acceder a determinadas funcionalidades.
+  </p>
+</section>
 
           <div className={styles.divider} />
+
+          <section className={styles.section}>
+  <h2 className={styles.sectionTitle}>8.1 Respaldo y conservación de datos</h2>
+
+  <p>
+    Aunque MenuDigitalApp implementa medidas razonables para proteger la
+    información almacenada, no garantiza la recuperación de datos eliminados
+    por el Usuario ni la ausencia total de pérdidas ocasionadas por fallas
+    técnicas, errores humanos, ataques informáticos, eventos de fuerza mayor
+    o problemas en servicios de terceros.
+  </p>
+
+  <p>
+    El Usuario es responsable de conservar copias de seguridad de la
+    información que considere crítica para su actividad comercial.
+  </p>
+</section>
+
+<div className={styles.divider} />
 
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>9. Jurisdicción y ley aplicable</h2>
@@ -167,6 +233,25 @@ export default function Terms() {
           <div className={styles.divider} />
 
           <section className={styles.section}>
+  <h2 className={styles.sectionTitle}>9.1 Limitación de responsabilidad</h2>
+
+  <p>
+    MenuDigitalApp no garantiza que la Plataforma opere de manera
+    ininterrumpida, libre de errores o completamente exenta de incidentes
+    técnicos.
+  </p>
+
+  <p>
+    En ningún caso MenuDigitalApp será responsable por daños indirectos,
+    lucro cesante, pérdida de ingresos, pérdida de datos, pérdida de
+    oportunidades comerciales o cualquier otro perjuicio derivado del uso
+    o imposibilidad de uso de la Plataforma.
+  </p>
+</section>
+
+<div className={styles.divider} />
+
+          <section className={styles.section}>
             <h2 className={styles.sectionTitle}>10. Contacto</h2>
             <p>
               Para consultas sobre estos Términos y Condiciones, podés escribirnos a{" "}
@@ -175,6 +260,22 @@ export default function Terms() {
               </a>
             </p>
           </section>
+
+<div className={styles.divider} />
+
+          <section className={styles.section}>
+  <h2 className={styles.sectionTitle}>10.1 Fuerza mayor</h2>
+
+  <p>
+    MenuDigitalApp no será responsable por incumplimientos o interrupciones
+    del servicio ocasionados por hechos fuera de su control razonable,
+    incluyendo, entre otros, desastres naturales, cortes de energía,
+    fallas de internet, ataques informáticos masivos, conflictos laborales,
+    decisiones gubernamentales o fallas de proveedores externos.
+  </p>
+</section>
+
+<div className={styles.divider} />
 
         </div>
       </main>
