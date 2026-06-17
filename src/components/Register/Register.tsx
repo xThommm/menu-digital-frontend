@@ -53,8 +53,6 @@ export default function RegisterPage() {
           username,
           password,
           acceptedTerms,
-          acceptedTermsVersion: "1.0",
-          acceptedTermsAt: new Date(),
           contactInfo: { mail: email, businessName },
         }),
       });
