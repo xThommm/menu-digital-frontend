@@ -1,0 +1,58 @@
+/* ErrorBoundary.module.css
+   Usa los mismos tokens que UserEditor.module.css / MenuEditor_module.css
+   (con fallback inline por si este componente se monta en un árbol donde
+   esas variables :root todavía no se cargaron). */
+
+.boundary {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.5rem;
+  padding: 2rem 1.5rem;
+  color: var(--red-text, #b86040);
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+.title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary, #ede4d0);
+  margin-top: 0.5rem;
+}
+
+.subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted, #5c5649);
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+.reloadBtn {
+  margin-top: 1rem;
+  background: var(--gold, #c9a84c);
+  border: none;
+  border-radius: var(--radius-lg, 12px);
+  padding: 0.7rem 1.5rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--bg-base, #0c0b09);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.reloadBtn:hover {
+  background: var(--gold-hover, #dabb62);
+}
+
+.reloadBtn:active {
+  transform: scale(0.98);
+}
+
+.reloadBtn:focus-visible {
+  outline: 2px solid var(--gold, #c9a84c);
+  outline-offset: 2px;
+}

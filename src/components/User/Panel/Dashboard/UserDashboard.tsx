@@ -87,7 +87,7 @@ export default function UserDashboard() {
     window.open(publicUrl, "_blank", "noopener,noreferrer");
   }, [publicUrl]);
 
-  const displayName = data?.businessName || user?.name || "Mi negocio";
+  const displayName = data?.businessName;
 
   return (
     <div className={s.dash}>
