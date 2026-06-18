@@ -18,5 +18,9 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // ✅ Dentro del mismo bloque → override correcto
+      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+    },
   },
 ])

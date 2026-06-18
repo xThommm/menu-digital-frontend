@@ -3,26 +3,26 @@ import { lazy } from "react";
 
 import AdminRoute from "./AdminRoutes";
 import UserRoute from "./UserRoutes";
-import Terms   from "../../pages/Legal/Terms";
-import Privacy from "../../pages/Legal/Privacy";
-import Contact from "../../pages/Legal/Contact";
 
 // Public
-const Login    = lazy(() => import("../../components/Login/Login"));
-const Register = lazy(() => import("../../components/Register/Register"));
+const Login    = lazy(() => import("../../src/components/Login/Login"));
+const Register = lazy(() => import("../../src/components/Register/Register"));
+const Terms   = lazy(() => import("../../src/pages/Legal/Terms"));
+const Privacy = lazy(() => import("../../src/pages/Legal/Privacy"));
+const Contact = lazy(() => import("../../src/pages/Legal/Contact"));
 
 // CEO / Admin interno
-const AdminHome    = lazy(() => import("../../components/Admin/Home/AdminHome"));
-const CEODashboard = lazy(() => import("../../components/Admin/Panel/CEODashboard")); // era PanelHome
+const AdminHome    = lazy(() => import("../../src/components/Admin/Home/AdminHome"));
+const CEODashboard = lazy(() => import("../../src/components/Admin/Panel/CEODashboard")); // era PanelHome
 
 // User (dueño del restaurante autenticado)
-const Dashboard  = lazy(() => import("../../components/User/Panel/Dashboard/UserDashboard"));
-const MenuEditor = lazy(() => import("../../components/User/Panel/MenuEditor/MenuEditor"));
-const UserEditor = lazy(() => import("../../components/User/Panel/UserEditor/UserEditor"));
+const Dashboard  = lazy(() => import("../../src/components/User/Panel/Dashboard/UserDashboard"));
+const MenuEditor = lazy(() => import("../../src/components/User/Panel/MenuEditor/MenuEditor"));
+const UserEditor = lazy(() => import("../../src/components/User/Panel/UserEditor/UserEditor"));
 
 // Tenant (landing pública por slug)
-const UserHome = lazy(() => import("../../components/User/Home/Home/UserHome"));
-const UserMenu = lazy(() => import("../../components/User/Home/Menu/UserMenu"));
+const UserHome = lazy(() => import("../../src/components/User/Home/Home/UserHome"));
+const UserMenu = lazy(() => import("../../src/components/User/Home/Menu/UserMenu"));
 
 export default function AppRoutes() {
   return (

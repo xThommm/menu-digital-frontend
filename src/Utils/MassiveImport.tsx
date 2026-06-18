@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useAuth } from "../api/Auth/AuthContext";
+import { useAuth } from "../context/useAuth";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
@@ -110,7 +110,7 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
       setResultado(data.resultado);
       setStep("success");
       onSuccess(); // refresca el menú en el padre
-    } catch (err: any) {
+    } catch (err: any) { 
       setError(err.message || "Error al confirmar.");
     } finally {
       setLoading(false);

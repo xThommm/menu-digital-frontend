@@ -1,20 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import styles from "./AdminHome.module.css";
-
-// ─────────────────────────────────────────────
-// TIPOS
-// ─────────────────────────────────────────────
-interface Plan {
-  id: string;
-  name: string;
-  price: number;
-  period: string;
-  highlight: boolean;
-  features: string[];
-  badge?: string;
-  monthlyEquiv?: string;
-}
+import type { Plan } from "../../../types"
 
 // ─────────────────────────────────────────────
 // DATOS
@@ -414,7 +401,7 @@ export default function HomePage() {
 
   useEffect(() => {
   if (!menuOpen) return;
-  const handleClick = (e: MouseEvent) => {
+  const handleClick = (e: MouseEvent | TouchEvent) => {
     if (navRef.current && !navRef.current.contains(e.target as Node)) {
       setMenuOpen(false);
     }
@@ -431,7 +418,7 @@ export default function HomePage() {
     setPaying(true);
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/payments/crear-preferencia`,
+        `${import.meta.env.VITE_API_URL}/payments/crear-preferencia`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -439,9 +426,15 @@ export default function HomePage() {
         }
       );
 
+      if (plan.id === "gratis") {
+  window.location.href = "/register";  
+  return;
+}
+
       if (!res.ok) throw new Error("Error al crear la preferencia");
 
-      const { init_point } = await res.json();
+      const { init_point } = await res.json() as { init_point: string };
+        window.location.href = init_point;
 
       // Redirigir a MercadoPago — MP devuelve a /register si el pago es exitoso
       window.location.href = init_point;
@@ -452,8 +445,17 @@ export default function HomePage() {
     }
   };
 
+  // Detectar si viene de un pago fallido/cancelado en MP
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("from") === "mp_failure") {
+    // Limpiar la URL sin recargar
+    window.history.replaceState({}, "", window.location.pathname);
+  }
+}, []);
+
   const openBilling = () => {
-  setSelectedPlan(PLANS.find((p) => p.id === "anual") ?? null);
+  setSelectedPlan(PLANS.find((p) => p.id === "semestral") ?? null);
   setBillingOpen(true);
 };
 
@@ -821,16 +823,25 @@ export default function HomePage() {
                 </div>
               </div>
               <button
-                className={styles.payBtn}
-                disabled={paying}
-                onClick={() => selectedPlan && handlePay(selectedPlan)}
-              >
-                {paying ? (
-                  <><div className={styles.spinner} /> Procesando pago...</>
-                ) : (
-                  <>Pagar con MercadoPago →</>
-                )}
-              </button>
+  className={styles.payBtn}
+  disabled={paying}
+  onClick={() => {
+  if (!selectedPlan) return;
+  if (selectedPlan.id === "gratis") {
+    window.location.href = "/register";  // 👈 solo la ruta del frontend
+    return;
+  }
+  handlePay(selectedPlan);
+}}
+>
+  {paying ? (
+    <><div className={styles.spinner} /> Procesando pago...</>
+  ) : selectedPlan?.id === "gratis" ? (
+    <>Continuar con plan gratuito →</>   // s
+  ) : (
+    <>Pagar con MercadoPago →</>
+  )}
+</button>
               <div className={styles.paySafe}>🔒 Pago seguro · Tus datos están protegidos</div>
             </div>
           </div>

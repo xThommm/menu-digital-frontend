@@ -1,14 +1,31 @@
 // ─────────────────────────────────────────────
 // Tipos espejo de los Mongoose schemas del backend
-// Cada campo mapea 1:1 con los modelos User, Menu e Item
 // ─────────────────────────────────────────────
+
+// ── Literales / enums ──────────────────────────────────────────────────────
+
+export type Subscription = "none" | "monthly" | "semestral" | "annual"
+
+// ✅ Movido desde apiClient.ts — toda la app importa desde acá
+export type ApiErrorType =
+  | "network"
+  | "timeout"
+  | "validation"
+  | "auth"
+  | "forbidden"
+  | "notFound"
+  | "conflict"
+  | "server"
+  | "unknown"
+
+// ── Entidades base ─────────────────────────────────────────────────────────
 
 export interface ContactInfo {
   mail: string
   number: number | null
   location: Record<string, unknown>
   address: string
-  social: Record<string, string>   // { instagram: "", facebook: "" }
+  social: Record<string, string>
   businessName: string
 }
 
@@ -23,17 +40,16 @@ export interface User {
   slug: string
   active: boolean
   admin: boolean
-  subscription: string 
-  menu: boolean           // true si ya creó al menos una categoría
+  subscription: Subscription   // ✅ antes era `string`, ahora tipado estricto
+  menu: boolean
   hasDelivery: boolean
-  template: number        // número de template visual (1..N)
+  template: number
   contactInfo: ContactInfo
   media: Media
   createdAt: string
   updatedAt: string
 }
 
-// Menu = categoría/sección del menú de un local
 export interface Menu {
   _id: string
   userID: string
@@ -42,13 +58,12 @@ export interface Menu {
   title: string
   description: string
   image: string
-  section: boolean        // true = es contenedor de secciones, false = tiene items
+  section: boolean
   hidden: boolean
   createdAt: string
   updatedAt: string
 }
 
-// Item = producto individual dentro de una categoría
 export interface Item {
   _id: string
   menuID: string
@@ -58,89 +73,76 @@ export interface Item {
   price: number | null
   offerPrice: number | null
   offerRange: { from: string | null; to: string | null }
-  options: Record<string, number>   // { "Tamaño chico": 800, "Grande": 1200 }
+  options: Record<string, number>
   image: string
   available: boolean
   isExtra: boolean
   recommended: boolean
   hidden: boolean
-  apt: Record<string, unknown>      // { "alérgenos": "gluten", "calorias": 450 }
+  apt: Record<string, unknown>
   createdAt: string
   updatedAt: string
 }
 
-// ─────────────────────────────────────────────
-// Respuestas de la API
-// ─────────────────────────────────────────────
+// ── Respuestas de la API ───────────────────────────────────────────────────
 
-// GET /api/menus/public/:slug
 export interface PublicMenuResponse {
   user: User
   menus: Menu[]
 }
 
-// POST /api/users/login | register
+// ✅ Antes solo tenía _id/username/token — agregados los campos
+//    que AuthProvider ya esperaba con un cast inline
 export interface AuthResponse {
   _id: string
   username: string
+  admin: boolean
+  slug: string
+  subscription: Subscription
   token: string
 }
 
-// PATCH /api/users/template
 export interface TemplateResponse {
   template: number
 }
 
-// PATCH /api/items/:itemID/hidden
 export interface HiddenResponse {
   hidden: boolean
 }
 
-// PATCH /api/items/:itemID/available
 export interface AvailableResponse {
   available: boolean
 }
 
-// ─────────────────────────────────────────────
-// Tipos para el menú público agrupado
-// Usados en UserMenu.tsx — respuesta de GET /api/users/:slug/menu
-// ─────────────────────────────────────────────
+// ── Menú público agrupado ──────────────────────────────────────────────────
 
-// Categoría con sus items ya populados (versión pública)
 export interface Categoria {
   _id: string
   title: string
   items: Item[]
 }
 
-// Sección contenedora de categorías
 export interface Seccion {
   title: string
   categorias: Categoria[]
 }
 
-// Estructura que devuelve el endpoint /api/users/:slug/menu
 export interface MenuData {
   secciones: Seccion[]
   sinSeccion: Categoria[]
 }
 
-// Tab de navegación (construido en el frontend a partir de MenuData)
 export interface Tab {
   label: string
   categorias: Categoria[]
 }
 
-// GET /api/users/:slug/menu
 export interface UserMenuResponse {
   user: User
   menu: MenuData
 }
 
-// ─────────────────────────────────────────────
-// Tipos para el import masivo (Excel)
-// Espejo de la forma que devuelve massiveController.js
-// ─────────────────────────────────────────────
+// ── Import masivo (Excel) ──────────────────────────────────────────────────
 
 export interface MassiveRowResult {
   fila: number
@@ -150,19 +152,58 @@ export interface MassiveRowResult {
   razon?: string
 }
 
-// POST /api/massive/preview
 export interface MassivePreviewResponse {
   resumen: {
     categorias: { crear: MassiveRowResult[]; actualizar: MassiveRowResult[]; errores: MassiveRowResult[] }
-    productos: { crear: MassiveRowResult[]; actualizar: MassiveRowResult[]; errores: MassiveRowResult[] }
+    productos:  { crear: MassiveRowResult[]; actualizar: MassiveRowResult[]; errores: MassiveRowResult[] }
   }
   mensaje: string
 }
 
-// POST /api/massive/confirm
 export interface MassiveConfirmResponse {
   resultado: {
     categorias: { creadas: MassiveRowResult[]; actualizadas: MassiveRowResult[]; errores: MassiveRowResult[] }
-    productos: { creados: MassiveRowResult[]; actualizados: MassiveRowResult[]; errores: MassiveRowResult[] }
+    productos:  { creados: MassiveRowResult[]; actualizados: MassiveRowResult[]; errores: MassiveRowResult[] }
   }
+}
+
+// ── Admin / CEO ────────────────────────────────────────────────────────────────
+
+export interface Plan {
+  id: string
+  name: string
+  price: number
+  period: string
+  highlight: boolean
+  features: string[]
+  badge?: string
+  monthlyEquiv?: string
+}
+
+export interface AdminStats {
+  usuarios: {
+    total: number
+    activos: number
+    inactivos: number
+    conMenuPublicado: number
+    sinMenuPublicado: number
+  }
+  menus: {
+    total: number
+    secciones: number
+    categorias: number
+  }
+  items: {
+    total: number
+    disponibles: number
+    ocultos: number
+  }
+  recientes: {
+    _id: string
+    username: string
+    slug: string
+    active: boolean
+    menu: boolean
+    createdAt: string
+  }[]
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../../../api/Auth/AuthContext";
+import { useAuth } from "../../../../context/useAuth";
 import styles from "./UserEditor.module.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 import { BrowserRouter } from "react-router-dom";
 import { Suspense } from "react";
-import { AuthProvider } from "./api/Auth/AuthContext";
-import AppRoutes from "./api/Routes/AppRoutes";
+import { AuthProvider } from "./context/AuthProvider";
+import AppRoutes from "./routes/AppRoutes";
 
 const PageLoader = () => (
   <div

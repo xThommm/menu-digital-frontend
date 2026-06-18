@@ -21,16 +21,7 @@
  * optimista, redirigir a login, etc.) usando `err.type`.
  */
 
-export type ApiErrorType =
-  | "network"     // el fetch nunca llegó al servidor (sin conexión, DNS, CORS)
-  | "timeout"     // se superó el tiempo límite configurado
-  | "validation"  // 400 / 422 — datos inválidos enviados por el usuario
-  | "auth"        // 401 — token vencido o inválido
-  | "forbidden"   // 403 — autenticado pero sin permiso
-  | "notFound"    // 404
-  | "conflict"    // 409 — ej: ya existe un registro con esos datos
-  | "server"      // 5xx — error del backend, no es culpa del usuario
-  | "unknown";    // cualquier otro caso
+import type { ApiErrorType } from '../types'  // ✅ importar en lugar de definir el tipo aquí, para que toda la app lo importe desde un solo lugar
 
 const DEFAULT_MESSAGES: Record<ApiErrorType, string> = {
   network:    "No hay conexión con el servidor. Revisá tu internet e intentá de nuevo.",
@@ -126,23 +117,23 @@ export async function apiFetch<T = unknown>(
   clearTimeout(timeoutId);
   callerSignal?.removeEventListener("abort", onCallerAbort);
 
-  let body: any = null;
-  if (parseJson) {
-    try {
-      body = await res.json();
-    } catch {
-      // Respuesta vacía (204) o no-JSON. No es necesariamente un error.
-      body = null;
-    }
+  let body: unknown = null;
+if (parseJson) {
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
   }
+}
 
-  if (!res.ok) {
-    const type = classifyStatus(res.status);
-    const serverMessage = typeof body?.message === "string" ? body.message : undefined;
-    throw new ApiError(type, serverMessage || DEFAULT_MESSAGES[type], res.status, body);
-  }
+if (!res.ok) {
+  const type = classifyStatus(res.status);
+  const bodyObj = body as Record<string, unknown> | null;
+  const serverMessage = typeof bodyObj?.message === "string" ? bodyObj.message : undefined;
+  throw new ApiError(type, serverMessage ?? DEFAULT_MESSAGES[type], res.status, body);
+}
 
-  return body as T;
+return body as T;
 }
 
 /** Atajo para distinguir una cancelación intencional de un error real. */

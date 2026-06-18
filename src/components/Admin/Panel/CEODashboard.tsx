@@ -1,50 +1,20 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../../api/Auth/AuthContext";
+import { useAuth } from "../../../context/useAuth";
 import s from "./CEODashboard.module.css";
-import type { User } from "../../../types/index";
-
-// ── Tipos ──────────────────────────────────────────────────────────────────────
-
-interface Stats {
-  usuarios: {
-    total: number;
-    activos: number;
-    inactivos: number;
-    conMenuPublicado: number;
-    sinMenuPublicado: number;
-  };
-  menus: {
-    total: number;
-    secciones: number;
-    categorias: number;
-  };
-  items: {
-    total: number;
-    disponibles: number;
-    ocultos: number;
-  };
-  recientes: {
-    _id: string;
-    username: string;
-    slug: string;
-    active: boolean;
-    menu: boolean;
-    createdAt: string;
-  }[];
-}
+import type { User, Subscription, AdminStats } from "../../../types"
 
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const SUBSCRIPTION_LABEL: Record<string, string> = {
+const SUBSCRIPTION_LABEL: Record<Subscription, string> = {
   none:      "Sin plan",
   monthly:   "Mensual",
   semestral: "Semestral",
   annual:    "Anual",
 };
 
-const SUBSCRIPTION_COLOR: Record<string, string> = {
+const SUBSCRIPTION_COLOR: Record<Subscription, string> = {
   none:      "#3d3a33",
   monthly:   "#4c7a2e",
   semestral: "#2e5c7a",
@@ -68,11 +38,12 @@ export default function CEODashboard() {
   const { user, logout, token } = useAuth();
   const navigate = useNavigate();
 
-  const [stats, setStats]     = useState<Stats | null>(null);
+  const [stats, setStats] = useState<AdminStats | null>(null);
   const [clients, setClients] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
   const [search, setSearch]   = useState("");
+
 
   // Carga stats y lista de clientes en paralelo
   useEffect(() => {
@@ -80,8 +51,8 @@ export default function CEODashboard() {
     const load = async () => {
       try {
         const [statsRes, usersRes] = await Promise.all([
-          fetch("/api/admin/stats",    { headers }),
-          fetch("/api/admin/allUsers", { headers }),
+          fetch(`${import.meta.env.VITE_API_URL}/admin/stats`,    { headers }),
+          fetch(`${import.meta.env.VITE_API_URL}/admin/allUsers`, { headers }),
         ]);
         if (!statsRes.ok || !usersRes.ok) throw new Error("Error al cargar datos");
         const [statsData, usersData] = await Promise.all([
@@ -107,7 +78,7 @@ export default function CEODashboard() {
 
   const handleToggleActive = useCallback(async (clientId: string, current: boolean) => {
     try {
-      const res = await fetch(`/api/admin/users/${clientId}/active`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/users/${clientId}/active`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -127,7 +98,7 @@ export default function CEODashboard() {
   const subBreakdown = clients.reduce((acc, c) => {
     acc[c.subscription] = (acc[c.subscription] ?? 0) + 1;
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<Subscription, number>);
 
   const newThisMonth = clients.filter(c => {
     const d = new Date(c.createdAt);
