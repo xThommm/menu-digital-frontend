@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import styles from "./Login.module.css";
 
@@ -80,11 +80,11 @@ export default function LoginPage() {
     <div className={styles.lp}>
       <div className={styles.card}>
 
-
+        {/* Brand */}
         <div className={styles.brand}>
           <div className={styles.logoMark}>
             <div className={styles.logoSq}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0c0b09" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 2h1v6a3 3 0 0 0 6 0V2h1" />
                 <path d="M8 2v6" />
                 <path d="M15 2c0 4 3 5 3 9a3 3 0 0 1-6 0c0-4 3-5 3-9z" />
@@ -188,7 +188,7 @@ export default function LoginPage() {
               />
               <span className={`${styles.rememberBox} ${rememberMe ? styles.rememberBoxChecked : ""}`}>
                 {rememberMe && (
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0c0b09" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 )}
@@ -229,13 +229,20 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* Registro */}
+        <div className={styles.registerLink}>
+          ¿No tenés cuenta?{" "}
+          <Link to="/register">Registrate</Link>
+        </div>
+
         <div className={styles.footer}>menudigital.app &nbsp;·&nbsp; v1.0</div>
+
         <a href="/" className={styles.homeLink}>
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
-  </svg>
-  Volver al inicio
-</a>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
+          </svg>
+          Volver al inicio
+        </a>
       </div>
     </div>
   );

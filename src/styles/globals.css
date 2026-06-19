@@ -203,6 +203,57 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   DESIGN TOKENS — AUTENTICACIÓN (Login + Register)
+   Prefijo --auth- para no colisionar con --admin- ni con los
+   tokens claros del storefront. Única fuente de verdad para
+   Login.module.css y Register.module.css.
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  /* Fondos */
+  --auth-bg:          #0a0608;
+  --auth-bg-card:     #150d12;
+
+  /* Acento naranja */
+  --auth-amber:       #ff9500;
+  --auth-amber-dim:   #c87000;
+  --auth-amber-glow:  rgba(255, 149, 0, 0.25);
+
+  /* Texto */
+  --auth-cream:       #f5ede0;
+  --auth-cream-mid:   rgba(245, 237, 224, 0.55);
+  --auth-cream-dim:   rgba(245, 237, 224, 0.22);
+
+  /* Bordes */
+  --auth-border:      rgba(255, 149, 0, 0.15);
+  --auth-border-soft: rgba(255, 149, 0, 0.12);
+  --auth-border-focus:var(--auth-amber);
+
+  /* Input */
+  --auth-input-bg:        rgba(255, 149, 0, 0.03);
+  --auth-input-bg-focus:  rgba(255, 149, 0, 0.06);
+
+  /* Error */
+  --auth-error-bg:        rgba(255, 80, 40, 0.06);
+  --auth-error-border:    rgba(255, 80, 40, 0.25);
+  --auth-error-text:      #ff7a5a;
+  --auth-error-field-border: rgba(255, 80, 40, 0.6);
+
+  /* Tipografías (además de --font-sans ya definido arriba) */
+  --font-auth-display: 'Fraunces', serif;
+  --font-auth-mono:    'DM Mono', monospace;
+
+  /* Sombras */
+  --auth-shadow-card:  0 0 60px rgba(255, 149, 0, 0.08), 0 40px 80px rgba(0, 0, 0, 0.6);
+  --auth-shadow-btn:   0 0 28px rgba(255, 149, 0, 0.35);
+  --auth-shadow-btn-hover: 0 0 50px rgba(255, 149, 0, 0.6);
+  --auth-shadow-logo:  0 0 16px rgba(255, 149, 0, 0.4);
+  --auth-shadow-checkbox: 0 0 15px rgba(255, 176, 0, 0.35), 0 0 30px rgba(255, 140, 0, 0.15);
+
+  /* Transición */
+  --auth-transition:   0.2s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    HTML & BODY
    ═══════════════════════════════════════════════════════════════ */
 html {

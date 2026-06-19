@@ -76,17 +76,6 @@ export default function RegisterPage() {
     <div className={styles.lp}>
       <div className={styles.card}>
 
-        {/* Botón volver al inicio */}
-        <Link to="/" className={styles.backBtn}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="1.8"
-            strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5" />
-            <polyline points="12 19 5 12 12 5" />
-          </svg>
-          Volver al inicio
-        </Link>
-
         {/* Brand */}
         <div className={styles.brand}>
           <div className={styles.logoMark}>
@@ -290,6 +279,13 @@ export default function RegisterPage() {
         </div>
 
         <div className={styles.footer}>menudigital.app &nbsp;·&nbsp; v1.0</div>
+
+        <Link to="/" className={styles.homeLink}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
+          </svg>
+          Volver al inicio
+        </Link>
       </div>
     </div>
   );
