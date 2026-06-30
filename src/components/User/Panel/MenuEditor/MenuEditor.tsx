@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, memo, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../context/useAuth";
 import MassiveImport from "../../../../Utils/MassiveImport";
 import styles from "./MenuEditor.module.css";
@@ -45,7 +44,25 @@ interface MenuData {
 
 // ── Estado vacío para formulario de item ───────────────────────────────────────
 
-const EMPTY_ITEM = {
+interface OptionRow {
+  key: string;
+  value: string;
+}
+
+interface ItemFormState {
+  title: string;
+  description: string;
+  price: string;
+  offerPrice: string;
+  code: string;
+  image: string;
+  available: boolean;
+  hidden: boolean;
+  recommended: boolean;
+  options: OptionRow[];
+}
+
+const EMPTY_ITEM: ItemFormState = {
   title: "",
   description: "",
   price: "",
@@ -65,12 +82,6 @@ type View = "menu" | "item-form" | "categoria-form" | "seccion-form" | "massive-
 // ── Íconos ─────────────────────────────────────────────────────────────────────
 
 const icons = {
-  back: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  ),
   upload: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -150,12 +161,9 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () =
 
 // ── TopBar sub-componente ─────────────────────────────────────────────────────
 
-function TopBar({ title, onBack, rightSlot }: { title: string; onBack: () => void; rightSlot?: React.ReactNode }) {
+function TopBar({ title, rightSlot }: { title: string; onBack: () => void; rightSlot?: React.ReactNode }) {
   return (
     <header className={styles["top-bar"]}>
-      <button className={styles["back-btn"]} onClick={onBack} aria-label="Volver">
-        {icons.back}
-      </button>
       <span className={styles["top-title"]}>{title}</span>
       <div style={{ width: 36 }} aria-hidden="true">
         {rightSlot}
@@ -340,7 +348,6 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
 
 export default function MenuEditorPage() {
   const { token } = useAuth();
-  const navigate  = useNavigate();
 
   const [menuData,    setMenuData]    = useState<MenuData | null>(null);
   const [slug,        setSlug]        = useState("");
@@ -749,9 +756,6 @@ const handleImageUpload = async (
         {view === "menu" && (
           <>
             <header className={styles["top-bar"]}>
-              <button className={styles["back-btn"]} onClick={() => navigate("/dashboard")} aria-label="Volver al inicio">
-                {icons.back}
-              </button>
               <div className={styles["top-center"]}>
                 <span className={styles["top-title"]}>Menú</span>
                 {totalItems > 0 && (
