@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../context/useAuth";
 import styles from "./UserEditor.module.css";
 
@@ -70,7 +69,6 @@ function Spinner({ size = 16 }: { size?: number }) {
 
 export default function UserEditorPage() {
   const { token } = useAuth();
-  const navigate  = useNavigate();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef   = useRef<HTMLInputElement>(null);
@@ -285,16 +283,6 @@ export default function UserEditorPage() {
 
       {/* Top bar */}
       <header className={styles.topBar}>
-        <button
-          className={styles.backBtn}
-          onClick={() => navigate("/dashboard")}
-          aria-label="Volver"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
         <span className={styles.topTitle}>Mi negocio</span>
         <div style={{ width: 32 }} aria-hidden="true" />
       </header>

@@ -33,7 +33,7 @@ function useSpotlight(ref: React.RefObject<HTMLElement>) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function UserDashboard() {
-  const { logout, token, isLoading } = useAuth();
+  const { token, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const [data, setData]     = useState<DashData | null>(null);
@@ -64,11 +64,6 @@ export default function UserDashboard() {
     load();
   }, [token, isLoading]);
 
-  const handleLogout = useCallback(() => {
-    logout();
-    navigate("/login");
-  }, [logout, navigate]);
-
   const publicUrl = data?.slug
     ? `${window.location.origin}/${data.slug}`
     : null;
@@ -91,62 +86,6 @@ export default function UserDashboard() {
 
   return (
     <div className={s.root}>
-
-      {/* ── Sidebar (desktop) ─────────────────────────────────────────────── */}
-      <aside className={s.sidebar} aria-label="Navegación principal">
-
-        {/* Logo */}
-        <div className={s.logoSq} role="img" aria-label="MenuDigital">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="#0c0b09" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 2h1v6a3 3 0 0 0 6 0V2h1" />
-            <path d="M8 2v6" />
-            <path d="M15 2c0 4 3 5 3 9a3 3 0 0 1-6 0c0-4 3-5 3-9z" />
-            <path d="M8 22v-4" /><path d="M15 22v-4" /><path d="M5 22h14" />
-          </svg>
-        </div>
-
-        {/* Navegación */}
-        <nav className={s.sideNav}>
-          {/* Dashboard — activo */}
-          <button
-            className={`${s.sideBtn} ${s.sideBtnActive}`}
-            aria-label="Dashboard"
-            aria-current="page"
-            data-tooltip="Dashboard"
-          >
-            <HomeIcon />
-          </button>
-
-          <button
-            className={s.sideBtn}
-            onClick={() => navigate("/menu/editor")}
-            aria-label="Editor de menú"
-            data-tooltip="Editor de menú"
-          >
-            <DocIcon />
-          </button>
-
-          <button
-            className={s.sideBtn}
-            onClick={() => navigate("/user/editor")}
-            aria-label="Mi negocio"
-            data-tooltip="Mi negocio"
-          >
-            <StoreIcon />
-          </button>
-        </nav>
-
-        {/* Logout */}
-        <button
-          className={`${s.sideBtn} ${s.sideLogout}`}
-          onClick={handleLogout}
-          aria-label="Cerrar sesión"
-          data-tooltip="Salir"
-        >
-          <LogoutIcon />
-        </button>
-      </aside>
 
       {/* ── Contenido principal ───────────────────────────────────────────── */}
       <main className={s.main}>
@@ -227,46 +166,6 @@ export default function UserDashboard() {
           />
         </div>
       </main>
-
-      {/* ── Bottom nav (mobile) ───────────────────────────────────────────── */}
-      <nav className={s.bottomNav} aria-label="Navegación principal">
-        <button
-          className={`${s.bottomNavBtn} ${s.bottomNavBtnActive}`}
-          aria-label="Dashboard"
-          aria-current="page"
-        >
-          <span className={s.bottomNavIcon}><HomeIcon /></span>
-          Inicio
-        </button>
-
-        <button
-          className={s.bottomNavBtn}
-          onClick={() => navigate("/menu/editor")}
-          aria-label="Editor de menú"
-        >
-          <span className={s.bottomNavIcon}><DocIcon /></span>
-          Menú
-        </button>
-
-        <button
-          className={s.bottomNavBtn}
-          onClick={() => navigate("/user/editor")}
-          aria-label="Mi negocio"
-        >
-          <span className={s.bottomNavIcon}><StoreIcon /></span>
-          Negocio
-        </button>
-
-        <button
-          className={s.bottomNavBtn}
-          onClick={handleLogout}
-          aria-label="Cerrar sesión"
-        >
-          <span className={s.bottomNavIcon}><LogoutIcon /></span>
-          Salir
-        </button>
-      </nav>
-
     </div>
   );
 }
@@ -321,16 +220,6 @@ function StatPill({ icon, value, label }: { icon: React.ReactNode; value: number
 
 // ── Íconos ────────────────────────────────────────────────────────────────────
 
-function HomeIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
-    </svg>
-  );
-}
-
 function CopyIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -380,17 +269,6 @@ function StoreIcon() {
       stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
       <polyline points="9 22 9 12 15 12 15 22" />
-    </svg>
-  );
-}
-
-function LogoutIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   );
 }

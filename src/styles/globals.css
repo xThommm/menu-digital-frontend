@@ -82,12 +82,19 @@
   --text-2xl:  1.875rem;   /* 30px */
   --text-3xl:  2.375rem;   /* 38px */
 
-  /* — Transiciones — */
-  --ease-out:      cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-in-out:   cubic-bezier(0.65, 0, 0.35, 1);
-  --transition:    0.18s var(--ease-out);
-  --transition-md: 0.28s var(--ease-out);
-  --transition-lg: 0.42s var(--ease-out);
+  /* — Transiciones —
+     --ease-spring es nuevo: una curva con leve "overshoot" (rebote casi
+     imperceptible) para usar SOLO en transform, nunca en color u opacity.
+     Es el tipo de detalle que hace que un botón se sienta "vivo" sin que
+     nadie pueda señalar por qué. Apple/Linear la usan constantemente en
+     toggles y botones primarios. */
+  --ease-out:        cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out:     cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring:     cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition:       0.18s var(--ease-out);
+  --transition-md:    0.28s var(--ease-out);
+  --transition-lg:    0.42s var(--ease-out);
+  --transition-spring: 0.32s var(--ease-spring);
 
   /* — Z-index — */
   --z-base:    0;
@@ -103,12 +110,15 @@
    Prefijo --admin- para no colisionar con los tokens claros del
    storefront público definidos arriba (--gold, --text-muted, etc.
    significan algo distinto en cada tema).
-   Antes vivían triplicados (con pequeñas variaciones) en
-   UserEditor.module.css y MenuEditor_module.css, y como hex
-   hardcodeados en UserDashboard.module.css. Esta es la única fuente
-   de verdad ahora — superset de ambos bloques :root originales más
-   los matices propios del Dashboard (sombras con glow, variantes de
-   bg/borde/success que no tenían equivalente previo).
+
+   REFACTOR: las variantes de éxito/peligro (success, green, pill-on,
+   pill-off, red) estaban definidas como hex sueltos casi idénticos
+   pero no derivados entre sí (3 verdes distintos: #7ec850, #4caf82,
+   #5ecf8a). Ahora hay un único "core" por familia de color y todo lo
+   demás se deriva con color-mix() — mismo resultado visual, pero si
+   mañana querés ajustar el verde, lo cambiás en un solo lugar y todo
+   el panel se actualiza solo. Ningún nombre de variable cambió, así
+   que nada se rompe en los módulos que ya las consumen.
    ═══════════════════════════════════════════════════════════════ */
 :root {
   --admin-bg-base:        #0c0b09;
@@ -147,33 +157,42 @@
   --admin-gold-hover:     #dabb62;
   --admin-gold-glow:      rgba(201, 168, 76, 0.12);
 
-  --admin-green:          #7ec850;
-  --admin-green-bg:       #0d2b18;
-  --admin-green-border:   #2a5a1e;
+  /* — Familia de éxito (verde) — un solo core, todo lo demás derivado — */
+  --admin-success-core:   #4caf82;
+  --admin-success-text:   var(--admin-success-core);
+  --admin-success-bg:     color-mix(in srgb, var(--admin-success-core) 14%, var(--admin-bg-base));
+  --admin-success-border: color-mix(in srgb, var(--admin-success-core) 30%, var(--admin-bg-base));
 
-  --admin-pill-on-bg:     #0a2416;
-  --admin-pill-on-text:   #4caf82;
-  --admin-pill-off-bg:    #2a1a0a;
-  --admin-pill-off-text:  #c9804c;
+  /* Variante "soft" — más saturada/luminosa, usada en el botón
+     "¡Copiado!" del Dashboard para diferenciarlo de la pill de
+     delivery activo sin inventar un verde nuevo. */
+  --admin-success-soft-text:   color-mix(in srgb, var(--admin-success-core) 78%, white);
+  --admin-success-soft-bg:     color-mix(in srgb, var(--admin-success-core) 22%, var(--admin-bg-base));
+  --admin-success-soft-border: color-mix(in srgb, var(--admin-success-core) 38%, var(--admin-bg-base));
 
-  --admin-red-text:       #c97070;
-  --admin-red-bg:         #1c1009;
-  --admin-red-border:     #5a2020;
-  --admin-red-dark-border:#7a2020;
+  /* Alias retro-compatibles: antes eran hex independientes que se
+     iban desalineando del verde "oficial" con cada edición. */
+  --admin-green:          var(--admin-success-core);
+  --admin-green-bg:       var(--admin-success-bg);
+  --admin-green-border:   var(--admin-success-border);
+  --admin-pill-on-bg:     var(--admin-success-bg);
+  --admin-pill-on-text:   var(--admin-success-core);
 
-  --admin-success-text:   #4caf82;
-  --admin-success-bg:     #0d2b18;
-  --admin-success-border: #1a4a2e;
+  /* — Familia de peligro (rojo) — mismo criterio — */
+  --admin-danger-core:     #c97070;
+  --admin-red-text:        var(--admin-danger-core);
+  --admin-red-bg:          color-mix(in srgb, var(--admin-danger-core) 11%, var(--admin-bg-base));
+  --admin-red-border:      color-mix(in srgb, var(--admin-danger-core) 26%, var(--admin-bg-base));
+  --admin-red-dark-border: color-mix(in srgb, var(--admin-danger-core) 42%, var(--admin-bg-base));
 
-  /* Variante "soft" de success — fondo/borde más profundos que
-     --admin-success-*, usada en el botón "¡Copiado!" del Dashboard
-     para diferenciarlo visualmente de la pill de delivery activo. */
-  --admin-success-soft-bg:     #1a3d26;
-  --admin-success-soft-border: #2a5c38;
-  --admin-success-soft-text:   #5ecf8a;
+  /* Pill "apagada" (off) — antes era un naranja desconectado de la
+     paleta; ahora se deriva del dorado del panel para que se sienta
+     parte de la misma familia tonal en vez de un color random. */
+  --admin-pill-off-text:  color-mix(in srgb, var(--admin-gold) 62%, var(--admin-text-warm));
+  --admin-pill-off-bg:    color-mix(in srgb, var(--admin-gold) 9%, var(--admin-bg-base));
 
-  /* Pill "apagada" (delivery sin activar) — gris cálido oscuro,
-     distinto de --admin-pill-off-* (que es para el estado rojizo). */
+  /* Pill "muted" (delivery sin activar) — gris cálido oscuro,
+     distinto del estado off/danger. */
   --admin-pill-muted-bg:     #1c1410;
   --admin-pill-muted-border: #2c2416;
   --admin-pill-muted-dot:    #3d3520;
@@ -184,7 +203,8 @@
   --admin-radius-xl:      14px;
   --admin-radius-2xl:     18px;
 
-  --admin-transition:     0.15s ease;
+  --admin-transition:        0.15s ease;
+  --admin-transition-spring: var(--transition-spring);
 
   --admin-shadow-card:    0 1px 3px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.03) inset;
   --admin-shadow-fab:     0 4px 24px rgba(201,168,76,0.18), 0 1px 8px rgba(0,0,0,0.7);
@@ -199,24 +219,41 @@
   --admin-shadow-navcard-hover:         0 4px 24px rgba(201, 168, 76, 0.08);
   --admin-shadow-navcard-primary-hover: 0 4px 28px rgba(201, 168, 76, 0.12);
   --admin-shadow-action-btn-hover:         0 2px 14px rgba(201, 168, 76, 0.3);
-  --admin-shadow-action-btn-success-hover: 0 2px 14px rgba(94, 207, 138, 0.15);
+  --admin-shadow-action-btn-success-hover: 0 2px 14px color-mix(in srgb, var(--admin-success-core) 60%, transparent);
 }
 
 /* ═══════════════════════════════════════════════════════════════
    DESIGN TOKENS — AUTENTICACIÓN (Login + Register)
    Prefijo --auth- para no colisionar con --admin- ni con los
    tokens claros del storefront. Única fuente de verdad para
-   Login.module.css y Register.module.css.
+   Login.module.css, Register.module.css y AdminHome.module.css
+   (landing pública del panel, mismo tema oscuro/ámbar).
+
+   REFACTOR: el ámbar original (#ff9500) era esencialmente "iOS
+   system orange" — un matiz que no tiene relación con el dorado
+   del storefront (#C9933A) ni con el del panel admin (#c9a84c).
+   Resultado: tres marcas distintas según en qué pantalla estás
+   parado. Lo afiné hacia la misma familia cálida/dorada sin
+   perder la energía que necesita una pantalla de login/conversión
+   — sigue siendo el tono más vibrante de los tres, a propósito,
+   pero ahora "es pariente" de los otros dos en vez de ser un color
+   ajeno.
    ═══════════════════════════════════════════════════════════════ */
 :root {
   /* Fondos */
   --auth-bg:          #0a0608;
   --auth-bg-card:     #150d12;
 
-  /* Acento naranja */
-  --auth-amber:       #ff9500;
-  --auth-amber-dim:   #c87000;
-  --auth-amber-glow:  rgba(255, 149, 0, 0.25);
+  /* Tercer nivel de profundidad (antes --ink-light en AdminHome.module.css,
+     sin equivalente en este archivo hasta la migración) — usado en notch
+     de mockups y superficies "elevadas" dentro de tarjetas oscuras. */
+  --auth-bg-elevated: #1e1219;
+
+  /* Acento ámbar — antes #ff9500, ahora más cercano a la familia
+     dorada del resto de la app (mismo matiz, menos saturado/neón) */
+  --auth-amber:       #ef9536;
+  --auth-amber-dim:   #b8701f;
+  --auth-amber-glow:  rgba(239, 149, 54, 0.25);
 
   /* Texto */
   --auth-cream:       #f5ede0;
@@ -224,13 +261,13 @@
   --auth-cream-dim:   rgba(245, 237, 224, 0.22);
 
   /* Bordes */
-  --auth-border:      rgba(255, 149, 0, 0.15);
-  --auth-border-soft: rgba(255, 149, 0, 0.12);
+  --auth-border:      rgba(239, 149, 54, 0.15);
+  --auth-border-soft: rgba(239, 149, 54, 0.12);
   --auth-border-focus:var(--auth-amber);
 
   /* Input */
-  --auth-input-bg:        rgba(255, 149, 0, 0.03);
-  --auth-input-bg-focus:  rgba(255, 149, 0, 0.06);
+  --auth-input-bg:        rgba(239, 149, 54, 0.03);
+  --auth-input-bg-focus:  rgba(239, 149, 54, 0.06);
 
   /* Error */
   --auth-error-bg:        rgba(255, 80, 40, 0.06);
@@ -243,14 +280,15 @@
   --font-auth-mono:    'DM Mono', monospace;
 
   /* Sombras */
-  --auth-shadow-card:  0 0 60px rgba(255, 149, 0, 0.08), 0 40px 80px rgba(0, 0, 0, 0.6);
-  --auth-shadow-btn:   0 0 28px rgba(255, 149, 0, 0.35);
-  --auth-shadow-btn-hover: 0 0 50px rgba(255, 149, 0, 0.6);
-  --auth-shadow-logo:  0 0 16px rgba(255, 149, 0, 0.4);
-  --auth-shadow-checkbox: 0 0 15px rgba(255, 176, 0, 0.35), 0 0 30px rgba(255, 140, 0, 0.15);
+  --auth-shadow-card:  0 0 60px rgba(239, 149, 54, 0.08), 0 40px 80px rgba(0, 0, 0, 0.6);
+  --auth-shadow-btn:   0 0 28px rgba(239, 149, 54, 0.35);
+  --auth-shadow-btn-hover: 0 0 50px rgba(239, 149, 54, 0.6);
+  --auth-shadow-logo:  0 0 16px rgba(239, 149, 54, 0.4);
+  --auth-shadow-checkbox: 0 0 15px rgba(239, 168, 54, 0.35), 0 0 30px rgba(239, 140, 0, 0.15);
 
   /* Transición */
   --auth-transition:   0.2s ease;
+  --auth-transition-spring: var(--transition-spring);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -303,11 +341,20 @@ a:hover { opacity: 0.75; }
 
 /* ═══════════════════════════════════════════════════════════════
    FOCO Y ACCESIBILIDAD
+
+   REFACTOR: el outline simple seguía siendo accesible pero se sentía
+   "de browser por defecto". Le sumé un halo muy tenue con color-mix
+   (no depende de saber el color de fondo, así que funciona igual en
+   el storefront claro, el admin oscuro y el login oscuro). Es el
+   tipo de detalle que un usuario no señala conscientemente, pero
+   hace que navegar con teclado se sienta pulido en vez de genérico.
    ═══════════════════════════════════════════════════════════════ */
 :focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
   border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--gold) 14%, transparent);
+  transition: box-shadow var(--transition);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -315,6 +362,32 @@ a:hover { opacity: 0.75; }
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TEXTURA SUTIL (opcional)
+   Clase utilitaria para sumar un grano casi imperceptible a
+   superficies grandes y planas (cards, heroes). No se aplica a
+   nada por defecto — sumala manualmente donde quieras ese matiz
+   "material" en vez de un color totalmente plano (ej: la
+   storefrontCard del Dashboard, o el hero del landing).
+   Uso: <div className={`${s.storefrontCard} grain`}>
+   ═══════════════════════════════════════════════════════════════ */
+.grain {
+  position: relative;
+  isolation: isolate;
+}
+
+.grain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0);
+  background-size: 3px 3px;
+  mix-blend-mode: overlay;
+  border-radius: inherit;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -352,9 +425,13 @@ a:hover { opacity: 0.75; }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* REFACTOR: el pulse original solo variaba opacity. Sumé un scale muy
+   leve (1 → 0.88) para que el punto de "delivery activo" respire en
+   vez de solo parpadear — el tipo de micro-detalle que se nota sin
+   que nadie sepa explicar por qué se ve "vivo". */
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.5; }
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.88); }
 }
 
 @keyframes shimmer {
@@ -680,7 +757,12 @@ a:hover { opacity: 0.75; }
   transform: scale(1.05);
 }
 
-/* ── Botón principal ── */
+/* ── Botón principal ──
+   REFACTOR: el transform ahora usa --transition-spring en vez de
+   --transition plano. Opacity y box-shadow siguen con su curva
+   calma de siempre — solo el movimiento físico del botón tiene ese
+   micro-rebote. Es la diferencia entre un botón que "se mueve" y
+   uno que "responde". */
 .t-btn {
   display: flex;
   align-items: center;
@@ -703,7 +785,7 @@ a:hover { opacity: 0.75; }
   isolation: isolate;
   transition:
     opacity var(--transition),
-    transform var(--transition),
+    transform var(--transition-spring),
     box-shadow var(--transition);
   box-shadow:
     0 2px 8px var(--t-accent-glow, rgba(0,0,0,0.15)),

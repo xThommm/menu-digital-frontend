@@ -1,6 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
    CONTENIDO PRINCIPAL
-   (el sidebar y el bottom nav ahora viven en DashboardLayout)
    ═══════════════════════════════════════════════════════════════ */
 .main {
   padding: var(--space-8) var(--space-6) var(--space-10);
