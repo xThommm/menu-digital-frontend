@@ -40,29 +40,29 @@ export default function UserDashboard() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-  if (isLoading) return; // espera a que se resuelva el estado de autenticación
-  if (!token) return; // evita el fetch con token undefined
-  const load = async () => {
-    try {
-      const res = await fetch("/api/users/me", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) return;
-      const json = await res.json();
-      setData({
-        businessName:  json.contactInfo?.businessName ?? "",
-        slug:          json.slug ?? "",
-        hasDelivery:   json.hasDelivery ?? false,
-        template:      json.template ?? 1,
-        itemCount:     json.itemCount ?? 0,
-        categoryCount: json.categoryCount ?? 0,
-      });
-    } catch {
-      // El dashboard sigue mostrándose aunque fallen los stats
-    }
-  };
-  load();
-}, [token, isLoading]); // ✅ ahora se re-ejecuta cuando token cambia
+    if (isLoading) return;
+    if (!token) return;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/users/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        setData({
+          businessName:  json.contactInfo?.businessName ?? "",
+          slug:          json.slug ?? "",
+          hasDelivery:   json.hasDelivery ?? false,
+          template:      json.template ?? 1,
+          itemCount:     json.itemCount ?? 0,
+          categoryCount: json.categoryCount ?? 0,
+        });
+      } catch {
+        // El dashboard sigue mostrándose aunque fallen los stats
+      }
+    };
+    load();
+  }, [token, isLoading]);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -90,117 +90,188 @@ export default function UserDashboard() {
   const displayName = data?.businessName;
 
   return (
-    <div className={s.dash}>
+    <div className={s.root}>
 
-      {/* ── Top bar ── */}
-      <header className={s.topBar}>
-        <div className={s.logoMark}>
-          <div className={s.logoSq}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="#0c0b09" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 2h1v6a3 3 0 0 0 6 0V2h1" />
-              <path d="M8 2v6" />
-              <path d="M15 2c0 4 3 5 3 9a3 3 0 0 1-6 0c0-4 3-5 3-9z" />
-              <path d="M8 22v-4" /><path d="M15 22v-4" /><path d="M5 22h14" />
-            </svg>
-          </div>
-          <span className={s.brandName}>
-            Menu<span className={s.brandAccent}>Digital</span>
-          </span>
-        </div>
+      {/* ── Sidebar (desktop) ─────────────────────────────────────────────── */}
+      <aside className={s.sidebar} aria-label="Navegación principal">
 
-        <button className={s.logoutBtn} onClick={handleLogout} aria-label="Cerrar sesión">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
+        {/* Logo */}
+        <div className={s.logoSq} role="img" aria-label="MenuDigital">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="#0c0b09" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 2h1v6a3 3 0 0 0 6 0V2h1" />
+            <path d="M8 2v6" />
+            <path d="M15 2c0 4 3 5 3 9a3 3 0 0 1-6 0c0-4 3-5 3-9z" />
+            <path d="M8 22v-4" /><path d="M15 22v-4" /><path d="M5 22h14" />
           </svg>
-          Salir
+        </div>
+
+        {/* Navegación */}
+        <nav className={s.sideNav}>
+          {/* Dashboard — activo */}
+          <button
+            className={`${s.sideBtn} ${s.sideBtnActive}`}
+            aria-label="Dashboard"
+            aria-current="page"
+            data-tooltip="Dashboard"
+          >
+            <HomeIcon />
+          </button>
+
+          <button
+            className={s.sideBtn}
+            onClick={() => navigate("/menu/editor")}
+            aria-label="Editor de menú"
+            data-tooltip="Editor de menú"
+          >
+            <DocIcon />
+          </button>
+
+          <button
+            className={s.sideBtn}
+            onClick={() => navigate("/user/editor")}
+            aria-label="Mi negocio"
+            data-tooltip="Mi negocio"
+          >
+            <StoreIcon />
+          </button>
+        </nav>
+
+        {/* Logout */}
+        <button
+          className={`${s.sideBtn} ${s.sideLogout}`}
+          onClick={handleLogout}
+          aria-label="Cerrar sesión"
+          data-tooltip="Salir"
+        >
+          <LogoutIcon />
         </button>
-      </header>
+      </aside>
 
-      {/* ── Bienvenida ── */}
-      <div className={s.welcome}>
-        <p className={s.welcomeEyebrow}>Bienvenido de vuelta</p>
-        <h1 className={s.welcomeTitle}>{displayName}</h1>
-      </div>
+      {/* ── Contenido principal ───────────────────────────────────────────── */}
+      <main className={s.main}>
 
-      {/* ── Tarjeta storefront ── */}
-      <div className={s.storefrontCard}>
-        <div className={s.storefrontTop}>
-          <div className={s.storefrontIcon} aria-hidden>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="2" y1="12" x2="22" y2="12" />
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-            </svg>
-          </div>
-          <span className={s.storefrontLabel}>Tu carta en línea</span>
+        {/* Bienvenida */}
+        <div className={s.welcome}>
+          <p className={s.welcomeEyebrow}>Bienvenido de vuelta</p>
+          <h1 className={s.welcomeTitle}>{displayName}</h1>
         </div>
 
-        <div className={s.urlRow}>
-          <span className={s.urlText}>
-            {publicUrl
-              ? publicUrl.replace(/^https?:\/\//, "")
-              : <span className={s.urlPlaceholder}>Configurá tu negocio para obtener tu link</span>
-            }
-          </span>
-        </div>
-
-        {publicUrl && (
-          <div className={s.storefrontActions}>
-            <button
-              className={`${s.actionBtn} ${copied ? s.actionBtnSuccess : ""}`}
-              onClick={handleCopy}
-            >
-              {copied ? <CheckIcon /> : <CopyIcon />}
-              {copied ? "¡Copiado!" : "Copiar link"}
-            </button>
-            <button className={`${s.actionBtn} ${s.actionBtnOutline}`} onClick={handleOpen}>
-              <ExternalIcon />
-              Ver página
-            </button>
+        {/* Tarjeta storefront */}
+        <div className={s.storefrontCard}>
+          <div className={s.storefrontTop}>
+            <div className={s.storefrontIcon} aria-hidden>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+              </svg>
+            </div>
+            <span className={s.storefrontLabel}>Tu carta en línea</span>
           </div>
-        )}
 
-        {data && (
-          <div className={s.statsPills}>
-            <StatPill icon={<MenuIcon />} value={data.itemCount}
-              label={data.itemCount === 1 ? "producto" : "productos"} />
-            <StatPill icon={<GridIcon />} value={data.categoryCount}
-              label={data.categoryCount === 1 ? "categoría" : "categorías"} />
-            <span className={`${s.deliveryPill} ${data.hasDelivery ? s.deliveryOn : s.deliveryOff}`}>
-              <span className={s.deliveryDot} />
-              {data.hasDelivery ? "Delivery activo" : "Sin delivery"}
+          <div className={s.urlRow}>
+            <span className={s.urlText}>
+              {publicUrl
+                ? publicUrl.replace(/^https?:\/\//, "")
+                : <span className={s.urlPlaceholder}>Configurá tu negocio para obtener tu link</span>
+              }
             </span>
           </div>
-        )}
-      </div>
 
-      {/* ── Cards de navegación ── */}
-      <div className={s.cards}>
-        <SpotlightCard
+          {publicUrl && (
+            <div className={s.storefrontActions}>
+              <button
+                className={`${s.actionBtn} ${copied ? s.actionBtnSuccess : ""}`}
+                onClick={handleCopy}
+              >
+                {copied ? <CheckIcon /> : <CopyIcon />}
+                {copied ? "¡Copiado!" : "Copiar link"}
+              </button>
+              <button className={`${s.actionBtn} ${s.actionBtnOutline}`} onClick={handleOpen}>
+                <ExternalIcon />
+                Ver página
+              </button>
+            </div>
+          )}
+
+          {data && (
+            <div className={s.statsPills}>
+              <StatPill icon={<MenuIcon />} value={data.itemCount}
+                label={data.itemCount === 1 ? "producto" : "productos"} />
+              <StatPill icon={<GridIcon />} value={data.categoryCount}
+                label={data.categoryCount === 1 ? "categoría" : "categorías"} />
+              <span className={`${s.deliveryPill} ${data.hasDelivery ? s.deliveryOn : s.deliveryOff}`}>
+                <span className={s.deliveryDot} />
+                {data.hasDelivery ? "Delivery activo" : "Sin delivery"}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Cards de navegación */}
+        <div className={s.cards}>
+          <SpotlightCard
+            onClick={() => navigate("/menu/editor")}
+            icon={<DocIcon />}
+            title="Editor de menú"
+            desc="Platos, precios, categorías y disponibilidad."
+            primary
+          />
+          <SpotlightCard
+            onClick={() => navigate("/user/editor")}
+            icon={<StoreIcon />}
+            title="Mi negocio"
+            desc="Datos de contacto, fotos y apariencia."
+          />
+        </div>
+      </main>
+
+      {/* ── Bottom nav (mobile) ───────────────────────────────────────────── */}
+      <nav className={s.bottomNav} aria-label="Navegación principal">
+        <button
+          className={`${s.bottomNavBtn} ${s.bottomNavBtnActive}`}
+          aria-label="Dashboard"
+          aria-current="page"
+        >
+          <span className={s.bottomNavIcon}><HomeIcon /></span>
+          Inicio
+        </button>
+
+        <button
+          className={s.bottomNavBtn}
           onClick={() => navigate("/menu/editor")}
-          icon={<DocIcon />}
-          title="Editor de menú"
-          desc="Platos, precios, categorías y disponibilidad."
-          primary
-        />
-        <SpotlightCard
+          aria-label="Editor de menú"
+        >
+          <span className={s.bottomNavIcon}><DocIcon /></span>
+          Menú
+        </button>
+
+        <button
+          className={s.bottomNavBtn}
           onClick={() => navigate("/user/editor")}
-          icon={<StoreIcon />}
-          title="Mi negocio"
-          desc="Datos de contacto, fotos y apariencia."
-        />
-      </div>
+          aria-label="Mi negocio"
+        >
+          <span className={s.bottomNavIcon}><StoreIcon /></span>
+          Negocio
+        </button>
+
+        <button
+          className={s.bottomNavBtn}
+          onClick={handleLogout}
+          aria-label="Cerrar sesión"
+        >
+          <span className={s.bottomNavIcon}><LogoutIcon /></span>
+          Salir
+        </button>
+      </nav>
 
     </div>
   );
 }
 
-// ── SpotlightCard — card con luz que sigue al cursor ─────────────────────────
+// ── SpotlightCard ─────────────────────────────────────────────────────────────
 
 interface NavCardProps {
   onClick: () => void;
@@ -250,6 +321,16 @@ function StatPill({ icon, value, label }: { icon: React.ReactNode; value: number
 
 // ── Íconos ────────────────────────────────────────────────────────────────────
 
+function HomeIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
+}
+
 function CopyIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -282,7 +363,7 @@ function ExternalIcon() {
 
 function DocIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
@@ -295,10 +376,21 @@ function DocIcon() {
 
 function StoreIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
       <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
+}
+
+function LogoutIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   );
 }

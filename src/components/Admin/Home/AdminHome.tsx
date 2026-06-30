@@ -474,6 +474,7 @@ useEffect(() => {
     <li><a href="#how">Cómo funciona</a></li>
     <li><a href="#features">Funciones</a></li>
     <li><a href="#reviews">Clientes</a></li>
+    <li><a href="#about">Quiénes somos</a></li>
   </ul>
  
   {/* Actions — ocultos en mobile, sin cambios en desktop */}
@@ -700,7 +701,7 @@ useEffect(() => {
         </section>
 
         {/* ── ABOUT ── */}
-        <section className={styles.about}>
+        <section className={styles.about} id="about">
           <div className={styles.aboutInner}>
             <div className={`${styles.aboutText} ${styles.reveal}`}>
               <div className={styles.eyebrow}>Quiénes somos</div>
