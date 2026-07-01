@@ -360,7 +360,6 @@ export default function HomePage() {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(
   PLANS.find((p) => p.id === "anual") ?? null
 );
-  const [paying, setPaying] = useState(false);
   const [visible, setVisible] = useState(false);
 
   // Stat counters
@@ -414,35 +413,13 @@ export default function HomePage() {
   };
 }, [menuOpen]);
 
-  const handlePay = async (plan: Plan) => {
-    setPaying(true);
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/payments/crear-preferencia`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planId: plan.id }),
-        }
-      );
-
-      if (plan.id === "gratis") {
-  window.location.href = "/register";  
-  return;
-}
-
-      if (!res.ok) throw new Error("Error al crear la preferencia");
-
-      const { init_point } = await res.json() as { init_point: string };
-        window.location.href = init_point;
-
-      // Redirigir a MercadoPago — MP devuelve a /register si el pago es exitoso
-      window.location.href = init_point;
-    } catch (err) {
-      console.error("Error en el pago:", err);
-      alert("Hubo un problema al iniciar el pago. Intentá de nuevo.");
-      setPaying(false);
-    }
+  // Toda cuenta arranca gratis. El cobro real (MercadoPago) solo se dispara
+  // desde adentro del panel, ya logueado, cuando el usuario quiere mejorar
+  // su plan — ahí el backend sabe a quién asociarle el pago
+  // (crear-preferencia requiere auth, ver paymentRoutes.js). Por eso, sin
+  // importar el plan que elija acá, primero se registra.
+  const goRegister = () => {
+    window.location.href = "/register";
   };
 
   // Detectar si viene de un pago fallido/cancelado en MP
@@ -825,22 +802,12 @@ useEffect(() => {
               </div>
               <button
   className={styles.payBtn}
-  disabled={paying}
-  onClick={() => {
-  if (!selectedPlan) return;
-  if (selectedPlan.id === "gratis") {
-    window.location.href = "/register";  // 👈 solo la ruta del frontend
-    return;
-  }
-  handlePay(selectedPlan);
-}}
+  onClick={goRegister}
 >
-  {paying ? (
-    <><div className={styles.spinner} /> Procesando pago...</>
-  ) : selectedPlan?.id === "gratis" ? (
-    <>Continuar con plan gratuito →</>   // s
+  {selectedPlan?.id === "gratis" ? (
+    <>Continuar con plan gratuito →</>
   ) : (
-    <>Pagar con MercadoPago →</>
+    <>Crear cuenta y elegir plan →</>
   )}
 </button>
               <div className={styles.paySafe}>🔒 Pago seguro · Tus datos están protegidos</div>
