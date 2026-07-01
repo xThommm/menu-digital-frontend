@@ -1,14 +1,4 @@
 /* ═══════════════════════════════════════════════════════════════
-   CONTENIDO PRINCIPAL
-   ═══════════════════════════════════════════════════════════════ */
-.main {
-  padding: var(--space-8) var(--space-6) var(--space-10);
-  display: flex;
-  flex-direction: column;
-  max-width: 580px;
-}
-
-/* ═══════════════════════════════════════════════════════════════
    BIENVENIDA
    ═══════════════════════════════════════════════════════════════ */
 .welcome {
@@ -367,10 +357,141 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   VISTA PREVIA EN VIVO (PreviewCard)
+   ═══════════════════════════════════════════════════════════════ */
+.previewCard {
+  margin-top: var(--space-6);
+  border: 0.5px solid var(--admin-border-subtle);
+  border-radius: var(--admin-radius-2xl);
+  background: var(--admin-bg-raised);
+  overflow: hidden;
+  animation: fadeUp 0.45s var(--ease-out) both;
+  animation-delay: 0.35s;
+  transition: border-color var(--transition-md);
+}
+
+.previewCard:hover {
+  border-color: var(--admin-border-gold-mid);
+}
+
+.previewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 0.5px solid var(--admin-border-subtle);
+}
+
+.previewLabel {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--admin-text-muted);
+}
+
+.previewControls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.previewToggle {
+  display: flex;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 2px;
+}
+
+.previewToggleBtn {
+  border: none;
+  background: transparent;
+  color: var(--admin-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  padding: 0.35rem var(--space-3);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background var(--admin-transition), color var(--admin-transition);
+}
+
+.previewToggleBtn:hover:not(.previewToggleBtnActive) {
+  color: var(--admin-text-warm);
+}
+
+.previewToggleBtnActive {
+  background: var(--admin-gold);
+  color: var(--admin-bg-base);
+  font-weight: 600;
+}
+
+.previewRefreshBtn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  border: 0.5px solid var(--admin-border-default);
+  background: none;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  transition: color var(--admin-transition), border-color var(--admin-transition), background var(--admin-transition), transform var(--transition);
+}
+
+.previewRefreshBtn:hover {
+  color: var(--admin-gold);
+  border-color: var(--admin-border-gold-mid);
+  background: var(--admin-gold-glow);
+}
+
+.previewRefreshBtn:active {
+  transform: scale(0.92);
+}
+
+.previewViewport {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-6);
+  background: radial-gradient(circle at 50% 0%, var(--admin-gold-glow) 0%, transparent 60%);
+}
+
+.previewFrameWrap {
+  position: relative;
+  border-radius: var(--admin-radius-xl);
+  overflow: hidden;
+  box-shadow: var(--admin-shadow-card-rest);
+  border: 0.5px solid var(--admin-border-subtle);
+}
+
+.previewIframe {
+  border: none;
+  transform-origin: top left;
+  display: block;
+  background: var(--admin-bg-base);
+}
+
+.previewSkeleton {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    var(--admin-bg-raised) 30%,
+    var(--admin-bg-elevated) 50%,
+    var(--admin-bg-raised) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 599px) {
   .main {
+    margin-left: 0;
     padding: var(--space-5) var(--space-4) var(--space-10);
     max-width: 100%;
   }
@@ -378,19 +499,7 @@
 
 /* Respeta preferencia de movimiento reducido */
 @media (prefers-reduced-motion: reduce) {
-  .welcome, .storefrontCard, .cards { animation: none; }
+  .welcome, .storefrontCard, .cards, .previewCard { animation: none; }
   .deliveryOn .deliveryDot { animation: none; }
-}
-
-  /* El contenido ocupa todo el ancho */
-  .main {
-    margin-left: 0;
-    padding: var(--space-5) var(--space-4) calc(72px + var(--space-4));
-    max-width: 100%;
-  }
-
-/* Respeta preferencia de movimiento reducido */
-@media (prefers-reduced-motion: reduce) {
-  .welcome, .storefrontCard, .cards { animation: none; }
-  .deliveryOn .deliveryDot { animation: none; }
+  .previewSkeleton { animation: none; }
 }

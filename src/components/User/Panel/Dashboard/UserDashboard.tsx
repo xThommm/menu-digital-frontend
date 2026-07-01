@@ -165,6 +165,9 @@ export default function UserDashboard() {
             desc="Datos de contacto, fotos y apariencia."
           />
         </div>
+
+        {/* Vista previa en vivo */}
+        <PreviewCard url={publicUrl} />
       </main>
     </div>
   );
@@ -204,6 +207,100 @@ function SpotlightCard({ onClick, icon, title, desc, primary }: NavCardProps) {
         <polyline points="12 5 19 12 12 19" />
       </svg>
     </button>
+  );
+}
+
+// ── PreviewCard ────────────────────────────────────────────────────────────────
+
+interface PreviewCardProps {
+  url: string | null;
+}
+
+function PreviewCard({ url }: PreviewCardProps) {
+  const [mode, setMode] = useState<"mobile" | "desktop">("mobile");
+  const [scale, setScale] = useState(1);
+  const [loaded, setLoaded] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  const DEVICE = mode === "mobile" ? { w: 390, h: 844 } : { w: 1280, h: 800 };
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    // No llamamos a setScale directamente acá: el ResizeObserver dispara su
+    // callback en cuanto lo suscribimos con observe(), de forma asíncrona.
+    // Así el setState queda dentro de la suscripción a un sistema externo,
+    // en vez de ser una llamada síncrona en el cuerpo del efecto.
+    const ro = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? el.clientWidth;
+      setScale(Math.min(width / DEVICE.w, 1));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [DEVICE.w]);
+
+  // Reseteamos `loaded` cuando cambia el modo, la url o se fuerza un reload.
+  // En vez de un useEffect que llame a setLoaded de forma síncrona (lo que
+  // dispara un render en cascada evitable), lo resolvemos durante el propio
+  // render comparando contra la key anterior, tal como recomienda React para
+  // "ajustar estado cuando cambia algo" sin pasar por un efecto.
+  const frameKey = `${mode}|${url}|${reloadKey}`;
+  const [prevFrameKey, setPrevFrameKey] = useState(frameKey);
+  if (frameKey !== prevFrameKey) {
+    setPrevFrameKey(frameKey);
+    setLoaded(false);
+  }
+
+  if (!url) return null;
+
+  return (
+    <div className={s.previewCard}>
+      <div className={s.previewHeader}>
+        <span className={s.previewLabel}>Vista previa</span>
+        <div className={s.previewControls}>
+          <div className={s.previewToggle}>
+            <button
+              className={`${s.previewToggleBtn} ${mode === "mobile" ? s.previewToggleBtnActive : ""}`}
+              onClick={() => setMode("mobile")}
+            >
+              Móvil
+            </button>
+            <button
+              className={`${s.previewToggleBtn} ${mode === "desktop" ? s.previewToggleBtnActive : ""}`}
+              onClick={() => setMode("desktop")}
+            >
+              Escritorio
+            </button>
+          </div>
+          <button
+            className={s.previewRefreshBtn}
+            onClick={() => setReloadKey((k) => k + 1)}
+            aria-label="Actualizar vista previa"
+            title="Actualizar"
+          >
+            <RefreshIcon />
+          </button>
+        </div>
+      </div>
+
+      <div ref={wrapRef} className={s.previewViewport}>
+        <div
+          className={s.previewFrameWrap}
+          style={{ width: DEVICE.w * scale, height: DEVICE.h * scale }}
+        >
+          {!loaded && <div className={s.previewSkeleton} />}
+          <iframe
+            key={reloadKey}
+            src={url}
+            title="Vista previa de tu carta"
+            className={s.previewIframe}
+            style={{ width: DEVICE.w, height: DEVICE.h, transform: `scale(${scale})` }}
+            onLoad={() => setLoaded(true)}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -295,6 +392,17 @@ function GridIcon() {
       <rect x="14" y="3" width="7" height="7" />
       <rect x="14" y="14" width="7" height="7" />
       <rect x="3" y="14" width="7" height="7" />
+    </svg>
+  );
+}
+
+function RefreshIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
     </svg>
   );
 }

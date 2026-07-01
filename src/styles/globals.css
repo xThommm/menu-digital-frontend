@@ -888,17 +888,22 @@ a:hover { opacity: 0.75; }
   line-height: 1.5;
 }
 
-/* ── Desktop: centrar y limitar ancho en pantallas grandes ── */
+/* ── Desktop: ocupar toda la pantalla, pero mantener el texto legible ── */
 @media (min-width: 768px) {
-  .t-wrap {
+  .t-body {
     max-width: 680px;
     margin: 0 auto;
-    min-height: 100vh;
-    box-shadow: 0 0 0 0.5px var(--t-border), 0 32px 80px rgba(0,0,0,0.18);
+    padding: var(--space-8);
   }
 
-  .t-body {
-    padding: var(--space-8) var(--space-8);
+  .t-hero-content {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  .t-header {
+    max-width: 680px;
+    margin: 0 auto;
   }
 
   .t-gallery {
