@@ -5,7 +5,7 @@ import type { User, ContactInfo } from "../../../../types/index";
 
 // ── Tokens por template ───────────────────────────────────────────────────────
 
-type TemplateId = 1 | 2 | 3 | 4 | 5;
+type TemplateId = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 interface TemplateTokens {
   heroClass: string;
@@ -23,6 +23,7 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
   1: {
     showDeliveryRow: false,
     heroClass: styles.heroT1,
+    overlayClass: styles.overlayT1,
     titleClass: "t-title",
     galleryRadius: "10px",
     btnLabel: "Ver menú",
@@ -48,6 +49,7 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
   4: {
     showDeliveryRow: false,
     heroClass: styles.heroT4,
+    overlayClass: styles.overlayT4,
     titleClass: "t-title",
     galleryRadius: "8px",
     btnLabel: "Ver menú",
@@ -56,8 +58,27 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
   5: {
     showDeliveryRow: false,
     heroClass: styles.heroT5,
+    overlayClass: styles.overlayT5,
     titleClass: "t-title-sans",
     galleryRadius: "8px",
+    btnLabel: "Ver menú",
+    useAvatar: false,
+  },
+  6: {
+    showDeliveryRow: false,
+    heroClass: styles.heroT6,
+    overlayClass: styles.overlayT6,
+    titleClass: "t-title",
+    galleryRadius: "14px",
+    btnLabel: "Ver menú",
+    useAvatar: false,
+  },
+  7: {
+    showDeliveryRow: false,
+    heroClass: styles.heroT7,
+    overlayClass: styles.overlayT7,
+    titleClass: "t-title",
+    galleryRadius: "6px",
     btnLabel: "Ver menú",
     useAvatar: false,
   },
@@ -244,14 +265,24 @@ interface ContactListProps {
   showDeliveryRow: boolean;
 }
 
+// Los campos de redes sociales a veces se cargan con "@" adelante (el
+// placeholder del formulario lo sugiere) y a veces sin él. Normalizamos
+// acá, en el punto de uso, para que el texto no muestre "@@usuario" y el
+// link no quede roto sin importar cómo se haya guardado el dato.
+const stripHandle = (handle: string) => handle.trim().replace(/^@/, "");
+
 function ContactList({ info, hasDelivery, showDeliveryRow }: ContactListProps) {
+  const instagram = info.social?.instagram ? stripHandle(info.social.instagram) : "";
+  const facebook  = info.social?.facebook  ? stripHandle(info.social.facebook)  : "";
+
   // Si no hay ningún dato de contacto, no renderizamos un contenedor vacío
   // (evita un hueco de espaciado sin contenido).
   const hasAnyInfo =
     info.address ||
     info.number ||
     info.mail ||
-    info.social?.instagram ||
+    instagram ||
+    facebook ||
     (showDeliveryRow && hasDelivery);
 
   if (!hasAnyInfo) return null;
@@ -273,11 +304,18 @@ function ContactList({ info, hasDelivery, showDeliveryRow }: ContactListProps) {
           href={`mailto:${info.mail}`}
         />
       )}
-      {info.social?.instagram && (
+      {instagram && (
         <InfoRow
           icon={<InstagramIcon />}
-          text={`@${info.social.instagram}`}
-          href={`https://instagram.com/${info.social.instagram}`}
+          text={`@${instagram}`}
+          href={`https://instagram.com/${instagram}`}
+        />
+      )}
+      {facebook && (
+        <InfoRow
+          icon={<FacebookIcon />}
+          text={facebook}
+          href={`https://facebook.com/${facebook}`}
         />
       )}
       {showDeliveryRow && hasDelivery && (
@@ -534,6 +572,23 @@ function InstagramIcon() {
       <rect x="2" y="2" width="20" height="20" rx="5" />
       <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37Z" />
       <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+    </svg>
+  );
+}
+
+function FacebookIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
     </svg>
   );
 }

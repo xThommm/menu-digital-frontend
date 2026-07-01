@@ -212,8 +212,8 @@
 }
 
 .termsLabel input:checked + .customCheckbox {
-  background: linear-gradient(135deg, #ffb000, #ff8c00);
-  border-color: #ffb000;
+  background: var(--auth-checkbox-gradient);
+  border-color: var(--auth-checkbox-border);
   box-shadow: var(--auth-shadow-checkbox);
 }
 

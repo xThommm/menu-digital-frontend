@@ -17,23 +17,22 @@
   animation: t-fadeIn 0.3s ease both;
 }
 
-@keyframes homeShimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
+/* La animación "shimmer" (posición de fondo -200% → 200%) vive en
+   globals.css — no la redeclaramos acá para que quede un único lugar
+   si mañana se ajusta el timing. */
 
 .skelBox {
   border-radius: 6px;
   background: linear-gradient(100deg, #1a1712 30%, #2a2419 50%, #1a1712 70%);
   background-size: 200% 100%;
-  animation: homeShimmer 1.6s ease-in-out infinite;
+  animation: shimmer 1.6s ease-in-out infinite;
 }
 
 .heroSkeleton {
   height: clamp(200px, 32vw, 320px);
   background: linear-gradient(100deg, #15130f 30%, #211d15 50%, #15130f 70%);
   background-size: 200% 100%;
-  animation: homeShimmer 1.6s ease-in-out infinite;
+  animation: shimmer 1.6s ease-in-out infinite;
 }
 
 .bodySkeleton {
@@ -94,33 +93,30 @@
 /* ── Alturas de hero por template ──
    Fluid: en mobile más compacto, en desktop crece.
    clamp(min, preferred, max)
+   Nota: no hay .heroT2 — el template 2 usa el layout con avatar
+   (useAvatar: true en TEMPLATE_TOKENS) y nunca renderiza un .t-hero.
    ─────────────────────────────── */
 .heroT1 { height: clamp(200px, 32vw, 320px); }
-.heroT2 { height: clamp(180px, 28vw, 280px); }
 .heroT3 { height: clamp(160px, 26vw, 260px); }
 .heroT4 { height: clamp(180px, 28vw, 300px); }
 .heroT5 { height: clamp(160px, 24vw, 240px); }
+.heroT6 { height: clamp(200px, 30vw, 300px); }
+.heroT7 { height: clamp(220px, 34vw, 340px); }
 
 /* ── Overlays de hero por template ──
    Los !important son necesarios aquí porque sobreescriben
    el gradiente genérico definido en .t-hero-overlay de globals.css.
-   Es el único lugar donde están justificados.
+   Es el único lugar donde están justificados. El tono intermedio y el
+   final del gradiente son siempre --t-bg del template correspondiente
+   (a distinta opacidad) — así que referenciamos el token en vez de
+   repetir el hex de [data-template="N"] en globals.css.
    ──────────────────────────────────── */
 .overlayT1 {
   background: linear-gradient(
     to bottom,
     transparent 15%,
-    rgba(11, 10, 8, 0.55) 55%,
-    #0b0a08 100%
-  ) !important;
-}
-
-.overlayT2 {
-  background: linear-gradient(
-    to bottom,
-    transparent 15%,
-    rgba(13, 17, 23, 0.55) 55%,
-    #0d1117 100%
+    color-mix(in srgb, var(--t-bg) 55%, transparent) 55%,
+    var(--t-bg) 100%
   ) !important;
 }
 
@@ -128,8 +124,8 @@
   background: linear-gradient(
     to bottom,
     transparent 25%,
-    rgba(242, 246, 239, 0.70) 60%,
-    #f2f6ef 100%
+    color-mix(in srgb, var(--t-bg) 70%, transparent) 60%,
+    var(--t-bg) 100%
   ) !important;
 }
 
@@ -137,8 +133,8 @@
   background: linear-gradient(
     to bottom,
     transparent 15%,
-    rgba(17, 6, 6, 0.60) 55%,
-    #110606 100%
+    color-mix(in srgb, var(--t-bg) 60%, transparent) 55%,
+    var(--t-bg) 100%
   ) !important;
 }
 
@@ -146,8 +142,27 @@
   background: linear-gradient(
     to bottom,
     transparent 25%,
-    rgba(255, 255, 255, 0.65) 60%,
-    #ffffff 100%
+    color-mix(in srgb, var(--t-bg) 65%, transparent) 60%,
+    var(--t-bg) 100%
+  ) !important;
+}
+
+/* ── Templates premium (6-7) ── */
+.overlayT6 {
+  background: linear-gradient(
+    to bottom,
+    transparent 20%,
+    color-mix(in srgb, var(--t-bg) 60%, transparent) 58%,
+    var(--t-bg) 100%
+  ) !important;
+}
+
+.overlayT7 {
+  background: linear-gradient(
+    to bottom,
+    transparent 10%,
+    color-mix(in srgb, var(--t-bg) 65%, transparent) 50%,
+    var(--t-bg) 100%
   ) !important;
 }
 

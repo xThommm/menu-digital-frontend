@@ -602,6 +602,40 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  position: relative;
+}
+
+/* ── Template premium bloqueado ── */
+.templateCard.locked {
+  cursor: pointer; /* sigue siendo clickeable: abre el modal de upsell */
+}
+
+.templateCard.locked .templatePreview {
+  opacity: 0.55;
+}
+
+.templateLockOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--admin-gold);
+  backdrop-filter: blur(1.5px);
+  -webkit-backdrop-filter: blur(1.5px);
+}
+
+.templatePro {
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--admin-gold-glow);
+  color: var(--admin-gold);
+  border: 0.5px solid var(--admin-border-gold-mid);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 600;
 }
 
 .templateBar {
@@ -703,4 +737,129 @@
   .galleryItem img {
     transition: none;
   }
+
+  .modalOverlay,
+  .modal {
+    animation: none;
+  }
+}
+
+/* ── Modal: template premium bloqueado ──
+   Mismo lenguaje visual que el modal de confirmación de MenuEditor
+   (overlay + card centrada), con un botón de upgrade en vez de danger. */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1.25rem;
+  animation: fadeIn 0.15s ease;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.modal {
+  background: #171512;
+  border: 0.5px solid var(--admin-border-warm);
+  border-radius: var(--admin-radius-2xl);
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+  animation: scaleIn 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modalIcon {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--admin-gold-glow);
+  color: var(--admin-gold);
+  border: 0.5px solid var(--admin-border-gold-mid);
+}
+
+.modalTitle {
+  font-size: 0.97rem;
+  font-weight: 500;
+  color: var(--admin-text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.modalDesc {
+  font-size: 0.8rem;
+  color: var(--admin-text-muted);
+  margin-bottom: 1.25rem;
+  line-height: 1.65;
+}
+
+.modalBtns {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.modalCancel {
+  flex: 1;
+  background: var(--admin-bg-raised);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  padding: 0.72rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.88rem;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  transition: background var(--admin-transition), color var(--admin-transition), border-color var(--admin-transition);
+}
+
+.modalCancel:hover {
+  background: var(--admin-bg-elevated);
+  border-color: var(--admin-border-warm);
+  color: var(--admin-text-secondary);
+}
+
+.modalCancel:focus-visible {
+  outline: 2px solid var(--admin-border-warm);
+  outline-offset: 2px;
+}
+
+.modalUpgrade {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--admin-gold);
+  border: none;
+  border-radius: var(--admin-radius-md);
+  padding: 0.72rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--admin-bg-base);
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.1s ease;
+}
+
+.modalUpgrade:hover {
+  background: var(--admin-gold-hover);
+}
+
+.modalUpgrade:active {
+  transform: scale(0.98);
+}
+
+.modalUpgrade:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
 }

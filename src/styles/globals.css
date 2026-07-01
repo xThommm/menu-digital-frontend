@@ -286,6 +286,14 @@
   --auth-shadow-logo:  0 0 16px rgba(239, 149, 54, 0.4);
   --auth-shadow-checkbox: 0 0 15px rgba(239, 168, 54, 0.35), 0 0 30px rgba(239, 140, 0, 0.15);
 
+  /* Checkbox marcado (Login "recordarme", Register "acepto términos") —
+     antes duplicado como el mismo hex suelto en Login.module.css y
+     Register.module.css. Deliberadamente más vívido/saturado que
+     --auth-amber (necesita leerse como un check "activo" a simple
+     vista), así que es su propio token en vez de reusar --auth-amber. */
+  --auth-checkbox-gradient: linear-gradient(135deg, #ffb000, #ff8c00);
+  --auth-checkbox-border:   #ffb000;
+
   /* Transición */
   --auth-transition:   0.2s ease;
   --auth-transition-spring: var(--transition-spring);
@@ -580,6 +588,60 @@ a:hover { opacity: 0.75; }
   --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #ffffff 90%);
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   TEMPLATES PREMIUM — solo disponibles con un plan pago.
+   Mismo sistema .t-* que el resto: ningún componente nuevo, solo
+   tokens más ricos (fondo con degradé vía --t-bg-image, botón con
+   sheen metálico vía --t-btn-bg). Ver PREMIUM_TEMPLATE_IDS en
+   UserEditor.tsx para el gating.
+   ───────────────────────────────────────────────────────────────── */
+
+/* Template 6 — Aurora (degradé cálido marfil/blush, look boutique) */
+[data-template="6"] {
+  --t-bg:          #efddc9;
+  --t-bg-image:    linear-gradient(165deg, #fdf6ec 0%, #f5e2cd 45%, #ecd3ba 100%);
+  --t-surface:     #fbf4ea;
+  --t-surface-2:   #f3e6d4;
+  --t-border:      #e6d2b8;
+  --t-border-md:   #d4b98f;
+  --t-text:        #5c4a37;
+  --t-title:       #3a2c1e;
+  --t-muted:       #8f7860;
+  --t-accent:      #a8703f;
+  --t-accent-soft: rgba(168, 112, 63, 0.10);
+  --t-accent-glow: rgba(168, 112, 63, 0.22);
+  --t-btn-text:    #fbf4ea;
+  --t-btn-bg:      linear-gradient(135deg, #c99566 0%, #a8703f 45%, #d9ac78 100%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #efddc9 90%);
+}
+
+/* Template 7 — Noir Gold (negro absoluto + foil dorado, alta gama) */
+[data-template="7"] {
+  --t-bg:          #08070a;
+  --t-surface:     #111014;
+  --t-surface-2:   #17151b;
+  --t-border:      #242029;
+  --t-border-md:   #3a3340;
+  --t-text:        #d9cfc0;
+  --t-title:       #f2e8d8;
+  --t-muted:       #6b6470;
+  --t-accent:      #d4af37;
+  --t-accent-soft: rgba(212, 175, 55, 0.08);
+  --t-accent-glow: rgba(212, 175, 55, 0.24);
+  --t-btn-text:    #0c0a06;
+  --t-btn-bg:      linear-gradient(135deg, #e8c96a 0%, #d4af37 45%, #f0d989 100%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 15%, #08070a 90%);
+}
+
+/* Noir Gold: título con leve resplandor dorado y tracking más ajustado
+   — el tipo de detalle "fine dining" que distingue un template premium
+   de simplemente cambiarle los colores a uno base. Escopeado solo a
+   este template para no afectar a .t-title en el resto. */
+[data-template="7"] .t-title {
+  letter-spacing: 0.005em;
+  text-shadow: 0 2px 24px color-mix(in srgb, var(--t-accent) 35%, transparent);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    COMPONENTES DE TEMPLATE — .t-*
    Viven aquí para que no haya necesidad de :global() en módulos
@@ -587,7 +649,12 @@ a:hover { opacity: 0.75; }
 
 .t-wrap {
   min-height: 100vh;
-  background: var(--t-bg);
+  background-color: var(--t-bg);
+  /* --t-bg-image es opcional (default: none) — los templates premium lo usan
+     para un fondo con gradiente sutil. --t-bg se mantiene siempre como color
+     sólido "representativo" porque se reusa en color-mix()/overlays, donde
+     un gradiente no es un <color> válido. */
+  background-image: var(--t-bg-image, none);
   color: var(--t-text);
   font-family: var(--font-sans);
   font-size: var(--text-base);
@@ -769,7 +836,9 @@ a:hover { opacity: 0.75; }
   justify-content: center;
   gap: var(--space-2);
   width: 100%;
-  background: var(--t-accent);
+  /* --t-btn-bg es opcional (default: --t-accent, color sólido de siempre).
+     Los templates premium lo pisan con un degradé metálico. */
+  background: var(--t-btn-bg, var(--t-accent));
   color: var(--t-btn-text);
   border: none;
   border-radius: var(--radius-lg);

@@ -65,6 +65,12 @@ export default function MenuPage() {
     ];
   }, [menu]);
 
+  // Un tab "visible" tiene al menos un item no oculto. Se usa tanto para
+  // decidir qué botón de pestaña mostrar como para saltar automáticamente
+  // si la pestaña activa se queda sin productos (ej: se ocultó todo).
+  const hasVisibleItems = (tab: Tab) =>
+    tab.categorias.some(cat => cat.items.some(it => !it.hidden));
+
   // Referencias para manejar foco y scroll entre tabs.
   const contentRef = useRef<HTMLDivElement>(null);
   const tabRefs     = useRef<(HTMLButtonElement | null)[]>([]);
@@ -106,11 +112,16 @@ export default function MenuPage() {
     );
   }
 
- // Funcion ligera para chequear si los tabs tienen al menos un item visible. Si no, no se muestra el tab (aunque se mantiene la estructura de tabs para no romper la navegación por teclado ni el orden lógico del menú).
- const hasVisibleItems = (tab: Tab) => {
-   return tab.categorias.some(cat => cat.items.some(it => !it.hidden));
- };
-
+  // Si la pestaña activa se quedó sin productos visibles (ej: se ocultó
+  // todo), saltamos a la primera que sí tenga — evita una pantalla en
+  // blanco sin ninguna pestaña resaltada. Ajuste de estado durante el
+  // render (no en un efecto) para no disparar un render en cascada.
+  if (!hasVisibleItems(tabs[activeTab])) {
+    const firstVisible = tabs.findIndex(hasVisibleItems);
+    if (firstVisible !== -1 && firstVisible !== activeTab) {
+      setActiveTab(firstVisible);
+    }
+  }
 
   const info       = user.contactInfo;
   const currentTab = tabs[activeTab] ?? tabs[0];
@@ -163,16 +174,13 @@ export default function MenuPage() {
 
       {/* ── Contenido del tab activo ── */}
       {/* key=activeTab fuerza re-animación de entrada al cambiar de tab,
-          sin desmontar el <main> en sí (mantiene el ref y el scroll estables). 
-          No mostrar un tab si no hay items activos*/
-          }
-       {totalItems !== 0 && (
-         <main
-          ref={contentRef}
-          id="mp-tabpanel"
-          role="tabpanel"
-          aria-labelledby={`mp-tab-${activeTab}`}
-          className={styles.mpContent}
+          sin desmontar el <main> en sí (mantiene el ref y el scroll estables). */}
+      <main
+        ref={contentRef}
+        id="mp-tabpanel"
+        role="tabpanel"
+        aria-labelledby={`mp-tab-${activeTab}`}
+        className={styles.mpContent}
         key={activeTab}
       >
         {totalItems === 0 ? (
@@ -192,7 +200,7 @@ export default function MenuPage() {
             );
           })
         )}
-      </main>)}
+      </main>
 
     </div>
   );

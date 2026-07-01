@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "../../../../context/useAuth";
+import type { Subscription } from "../../../../types/index";
 import styles from "./UserEditor.module.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -27,12 +28,17 @@ const EMPTY_FORM: FormState = {
 };
 
 const TEMPLATES = [
-  { id: 1, name: "Clásico",  color: "#1a1714", accent: "#c9a84c" },
-  { id: 2, name: "Moderno",  color: "#0d1117", accent: "#58a6ff" },
-  { id: 3, name: "Natural",  color: "#1a2a1a", accent: "#4caf82" },
-  { id: 4, name: "Rojo",     color: "#1a0a0a", accent: "#e05555" },
-  { id: 5, name: "Minimal",  color: "#f5f5f5", accent: "#222222" },
+  { id: 1, name: "Clásico",   color: "#1a1714", accent: "#c9a84c", premium: false },
+  { id: 2, name: "Moderno",   color: "#0d1117", accent: "#58a6ff", premium: false },
+  { id: 3, name: "Natural",   color: "#1a2a1a", accent: "#4caf82", premium: false },
+  { id: 4, name: "Rojo",      color: "#1a0a0a", accent: "#e05555", premium: false },
+  { id: 5, name: "Minimal",   color: "#f5f5f5", accent: "#222222", premium: false },
+  { id: 6, name: "Aurora",    color: "#f3e2cc", accent: "#a8703f", premium: true },
+  { id: 7, name: "Noir Gold", color: "#08070a", accent: "#d4af37", premium: true },
 ];
+// El campo `premium` también se valida en el backend (useTemplate en
+// userController.js) con su propio set de IDs — el gating no depende
+// solo de esta lista del front.
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -65,6 +71,17 @@ function Spinner({ size = 16 }: { size?: number }) {
   );
 }
 
+function LockIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+      strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function UserEditorPage() {
@@ -85,6 +102,8 @@ export default function UserEditorPage() {
   const [pictures,          setPictures]   = useState<string[]>([]);
   const [backgroundPicture, setBackground] = useState("");
   const [template,          setTemplate]   = useState(1);
+  const [subscription,      setSubscription] = useState<Subscription>("none");
+  const [lockedTemplate,    setLockedTemplate] = useState<typeof TEMPLATES[number] | null>(null);
 
   const [isDirty, setIsDirty]   = useState(false);
   const initialFormRef = useRef<FormState>(EMPTY_FORM);
@@ -140,6 +159,7 @@ export default function UserEditorPage() {
         setPictures(data.media?.pictures || []);
         setBackground(data.media?.backgroundPicture || "");
         setTemplate(data.template || 1);
+        setSubscription(data.subscription || "none");
       } catch {
         setError("No se pudo cargar la información del negocio.");
       } finally {
@@ -202,12 +222,28 @@ export default function UserEditorPage() {
         headers: authHeaders,
         body: JSON.stringify({ template: t }),
       });
+      if (res.status === 403) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.message || "Ese template requiere un plan pago.");
+      }
       if (!res.ok) throw new Error();
       setSuccess("Apariencia actualizada.");
-    } catch {
+    } catch (err) {
       setTemplate(previous);
-      setError("No se pudo guardar la apariencia.");
+      setError(err instanceof Error && err.message ? err.message : "No se pudo guardar la apariencia.");
     }
+  };
+
+  // Si el template es premium y el usuario no tiene un plan pago, no lo
+  // aplicamos — mostramos el modal de upsell en su lugar. El backend
+  // también lo valida (useTemplate en userController.js): esto es UX,
+  // no la única barrera.
+  const selectTemplate = (t: typeof TEMPLATES[number]) => {
+    if (t.premium && subscription === "none") {
+      setLockedTemplate(t);
+      return;
+    }
+    saveTemplate(t.id);
   };
 
   // Upload gallery image
@@ -589,35 +625,82 @@ export default function UserEditorPage() {
               Elegí el estilo visual de tu carta pública. El cambio se aplica de inmediato.
             </p>
             <div className={styles.templateGrid}>
-              {TEMPLATES.map(t => (
-                <button
-                  key={t.id}
-                  className={`${styles.templateCard} ${template === t.id ? styles.selected : ""}`}
-                  onClick={() => saveTemplate(t.id)}
-                  aria-pressed={template === t.id}
-                  type="button"
-                >
-                  <div className={styles.templatePreview} style={{ background: t.color }}>
-                    <div className={styles.templateBar} style={{ background: t.accent }} />
-                    <div className={styles.templateLines}>
-                      <div className={styles.tl} style={{ background: `${t.accent}99` }} />
-                      <div className={`${styles.tl} ${styles.tlShort}`} style={{ background: `${t.accent}55` }} />
-                      <div className={styles.tl} style={{ background: `${t.accent}55` }} />
+              {TEMPLATES.map(t => {
+                const isLocked = t.premium && subscription === "none";
+                return (
+                  <button
+                    key={t.id}
+                    className={`${styles.templateCard} ${template === t.id ? styles.selected : ""} ${isLocked ? styles.locked : ""}`}
+                    onClick={() => selectTemplate(t)}
+                    aria-pressed={template === t.id}
+                    type="button"
+                  >
+                    <div className={styles.templatePreview} style={{ background: t.color }}>
+                      <div className={styles.templateBar} style={{ background: t.accent }} />
+                      <div className={styles.templateLines}>
+                        <div className={styles.tl} style={{ background: `${t.accent}99` }} />
+                        <div className={`${styles.tl} ${styles.tlShort}`} style={{ background: `${t.accent}55` }} />
+                        <div className={styles.tl} style={{ background: `${t.accent}55` }} />
+                      </div>
+                      {isLocked && (
+                        <div className={styles.templateLockOverlay}>
+                          <LockIcon />
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <div className={styles.templateFooter}>
-                    <span className={styles.templateName}>{t.name}</span>
-                    {template === t.id && (
-                      <span className={styles.templateActive}>Activo</span>
-                    )}
-                  </div>
-                </button>
-              ))}
+                    <div className={styles.templateFooter}>
+                      <span className={styles.templateName}>{t.name}</span>
+                      {template === t.id ? (
+                        <span className={styles.templateActive}>Activo</span>
+                      ) : t.premium ? (
+                        <span className={styles.templatePro}>PRO</span>
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </>
         )}
 
       </div>
+
+      {/* ── Modal: template premium bloqueado ── */}
+      {lockedTemplate && (
+        <div
+          className={styles.modalOverlay}
+          onClick={() => setLockedTemplate(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="premium-modal-title"
+        >
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalIcon}><LockIcon size={20} /></div>
+            <p id="premium-modal-title" className={styles.modalTitle}>
+              {lockedTemplate.name} es un template PRO
+            </p>
+            <p className={styles.modalDesc}>
+              Actualizá tu plan para desbloquear este estilo y el resto de los
+              templates premium.
+            </p>
+            <div className={styles.modalBtns}>
+              <button
+                className={styles.modalCancel}
+                onClick={() => setLockedTemplate(null)}
+                type="button"
+              >
+                Cerrar
+              </button>
+              {/* TODO: apuntar directo al flujo de pago cuando esté listo
+                  (hoy los planes viven en un modal de la home pública,
+                  sin ruta ni anchor propio para linkear directo). */}
+              <a className={styles.modalUpgrade} href="/">
+                Ver planes
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
