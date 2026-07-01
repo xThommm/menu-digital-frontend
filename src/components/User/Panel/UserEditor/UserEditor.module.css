@@ -6,7 +6,7 @@
 /* Tokens de diseño: ver --admin-* en globals.css (única fuente de
    verdad, antes duplicados aquí y en MenuEditor_module.css). */
 
-── Shell ──
+/* ── Shell ── */
 .ne {
   min-height: 100vh;
   background: var(--admin-bg-base);

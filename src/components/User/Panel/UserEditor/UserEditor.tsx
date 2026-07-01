@@ -155,6 +155,12 @@ export default function UserEditorPage() {
       setError("El nombre del negocio es obligatorio.");
       return;
     }
+    const numberDigits = form.number.replace(/\D/g, "");
+    if (form.number.trim() && !numberDigits) {
+      setError("El teléfono no es válido.");
+      return;
+    }
+
     setSaving(true); setError(""); setSuccess("");
     try {
       const res = await fetch("/api/users/me", {
@@ -164,7 +170,7 @@ export default function UserEditorPage() {
           contactInfo: {
             businessName: form.businessName.trim(),
             mail:         form.mail.trim(),
-            number:       form.number ? Number(form.number) : null,
+            number:       numberDigits ? Number(numberDigits) : null,
             address:      form.address.trim(),
             social: {
               instagram: form.instagram.trim(),
@@ -187,6 +193,7 @@ export default function UserEditorPage() {
 
   // Save template
   const saveTemplate = async (t: number) => {
+    const previous = template;
     setTemplate(t);
     setError(""); setSuccess("");
     try {
@@ -198,6 +205,7 @@ export default function UserEditorPage() {
       if (!res.ok) throw new Error();
       setSuccess("Apariencia actualizada.");
     } catch {
+      setTemplate(previous);
       setError("No se pudo guardar la apariencia.");
     }
   };
@@ -207,12 +215,12 @@ export default function UserEditorPage() {
     if (pictures.length >= 10) { setError("Máximo 10 fotos en la galería."); return; }
     setUploading("gallery"); setError("");
     try {
-      const form = new FormData();
-      form.append("image", file);
+      const formData = new FormData();
+      formData.append("image", file);
       const res  = await fetch("/api/users/upload-image", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-        body: form,
+        body: formData,
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -229,12 +237,12 @@ export default function UserEditorPage() {
   const uploadBackgroundImage = async (file: File) => {
     setUploading("bg"); setError("");
     try {
-      const form = new FormData();
-      form.append("image", file);
+      const formData = new FormData();
+      formData.append("image", file);
       const res  = await fetch("/api/users/upload-background", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-        body: form,
+        body: formData,
       });
       if (!res.ok) throw new Error();
       const data = await res.json();

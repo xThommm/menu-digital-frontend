@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, memo, useMemo } from "react";
 import { useAuth } from "../../../../context/useAuth";
 import MassiveImport from "../../../../Utils/MassiveImport";
 import styles from "./MenuEditor.module.css";
@@ -75,6 +75,12 @@ const EMPTY_ITEM: ItemFormState = {
   options: [],
 };
 
+// ── Subida de imagen de producto (directo a Cloudinary, sin passar por el backend) ──
+
+const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/dbzqq1del/image/upload";
+const CLOUDINARY_UPLOAD_PRESET = "menu_items";
+const MAX_IMAGE_MB = 5;
+
 // ── Vistas posibles ────────────────────────────────────────────────────────────
 
 type View = "menu" | "item-form" | "categoria-form" | "seccion-form" | "massive-import";
@@ -134,6 +140,13 @@ const icons = {
       <polyline points="9 18 15 12 9 6" />
     </svg>
   ),
+  back: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+  ),
   close: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -154,17 +167,26 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () =
       aria-checked={checked}
       aria-label={label}
     >
-      <span className={styles["toggle-knob"]} />
+      <span className={styles.toggleKnob} />
     </button>
   );
 }
 
 // ── TopBar sub-componente ─────────────────────────────────────────────────────
 
-function TopBar({ title, rightSlot }: { title: string; onBack: () => void; rightSlot?: React.ReactNode }) {
+function TopBar({ title, onBack, rightSlot }: { title: string; onBack: () => void; rightSlot?: React.ReactNode }) {
   return (
-    <header className={styles["top-bar"]}>
-      <span className={styles["top-title"]}>{title}</span>
+    <header className={styles.topBar}>
+      <button
+        className={styles.backBtn}
+        onClick={onBack}
+        type="button"
+        aria-label="Volver al menú"
+        title="Volver"
+      >
+        {icons.back}
+      </button>
+      <span className={styles.topTitle}>{title}</span>
       <div style={{ width: 36 }} aria-hidden="true">
         {rightSlot}
       </div>
@@ -214,31 +236,31 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
   const itemCount  = cat.items?.length ?? 0;
 
   return (
-    <div className={styles["cat-acordeon"]}>
+    <div className={styles.catAcordeon}>
       {/* Header */}
-      <div className={`${styles["cat-header"]} ${expanded ? styles.open : ""}`}>
+      <div className={`${styles.catHeader} ${expanded ? styles.open : ""}`}>
         <button
-          className={`${styles["cat-chevron-btn"]}`}
+          className={styles.catChevronBtn}
           onClick={onToggle}
           aria-expanded={expanded}
           aria-label={expanded ? `Contraer ${cat.title}` : `Expandir ${cat.title}`}
         >
-          <span className={`${styles["cat-chevron"]} ${expanded ? styles.open : ""}`}>
+          <span className={`${styles.catChevron} ${expanded ? styles.open : ""}`}>
             {icons.chevron}
           </span>
         </button>
 
-        <button className={styles["cat-header-info"]} onClick={onToggle} type="button">
-          <span className={styles["cat-header-name"]}>{cat.title}</span>
-          <span className={styles["cat-header-meta"]}>
+        <button className={styles.catHeaderInfo} onClick={onToggle} type="button">
+          <span className={styles.catHeaderName}>{cat.title}</span>
+          <span className={styles.catHeaderMeta}>
             {itemCount === 0 ? "Sin productos" : `${itemCount} producto${itemCount !== 1 ? "s" : ""}`}
             {cat.hidden ? " · oculta" : ""}
           </span>
         </button>
 
-        <div className={styles["row-actions"]}>
+        <div className={styles.rowActions}>
           <button
-            className={styles["icon-btn"]}
+            className={styles.iconBtn}
             onClick={onEditCat}
             title="Editar categoría"
             aria-label={`Editar ${cat.title}`}
@@ -246,7 +268,7 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
             {icons.edit}
           </button>
           <button
-            className={`${styles["icon-btn"]} ${styles.danger}`}
+            className={`${styles.iconBtn} ${styles.danger}`}
             onClick={onDeleteCat}
             title="Eliminar categoría"
             aria-label={`Eliminar ${cat.title}`}
@@ -259,7 +281,7 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
       {/* Body */}
       {expanded && (
         <div
-          className={`${styles["cat-body"]} ${isDragOver ? styles["drag-over"] : ""}`}
+          className={`${styles.catBody} ${isDragOver ? styles.dragOver : ""}`}
           onDragOver={e => onDragOver(e, cat._id)}
           onDragLeave={onDragLeave}
           onDrop={e => onDrop(e, cat._id)}
@@ -267,7 +289,7 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
           aria-label={`Productos de ${cat.title}`}
         >
           {itemCount === 0 && (
-            <p className={styles["empty-hint"]} style={{ padding: "1.25rem", textAlign: "center" }}>
+            <p className={styles.emptyHint} style={{ padding: "1.25rem", textAlign: "center" }}>
               Arrastrá productos aquí o usá el botón de abajo.
             </p>
           )}
@@ -276,13 +298,13 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
             <div
               key={item._id}
               role="listitem"
-              className={`${styles["item-row-ac"]} ${draggedItem === item._id ? styles.dragging : ""}`}
+              className={`${styles.itemRowAc} ${draggedItem === item._id ? styles.dragging : ""}`}
               draggable
               onDragStart={e => onDragStart(e, item._id)}
               onDragEnd={onDragEnd}
             >
               {/* Handle drag */}
-              <span className={styles["drag-handle"]} aria-hidden="true">
+              <span className={styles.dragHandle} aria-hidden="true">
                 <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
                   <circle cx="4" cy="3"  r="1.5" fill="currentColor" />
                   <circle cx="4" cy="8"  r="1.5" fill="currentColor" />
@@ -293,16 +315,16 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
                 </svg>
               </span>
 
-              <button className={styles["item-info-ac"]} onClick={() => onEditItem(item)} type="button">
-                <span className={styles["item-name-ac"]}>{item.title}</span>
-                <span className={styles["item-meta-ac"]}>
+              <button className={styles.itemInfoAc} onClick={() => onEditItem(item)} type="button">
+                <span className={styles.itemNameAc}>{item.title}</span>
+                <span className={styles.itemMetaAc}>
                   {item.price != null
                     ? `$${item.price.toLocaleString("es-AR")}`
                     : Object.keys(item.options || {}).length > 0
                       ? "Con variantes"
                       : "Sin precio"}
                   {item.offerPrice != null && (
-                    <span className={styles["item-offer"]}>
+                    <span className={styles.itemOffer}>
                       {` · Oferta $${item.offerPrice.toLocaleString("es-AR")}`}
                     </span>
                   )}
@@ -311,9 +333,9 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
                 </span>
               </button>
 
-              <div className={styles["item-actions"]}>
+              <div className={styles.itemActions}>
                 <button
-                  className={`${styles["pill-btn"]} ${item.available ? styles["pill-on"] : styles["pill-off"]}`}
+                  className={`${styles.pillBtn} ${item.available ? styles.pillOn : styles.pillOff}`}
                   onClick={() => onToggleAvailable(item)}
                   aria-label={item.available ? `Pausar ${item.title}` : `Activar ${item.title}`}
                   type="button"
@@ -321,7 +343,7 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
                   {item.available ? "Activo" : "Pausado"}
                 </button>
                 <button
-                  className={`${styles["icon-btn"]} ${styles.danger}`}
+                  className={`${styles.iconBtn} ${styles.danger}`}
                   onClick={() => onDeleteItem(item)}
                   title="Eliminar"
                   aria-label={`Eliminar ${item.title}`}
@@ -333,8 +355,8 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
             </div>
           ))}
 
-          <div className={styles["cat-footer"]}>
-            <button className={styles["add-item-btn"]} onClick={onNewItem} type="button">
+          <div className={styles.catFooter}>
+            <button className={styles.addItemBtn} onClick={onNewItem} type="button">
               + Agregar producto
             </button>
           </div>
@@ -350,10 +372,12 @@ export default function MenuEditorPage() {
   const { token } = useAuth();
 
   const [menuData,    setMenuData]    = useState<MenuData | null>(null);
-  const [slug,        setSlug]        = useState("");
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState("");
+
+  const [imageUploading, setImageUploading] = useState(false);
+  const itemImageInputRef = useRef<HTMLInputElement>(null);
 
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [dragOverCat, setDragOverCat] = useState<string | null>(null);
@@ -392,12 +416,10 @@ export default function MenuEditorPage() {
   useEffect(() => {
     const fetchMenu = async () => {
       try {
-        const meRes   = await fetch("/api/users/me", { headers: { Authorization: `Bearer ${token}` } });
-        if (!meRes.ok) throw new Error();
-        const meData  = await meRes.json();
-        setSlug(meData.slug);
-
-        const menuRes  = await fetch(`/api/users/${meData.slug}/menu`);
+        // Endpoint autenticado del propio dueño: a diferencia de la carta
+        // pública, incluye secciones/categorías/items ocultos para que se
+        // puedan gestionar (reactivar) desde el editor.
+        const menuRes  = await fetch("/api/users/me/menu", { headers: { Authorization: `Bearer ${token}` } });
         if (!menuRes.ok) throw new Error();
         const menuJson = await menuRes.json();
         setMenuData(menuJson.menu);
@@ -413,9 +435,8 @@ export default function MenuEditorPage() {
   // ── Refresca el menú desde el backend ──────────────────────────────────────
 
   const refetch = useCallback(async () => {
-    if (!slug) return;
     try {
-      const menuRes  = await fetch(`/api/users/${slug}/menu`);
+      const menuRes  = await fetch("/api/users/me/menu", { headers: { Authorization: `Bearer ${token}` } });
       const menuJson = await menuRes.json();
       setMenuData(menuJson.menu);
 
@@ -430,7 +451,7 @@ export default function MenuEditorPage() {
     } catch {
       setError("No se pudo actualizar el menú.");
     }
-  }, [slug, activeCategoria]);
+  }, [token, activeCategoria]);
 
   // ── Acordeón ──────────────────────────────────────────────────────────────
 
@@ -475,15 +496,45 @@ export default function MenuEditorPage() {
     setView("item-form");
   }, []);
 
+  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite re-elegir el mismo archivo más adelante
+
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setError("El archivo debe ser una imagen."); return; }
+    if (file.size > MAX_IMAGE_MB * 1024 * 1024) { setError(`La imagen no puede superar los ${MAX_IMAGE_MB}MB.`); return; }
+
+    setImageUploading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+      const res  = await fetch(CLOUDINARY_UPLOAD_URL, { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok || !data.secure_url) throw new Error();
+
+      setItemForm(f => ({ ...f, image: data.secure_url }));
+    } catch {
+      setError("No se pudo subir la imagen.");
+    } finally {
+      setImageUploading(false);
+    }
+  }, []);
+
+  const removeItemImage = useCallback(() => {
+    setItemForm(f => ({ ...f, image: "" }));
+  }, []);
+
   const saveItem = async () => {
-    //hacer obligatorio el nombre, codigo y precio (Siempre debe tener precio, y ser un numero entero y positivo).
     if (!itemForm.title.trim()) { setError("El nombre es obligatorio."); return; }
     if (!itemForm.code.trim()) { setError("El código es obligatorio."); return; }
-    if (!itemForm.price.trim()) { setError("El precio es obligatorio."); return; }  
+    if (!itemForm.price.trim()) { setError("El precio es obligatorio."); return; }
     if (itemForm.price !== "" && isNaN(Number(itemForm.price))) { setError("El precio debe ser un número."); return; }
     if (itemForm.price !== "" && (!Number(itemForm.price) || Number(itemForm.price) <= 0)) { setError("El precio debe ser un número positivo."); return; }
-    if (itemForm.offerPrice !== "" && (!Number(itemForm.offerPrice) || Number(itemForm.offerPrice) <= 0)) { setError("El precio de oferta debe ser un número positivo."); return; }
     if (itemForm.offerPrice !== "" && isNaN(Number(itemForm.offerPrice))) { setError("El precio de oferta debe ser un número."); return; }
+    if (itemForm.offerPrice !== "" && (!Number(itemForm.offerPrice) || Number(itemForm.offerPrice) <= 0)) { setError("El precio de oferta debe ser un número positivo."); return; }
     setSaving(true); setError("");
 
     try {
@@ -504,7 +555,6 @@ export default function MenuEditorPage() {
         recommended: itemForm.recommended,
         options: optionsObj,
       };
-      console.log(itemForm);
       const url    = activeItem ? `/api/items/${activeItem._id}` : "/api/items";
       const method = activeItem ? "PUT" : "POST";
       const res    = await fetch(url, { method, headers: authHeaders, body: JSON.stringify(body) });
@@ -695,51 +745,11 @@ export default function MenuEditorPage() {
 
   if (loading) {
     return (
-      <div className={styles["page-center"]}>
-        <div className={styles["loader-ring"]} aria-label="Cargando menú..." />
+      <div className={styles.pageCenter}>
+        <div className={styles.loaderRing} aria-label="Cargando menú..." />
       </div>
     );
   }
-
-  //-------------------------------------------
-
-const handleImageUpload = async (
-  e: React.ChangeEvent<HTMLInputElement>
-) => {
-  const file = e.target.files?.[0];
-
-  if (!file) return;
-
-  try {
-    const formData = new FormData();
-
-    formData.append("file", file);
-    formData.append(
-      "upload_preset",
-      "menu_items"
-    );
-
-    const res = await fetch(
-  "https://api.cloudinary.com/v1_1/dbzqq1del/image/upload",
-  {
-    method: "POST",
-    body: formData,
-  }
-);
-
-    const data = await res.json();
-
-    console.log(data);
-
-    setItemForm(prev => ({
-      ...prev,
-      image: data.secure_url,
-    }));
-    console.log("URL:", data.secure_url);
-  } catch {
-    setError("No se pudo subir la imagen.");
-  }
-};
 
   // ── Vista massive-import ──────────────────────────────────────────────────
 
@@ -755,15 +765,15 @@ const handleImageUpload = async (
         {/* ══ VISTA PRINCIPAL: ACORDEÓN ══ */}
         {view === "menu" && (
           <>
-            <header className={styles["top-bar"]}>
-              <div className={styles["top-center"]}>
-                <span className={styles["top-title"]}>Menú</span>
+            <header className={styles.topBar}>
+              <div className={styles.topCenter}>
+                <span className={styles.topTitle}>Menú</span>
                 {totalItems > 0 && (
-                  <span className={styles["top-count"]}>{totalItems} producto{totalItems !== 1 ? "s" : ""}</span>
+                  <span className={styles.topCount}>{totalItems} producto{totalItems !== 1 ? "s" : ""}</span>
                 )}
               </div>
               <button
-                className={styles["back-btn"]}
+                className={styles.backBtn}
                 onClick={() => setMenuSheetOpen(true)}
                 title="Más opciones"
                 aria-label="Abrir menú de acciones"
@@ -776,25 +786,25 @@ const handleImageUpload = async (
 
             <div className={styles.content}>
               {error && (
-                <div className={styles["error-banner"]} role="alert" aria-live="assertive">
+                <div className={styles.errorBanner} role="alert" aria-live="assertive">
                   {error}
                 </div>
               )}
 
               {/* Secciones */}
               {menuData?.secciones.map(sec => (
-                <div key={sec._id} className={styles["seccion-block"]}>
-                  <div className={styles["seccion-row"]}>
-                    <div className={styles["seccion-left"]}>
-                      <span className={styles["seccion-badge"]}>Sección</span>
-                      <span className={styles["seccion-title"]}>{sec.title}</span>
+                <div key={sec._id} className={styles.seccionBlock}>
+                  <div className={styles.seccionRow}>
+                    <div className={styles.seccionLeft}>
+                      <span className={styles.seccionBadge}>Sección</span>
+                      <span className={styles.seccionTitle}>{sec.title}</span>
                     </div>
-                    <div className={styles["row-actions"]}>
-                      <button className={styles["icon-btn"]} onClick={() => openEditSeccion(sec)} title="Editar sección" aria-label={`Editar ${sec.title}`}>
+                    <div className={styles.rowActions}>
+                      <button className={styles.iconBtn} onClick={() => openEditSeccion(sec)} title="Editar sección" aria-label={`Editar ${sec.title}`}>
                         {icons.edit}
                       </button>
                       <button
-                        className={`${styles["icon-btn"]} ${styles.danger}`}
+                        className={`${styles.iconBtn} ${styles.danger}`}
                         onClick={() => setDeleteModal({ type: "seccion", id: sec._id, name: sec.title })}
                         title="Eliminar sección"
                         aria-label={`Eliminar ${sec.title}`}
@@ -827,7 +837,7 @@ const handleImageUpload = async (
                   ))}
 
                   {sec.categorias.length === 0 && (
-                    <p className={styles["empty-hint"]} style={{ paddingLeft: "0.25rem" }}>
+                    <p className={styles.emptyHint} style={{ paddingLeft: "0.25rem" }}>
                       Sin categorías en esta sección.
                     </p>
                   )}
@@ -836,10 +846,10 @@ const handleImageUpload = async (
 
               {/* Categorías sin sección */}
               {(menuData?.sinSeccion?.length ?? 0) > 0 && (
-                <div className={styles["seccion-block"]}>
-                  <div className={styles["seccion-row"]}>
-                    <div className={styles["seccion-left"]}>
-                      <span className={`${styles["seccion-badge"]} ${styles["seccion-badge-dark"]}`}>
+                <div className={styles.seccionBlock}>
+                  <div className={styles.seccionRow}>
+                    <div className={styles.seccionLeft}>
+                      <span className={`${styles.seccionBadge} ${styles.seccionBadgeDark}`}>
                         Sin sección
                       </span>
                     </div>
@@ -870,7 +880,7 @@ const handleImageUpload = async (
 
               {/* Estado vacío */}
               {menuData?.secciones.length === 0 && menuData?.sinSeccion.length === 0 && (
-                <div className={styles["empty-state"]}>
+                <div className={styles.emptyState}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#272420" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
                     <rect x="9" y="3" width="6" height="4" rx="1" />
@@ -878,7 +888,7 @@ const handleImageUpload = async (
                     <line x1="9" y1="16" x2="12" y2="16" />
                   </svg>
                   <p>Tu menú está vacío.</p>
-                  <p className={styles["empty-sub"]}>Creá una categoría para empezar a agregar productos.</p>
+                  <p className={styles.emptySub}>Creá una categoría para empezar a agregar productos.</p>
                 </div>
               )}
             </div>
@@ -886,52 +896,52 @@ const handleImageUpload = async (
             {/* ── Bottom sheet: Categoría / Sección / Importar ── */}
             {menuSheetOpen && (
               <div
-                className={styles["modal-overlay"]}
+                className={styles.modalOverlay}
                 onClick={() => setMenuSheetOpen(false)}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="menu-sheet-title"
               >
-                <div className={styles["sheet"]} onClick={e => e.stopPropagation()}>
-                  <p id="menu-sheet-title" className={styles["sheet-title"]}>Agregar al menú</p>
+                <div className={styles.sheet} onClick={e => e.stopPropagation()}>
+                  <p id="menu-sheet-title" className={styles.sheetTitle}>Agregar al menú</p>
 
                   <button
-                    className={styles["sheet-option"]}
+                    className={styles.sheetOption}
                     type="button"
                     onClick={() => { setMenuSheetOpen(false); openNewCategoria(); }}
                   >
-                    <span className={styles["sheet-option-icon"]}>{icons.folder}</span>
-                    <span className={styles["sheet-option-text"]}>
-                      <span className={styles["sheet-option-title"]}>Nueva categoría</span>
-                      <span className={styles["sheet-option-desc"]}>Agrupa productos, ej: Pizzas</span>
+                    <span className={styles.sheetOptionIcon}>{icons.folder}</span>
+                    <span className={styles.sheetOptionText}>
+                      <span className={styles.sheetOptionTitle}>Nueva categoría</span>
+                      <span className={styles.sheetOptionDesc}>Agrupa productos, ej: Pizzas</span>
                     </span>
                   </button>
 
                   <button
-                    className={styles["sheet-option"]}
+                    className={styles.sheetOption}
                     type="button"
                     onClick={() => { setMenuSheetOpen(false); openNewSeccion(); }}
                   >
-                    <span className={styles["sheet-option-icon"]}>{icons.layers}</span>
-                    <span className={styles["sheet-option-text"]}>
-                      <span className={styles["sheet-option-title"]}>Nueva sección</span>
-                      <span className={styles["sheet-option-desc"]}>Agrupa categorías, ej: Comidas</span>
+                    <span className={styles.sheetOptionIcon}>{icons.layers}</span>
+                    <span className={styles.sheetOptionText}>
+                      <span className={styles.sheetOptionTitle}>Nueva sección</span>
+                      <span className={styles.sheetOptionDesc}>Agrupa categorías, ej: Comidas</span>
                     </span>
                   </button>
 
                   <button
-                    className={styles["sheet-option"]}
+                    className={styles.sheetOption}
                     type="button"
                     onClick={() => { setMenuSheetOpen(false); setView("massive-import"); }}
                   >
-                    <span className={styles["sheet-option-icon"]}>{icons.upload}</span>
-                    <span className={styles["sheet-option-text"]}>
-                      <span className={styles["sheet-option-title"]}>Importar desde Excel</span>
-                      <span className={styles["sheet-option-desc"]}>Carga o actualiza en lote</span>
+                    <span className={styles.sheetOptionIcon}>{icons.upload}</span>
+                    <span className={styles.sheetOptionText}>
+                      <span className={styles.sheetOptionTitle}>Importar desde Excel</span>
+                      <span className={styles.sheetOptionDesc}>Carga o actualiza en lote</span>
                     </span>
                   </button>
 
-                  <button className={styles["sheet-cancel"]} type="button" onClick={() => setMenuSheetOpen(false)}>
+                  <button className={styles.sheetCancel} type="button" onClick={() => setMenuSheetOpen(false)}>
                     Cancelar
                   </button>
                 </div>
@@ -947,11 +957,11 @@ const handleImageUpload = async (
               title={activeItem ? "Editar producto" : "Nuevo producto"}
               onBack={() => setView("menu")}
             />
-            <div className={`${styles.content} ${styles["form-content"]}`}>
-              {error && <div className={styles["error-banner"]} role="alert">{error}</div>}
+            <div className={`${styles.content} ${styles.formContent}`}>
+              {error && <div className={styles.errorBanner} role="alert">{error}</div>}
 
               {activeCategoria && (
-                <p className={styles["form-context"]}>
+                <p className={styles.formContext}>
                   en <strong>{activeCategoria.title}</strong>
                 </p>
               )}
@@ -980,30 +990,57 @@ const handleImageUpload = async (
               </div>
 
               <div className={styles.field}>
-  <label>Imagen</label>
+                <label htmlFor="item-image">Imagen</label>
+                <div className={styles.imageUploader}>
+                  <input
+                    ref={itemImageInputRef}
+                    id="item-image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className={styles.hiddenInput}
+                  />
 
-  <input
-    type="file"
-    accept="image/*"
-    onChange={handleImageUpload}
-  />
+                  {itemForm.image ? (
+                    <div
+                      className={styles.imagePreviewWrapper}
+                      onClick={() => !imageUploading && itemImageInputRef.current?.click()}
+                      role="button"
+                      tabIndex={0}
+                      aria-label="Cambiar imagen"
+                      onKeyDown={e => e.key === "Enter" && !imageUploading && itemImageInputRef.current?.click()}
+                    >
+                      <img src={itemForm.image} alt="Vista previa del producto" className={styles.imagePreview} />
+                      {imageUploading && (
+                        <div className={styles.imageUploadingOverlay}>
+                          <Spinner size={18} /> Subiendo...
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        className={styles.removeImage}
+                        onClick={e => { e.stopPropagation(); removeItemImage(); }}
+                        aria-label="Quitar imagen"
+                        title="Quitar imagen"
+                      >
+                        {icons.close}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.uploadButton}
+                      onClick={() => itemImageInputRef.current?.click()}
+                      disabled={imageUploading}
+                    >
+                      {imageUploading ? <Spinner size={16} /> : icons.upload}
+                      {imageUploading ? "Subiendo..." : "Subir imagen"}
+                    </button>
+                  )}
+                </div>
+              </div>
 
-  {itemForm.image && (
-    <img
-      src={itemForm.image}
-      alt="Preview"
-      style={{
-        width: "100%",
-        maxHeight: 200,
-        objectFit: "cover",
-        borderRadius: 12,
-        marginTop: 10,
-      }}
-    />
-  )}
-</div>
-
-              <div className={styles["field-row"]}>
+              <div className={styles.fieldRow}>
                 <div className={styles.field}>
                   <label htmlFor="item-price">Precio</label>
                   <input
@@ -1041,10 +1078,10 @@ const handleImageUpload = async (
 
               {/* Variantes */}
               <div className={styles.field}>
-                <div className={styles["field-label-row"]}>
+                <div className={styles.fieldLabelRow}>
                   <label>Variantes</label>
                   <button
-                    className={styles["text-btn"]}
+                    className={styles.textBtn}
                     type="button"
                     onClick={() => setItemForm(f => ({ ...f, options: [...f.options, { key: "", value: "" }] }))}
                   >
@@ -1052,10 +1089,10 @@ const handleImageUpload = async (
                   </button>
                 </div>
                 {itemForm.options.length === 0 && (
-                  <p className={styles["empty-hint"]}>Sin variantes. Útil para tamaños o presentaciones con precio distinto.</p>
+                  <p className={styles.emptyHint}>Sin variantes. Útil para tamaños o presentaciones con precio distinto.</p>
                 )}
                 {itemForm.options.map((opt, i) => (
-                  <div key={i} className={styles["option-row"]}>
+                  <div key={i} className={styles.optionRow}>
                     <input
                       type="text"
                       placeholder="Nombre (ej: Grande)"
@@ -1080,7 +1117,7 @@ const handleImageUpload = async (
                       })}
                     />
                     <button
-                      className={styles["remove-btn"]}
+                      className={styles.removeBtn}
                       type="button"
                       aria-label={`Eliminar variante ${i + 1}`}
                       onClick={() => setItemForm(f => ({ ...f, options: f.options.filter((_, j) => j !== i) }))}
@@ -1092,16 +1129,16 @@ const handleImageUpload = async (
               </div>
 
               {/* Toggles */}
-              <div className={styles["toggle-group"]}>
+              <div className={styles.toggleGroup}>
                 {[
                   { label: "Disponible",   desc: "Se puede pedir ahora",          key: "available" },
                   { label: "Ocultar",      desc: "No aparece en la carta pública", key: "hidden" },
                   { label: "Recomendado",  desc: "Se destaca con un ícono ⭐",     key: "recommended" },
                 ].map(({ label, desc, key }) => (
-                  <div key={key} className={styles["toggle-row"]}>
+                  <div key={key} className={styles.toggleRow}>
                     <div>
-                      <p className={styles["toggle-label"]}>{label}</p>
-                      <p className={styles["toggle-desc"]}>{desc}</p>
+                      <p className={styles.toggleLabel}>{label}</p>
+                      <p className={styles.toggleDesc}>{desc}</p>
                     </div>
                     <Toggle
                       checked={itemForm[key as keyof typeof itemForm] as boolean}
@@ -1112,9 +1149,9 @@ const handleImageUpload = async (
                 ))}
               </div>
 
-              <div className={styles["form-btns"]}>
+              <div className={styles.formBtns}>
                 <button
-                  className={styles["save-btn"]}
+                  className={styles.saveBtn}
                   onClick={saveItem}
                   disabled={saving}
                   aria-busy={saving}
@@ -1124,7 +1161,7 @@ const handleImageUpload = async (
                 </button>
                 {activeItem && (
                   <button
-                    className={styles["delete-btn"]}
+                    className={styles.deleteBtn}
                     type="button"
                     onClick={() => setDeleteModal({ type: "item", id: activeItem._id, name: activeItem.title })}
                   >
@@ -1143,8 +1180,8 @@ const handleImageUpload = async (
               title={categoriaForm.editingId ? "Editar categoría" : "Nueva categoría"}
               onBack={() => setView("menu")}
             />
-            <div className={`${styles.content} ${styles["form-content"]}`}>
-              {error && <div className={styles["error-banner"]} role="alert">{error}</div>}
+            <div className={`${styles.content} ${styles.formContent}`}>
+              {error && <div className={styles.errorBanner} role="alert">{error}</div>}
 
               <div className={styles.field}>
                 <label htmlFor="cat-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
@@ -1193,9 +1230,9 @@ const handleImageUpload = async (
                   </select>
                 </div>
               )}
-              <div className={styles["form-btns"]}>
+              <div className={styles.formBtns}>
                 <button
-                  className={styles["save-btn"]}
+                  className={styles.saveBtn}
                   onClick={saveCategoria}
                   disabled={saving}
                   aria-busy={saving}
@@ -1215,8 +1252,8 @@ const handleImageUpload = async (
               title={seccionForm.editingId ? "Editar sección" : "Nueva sección"}
               onBack={() => setView("menu")}
             />
-            <div className={`${styles.content} ${styles["form-content"]}`}>
-              {error && <div className={styles["error-banner"]} role="alert">{error}</div>}
+            <div className={`${styles.content} ${styles.formContent}`}>
+              {error && <div className={styles.errorBanner} role="alert">{error}</div>}
 
               <div className={styles.field}>
                 <label htmlFor="sec-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
@@ -1240,9 +1277,9 @@ const handleImageUpload = async (
                   onChange={e => setSeccionForm(f => ({ ...f, code: e.target.value }))}
                 />
               </div>
-              <div className={styles["form-btns"]}>
+              <div className={styles.formBtns}>
                 <button
-                  className={styles["save-btn"]}
+                  className={styles.saveBtn}
                   onClick={saveSeccion}
                   disabled={saving}
                   aria-busy={saving}
@@ -1258,28 +1295,28 @@ const handleImageUpload = async (
         {/* ══ MODAL DE CONFIRMACIÓN ══ */}
         {deleteModal && (
           <div
-            className={styles["modal-overlay"]}
+            className={styles.modalOverlay}
             onClick={() => setDeleteModal(null)}
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-modal-title"
           >
             <div className={styles.modal} onClick={e => e.stopPropagation()}>
-              <p id="delete-modal-title" className={styles["modal-title"]}>
+              <p id="delete-modal-title" className={styles.modalTitle}>
                 ¿Eliminar "{deleteModal.name}"?
               </p>
-              <p className={styles["modal-desc"]}>
+              <p className={styles.modalDesc}>
                 {deleteModal.type === "item"
                   ? "El producto se eliminará de forma permanente. Esta acción no se puede deshacer."
                   : deleteModal.type === "categoria"
                     ? "La categoría se eliminará permanentemente. Debe estar vacía antes de eliminarla."
                     : "La sección se eliminará. Solo podés hacerlo si no tiene categorías asignadas."}
               </p>
-              <div className={styles["modal-btns"]}>
-                <button className={styles["modal-cancel"]} onClick={() => setDeleteModal(null)} type="button">
+              <div className={styles.modalBtns}>
+                <button className={styles.modalCancel} onClick={() => setDeleteModal(null)} type="button">
                   Cancelar
                 </button>
-                <button className={styles["modal-confirm"]} onClick={confirmDelete} type="button" autoFocus>
+                <button className={styles.modalConfirm} onClick={confirmDelete} type="button" autoFocus>
                   Eliminar
                 </button>
               </div>

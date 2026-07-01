@@ -90,8 +90,8 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
       if (!res.ok) throw new Error(data.message || "Error al procesar el archivo.");
       setResumen(data.resumen);
       setStep("preview");
-    } catch (err: any) {
-      setError(err.message || "Error al procesar el archivo.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al procesar el archivo.");
     } finally {
       setLoading(false);
     }
@@ -110,8 +110,8 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
       setResultado(data.resultado);
       setStep("success");
       onSuccess(); // refresca el menú en el padre
-    } catch (err: any) { 
-      setError(err.message || "Error al confirmar.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al confirmar.");
     } finally {
       setLoading(false);
     }
