@@ -177,6 +177,58 @@
   background: var(--admin-gold-glow);
 }
 
+/* ── Menú de formato del QR (PNG / PDF) ──
+   .storefrontCard tiene overflow:hidden (lo necesita el glow del hover),
+   así que este menú no puede vivir ahí adentro como absolute — se
+   renderiza en un portal a document.body y se posiciona con position:fixed
+   inline (ver UserDashboard.tsx), calculado desde el botón que lo abre. */
+.qrMenuWrap {
+  display: contents;
+}
+
+.qrMenu {
+  z-index: 30;
+  min-width: 180px;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  box-shadow: var(--admin-shadow-card);
+  padding: var(--space-1);
+  animation: fadeUp 0.15s var(--ease-out) both;
+}
+
+.qrMenuItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--admin-radius-sm);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--admin-transition);
+}
+
+.qrMenuItem:hover,
+.qrMenuItem:focus-visible {
+  background: var(--admin-gold-glow);
+  outline: none;
+}
+
+.qrMenuItemTitle {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--admin-text-primary);
+}
+
+.qrMenuItemDesc {
+  font-size: var(--text-xs);
+  color: var(--admin-text-muted);
+}
+
 .statsPills {
   display: flex;
   flex-wrap: wrap;
@@ -522,4 +574,5 @@
   .welcome, .storefrontCard, .cards, .previewCard { animation: none; }
   .deliveryOn .deliveryDot { animation: none; }
   .previewSkeleton { animation: none; }
+  .qrMenu { animation: none; }
 }

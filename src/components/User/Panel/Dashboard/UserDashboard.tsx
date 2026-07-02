@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
+import { jsPDF } from "jspdf";
 import { useAuth } from "../../../../context/useAuth";
 import s from "./UserDashboard.module.css";
 
@@ -40,6 +42,10 @@ export default function UserDashboard() {
   const [data, setData]     = useState<DashData | null>(null);
   const [copied, setCopied] = useState(false);
   const [generatingQr, setGeneratingQr] = useState(false);
+  const [qrMenuOpen, setQrMenuOpen] = useState(false);
+  const [qrMenuPos, setQrMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const qrMenuWrapRef = useRef<HTMLDivElement>(null);
+  const qrMenuPortalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isLoading) return;
@@ -84,30 +90,90 @@ export default function UserDashboard() {
     window.open(publicUrl, "_blank", "noopener,noreferrer");
   }, [publicUrl]);
 
-  // Genera el QR en el navegador (nada se manda a un servicio externo) y
-  // dispara la descarga como PNG. Apunta directo a la carta (no a la
-  // landing) porque en el uso real — QR pegado en la mesa — el cliente
-  // quiere ver el menú, no una página de presentación.
-  const handleDownloadQr = useCallback(async () => {
+  // Cierra el menú de formato (PNG/PDF) al hacer click o tap afuera —
+  // mismo patrón que el menú mobile de AdminHome.tsx. El menú se renderiza
+  // en un portal (ver más abajo) así que se chequean los dos refs: el botón
+  // que lo abre y el propio menú, que no son parientes en el DOM.
+  useEffect(() => {
+    if (!qrMenuOpen) return;
+    const handleClick = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (
+        qrMenuWrapRef.current && !qrMenuWrapRef.current.contains(target) &&
+        qrMenuPortalRef.current && !qrMenuPortalRef.current.contains(target)
+      ) {
+        setQrMenuOpen(false);
+      }
+    };
+    // El menú es position:fixed posicionado a mano — más simple cerrarlo
+    // al scrollear que recalcular su posición en cada evento de scroll.
+    const handleScroll = () => setQrMenuOpen(false);
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("touchstart", handleClick);
+    window.addEventListener("scroll", handleScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("touchstart", handleClick);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, [qrMenuOpen]);
+
+  // Genera el QR en el navegador (nada se manda a un servicio externo).
+  // Apunta directo a la carta (no a la landing) porque en el uso real — QR
+  // pegado en la mesa — el cliente quiere ver el menú, no una página de
+  // presentación.
+  const generateQrDataUrl = useCallback(() => {
+    if (!publicUrl) return null;
+    return QRCode.toDataURL(`${publicUrl}/menu`, {
+      width: 1024,
+      margin: 2,
+      color: { dark: "#1a1208", light: "#ffffffff" },
+    });
+  }, [publicUrl]);
+
+  const handleDownloadQr = useCallback(async (format: "png" | "pdf") => {
     if (!publicUrl || generatingQr) return;
+    setQrMenuOpen(false);
     setGeneratingQr(true);
     try {
-      const dataUrl = await QRCode.toDataURL(`${publicUrl}/menu`, {
-        width: 1024,
-        margin: 2,
-        color: { dark: "#1a1208", light: "#ffffffff" },
-      });
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = `qr-menu-${data?.slug ?? "carta"}.png`;
-      a.click();
+      const dataUrl = await generateQrDataUrl();
+      if (!dataUrl) return;
+      const filename = `qr-menu-${data?.slug ?? "carta"}`;
+
+      if (format === "png") {
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = `${filename}.png`;
+        a.click();
+      } else {
+        // PDF en A4 con el QR centrado y el nombre del local como
+        // referencia — pensado para imprimir y pegar en la mesa.
+        const pdf = new jsPDF({ unit: "mm", format: "a4" });
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const qrSize = 100;
+        const x = (pageWidth - qrSize) / 2;
+        const y = 70;
+
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(18);
+        pdf.text(data?.businessName ?? "Menú digital", pageWidth / 2, y - 15, { align: "center" });
+
+        pdf.addImage(dataUrl, "PNG", x, y, qrSize, qrSize);
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(11);
+        pdf.setTextColor(120);
+        pdf.text("Escaneá el código para ver el menú", pageWidth / 2, y + qrSize + 12, { align: "center" });
+
+        pdf.save(`${filename}.pdf`);
+      }
     } catch {
       // La descarga es un "extra" — si falla no interrumpimos el resto
       // del dashboard con un banner de error.
     } finally {
       setGeneratingQr(false);
     }
-  }, [publicUrl, data, generatingQr]);
+  }, [publicUrl, data, generatingQr, generateQrDataUrl]);
 
   const displayName = data?.businessName;
 
@@ -159,14 +225,42 @@ export default function UserDashboard() {
                 <ExternalIcon />
                 Ver página
               </button>
-              <button
-                className={`${s.actionBtn} ${s.actionBtnOutline}`}
-                onClick={handleDownloadQr}
-                disabled={generatingQr}
-              >
-                <QrIcon />
-                {generatingQr ? "Generando..." : "Descargar QR"}
-              </button>
+              <div className={s.qrMenuWrap} ref={qrMenuWrapRef}>
+                <button
+                  className={`${s.actionBtn} ${s.actionBtnOutline}`}
+                  onClick={e => {
+                    // display:contents en .qrMenuWrap no genera caja propia, así que
+                    // la posición se toma del botón (currentTarget), no del wrapper.
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setQrMenuPos({ top: rect.bottom + 8, left: rect.left });
+                    setQrMenuOpen(o => !o);
+                  }}
+                  disabled={generatingQr}
+                  aria-haspopup="menu"
+                  aria-expanded={qrMenuOpen}
+                >
+                  <QrIcon />
+                  {generatingQr ? "Generando..." : "Descargar QR"}
+                </button>
+                {qrMenuOpen && qrMenuPos && createPortal(
+                  <div
+                    className={s.qrMenu}
+                    role="menu"
+                    ref={qrMenuPortalRef}
+                    style={{ position: "fixed", top: qrMenuPos.top, left: qrMenuPos.left }}
+                  >
+                    <button className={s.qrMenuItem} role="menuitem" onClick={() => handleDownloadQr("png")}>
+                      <span className={s.qrMenuItemTitle}>PNG</span>
+                      <span className={s.qrMenuItemDesc}>Imagen simple</span>
+                    </button>
+                    <button className={s.qrMenuItem} role="menuitem" onClick={() => handleDownloadQr("pdf")}>
+                      <span className={s.qrMenuItemTitle}>PDF</span>
+                      <span className={s.qrMenuItemDesc}>Lista para imprimir</span>
+                    </button>
+                  </div>,
+                  document.body
+                )}
+              </div>
             </div>
           )}
 
