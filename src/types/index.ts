@@ -50,6 +50,18 @@ export interface User {
   updatedAt: string
 }
 
+// Forma normalizada del usuario logueado que vive en AuthContext — distinta
+// de User (espejo crudo del schema): sale de adaptar AuthResponse a los
+// nombres que usa el resto de la app (id/name/role) al hacer login.
+// Antes vivía duplicada como `User` dentro de context/AuthContext.tsx.
+export interface AuthUser {
+  id: string
+  name: string
+  role: "admin" | "user"
+  slug: string
+  subscription: Subscription
+}
+
 export interface Menu {
   _id: string
   userID: string
@@ -140,6 +152,70 @@ export interface Tab {
 export interface UserMenuResponse {
   user: User
   menu: MenuData
+}
+
+// ── Menú del panel del dueño (GET /users/me/menu) ──────────────────────────
+// A diferencia de Item/Categoria/Seccion/MenuData de arriba (carta pública,
+// sin items ocultos), estos incluyen los campos que solo necesita el editor:
+// hidden/code/description/image en cada nivel, y los items ocultos también
+// vienen incluidos para poder reactivarlos.
+
+export interface AdminItem {
+  _id: string
+  title: string
+  description: string
+  price: number | null
+  offerPrice: number | null
+  options: Record<string, number>
+  image: string
+  available: boolean
+  hidden: boolean
+  recommended: boolean
+  code: string
+}
+
+export interface AdminCategoria {
+  _id: string
+  title: string
+  description: string | null
+  image: string
+  hidden: boolean
+  code: string
+  items: AdminItem[]
+}
+
+export interface AdminSeccion {
+  _id: string
+  title: string
+  hidden: boolean
+  code: string
+  categorias: AdminCategoria[]
+}
+
+export interface AdminMenuData {
+  secciones: AdminSeccion[]
+  sinSeccion: AdminCategoria[]
+}
+
+// ── Dashboard y estadísticas del dueño ──────────────────────────────────────
+
+export interface DashData {
+  businessName: string
+  slug: string
+  hasDelivery: boolean
+  template: number
+  itemCount: number
+  categoryCount: number
+}
+
+export interface DayCount {
+  date: string // "YYYY-MM-DD"
+  count: number
+}
+
+export interface StatsData {
+  totalViews: number
+  last30Days: DayCount[]
 }
 
 // ── Import masivo (Excel) ──────────────────────────────────────────────────

@@ -1,20 +1,11 @@
 import { createContext } from "react";
-
-export type Subscription = "none" | "monthly" | "semestral" | "annual";
-
-export interface User {
-  id: string;
-  name: string;
-  role: "admin" | "user";
-  slug: string;
-  subscription: Subscription;
-}
+import type { AuthUser } from "../types";
 
 export interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<User>;
+  login: (username: string, password: string) => Promise<AuthUser>;
   logout: () => void;
   isAuthenticated: boolean;
 }

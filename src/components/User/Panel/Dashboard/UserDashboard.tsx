@@ -4,18 +4,8 @@ import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import { jsPDF } from "jspdf";
 import { useAuth } from "../../../../context/useAuth";
+import type { DashData } from "../../../../types";
 import s from "./UserDashboard.module.css";
-
-// ── Tipos ──────────────────────────────────────────────────────────────────────
-
-interface DashData {
-  businessName: string;
-  slug: string;
-  hasDelivery: boolean;
-  template: number;
-  itemCount: number;
-  categoryCount: number;
-}
 
 // ── Hook: luz que sigue al cursor en las cards ────────────────────────────────
 

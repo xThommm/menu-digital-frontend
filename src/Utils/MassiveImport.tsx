@@ -1,25 +1,11 @@
 import { useState, useRef } from "react";
 import { useAuth } from "../context/useAuth";
+import type { MassiveRowResult, MassivePreviewResponse, MassiveConfirmResponse } from "../types";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
-interface ResumenItem {
-  fila: number;
-  codigo?: string;
-  titulo?: string;
-  cambios?: string[];
-  razon?: string;
-}
-
-interface Resumen {
-  categorias: { crear: ResumenItem[]; actualizar: ResumenItem[]; errores: ResumenItem[] };
-  productos:  { crear: ResumenItem[]; actualizar: ResumenItem[]; errores: ResumenItem[] };
-}
-
-interface Resultado {
-  categorias: { creadas: ResumenItem[]; actualizadas: ResumenItem[]; errores: ResumenItem[] };
-  productos:  { creados: ResumenItem[]; actualizados: ResumenItem[]; errores: ResumenItem[] };
-}
+type Resumen = MassivePreviewResponse["resumen"];
+type Resultado = MassiveConfirmResponse["resultado"];
 
 type Step = "upload" | "preview" | "success";
 
@@ -533,9 +519,9 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
 // ── Sub-componente: sección de resumen (preview) ───────────────────────────────
 function ResumenSection({ titulo, crear, actualizar, errores }: {
   titulo: string;
-  crear: ResumenItem[];
-  actualizar: ResumenItem[];
-  errores: ResumenItem[];
+  crear: MassiveRowResult[];
+  actualizar: MassiveRowResult[];
+  errores: MassiveRowResult[];
 }) {
   const total = crear.length + actualizar.length + errores.length;
   if (total === 0) return null;
@@ -613,9 +599,9 @@ function ResumenSection({ titulo, crear, actualizar, errores }: {
 // ── Sub-componente: sección de resultado (post-confirm) ────────────────────────
 function ResultadoSection({ titulo, creados, actualizados, errores }: {
   titulo: string;
-  creados: ResumenItem[];
-  actualizados: ResumenItem[];
-  errores: ResumenItem[];
+  creados: MassiveRowResult[];
+  actualizados: MassiveRowResult[];
+  errores: MassiveRowResult[];
 }) {
   const total = creados.length + actualizados.length + errores.length;
   if (total === 0) return null;

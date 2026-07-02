@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { AuthContext, type User, } from "./AuthContext";
-import type { AuthResponse } from '../types';
+import { AuthContext } from "./AuthContext";
+import type { AuthResponse, AuthUser } from '../types';
 
 
-function readAuthFromStorage(): { user: User | null; token: string | null } {
+function readAuthFromStorage(): { user: AuthUser | null; token: string | null } {
   const savedToken = localStorage.getItem("token");
   const savedUser  = localStorage.getItem("user");
   const expiry     = localStorage.getItem("tokenExpiry");
@@ -12,7 +12,7 @@ function readAuthFromStorage(): { user: User | null; token: string | null } {
 
   if (savedToken && savedUser && !isExpired) {
     try {
-      return { token: savedToken, user: JSON.parse(savedUser) as User };
+      return { token: savedToken, user: JSON.parse(savedUser) as AuthUser };
     } catch {
       // JSON corrupto — caer al cleareo
     }
@@ -32,11 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const user  = auth.user;
   const token = auth.token;
 
-  const setUser  = (u: User | null)   => setAuth(prev => ({ ...prev, user: u }));
-  const setToken = (t: string | null) => setAuth(prev => ({ ...prev, token: t }));
+  const setUser  = (u: AuthUser | null) => setAuth(prev => ({ ...prev, user: u }));
+  const setToken = (t: string | null)   => setAuth(prev => ({ ...prev, token: t }));
 
   // ✅ Parámetro `username` no choca con ningún estado
-  const login = async (username: string, password: string): Promise<User> => {
+  const login = async (username: string, password: string): Promise<AuthUser> => {
     setIsLoading(true);
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/users/login`, {
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = JSON.parse(text) as AuthResponse;
 
-      const loggedUser: User = {
+      const loggedUser: AuthUser = {
         id: data._id,
         name: data.username,
         role: data.admin ? "admin" : "user",

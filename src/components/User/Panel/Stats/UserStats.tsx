@@ -1,18 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../../../context/useAuth";
+import type { StatsData } from "../../../../types";
 import s from "./UserStats.module.css";
-
-// ── Tipos ──────────────────────────────────────────────────────────────────────
-
-interface DayCount {
-  date: string; // "YYYY-MM-DD"
-  count: number;
-}
-
-interface StatsData {
-  totalViews: number;
-  last30Days: DayCount[];
-}
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
