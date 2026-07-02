@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import type { User, Item, MenuData, Tab } from "../../../../types/index";
+import { useReveal } from "../../../../hooks/useReveal";
 import styles from "./UserMenu.module.css";
 
 // ── Helpers de formato ────────────────────────────────────────────────────────
@@ -54,6 +55,12 @@ export default function MenuPage() {
     fetchMenu();
     return () => controller.abort();
   }, [slug]);
+
+  useEffect(() => {
+    document.title = user?.contactInfo?.businessName
+      ? `${user.contactInfo.businessName} — Menú`
+      : "Menú";
+  }, [user]);
 
   const goBack = useCallback(() => navigate(`/${slug}`), [slug, navigate]);
 
@@ -211,6 +218,7 @@ function ItemCard({ item, index }: { item: Item; index: number }) {
 
   const [imgError, setImgError] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const { ref, revealed } = useReveal<HTMLElement>();
 
   const hasOptions  = Object.keys(item.options ?? {}).length > 0;
   const minPrice    = hasOptions ? minOption(item.options) : null;
@@ -224,8 +232,9 @@ function ItemCard({ item, index }: { item: Item; index: number }) {
 
 return (
   <article
-  className={`${styles.itemCard} ${!item.available ? styles.unavailable : ""}`}
-  style={{ "--item-delay": `${Math.min(index * 0.05, 0.3)}s` } as React.CSSProperties}
+  ref={ref}
+  className={`${styles.itemCard} ${!item.available ? styles.unavailable : ""} ${item.recommended ? styles.recommended : ""} ${revealed ? styles.itemRevealed : ""}`}
+  style={{ "--reveal-delay": `${Math.min(index * 0.05, 0.3)}s` } as React.CSSProperties}
 >
     {showImage ? (
   <img

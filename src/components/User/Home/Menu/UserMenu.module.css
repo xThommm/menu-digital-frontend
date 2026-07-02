@@ -249,10 +249,19 @@
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease,
-    transform 0.15s ease;
+    transform 0.15s ease,
+    opacity 0.4s var(--ease-out);
+  transition-delay: 0s, 0s, 0s, var(--reveal-delay, 0s);
   cursor: default;
-  animation: menuFadeUp 0.3s ease both;
-  animation-delay: var(--item-delay, 0s);
+  opacity: 0;
+}
+
+/* Reveal al entrar en viewport (ver useReveal + UserMenu.tsx). Solo opacity
+   —no transform— porque .itemCard ya usa transform para el hover/press y
+   una sola transition no puede tener dos duraciones distintas para la
+   misma propiedad según qué la disparó. */
+.itemCard.itemRevealed {
+  opacity: 1;
 }
 
 .itemCard:hover {
@@ -271,6 +280,17 @@
   border-color: var(--t-border);
   opacity: 0.38;
   pointer-events: none;
+}
+
+/* Fondo apenas teñido con el acento — suficiente para que el ojo lo
+   distinga del resto de la lista al pasar la vista rápido, sin gritar. */
+.itemCard.recommended {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--t-accent) 7%, var(--t-surface)) 0%,
+    var(--t-surface) 65%
+  );
+  border-color: color-mix(in srgb, var(--t-accent) 22%, var(--t-border));
 }
 
 .optionsContainer {
@@ -602,9 +622,13 @@
    ═══════════════════════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
   .mpHeader,
-  .mpContent,
-  .itemCard {
+  .mpContent {
     animation: none;
+  }
+
+  .itemCard {
+    opacity: 1;
+    transition: none;
   }
 
   .skelBox {

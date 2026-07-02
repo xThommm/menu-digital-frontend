@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styles from "./UserHome.module.css";
+import { useReveal } from "../../../../hooks/useReveal";
 import type { User, ContactInfo } from "../../../../types/index";
 
 // ── Tokens por template ───────────────────────────────────────────────────────
@@ -185,6 +186,10 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
   const businessName = info.businessName || "Mi Negocio";
   const galleryImages = media?.pictures ?? [];
 
+  useEffect(() => {
+    document.title = businessName;
+  }, [businessName]);
+
   return (
     <div className="t-wrap" data-template={template}>
       {tokens.useAvatar ? (
@@ -288,39 +293,42 @@ function ContactList({ info, hasDelivery, showDeliveryRow }: ContactListProps) {
   if (!hasAnyInfo) return null;
 
   return (
-    <div className="t-info-list">
-      {info.address && <InfoRow icon={<PinIcon />} text={info.address} />}
-      {info.number && (
-        <InfoRow
-          icon={<PhoneIcon />}
-          text={String(info.number)}
-          href={`tel:${info.number}`}
-        />
-      )}
-      {info.mail && (
-        <InfoRow
-          icon={<MailIcon />}
-          text={info.mail}
-          href={`mailto:${info.mail}`}
-        />
-      )}
-      {instagram && (
-        <InfoRow
-          icon={<InstagramIcon />}
-          text={`@${instagram}`}
-          href={`https://instagram.com/${instagram}`}
-        />
-      )}
-      {facebook && (
-        <InfoRow
-          icon={<FacebookIcon />}
-          text={facebook}
-          href={`https://facebook.com/${facebook}`}
-        />
-      )}
-      {showDeliveryRow && hasDelivery && (
-        <InfoRow icon={<DeliveryIcon />} text="Delivery disponible" />
-      )}
+    <div className="t-section">
+      <p className="t-section-label">Contacto</p>
+      <div className="t-info-list">
+        {info.address && <InfoRow icon={<PinIcon />} text={info.address} />}
+        {info.number && (
+          <InfoRow
+            icon={<PhoneIcon />}
+            text={String(info.number)}
+            href={`tel:${info.number}`}
+          />
+        )}
+        {info.mail && (
+          <InfoRow
+            icon={<MailIcon />}
+            text={info.mail}
+            href={`mailto:${info.mail}`}
+          />
+        )}
+        {instagram && (
+          <InfoRow
+            icon={<InstagramIcon />}
+            text={`@${instagram}`}
+            href={`https://instagram.com/${instagram}`}
+          />
+        )}
+        {facebook && (
+          <InfoRow
+            icon={<FacebookIcon />}
+            text={facebook}
+            href={`https://facebook.com/${facebook}`}
+          />
+        )}
+        {showDeliveryRow && hasDelivery && (
+          <InfoRow icon={<DeliveryIcon />} text="Delivery disponible" />
+        )}
+      </div>
     </div>
   );
 }
@@ -376,22 +384,31 @@ function Gallery({
 }: GalleryProps) {
   if (!pictures?.length) return null;
 
+  const shown = pictures.slice(0, 6);
+  // Bento: la primera foto ocupa el doble de ancho cuando hay variedad de
+  // sobra (3+) para llenar el resto de la grilla sin dejar huecos.
+  const featureFirst = shown.length >= 3;
+
   return (
-    <div
-      className="t-gallery"
-      role="list"
-      aria-label={`Fotos de ${businessName}`}
-    >
-      {pictures.slice(0, 6).map((url, i) => (
-        <GalleryItem
-  key={url}
-  url={url}
-  index={i}
-  radius={radius}
-  businessName={businessName}
-  onClick={() => onImageClick(i)}
-/>
-      ))}
+    <div className="t-section">
+      <p className="t-section-label">Galería</p>
+      <div
+        className="t-gallery"
+        role="list"
+        aria-label={`Fotos de ${businessName}`}
+      >
+        {shown.map((url, i) => (
+          <GalleryItem
+            key={url}
+            url={url}
+            index={i}
+            radius={radius}
+            businessName={businessName}
+            featured={featureFirst && i === 0}
+            onClick={() => onImageClick(i)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -401,27 +418,32 @@ function GalleryItem({
   index,
   radius,
   businessName,
+  featured,
   onClick,
 }: {
   url: string;
   index: number;
   radius: string;
   businessName: string;
+  featured: boolean;
   onClick: () => void;
 }) {
   const [error, setError] = useState(false);
+  const { ref, revealed } = useReveal<HTMLDivElement>();
   if (error) return null; // Una foto rota no deja un hueco visible en la grilla.
 
   return (
     <div
-  className="t-gallery-item"
-  role="listitem"
-  style={{
-    borderRadius: radius,
-    cursor: "zoom-in",
-  }}
-  onClick={onClick}
->
+      ref={ref}
+      className={`t-gallery-item t-reveal ${featured ? "t-gallery-featured" : ""} ${revealed ? "t-reveal-in" : ""}`}
+      role="listitem"
+      style={{
+        borderRadius: radius,
+        cursor: "zoom-in",
+        "--reveal-delay": `${Math.min(index * 0.06, 0.3)}s`,
+      } as React.CSSProperties}
+      onClick={onClick}
+    >
       <img
         src={url}
         alt={`Foto ${index + 1} de ${businessName}`}
