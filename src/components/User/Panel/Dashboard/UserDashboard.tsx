@@ -361,8 +361,14 @@ function PreviewCard({ url }: PreviewCardProps) {
     // Así el setState queda dentro de la suscripción a un sistema externo,
     // en vez de ser una llamada síncrona en el cuerpo del efecto.
     const ro = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width ?? el.clientWidth;
-      setScale(Math.min(width / DEVICE.w, 1));
+      const rect   = entries[0]?.contentRect;
+      const width  = rect?.width  ?? el.clientWidth;
+      const height = rect?.height ?? el.clientHeight;
+      // Antes solo se achicaba para entrar a lo ANCHO. En el layout de
+      // escritorio (columna derecha ancha, sin techo de alto) eso dejaba
+      // scale en 1 — el celular se dibujaba a sus 844px reales y estiraba
+      // toda la página, generando el scroll vertical de la ventana.
+      setScale(Math.min(width / DEVICE.w, height / DEVICE.h, 1));
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -373,7 +379,7 @@ function PreviewCard({ url }: PreviewCardProps) {
     // con el ref — sin `url` en las deps, el efecto no se repetiría (mode
     // no cambió) y la vista previa quedaba pegada en scale:1 hasta que se
     // togglea mobile/desktop a mano (lo que sí cambia DEVICE.w).
-  }, [DEVICE.w, url]);
+  }, [DEVICE.w, DEVICE.h, url]);
 
   // Reseteamos `loaded` cuando cambia el modo, la url o se fuerza un reload.
   // En vez de un useEffect que llame a setLoaded de forma síncrona (lo que

@@ -629,8 +629,22 @@
     top: var(--space-8);
   }
 
+  /* Techo de alto = mismo respiro que .main deja arriba/abajo (padding-top +
+     padding-bottom), para que la card completa nunca empuje la página más
+     allá de los 100vh y aparezca una scrollbar. .previewViewport se estira
+     con flex para ocupar lo que sobra, y el PreviewCard (JS) mide esa altura
+     real vía ResizeObserver para escalar el iframe también en altura, no
+     solo en ancho. */
   .rightCol .previewCard {
     margin-top: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - var(--space-8) - var(--space-10));
+  }
+
+  .rightCol .previewViewport {
+    flex: 1;
+    min-height: 0;
   }
 }
 
