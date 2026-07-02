@@ -1,46 +1,13 @@
 import { useState, useEffect, useCallback, useRef, memo, useMemo } from "react";
 import { useAuth } from "../../../../context/useAuth";
 import MassiveImport from "../../../../Utils/MassiveImport";
+import type {
+  AdminItem as Item,
+  AdminCategoria as Categoria,
+  AdminSeccion as Seccion,
+  AdminMenuData as MenuData,
+} from "../../../../types";
 import styles from "./MenuEditor.module.css";
-
-// ── Tipos ──────────────────────────────────────────────────────────────────────
-
-interface Item {
-  _id: string;
-  title: string;
-  description: string;
-  price: number | null;
-  offerPrice: number | null;
-  options: Record<string, number>;
-  image: string;
-  available: boolean;
-  hidden: boolean;
-  recommended: boolean;
-  code: string;
-}
-
-interface Categoria {
-  _id: string;
-  title: string;
-  description: string | null;
-  image: string;
-  hidden: boolean;
-  code: string;
-  items: Item[];
-}
-
-interface Seccion {
-  _id: string;
-  title: string;
-  hidden: boolean;
-  code: string;
-  categorias: Categoria[];
-}
-
-interface MenuData {
-  secciones: Seccion[];
-  sinSeccion: Categoria[];
-}
 
 // ── Estado vacío para formulario de item ───────────────────────────────────────
 
@@ -101,6 +68,14 @@ const icons = {
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
       <polyline points="17 8 12 3 7 8"/>
       <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+  ),
+  download: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
     </svg>
   ),
   menu: (
@@ -397,6 +372,8 @@ export default function MenuEditorPage() {
 
   const [imageUploading, setImageUploading] = useState(false);
   const itemImageInputRef = useRef<HTMLInputElement>(null);
+
+  const [exporting, setExporting] = useState(false);
 
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [dragOverCat, setDragOverCat] = useState<string | null>(null);
@@ -787,6 +764,32 @@ export default function MenuEditorPage() {
     }
   };
 
+  // ── Handler EXPORTAR A EXCEL ────────────────────────────────────────────────
+  // Reutiliza el mismo endpoint que genera la plantilla de importación
+  // (GET /api/massive/template): ya trae las secciones, categorías e items
+  // actuales cargados en las hojas "Categorías" y "Productos", así que sirve
+  // tanto para exportar como para editar y volver a importar.
+
+  const exportMenu = useCallback(async () => {
+    if (!limits?.canImportExcel) { setUpgradeReason("excel"); return; }
+    setExporting(true); setError("");
+    try {
+      const res = await fetch("/api/massive/template", { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = "menu-digital-plantilla.xlsx";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("No se pudo exportar el menú. Intentá de nuevo.");
+    } finally {
+      setExporting(false);
+    }
+  }, [token, limits]);
+
   // ── Conteo total de productos ─────────────────────────────────────────────
 
   const totalItems = menuData
@@ -1007,6 +1010,27 @@ export default function MenuEditorPage() {
                         {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>PRO</span>}
                       </span>
                       <span className={styles.sheetOptionDesc}>Carga o actualiza en lote</span>
+                    </span>
+                  </button>
+
+                  <button
+                    className={`${styles.sheetOption} ${!limits?.canImportExcel ? styles.sheetOptionLocked : ""}`}
+                    type="button"
+                    disabled={exporting}
+                    onClick={() => {
+                      setMenuSheetOpen(false);
+                      exportMenu();
+                    }}
+                  >
+                    <span className={styles.sheetOptionIcon}>
+                      {!limits?.canImportExcel ? icons.lock : exporting ? <Spinner size={16} /> : icons.download}
+                    </span>
+                    <span className={styles.sheetOptionText}>
+                      <span className={styles.sheetOptionTitle}>
+                        Exportar a Excel
+                        {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>PRO</span>}
+                      </span>
+                      <span className={styles.sheetOptionDesc}>Descargá tus categorías y productos actuales</span>
                     </span>
                   </button>
 
@@ -1407,12 +1431,12 @@ export default function MenuEditorPage() {
               <p id="upgrade-modal-title" className={styles.modalTitle}>
                 {upgradeReason === "items"
                   ? "Llegaste al límite del plan gratuito"
-                  : "Importar desde Excel es una función PRO"}
+                  : "Importar y exportar en Excel es una función PRO"}
               </p>
               <p className={styles.modalDesc}>
                 {upgradeReason === "items"
                   ? `Tu plan gratuito permite hasta ${limits?.itemLimit ?? 15} productos. Con el plan Pro ($29.999) tenés productos ilimitados.`
-                  : "Con el plan Pro ($29.999) podés cargar o actualizar tu menú en lote desde una planilla de Excel."}
+                  : "Con el plan Pro ($29.999) podés cargar, actualizar y exportar tu menú completo desde una planilla de Excel."}
               </p>
               <div className={styles.modalBtns}>
                 <button
