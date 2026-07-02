@@ -110,12 +110,23 @@
    final del gradiente son siempre --t-bg del template correspondiente
    (a distinta opacidad) — así que referenciamos el token en vez de
    repetir el hex de [data-template="N"] en globals.css.
+
+   5 paradas en vez de 3: con solo transparent→X%→t-bg, los dos tramos
+   del gradiente tienen pendiente de opacidad distinta (uno más inclinado
+   que el otro) y el quiebre en el medio se ve como una línea horizontal
+   sobre la foto (Mach banding — el ojo detecta el cambio de pendiente
+   aunque el color sea continuo). Las paradas de acá siguen una curva
+   suave tipo smoothstep (0%, 16%, 50%, 84%, 100% de opacidad) entre el
+   mismo punto de arranque y el mismo tono/opacidad intermedios que antes,
+   así no cambia el look general — solo se empareja la curva.
    ──────────────────────────────────── */
 .overlayT1 {
   background: linear-gradient(
     to bottom,
     transparent 15%,
-    color-mix(in srgb, var(--t-bg) 55%, transparent) 55%,
+    color-mix(in srgb, var(--t-bg) 16%, transparent) 36%,
+    color-mix(in srgb, var(--t-bg) 50%, transparent) 58%,
+    color-mix(in srgb, var(--t-bg) 84%, transparent) 79%,
     var(--t-bg) 100%
   ) !important;
 }
@@ -124,7 +135,9 @@
   background: linear-gradient(
     to bottom,
     transparent 25%,
-    color-mix(in srgb, var(--t-bg) 70%, transparent) 60%,
+    color-mix(in srgb, var(--t-bg) 16%, transparent) 44%,
+    color-mix(in srgb, var(--t-bg) 50%, transparent) 63%,
+    color-mix(in srgb, var(--t-bg) 84%, transparent) 81%,
     var(--t-bg) 100%
   ) !important;
 }
@@ -133,7 +146,9 @@
   background: linear-gradient(
     to bottom,
     transparent 15%,
-    color-mix(in srgb, var(--t-bg) 60%, transparent) 55%,
+    color-mix(in srgb, var(--t-bg) 16%, transparent) 36%,
+    color-mix(in srgb, var(--t-bg) 50%, transparent) 58%,
+    color-mix(in srgb, var(--t-bg) 84%, transparent) 79%,
     var(--t-bg) 100%
   ) !important;
 }
@@ -142,7 +157,9 @@
   background: linear-gradient(
     to bottom,
     transparent 25%,
-    color-mix(in srgb, var(--t-bg) 65%, transparent) 60%,
+    color-mix(in srgb, var(--t-bg) 16%, transparent) 44%,
+    color-mix(in srgb, var(--t-bg) 50%, transparent) 63%,
+    color-mix(in srgb, var(--t-bg) 84%, transparent) 81%,
     var(--t-bg) 100%
   ) !important;
 }
@@ -152,7 +169,9 @@
   background: linear-gradient(
     to bottom,
     transparent 20%,
-    color-mix(in srgb, var(--t-bg) 60%, transparent) 58%,
+    color-mix(in srgb, var(--t-bg) 16%, transparent) 40%,
+    color-mix(in srgb, var(--t-bg) 50%, transparent) 60%,
+    color-mix(in srgb, var(--t-bg) 84%, transparent) 80%,
     var(--t-bg) 100%
   ) !important;
 }
@@ -161,7 +180,9 @@
   background: linear-gradient(
     to bottom,
     transparent 10%,
-    color-mix(in srgb, var(--t-bg) 65%, transparent) 50%,
+    color-mix(in srgb, var(--t-bg) 16%, transparent) 33%,
+    color-mix(in srgb, var(--t-bg) 50%, transparent) 55%,
+    color-mix(in srgb, var(--t-bg) 84%, transparent) 78%,
     var(--t-bg) 100%
   ) !important;
 }
