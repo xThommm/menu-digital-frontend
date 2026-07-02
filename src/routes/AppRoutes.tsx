@@ -20,6 +20,7 @@ const DashboardLayout = lazy(() => import("../../src/components/User/Panel/Dashb
 const Dashboard  = lazy(() => import("../../src/components/User/Panel/Dashboard/UserDashboard"));
 const MenuEditor = lazy(() => import("../../src/components/User/Panel/MenuEditor/MenuEditor"));
 const UserEditor = lazy(() => import("../../src/components/User/Panel/UserEditor/UserEditor"));
+const UserStats  = lazy(() => import("../../src/components/User/Panel/Stats/UserStats"));
 
 // Tenant (landing pública por slug)
 const UserHome = lazy(() => import("../../src/components/User/Home/Home/UserHome"));
@@ -44,9 +45,10 @@ export default function AppRoutes() {
       {/* Rutas protegidas — solo dueños de restaurante, con sidebar persistente */}
       <Route element={<UserRoute />}>
         <Route element={<DashboardLayout />}>
-          <Route path="/dashboard"   element={<Dashboard />} />
-          <Route path="/menu/editor" element={<MenuEditor />} />
-          <Route path="/user/editor" element={<UserEditor />} />
+          <Route path="/dashboard"     element={<Dashboard />} />
+          <Route path="/menu/editor"   element={<MenuEditor />} />
+          <Route path="/user/editor"   element={<UserEditor />} />
+          <Route path="/estadisticas"  element={<UserStats />} />
         </Route>
       </Route>
 

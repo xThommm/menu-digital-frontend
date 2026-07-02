@@ -88,6 +88,13 @@ type View = "menu" | "item-form" | "categoria-form" | "seccion-form" | "massive-
 // ── Íconos ─────────────────────────────────────────────────────────────────────
 
 const icons = {
+  lock: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  ),
   upload: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -211,6 +218,7 @@ function Spinner({ size = 16 }: { size?: number }) {
 interface CategoriaAcordeonProps {
   cat: Categoria;
   expanded: boolean;
+  atItemLimit: boolean;
   onToggle: () => void;
   onEditCat: () => void;
   onDeleteCat: () => void;
@@ -228,7 +236,7 @@ interface CategoriaAcordeonProps {
 }
 
 const CategoriaAcordeon = memo(function CategoriaAcordeon({
-  cat, expanded, onToggle, onEditCat, onDeleteCat, onNewItem,
+  cat, expanded, atItemLimit, onToggle, onEditCat, onDeleteCat, onNewItem,
   onEditItem, onDeleteItem, onToggleAvailable, onDragStart,
   onDragOver, onDragLeave, onDrop, onDragEnd, dragOverCat, draggedItem,
 }: CategoriaAcordeonProps) {
@@ -356,8 +364,12 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
           ))}
 
           <div className={styles.catFooter}>
-            <button className={styles.addItemBtn} onClick={onNewItem} type="button">
-              + Agregar producto
+            <button
+              className={`${styles.addItemBtn} ${atItemLimit ? styles.addItemBtnLimit : ""}`}
+              onClick={onNewItem}
+              type="button"
+            >
+              {atItemLimit ? "Límite alcanzado — Mejorar plan" : "+ Agregar producto"}
             </button>
           </div>
         </div>
@@ -372,9 +384,16 @@ export default function MenuEditorPage() {
   const { token } = useAuth();
 
   const [menuData,    setMenuData]    = useState<MenuData | null>(null);
+  const [limits,      setLimits]      = useState<{ itemCount: number; itemLimit: number | null; canImportExcel: boolean } | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState("");
+
+  // Modal de upgrade compartido: se abre por el límite de productos
+  // del plan free o por intentar usar el importador de Excel sin plan
+  // pago. "reason" solo cambia el texto que se muestra.
+  const [upgradeReason, setUpgradeReason] = useState<"items" | "excel" | null>(null);
+  const [upgrading,     setUpgrading]     = useState(false);
 
   const [imageUploading, setImageUploading] = useState(false);
   const itemImageInputRef = useRef<HTMLInputElement>(null);
@@ -423,6 +442,7 @@ export default function MenuEditorPage() {
         if (!menuRes.ok) throw new Error();
         const menuJson = await menuRes.json();
         setMenuData(menuJson.menu);
+        setLimits(menuJson.limits ?? null);
       } catch {
         setError("No se pudo cargar el menú. Intentá recargar la página.");
       } finally {
@@ -439,6 +459,7 @@ export default function MenuEditorPage() {
       const menuRes  = await fetch("/api/users/me/menu", { headers: { Authorization: `Bearer ${token}` } });
       const menuJson = await menuRes.json();
       setMenuData(menuJson.menu);
+      setLimits(menuJson.limits ?? null);
 
       if (activeCategoria) {
         const todas = [
@@ -470,12 +491,16 @@ export default function MenuEditorPage() {
   // ── Handlers ITEMS ────────────────────────────────────────────────────────
 
   const openNewItem = useCallback((cat: Categoria) => {
+    if (limits && limits.itemLimit != null && limits.itemCount >= limits.itemLimit) {
+      setUpgradeReason("items");
+      return;
+    }
     setActiveCategoria(cat);
     setActiveItem(null);
     setItemForm(EMPTY_ITEM);
     setError("");
     setView("item-form");
-  }, []);
+  }, [limits]);
 
   const openEditItem = useCallback((item: Item, cat: Categoria) => {
     setActiveCategoria(cat);
@@ -558,6 +583,13 @@ export default function MenuEditorPage() {
       const url    = activeItem ? `/api/items/${activeItem._id}` : "/api/items";
       const method = activeItem ? "PUT" : "POST";
       const res    = await fetch(url, { method, headers: authHeaders, body: JSON.stringify(body) });
+      if (res.status === 403) {
+        // Puede pasar aunque el front ya bloqueó el botón: otra pestaña/
+        // dispositivo pudo haber usado el último lugar mientras tanto.
+        setView("menu");
+        setUpgradeReason("items");
+        return;
+      }
       if (!res.ok) throw new Error();
       await refetch();
       setView("menu");
@@ -565,6 +597,27 @@ export default function MenuEditorPage() {
       setError("No se pudo guardar el producto.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Dispara el pago real del plan Pro desde el modal de upgrade
+  // (mismo patrón que UserEditor.tsx). Al volver, refetch trae el
+  // menú actualizado con los límites del plan nuevo.
+  const handleUpgrade = async () => {
+    setUpgrading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/payments/crear-preferencia", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ planId: "semestral" }),
+      });
+      if (!res.ok) throw new Error();
+      const { init_point } = await res.json();
+      window.location.href = init_point;
+    } catch {
+      setError("No se pudo iniciar el pago. Intentá de nuevo.");
+      setUpgrading(false);
     }
   };
 
@@ -741,6 +794,8 @@ export default function MenuEditorPage() {
       (menuData.secciones?.flatMap(s => s.categorias).flatMap(c => c.items).length ?? 0)
     : 0;
 
+  const atItemLimit = !!(limits && limits.itemLimit != null && limits.itemCount >= limits.itemLimit);
+
   // ── Pantalla de carga ─────────────────────────────────────────────────────
 
   if (loading) {
@@ -769,7 +824,10 @@ export default function MenuEditorPage() {
               <div className={styles.topCenter}>
                 <span className={styles.topTitle}>Menú</span>
                 {totalItems > 0 && (
-                  <span className={styles.topCount}>{totalItems} producto{totalItems !== 1 ? "s" : ""}</span>
+                  <span className={styles.topCount}>
+                    {totalItems} producto{totalItems !== 1 ? "s" : ""}
+                    {limits?.itemLimit != null && `/${limits.itemLimit}`}
+                  </span>
                 )}
               </div>
               <button
@@ -819,6 +877,7 @@ export default function MenuEditorPage() {
                       key={cat._id}
                       cat={cat}
                       expanded={expandedCats.has(cat._id)}
+                      atItemLimit={atItemLimit}
                       onToggle={() => toggleCat(cat._id)}
                       onEditCat={() => openEditCategoria(cat)}
                       onDeleteCat={() => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title })}
@@ -859,6 +918,7 @@ export default function MenuEditorPage() {
                       key={cat._id}
                       cat={cat}
                       expanded={expandedCats.has(cat._id)}
+                      atItemLimit={atItemLimit}
                       onToggle={() => toggleCat(cat._id)}
                       onEditCat={() => openEditCategoria(cat)}
                       onDeleteCat={() => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title })}
@@ -930,13 +990,22 @@ export default function MenuEditorPage() {
                   </button>
 
                   <button
-                    className={styles.sheetOption}
+                    className={`${styles.sheetOption} ${!limits?.canImportExcel ? styles.sheetOptionLocked : ""}`}
                     type="button"
-                    onClick={() => { setMenuSheetOpen(false); setView("massive-import"); }}
+                    onClick={() => {
+                      setMenuSheetOpen(false);
+                      if (!limits?.canImportExcel) { setUpgradeReason("excel"); return; }
+                      setView("massive-import");
+                    }}
                   >
-                    <span className={styles.sheetOptionIcon}>{icons.upload}</span>
+                    <span className={styles.sheetOptionIcon}>
+                      {limits?.canImportExcel ? icons.upload : icons.lock}
+                    </span>
                     <span className={styles.sheetOptionText}>
-                      <span className={styles.sheetOptionTitle}>Importar desde Excel</span>
+                      <span className={styles.sheetOptionTitle}>
+                        Importar desde Excel
+                        {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>PRO</span>}
+                      </span>
                       <span className={styles.sheetOptionDesc}>Carga o actualiza en lote</span>
                     </span>
                   </button>
@@ -1324,6 +1393,49 @@ export default function MenuEditorPage() {
           </div>
         )}
 
-      </div>  
+        {/* ══ MODAL DE UPGRADE (límite de productos / importador Excel) ══ */}
+        {upgradeReason && (
+          <div
+            className={styles.modalOverlay}
+            onClick={() => !upgrading && setUpgradeReason(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="upgrade-modal-title"
+          >
+            <div className={styles.modal} onClick={e => e.stopPropagation()}>
+              <div className={styles.modalIcon}>{icons.lock}</div>
+              <p id="upgrade-modal-title" className={styles.modalTitle}>
+                {upgradeReason === "items"
+                  ? "Llegaste al límite del plan gratuito"
+                  : "Importar desde Excel es una función PRO"}
+              </p>
+              <p className={styles.modalDesc}>
+                {upgradeReason === "items"
+                  ? `Tu plan gratuito permite hasta ${limits?.itemLimit ?? 15} productos. Con el plan Pro ($29.999) tenés productos ilimitados.`
+                  : "Con el plan Pro ($29.999) podés cargar o actualizar tu menú en lote desde una planilla de Excel."}
+              </p>
+              <div className={styles.modalBtns}>
+                <button
+                  className={styles.modalCancel}
+                  onClick={() => setUpgradeReason(null)}
+                  type="button"
+                  disabled={upgrading}
+                >
+                  Cerrar
+                </button>
+                <button
+                  className={styles.modalUpgrade}
+                  onClick={handleUpgrade}
+                  type="button"
+                  disabled={upgrading}
+                >
+                  {upgrading ? <><Spinner size={14} /> Redirigiendo...</> : "Mejorar a Pro"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
   );
 }

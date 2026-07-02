@@ -438,6 +438,15 @@
   outline-offset: 2px;
 }
 
+.addItemBtnLimit {
+  color: var(--admin-text-muted);
+}
+
+.addItemBtnLimit:hover {
+  color: var(--admin-gold);
+  background: var(--admin-gold-glow);
+}
+
 /* ── Formularios ── */
 .field {
   margin-bottom: 1rem;
@@ -756,6 +765,19 @@
   to   { transform: translateY(0);    opacity: 1; }
 }
 
+.modalIcon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--admin-gold-glow);
+  color: var(--admin-gold);
+  border: 0.5px solid var(--admin-border-gold-mid);
+}
+
 .modalTitle {
   font-size: 0.97rem;
   font-weight: 500;
@@ -821,6 +843,43 @@
 .modalConfirm:focus-visible {
   outline: 2px solid #c97070;
   outline-offset: 2px;
+}
+
+.modalUpgrade {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--admin-gold);
+  border: none;
+  border-radius: var(--admin-radius-md);
+  padding: 0.72rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--admin-bg-base);
+  cursor: pointer;
+  transition: background 0.18s, transform 0.1s;
+}
+
+.modalUpgrade:hover {
+  background: var(--admin-gold-hover);
+}
+
+.modalUpgrade:active {
+  transform: scale(0.98);
+}
+
+.modalUpgrade:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
+}
+
+.modalCancel:disabled,
+.modalUpgrade:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ── Sheet de opciones (Categoría / Sección / Importar) ── */
@@ -900,11 +959,31 @@
   font-size: 0.87rem;
   font-weight: 500;
   color: var(--admin-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .sheetOptionDesc {
   font-size: 0.72rem;
   color: var(--admin-text-muted);
+}
+
+.sheetOptionLocked .sheetOptionIcon {
+  color: var(--admin-text-muted);
+  background: var(--admin-bg-elevated);
+}
+
+.sheetOptionPro {
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--admin-gold-glow);
+  color: var(--admin-gold);
+  border: 0.5px solid var(--admin-border-gold-mid);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
 }
 
 .sheetCancel {

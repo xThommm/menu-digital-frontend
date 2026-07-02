@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import QRCode from "qrcode";
 import { useAuth } from "../../../../context/useAuth";
 import s from "./UserDashboard.module.css";
 
@@ -38,6 +39,7 @@ export default function UserDashboard() {
 
   const [data, setData]     = useState<DashData | null>(null);
   const [copied, setCopied] = useState(false);
+  const [generatingQr, setGeneratingQr] = useState(false);
 
   useEffect(() => {
     if (isLoading) return;
@@ -81,6 +83,31 @@ export default function UserDashboard() {
     if (!publicUrl) return;
     window.open(publicUrl, "_blank", "noopener,noreferrer");
   }, [publicUrl]);
+
+  // Genera el QR en el navegador (nada se manda a un servicio externo) y
+  // dispara la descarga como PNG. Apunta directo a la carta (no a la
+  // landing) porque en el uso real — QR pegado en la mesa — el cliente
+  // quiere ver el menú, no una página de presentación.
+  const handleDownloadQr = useCallback(async () => {
+    if (!publicUrl || generatingQr) return;
+    setGeneratingQr(true);
+    try {
+      const dataUrl = await QRCode.toDataURL(`${publicUrl}/menu`, {
+        width: 1024,
+        margin: 2,
+        color: { dark: "#1a1208", light: "#ffffffff" },
+      });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `qr-menu-${data?.slug ?? "carta"}.png`;
+      a.click();
+    } catch {
+      // La descarga es un "extra" — si falla no interrumpimos el resto
+      // del dashboard con un banner de error.
+    } finally {
+      setGeneratingQr(false);
+    }
+  }, [publicUrl, data, generatingQr]);
 
   const displayName = data?.businessName;
 
@@ -131,6 +158,14 @@ export default function UserDashboard() {
               <button className={`${s.actionBtn} ${s.actionBtnOutline}`} onClick={handleOpen}>
                 <ExternalIcon />
                 Ver página
+              </button>
+              <button
+                className={`${s.actionBtn} ${s.actionBtnOutline}`}
+                onClick={handleDownloadQr}
+                disabled={generatingQr}
+              >
+                <QrIcon />
+                {generatingQr ? "Generando..." : "Descargar QR"}
               </button>
             </div>
           )}
@@ -332,6 +367,23 @@ function CheckIcon() {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function QrIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <line x1="14" y1="14" x2="14" y2="17" />
+      <line x1="14" y1="20" x2="14" y2="21" />
+      <line x1="17" y1="14" x2="21" y2="14" />
+      <line x1="17" y1="17" x2="19" y2="17" />
+      <line x1="17" y1="20" x2="21" y2="20" />
+      <line x1="21" y1="17" x2="21" y2="21" />
     </svg>
   );
 }
