@@ -9,6 +9,14 @@
   margin: 0 auto;
 }
 
+/* En mobile/tablet, .leftCol y .rightCol son wrappers transparentes: no
+   tienen estilo propio, así que .main (flex-column) los apila en el orden
+   del DOM — mismo resultado visual que antes de que existieran. */
+.leftCol,
+.rightCol {
+  min-width: 0;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    BIENVENIDA
    ═══════════════════════════════════════════════════════════════ */
@@ -566,6 +574,34 @@
     margin: 0;
     padding: var(--space-5) var(--space-4) var(--space-10);
     max-width: 100%;
+  }
+}
+
+/* Desktop ancho: dos columnas — datos del negocio a la izquierda, vista
+   previa grande a la derecha. 1200px de piso porque .leftCol necesita sus
+   ~560px habituales y la vista previa recién se siente "grande" (no
+   apretada) con bastante más que eso al lado. Por debajo de este ancho
+   sigue todo apilado como en mobile/tablet. */
+@media (min-width: 1200px) {
+  .main {
+    flex-direction: row;
+    align-items: flex-start;
+    max-width: 1400px;
+    gap: var(--space-8);
+  }
+
+  .leftCol {
+    flex: 0 0 560px;
+  }
+
+  .rightCol {
+    flex: 1;
+    position: sticky;
+    top: var(--space-8);
+  }
+
+  .rightCol .previewCard {
+    margin-top: 0;
   }
 }
 

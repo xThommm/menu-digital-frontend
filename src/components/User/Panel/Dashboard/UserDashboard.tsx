@@ -182,6 +182,7 @@ export default function UserDashboard() {
 
       {/* ── Contenido principal ───────────────────────────────────────────── */}
       <main className={s.main}>
+      <div className={s.leftCol}>
 
         {/* Bienvenida */}
         <div className={s.welcome}>
@@ -295,8 +296,16 @@ export default function UserDashboard() {
           />
         </div>
 
-        {/* Vista previa en vivo */}
+      </div>
+
+      {/* Vista previa en vivo — una sola instancia (no se duplica el
+          iframe). En mobile/tablet, .rightCol no tiene estilos propios y
+          esto queda apilado abajo del resto por el flex-column de .main;
+          en desktop (ver UserDashboard.module.css, min-width: 1200px)
+          .main pasa a fila y esta columna queda al lado, más grande. */}
+      <div className={s.rightCol}>
         <PreviewCard url={publicUrl} />
+      </div>
       </main>
     </div>
   );
@@ -367,7 +376,14 @@ function PreviewCard({ url }: PreviewCardProps) {
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [DEVICE.w]);
+    // `url` está en las dependencias aunque no se lea acá adentro: en el
+    // primer render `url` todavía es null (data no cargó), este componente
+    // devuelve null y wrapRef.current es null, así que ese primer efecto no
+    // hace nada. Cuando `url` pasa a tener valor recién ahí se monta el div
+    // con el ref — sin `url` en las deps, el efecto no se repetiría (mode
+    // no cambió) y la vista previa quedaba pegada en scale:1 hasta que se
+    // togglea mobile/desktop a mano (lo que sí cambia DEVICE.w).
+  }, [DEVICE.w, url]);
 
   // Reseteamos `loaded` cuando cambia el modo, la url o se fuerza un reload.
   // En vez de un useEffect que llame a setLoaded de forma síncrona (lo que
