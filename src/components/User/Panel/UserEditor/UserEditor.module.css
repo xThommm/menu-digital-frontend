@@ -863,3 +863,9 @@
   outline: 2px solid var(--admin-gold);
   outline-offset: 2px;
 }
+
+.modalCancel:disabled,
+.modalUpgrade:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

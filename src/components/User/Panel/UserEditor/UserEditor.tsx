@@ -104,6 +104,7 @@ export default function UserEditorPage() {
   const [template,          setTemplate]   = useState(1);
   const [subscription,      setSubscription] = useState<Subscription>("none");
   const [lockedTemplate,    setLockedTemplate] = useState<typeof TEMPLATES[number] | null>(null);
+  const [upgrading,         setUpgrading]      = useState(false);
 
   const [isDirty, setIsDirty]   = useState(false);
   const initialFormRef = useRef<FormState>(EMPTY_FORM);
@@ -244,6 +245,28 @@ export default function UserEditorPage() {
       return;
     }
     saveTemplate(t.id);
+  };
+
+  // Dispara el pago real del plan Pro ($29.999, id "semestral" en el
+  // backend) desde el modal de upsell. crear-preferencia requiere estar
+  // logueado — ya lo estamos acá — y usa el propio usuario como
+  // external_reference para poder acreditarle el plan cuando MP confirme.
+  const handleUpgrade = async () => {
+    setUpgrading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/payments/crear-preferencia", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ planId: "semestral" }),
+      });
+      if (!res.ok) throw new Error();
+      const { init_point } = await res.json();
+      window.location.href = init_point;
+    } catch {
+      setError("No se pudo iniciar el pago. Intentá de nuevo.");
+      setUpgrading(false);
+    }
   };
 
   // Upload gallery image
@@ -680,23 +703,26 @@ export default function UserEditorPage() {
               {lockedTemplate.name} es un template PRO
             </p>
             <p className={styles.modalDesc}>
-              Actualizá tu plan para desbloquear este estilo y el resto de los
-              templates premium.
+              Con el plan Pro ($29.999) desbloqueás este estilo y el resto de
+              los templates premium.
             </p>
             <div className={styles.modalBtns}>
               <button
                 className={styles.modalCancel}
                 onClick={() => setLockedTemplate(null)}
                 type="button"
+                disabled={upgrading}
               >
                 Cerrar
               </button>
-              {/* TODO: apuntar directo al flujo de pago cuando esté listo
-                  (hoy los planes viven en un modal de la home pública,
-                  sin ruta ni anchor propio para linkear directo). */}
-              <a className={styles.modalUpgrade} href="/">
-                Ver planes
-              </a>
+              <button
+                className={styles.modalUpgrade}
+                onClick={handleUpgrade}
+                type="button"
+                disabled={upgrading}
+              >
+                {upgrading ? <><Spinner size={14} /> Redirigiendo...</> : "Mejorar a Pro"}
+              </button>
             </div>
           </div>
         </div>
