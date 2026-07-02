@@ -84,13 +84,13 @@ export default function UserStats() {
 
           <div className={s.lockCard}>
             <div className={s.lockIcon}><LockIcon /></div>
-            <p className={s.lockTitle}>Disponible desde el plan Semestral</p>
+            <p className={s.lockTitle}>Disponible desde el plan Pro</p>
             <p className={s.lockDesc}>
               Mirá cuántas veces escanearon el QR de tu carta y seguí la tendencia día a día.
-              Con el plan Semestral ($29.999) desbloqueás estadísticas de visitas.
+              Con el plan Pro ($29.999) desbloqueás estadísticas de visitas.
             </p>
             <button className={s.lockBtn} onClick={handleUpgrade} disabled={upgrading} type="button">
-              {upgrading ? "Redirigiendo..." : "Mejorar a Semestral"}
+              {upgrading ? "Redirigiendo..." : "Mejorar a Pro"}
             </button>
           </div>
         </main>

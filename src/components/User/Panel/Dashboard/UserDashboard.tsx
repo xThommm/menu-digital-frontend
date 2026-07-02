@@ -186,7 +186,7 @@ export default function UserDashboard() {
 
         {/* Bienvenida */}
         <div className={s.welcome}>
-          <p className={s.welcomeEyebrow}>Bienvenido de vuelta</p>
+          <p className={s.welcomeEyebrow}>Bienvenido!</p>
           <h1 className={s.welcomeTitle}>{displayName}</h1>
         </div>
 

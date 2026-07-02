@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   max-width: 600px;
-  margin: 0 auto;
+  margin-left: var(--space-auto);
 }
 
 /* En mobile/tablet, .leftCol y .rightCol son wrappers transparentes: no
@@ -67,13 +67,23 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 60% 40% at 50% 0%, var(--admin-gold-glow) 0%, transparent 70%);
+  background: radial-gradient(
+    ellipse 60% 40% at 50% 0%,
+    var(--admin-gold-glow) 0%,
+    transparent 70%
+  );
   opacity: 0;
-  transition: opacity var(--transition-lg);
+  transform: scale(0.96);
+  transition:
+    opacity var(--transition-lg),
+    transform var(--transition-lg);
   pointer-events: none;
 }
 
-.storefrontCard:hover::before { opacity: 1; }
+.storefrontCard:hover::before {
+  opacity: 1;
+  transform: scale(1);
+}
 
 .storefrontCard:hover {
   border-color: var(--admin-border-gold-mid);
@@ -338,16 +348,25 @@
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--admin-gold-glow) 0%, transparent 70%);
-  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle,
+    var(--admin-gold-glow) 0%,
+    transparent 70%
+  );
+  transform: translate(-50%, -50%) scale(0.9);
   left: var(--mx, 50%);
   top: var(--my, 50%);
   opacity: 0;
-  transition: opacity var(--transition-md);
+  transition:
+    opacity var(--transition-md),
+    transform var(--transition-md);
   pointer-events: none;
 }
 
-.navCard:hover::after { opacity: 1; }
+.navCard:hover::after {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
 
 .navCard:hover {
   border-color: var(--admin-border-gold-mid);
@@ -534,8 +553,18 @@
 .previewViewport {
   display: flex;
   justify-content: center;
+  align-items: center;
+
   padding: var(--space-6);
-  background: radial-gradient(circle at 50% 0%, var(--admin-gold-glow) 0%, transparent 60%);
+  overflow: hidden;
+  isolation: isolate;
+
+  background:
+    radial-gradient(
+      ellipse 120% 70% at 50% 0%,
+      var(--admin-gold-glow) 0%,
+      transparent 72%
+    );
 }
 
 .previewFrameWrap {
@@ -571,7 +600,7 @@
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 599px) {
   .main {
-    margin: 0;
+    margin-left: var(--space-auto);
     padding: var(--space-5) var(--space-4) var(--space-10);
     max-width: 100%;
   }
