@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { AuthContext, type User, } from "./AuthContext";
-import type { AuthResponse, Subscription } from '../types';
+import type { AuthResponse } from '../types';
 
 
 function readAuthFromStorage(): { user: User | null; token: string | null } {
@@ -89,25 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("tokenExpiry");
   };
 
-  const updateSubscription = async (subscription: Subscription): Promise<void> => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/users/subscription`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ subscription }),
-    });
-
-    if (!response.ok) throw new Error("No se pudo actualizar la suscripción");
-
-    const updated: User = { ...user!, subscription };
-    setUser(updated);
-    localStorage.setItem("user", JSON.stringify(updated));
-  };
-
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout, updateSubscription, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
