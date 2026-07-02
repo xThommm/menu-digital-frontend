@@ -475,6 +475,18 @@ useEffect(() => {
  
   {/* Dropdown mobile — SOLO visible en mobile cuando menuOpen=true */}
   <div className={`${styles.mobileMenu} ${menuOpen ? styles.mobileMenuOpen : ""}`}>
+    <a href="#how" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
+      Cómo funciona
+    </a>
+    <a href="#features" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
+      Funciones
+    </a>
+    <a href="#reviews" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
+      Clientes
+    </a>
+    <a href="#about" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
+      Quiénes somos
+    </a>
     <Link
       to="/login"
       className={styles.mobileLink}

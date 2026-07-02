@@ -686,9 +686,15 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ══════════════════════════════════════════════
-   RESPONSIVE — UN SOLO BLOQUE, SIN DUPLICADOS
+   RESPONSIVE — DOS BLOQUES: NAV Y RESTO DEL LAYOUT
    ══════════════════════════════════════════════ */
-@media (max-width: 900px) {
+
+/* El nav de desktop (logo + 4 links + 3 acciones) empieza a cortar palabras
+   por debajo de ~1150px (medido probando distintos anchos) — a diferencia
+   del resto de las secciones (steps, stats, etc.), que siguen viéndose bien
+   en 3-4 columnas hasta los 900px. Por eso el nav pasa a hamburger en un
+   breakpoint más ancho que el resto, con margen extra sobre lo medido. */
+@media (max-width: 1200px) {
 
   /* ── Nav base mobile ── */
   .nav {
@@ -755,9 +761,13 @@
     transition: max-height 0.35s ease, opacity 0.25s ease;
   }
 
-  /* Estado abierto */
+  /* Estado abierto — 420px alcanza para los 7 items (4 links + login +
+     crear cuenta + CTA). El min() con calc(100vh - 65px) evita que se
+     corte contra el borde inferior en celulares en horizontal, donde
+     100vh es mucho menor a 420px. */
   .mobileMenuOpen {
-    max-height: 240px;
+    max-height: min(420px, calc(100vh - 65px));
+    overflow-y: auto;
     opacity: 1;
     pointer-events: auto;
   }
@@ -808,7 +818,9 @@
     transition: opacity 0.2s;
   }
   .mobileLinkCta:hover { opacity: 0.88; }
+}
 
+@media (max-width: 900px) {
   /* ── Resto del responsive ── */
   .hero { padding: 6rem 1.5rem 4rem; }
   .heroInner { grid-template-columns: 1fr; gap: 3rem; text-align: center; }
