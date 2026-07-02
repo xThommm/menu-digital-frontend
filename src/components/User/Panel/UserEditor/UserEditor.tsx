@@ -89,10 +89,13 @@ export default function UserEditorPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef   = useRef<HTMLInputElement>(null);
+  const galleryDragCounter = useRef(0);
 
   const [loading,   setLoading]   = useState(true);
   const [saving,    setSaving]    = useState(false);
   const [uploading, setUploading] = useState<"bg" | "gallery" | null>(null);
+  const [galleryProgress, setGalleryProgress] = useState<{ done: number; total: number } | null>(null);
+  const [galleryDragOver, setGalleryDragOver] = useState(false);
   const [error,     setError]     = useState("");
   const [success,   setSuccess]   = useState("");
 
@@ -269,26 +272,56 @@ export default function UserEditorPage() {
     }
   };
 
-  // Upload gallery image
-  const uploadGalleryImage = async (file: File) => {
-    if (pictures.length >= 10) { setError("Máximo 10 fotos en la galería."); return; }
-    setUploading("gallery"); setError("");
-    try {
-      const formData = new FormData();
-      formData.append("image", file);
-      const res  = await fetch("/api/users/upload-image", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setPictures(data.media?.pictures || [...pictures, data.imageUrl]);
-      setSuccess("Foto agregada.");
-    } catch {
-      setError("No se pudo subir la imagen.");
-    } finally {
-      setUploading(null);
+  // Upload gallery image(s) — soporta subir varias a la vez (selección
+  // múltiple del picker o arrastrando 2+ archivos). El backend solo acepta
+  // un archivo por request, así que se suben de a una, en secuencia, y se
+  // va actualizando `pictures` con la respuesta real del server después de
+  // cada una — así si falla una a mitad de camino no se pierde el progreso
+  // de las anteriores.
+  const uploadGalleryFiles = async (files: File[]) => {
+    const images = files.filter(f => f.type.startsWith("image/"));
+    if (images.length === 0) {
+      if (files.length > 0) setError("Solo se pueden subir imágenes.");
+      return;
+    }
+
+    const room = 10 - pictures.length;
+    if (room <= 0) { setError("Máximo 10 fotos en la galería."); return; }
+
+    const toUpload = images.slice(0, room);
+    const skipped = images.length - toUpload.length;
+
+    setUploading("gallery"); setError(""); setSuccess("");
+    let uploaded = 0;
+    let failed = 0;
+    for (let i = 0; i < toUpload.length; i++) {
+      setGalleryProgress({ done: i, total: toUpload.length });
+      try {
+        const formData = new FormData();
+        formData.append("image", toUpload[i]);
+        const res = await fetch("/api/users/upload-image", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        if (data.media?.pictures) setPictures(data.media.pictures);
+        uploaded++;
+      } catch {
+        failed++;
+      }
+    }
+    setGalleryProgress(null);
+    setUploading(null);
+
+    if (failed === 0 && skipped === 0) {
+      setSuccess(uploaded === 1 ? "Foto agregada." : `${uploaded} fotos agregadas.`);
+    } else {
+      const parts = [];
+      if (failed > 0) parts.push(`${failed} no se pudieron subir`);
+      if (skipped > 0) parts.push(`${skipped} no entraban (máximo 10 fotos)`);
+      setError(`${uploaded > 0 ? `${uploaded} fotos agregadas. ` : ""}${parts.join(" y ")}.`);
     }
   };
 
@@ -330,6 +363,36 @@ export default function UserEditorPage() {
       setError("No se pudo eliminar la imagen.");
     }
   }, [pictures, authHeaders]);
+
+  // Drag & drop de fotos sobre la galería. Se usa un contador de
+  // enter/leave (en vez de un booleano simple) porque el grid tiene hijos:
+  // al arrastrar sobre un hijo, el navegador dispara dragLeave del padre
+  // seguido de dragEnter del hijo, y un booleano simple parpadearía.
+  const handleGalleryDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (uploading !== null || pictures.length >= 10) return;
+    galleryDragCounter.current++;
+    setGalleryDragOver(true);
+  };
+
+  const handleGalleryDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    galleryDragCounter.current = Math.max(0, galleryDragCounter.current - 1);
+    if (galleryDragCounter.current === 0) setGalleryDragOver(false);
+  };
+
+  const handleGalleryDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleGalleryDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    galleryDragCounter.current = 0;
+    setGalleryDragOver(false);
+    if (uploading !== null) return;
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) uploadGalleryFiles(files);
+  };
 
   const changeTab = (next: Tab) => {
     setTab(next);
@@ -575,17 +638,26 @@ export default function UserEditorPage() {
                   disabled={uploading !== null || pictures.length >= 10}
                   type="button"
                 >
-                  {uploading === "gallery" ? <><Spinner size={12} /> Subiendo...</> : "+ Agregar foto"}
+                  {uploading === "gallery"
+                    ? <><Spinner size={12} /> {galleryProgress ? `Subiendo ${galleryProgress.done + 1}/${galleryProgress.total}...` : "Subiendo..."}</>
+                    : "+ Agregar fotos"
+                  }
                 </button>
               </div>
 
               {pictures.length === 0 && (
                 <p className={styles.emptyHint}>
-                  Agregá fotos de tu local para que los clientes lo conozcan.
+                  Agregá o arrastrá fotos de tu local para que los clientes lo conozcan.
                 </p>
               )}
 
-              <div className={styles.galleryGrid}>
+              <div
+                className={`${styles.galleryGrid} ${galleryDragOver ? styles.galleryGridDragging : ""}`}
+                onDragEnter={handleGalleryDragEnter}
+                onDragOver={handleGalleryDragOver}
+                onDragLeave={handleGalleryDragLeave}
+                onDrop={handleGalleryDrop}
+              >
                 {pictures.map((url, i) => (
                   <div key={`${url}-${i}`} className={styles.galleryItem}>
                     <img src={url} alt={`Foto del negocio ${i + 1}`} loading="lazy" />
@@ -631,9 +703,10 @@ export default function UserEditorPage() {
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                multiple
                 style={{ display: "none" }}
                 onChange={e => {
-                  if (e.target.files?.[0]) uploadGalleryImage(e.target.files[0]);
+                  if (e.target.files?.length) uploadGalleryFiles(Array.from(e.target.files));
                   e.target.value = "";
                 }}
               />

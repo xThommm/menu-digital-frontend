@@ -466,6 +466,15 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+  border-radius: var(--admin-radius-lg);
+  outline: 2px dashed transparent;
+  outline-offset: 6px;
+  transition: outline-color var(--admin-transition), background var(--admin-transition);
+}
+
+.galleryGridDragging {
+  outline-color: var(--admin-gold);
+  background: var(--admin-gold-glow);
 }
 
 .galleryItem {
