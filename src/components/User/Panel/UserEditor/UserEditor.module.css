@@ -291,7 +291,7 @@
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.95rem;
   font-weight: 500;
-  color: var(--admin-bg-base);
+  color: var(--admin-gold-ink);
   cursor: pointer;
   margin-top: 0.5rem;
   transition: background 0.2s, transform 0.1s, opacity 0.2s;
@@ -855,7 +855,7 @@
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.88rem;
   font-weight: 600;
-  color: var(--admin-bg-base);
+  color: var(--admin-gold-ink);
   cursor: pointer;
   transition: background 0.18s ease, transform 0.1s ease;
 }

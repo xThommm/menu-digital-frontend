@@ -154,7 +154,7 @@
   line-height: 1;
   background: var(--admin-gold);
   border: none;
-  color: var(--admin-bg-base);
+  color: var(--admin-gold-ink);
 }
 
 .actionBtn:disabled,
@@ -523,7 +523,7 @@
 
 .previewToggleBtnActive {
   background: var(--admin-gold);
-  color: var(--admin-bg-base);
+  color: var(--admin-gold-ink);
   font-weight: 600;
 }
 

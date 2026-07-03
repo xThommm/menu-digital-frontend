@@ -204,7 +204,7 @@
   cursor: pointer;
   background: var(--admin-gold);
   border: none;
-  color: var(--admin-bg-base);
+  color: var(--admin-gold-ink);
   transition: background var(--admin-transition), box-shadow var(--admin-transition), transform var(--transition);
 }
 

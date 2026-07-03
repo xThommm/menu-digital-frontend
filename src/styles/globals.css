@@ -156,6 +156,12 @@
   --admin-gold:           #c9a84c;
   --admin-gold-hover:     #dabb62;
   --admin-gold-glow:      rgba(201, 168, 76, 0.12);
+  /* Tinta para texto/íconos SOBRE el dorado (botones primarios). Es
+     deliberadamente oscura y NO se redefine en el tema claro: el dorado es
+     de tono medio en ambos temas, así que el texto encima siempre tiene que
+     ser oscuro. Antes se usaba --admin-bg-base para esto, que en claro pasa
+     a ser cream y dejaba texto casi ilegible sobre el botón dorado. */
+  --admin-gold-ink:       #0c0b09;
 
   /* — Familia de éxito (verde) — un solo core, todo lo demás derivado — */
   --admin-success-core:   #4caf82;
@@ -220,6 +226,80 @@
   --admin-shadow-navcard-primary-hover: 0 4px 28px rgba(201, 168, 76, 0.12);
   --admin-shadow-action-btn-hover:         0 2px 14px rgba(201, 168, 76, 0.3);
   --admin-shadow-action-btn-success-hover: 0 2px 14px color-mix(in srgb, var(--admin-success-core) 60%, transparent);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PANEL — TEMA CLARO (opt-in vía <html data-theme="light">)
+   El oscuro de arriba sigue siendo el default (sin data-theme, o
+   data-theme="dark"): así el look histórico no cambia para nadie que
+   no toque el toggle. Acá solo redefinimos los tokens --admin-* para
+   claro; el toggle vive en el panel del usuario (useTheme + Dashboard-
+   Layout) y persiste en localStorage.
+
+   Truco clave: muchos tokens (success-bg, red-bg, pill-off, soft-*)
+   ya se derivan con color-mix() contra --admin-bg-base y los cores.
+   Al pisar acá esas bases, los derivados se recalculan solos — no hay
+   que redefinir cada uno. Solo redefinimos lo "absoluto": superficies,
+   bordes, texto, oro (más profundo para leerse sobre cream), los cores
+   de éxito/peligro (más contrastados) y las sombras (suaves y cálidas
+   en vez de negros densos). Usamos :root[data-theme="light"] (0,2,0)
+   para ganarle en especificidad al :root de arriba sin depender del orden.
+   ═══════════════════════════════════════════════════════════════ */
+:root[data-theme="light"] {
+  --admin-bg-base:        #faf7f2;
+  --admin-bg-surface:     #f4efe6;
+  --admin-bg-raised:      #ffffff;
+  --admin-bg-elevated:    #f1ebdf;
+
+  --admin-bg-raised-2:    #fbf8f2;
+  --admin-bg-raised-3:    #f6f1e8;
+  --admin-bg-raised-4:    #f0e9db;
+
+  --admin-border-subtle:  #ece5d6;
+  --admin-border-default: #dcd2bf;
+  --admin-border-warm:    #d6c6a2;
+
+  /* Los border-gold-* son rgba de oro: sobre cream se ven más flojos que
+     sobre negro, así que les subimos el alpha para conservar presencia. */
+  --admin-border-gold-soft:   rgba(184, 145, 47, 0.16);
+  --admin-border-gold-mid:    rgba(184, 145, 47, 0.32);
+  --admin-border-gold-strong: rgba(184, 145, 47, 0.50);
+
+  --admin-text-primary:   #2a2118;
+  --admin-text-secondary: #4a3d29;
+  --admin-text-muted:     #857960;
+  --admin-text-faint:     #a99e86;
+  --admin-text-warm:      #7a6a48;
+
+  /* Oro un poco más profundo: #c9a84c sobre cream tiene poco contraste
+     como texto/acento; este lee bien manteniéndose en la misma familia. */
+  --admin-gold:           #b8912f;
+  --admin-gold-hover:     #a37f24;
+  --admin-gold-glow:      rgba(184, 145, 47, 0.14);
+
+  /* Cores más profundos: en oscuro leían sobre negro; sobre cream
+     necesitan más contraste. Los -bg/-border derivados se recalculan
+     solos (hacen color-mix contra --admin-bg-base, ahora claro). */
+  --admin-success-core:      #2f9160;
+  --admin-success-soft-text: var(--admin-success-core);
+  --admin-danger-core:       #c0392b;
+
+  /* Pill muted en claro (antes gris cálido oscuro). */
+  --admin-pill-muted-bg:     #efe8db;
+  --admin-pill-muted-border: #e0d6c4;
+  --admin-pill-muted-dot:    #c1b49a;
+
+  /* Sombras suaves y cálidas en vez de negros densos. */
+  --admin-shadow-card:    0 1px 3px rgba(44, 24, 16, 0.10), 0 0 0 0.5px rgba(44, 24, 16, 0.04) inset;
+  --admin-shadow-fab:     0 4px 24px rgba(184, 145, 47, 0.22), 0 1px 8px rgba(44, 24, 16, 0.14);
+  --admin-shadow-logo:          0 2px 10px rgba(184, 145, 47, 0.30);
+  --admin-shadow-logo-hover:    0 4px 18px rgba(184, 145, 47, 0.44);
+  --admin-shadow-card-rest:     0 0 0 0.5px rgba(184, 145, 47, 0.12) inset, 0 4px 24px rgba(44, 24, 16, 0.08);
+  --admin-shadow-card-hover:    0 0 0 0.5px rgba(184, 145, 47, 0.20) inset, 0 8px 32px rgba(44, 24, 16, 0.12);
+  --admin-shadow-navcard-hover:         0 4px 20px rgba(184, 145, 47, 0.10);
+  --admin-shadow-navcard-primary-hover: 0 4px 24px rgba(184, 145, 47, 0.16);
+  --admin-shadow-action-btn-hover:         0 2px 14px rgba(184, 145, 47, 0.32);
+  --admin-shadow-action-btn-success-hover: 0 2px 14px color-mix(in srgb, var(--admin-success-core) 55%, transparent);
 }
 
 /* ═══════════════════════════════════════════════════════════════

@@ -5,6 +5,19 @@
     <link rel="icon" type="image/png" href="/MenuDigitalApp.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Menú Digital</title>
+    <script>
+      // Aplica el tema del panel (claro/oscuro) ANTES de pintar, para no
+      // mostrar un flash del tema equivocado al recargar. Solo escribe el
+      // atributo si el guardado es "light"; "dark" es el default sin atributo.
+      // Ver src/hooks/useTheme.ts.
+      (function () {
+        try {
+          if (localStorage.getItem("panel-theme") === "light") {
+            document.documentElement.setAttribute("data-theme", "light");
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

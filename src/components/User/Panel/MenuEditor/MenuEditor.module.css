@@ -858,7 +858,7 @@
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.88rem;
   font-weight: 600;
-  color: var(--admin-bg-base);
+  color: var(--admin-gold-ink);
   cursor: pointer;
   transition: background 0.18s, transform 0.1s;
 }
