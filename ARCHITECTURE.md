@@ -137,6 +137,14 @@ contador). `userID` (ref User), `date` (string `"YYYY-MM-DD"`), `count`. Índice
 `{userID, date}`. Se guarda como string (no Date) para hacer upsert por día sin lidiar
 con husos horarios en la query.
 
+### `models/CrmProfile.js`
+Datos de **CRM** de un cliente (un local suscripto), para uso interno del panel del CEO.
+Vive en su propia colección — NO se mete en User — a propósito: así estos datos internos
+nunca se filtran por los endpoints públicos de usuario. `userID` (ref User, único),
+`stage` (enum del pipeline: `lead/onboarding/activo/en_riesgo/baja`), `tags [String]`,
+`nextFollowUp` (Date), `notes` (subdocs `{text, author, createdAt}`). Exporta también
+`STAGES`.
+
 ## middleware/
 
 ### `middleware/auth.js`
@@ -243,6 +251,17 @@ Endpoints:
 - **`confirmMassive`** `POST /api/massive/confirm` — aplica los cambios fila por fila
   (categorías primero, después productos) e informa qué se creó/actualizó/falló.
 
+### `controllers/crmController.js` (CRM interno — admin)
+Todas las rutas pasan por protect + isAdmin. `defaultProfile()` / `isValidId()` helpers.
+- **`listClients`** `GET /api/admin/crm/clients` — lista de clientes (locales) enriquecida
+  con su etapa/tags/próximo seguimiento (dos queries que se cruzan en memoria).
+- **`getClient`** `GET /api/admin/crm/clients/:userID` — detalle: datos del local + su
+  perfil de CRM (o default) + resumen de actividad (categorías/secciones/items).
+- **`updateProfile`** `PATCH /.../:userID` — actualiza etapa/tags/nextFollowUp (upsert;
+  valida la etapa y que el user exista).
+- **`addNote`** `POST /.../:userID/notes` — agrega una nota (autor = admin logueado).
+- **`deleteNote`** `DELETE /.../:userID/notes/:noteID` — borra una nota puntual.
+
 ### `controllers/paymentController.js` (MercadoPago)
 - **`verifyMpSignature(req)`** — valida la firma HMAC-SHA256 del header `x-signature`
   contra `MP_WEBHOOK_SECRET` (con `timingSafeEqual`). Si el secret no está configurado,
@@ -266,6 +285,10 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
 - **`routes/adminRoutes.js`** — rutas admin (todas `protect + isAdmin`).
 - **`routes/massiveRoutes.js`** — `template/preview/confirm`, todas gateadas con
   `requirePlan("starter")`; multer en memoria con límite de 5MB.
+- **`routes/crmRoutes.js`** — CRM interno bajo `/api/admin/crm` (montado en app.js
+  ANTES de `/api/admin` para que su prefijo matchee primero). Todas `protect + isAdmin`:
+  `GET /clients`, `GET /clients/:userID`, `PATCH /clients/:userID`,
+  `POST /clients/:userID/notes`, `DELETE /clients/:userID/notes/:noteID`.
 - **`routes/paymentRoutes.js`** — define `PLANES` (title/price/description de starter,
   pro, premium para MercadoPago), `POST /crear-preferencia` (protegido: crea la
   preferencia de pago y devuelve `init_point`), y `POST /webhook` → `mpWebhook`.
@@ -306,7 +329,7 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
 - **`AppRoutes`** — declara todas las rutas con `lazy()`:
   - Públicas: `/` (AdminHome = landing comercial), `/login`, `/register`, `/terminos`,
     `/privacidad`, `/contacto`.
-  - Admin (protegidas por `AdminRoute`): `/admin` (CEODashboard).
+  - Admin (protegidas por `AdminRoute`): `/admin` (CEODashboard), `/admin/crm` (CrmClients).
   - Dueño (protegidas por `UserRoute` + `DashboardLayout`): `/dashboard`,
     `/menu/editor`, `/user/editor`, `/estadisticas`.
   - Tenant público por slug (al final): `/:slug` (UserHome) y `/:slug/menu` (UserMenu).
@@ -407,6 +430,10 @@ Funciones tipadas por endpoint de usuario: **`register`**, **`login`**,
 **`confirmMassiveImport(file)`**, y **`triggerBlobDownload(blob, filename)`** (dispara la
 descarga en el navegador).
 
+### `api/crm.ts`
+CRM interno (admin): **`listCrmClients`**, **`getCrmClient`**, **`updateCrmProfile`**,
+**`addCrmNote`**, **`deleteCrmNote`**.
+
 ### `api/index.ts`
 Barrel: re-exporta `users/menus/items`, el `apiClient` (axios) y
 `apiFetch/isCancelled/ApiError`.
@@ -421,7 +448,8 @@ normalizada del user logueado en el contexto), `Menu`, `Item`, respuestas
 agrupado (`Categoria`, `Seccion`, `MenuData`, `Tab`, `UserMenuResponse`), el menú del
 panel (`AdminItem/AdminCategoria/AdminSeccion/AdminMenuData`, con campos que solo usa el
 editor), `DashData`, `DayCount`, `StatsData`, tipos de import masivo (`MassiveRowResult`,
-`MassivePreviewResponse`, `MassiveConfirmResponse`) y de admin (`Plan`, `AdminStats`).
+`MassivePreviewResponse`, `MassiveConfirmResponse`), de admin (`Plan`, `AdminStats`) y de
+CRM (`CrmStage`, `CrmNote`, `CrmProfile`, `CrmClient`, `CrmClientDetail`).
 
 ## components/
 
@@ -445,6 +473,17 @@ Panel interno del CEO (`/admin`). Helpers: `SUBSCRIPTION_LABEL`, `SUBSCRIPTION_C
 `timeAgo(date)`. Componente **`CEODashboard`**: trae `/admin/stats` y `/admin/allUsers`,
 muestra KPIs, breakdown de suscripciones (free/starter/pro/premium), buscador de
 clientes y toggle activar/desactivar. Sub-componente **`KpiCard`** y varios íconos SVG.
+
+### `components/Admin/Crm/CrmClients.tsx`
+**CRM interno** del CEO (`/admin/crm`). Helpers: `STAGE_META` (etiqueta+color por etapa),
+`fmtDate`, `isOverdue`, `timeAgo`, `dateInputValue`.
+- **`CrmClients`** — trae la lista (`listCrmClients`), la filtra por etapa (chips con
+  contadores) y búsqueda, y renderiza las filas (etapa, plan, próximo seguimiento
+  resaltado si venció). Al seleccionar un cliente abre el drawer.
+- **`ClientDrawer`** — panel lateral de detalle: trae `getCrmClient`, muestra perfil +
+  actividad + link a la carta, y permite cambiar etapa, editar tags, setear el próximo
+  seguimiento y gestionar el historial de notas (agregar/borrar). Los cambios se guardan
+  al backend y se sincronizan con la fila del listado (optimista). Cierra con Escape.
 
 ### `components/Login/Login.tsx`
 - **`Login`** — formulario de login. Usa `useAuth().login`, muestra errores, redirige
@@ -570,3 +609,7 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   la serie de 30 días en `UserStats`, con auto-refresh en tiempo real.
 - **Import/export Excel** (plan starter+): `getTemplate` genera el `.xlsx`;
   `previewMassive`/`confirmMassive` procesan la reimportación fila por fila.
+- **CRM interno** (solo CEO/admin): desde `/admin/crm` se gestiona a los locales
+  suscriptos como clientes (etapa del pipeline, tags, seguimiento, notas). Los datos
+  viven en `CrmProfile`, aislados del modelo User para no filtrarse por ningún endpoint
+  público; solo se acceden vía `/api/admin/crm` (protect + isAdmin).
