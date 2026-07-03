@@ -466,7 +466,14 @@ clientes y toggle activar/desactivar. Sub-componente **`KpiCard`** y varios íco
   `useAvatar`, título, badge de delivery, lista de contacto, galería bento, botón "Ver
   menú"). Setea `document.title`.
 - Sub-componentes: **`ContactList`** (chips de contacto con `useReveal`), **`Gallery`**
-  (galería con foto destacada), **`Loader`**, **`NotFound`**, y un visor de imágenes.
+  (galería bento con foto destacada), **`Loader`** (skeleton con la silueta real),
+  **`NotFound`**.
+- **`ImageViewer`** — lightbox a pantalla completa (se abre al tocar la foto de portada
+  o una de la galería). Theme-agnóstico: backdrop con blur, imagen con zoom de entrada,
+  botones glassmorphic (cerrar / prev / next con estado disabled en los extremos) y
+  contador "N / total". Navegación por teclado (← → / Esc), bloqueo del scroll del fondo
+  mientras está abierto, y `role="dialog"` + aria-labels. Responsive (tap targets
+  cómodos en mobile).
 
 ### `components/User/Home/Menu/UserMenu.tsx`
 **Carta pública** (`/:slug/menu`). Helpers: `minOption(options)` (precio mínimo entre
