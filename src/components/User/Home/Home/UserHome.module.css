@@ -223,39 +223,132 @@
   }
 }
 
+/* ── Visor de imágenes (lightbox a pantalla completa) ──
+   Se abre al tocar la foto de portada o una de la galería. Es theme-agnóstico
+   (va por ENCIMA de cualquier template, sobre un backdrop oscuro propio), así
+   que usa su propia paleta neutra en vez de los tokens --t-* del template.
+   Modernizado: backdrop con blur + fade, imagen con zoom de entrada, y botones
+   glassmorphic (antes prev/next no tenían fondo ni color y quedaban casi
+   invisibles sobre el overlay). Navegación por teclado y bloqueo de scroll los
+   maneja el componente (ver ImageViewer en UserHome.tsx). */
 .tViewer {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, .92);
+  z-index: 9999;
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 9999;
+  padding: clamp(1rem, 4vw, 3rem);
+  background: rgba(8, 7, 6, 0.86);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: t-fadeIn 0.2s ease both;
 }
 
 .tViewerImg {
-  max-width: 95vw;
-  max-height: 95vh;
+  max-width: min(95vw, 1100px);
+  max-height: 88vh;
   object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  /* Entra con un scale sutil — se siente "abierto" en vez de solo aparecido. */
+  animation: t-viewer-zoom 0.28s var(--ease-out) both;
+}
+
+@keyframes t-viewer-zoom {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Lenguaje común glassmorphic para los 3 controles (cerrar / prev / next). */
+.tViewerClose,
+.tViewerPrev,
+.tViewerNext {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.5px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.10);
+  color: #fff;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+}
+
+.tViewerClose:hover,
+.tViewerPrev:hover:not(:disabled),
+.tViewerNext:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.20);
+}
+
+/* Deshabilitados en los extremos de la galería (primera / última foto). */
+.tViewerPrev:disabled,
+.tViewerNext:disabled {
+  opacity: 0.32;
+  cursor: default;
 }
 
 .tViewerPrev,
 .tViewerNext {
-  position: fixed;
   top: 50%;
   transform: translateY(-50%);
-  width: 52px;
-  height: 52px;
-  border: none;
+  width: 48px;
+  height: 48px;
   border-radius: 999px;
-  cursor: pointer;
-  font-size: 28px;
+  font-size: 26px;
+  line-height: 1;
+  padding-bottom: 3px; /* centra ópticamente el chevron ‹ › */
 }
 
-.tViewerPrev {
-  left: 24px;
+.tViewerPrev:active:not(:disabled),
+.tViewerNext:active:not(:disabled) {
+  transform: translateY(-50%) scale(0.9);
 }
 
-.tViewerNext {
-  right: 24px;
+.tViewerPrev { left: clamp(0.75rem, 3vw, 2rem); }
+.tViewerNext { right: clamp(0.75rem, 3vw, 2rem); }
+
+.tViewerClose {
+  top: clamp(0.75rem, 3vw, 1.5rem);
+  right: clamp(0.75rem, 3vw, 1.5rem);
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  transition: background 0.15s ease, transform 0.2s var(--ease-out);
+}
+.tViewerClose:hover { transform: rotate(90deg); }
+
+/* Contador (ej "2 / 5") — pill centrada abajo, con números tabulares para que
+   no "salte" el ancho al cambiar de foto. */
+.tViewerCounter {
+  position: fixed;
+  bottom: clamp(1rem, 4vw, 2rem);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.10);
+  border: 0.5px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mobile: controles un toque más chicos, pero manteniendo tap targets cómodos. */
+@media (max-width: 599px) {
+  .tViewerPrev,
+  .tViewerNext { width: 42px; height: 42px; font-size: 24px; }
+}
+
+/* Respeta reduce-motion: sin zoom de entrada ni fade. */
+@media (prefers-reduced-motion: reduce) {
+  .tViewer,
+  .tViewerImg { animation: none; }
+  .tViewerClose:hover { transform: none; }
 }

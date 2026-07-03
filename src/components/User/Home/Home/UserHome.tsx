@@ -530,26 +530,55 @@ function ImageViewer({
 }) {
   const [current, setCurrent] = useState(index);
 
+  // index === -1 significa "estoy mirando la foto de portada" (no la galería):
+  // en ese caso no hay navegación ni contador, es una sola imagen.
   const isBackground = current === -1;
+  const currentImage = isBackground ? backgroundImage : images[current];
 
-  const currentImage = isBackground
-    ? backgroundImage
-    : images[current];
+  const atStart = current <= 0;
+  const atEnd = current >= images.length - 1;
+  const showNav = !isBackground && images.length > 1;
+
+  // Navegación con teclado (← → para moverse, Esc para cerrar) y bloqueo del
+  // scroll del fondo mientras el visor está abierto. Es lo que espera cualquiera
+  // que abre una foto a pantalla completa; sin esto el lightbox se siente a
+  // medio hacer. Los setCurrent van con updater functional para no depender de
+  // `current` (así el listener no se re-suscribe en cada navegación).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      else if (e.key === "ArrowLeft") setCurrent((c) => (c > 0 ? c - 1 : c));
+      else if (e.key === "ArrowRight") setCurrent((c) => (c < images.length - 1 ? c + 1 : c));
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [images.length, onClose]);
 
   if (!currentImage) return null;
 
-  const prev = () => {
-    if (current <= 0) return;
-    setCurrent(current - 1);
-  };
-
-  const next = () => {
-    if (current >= images.length - 1) return;
-    setCurrent(current + 1);
-  };
+  const prev = () => setCurrent((c) => (c > 0 ? c - 1 : c));
+  const next = () => setCurrent((c) => (c < images.length - 1 ? c + 1 : c));
 
   return (
-    <div className={styles.tViewer} onClick={onClose}>
+    <div
+      className={styles.tViewer}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Visor de imágenes"
+    >
+      <button className={styles.tViewerClose} onClick={onClose} aria-label="Cerrar" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+
       <img
         src={currentImage}
         alt=""
@@ -557,27 +586,31 @@ function ImageViewer({
         onClick={(e) => e.stopPropagation()}
       />
 
-      {!isBackground && images.length > 1 && (
+      {showNav && (
         <>
           <button
             className={styles.tViewerPrev}
-            onClick={(e) => {
-              e.stopPropagation();
-              prev();
-            }}
+            onClick={(e) => { e.stopPropagation(); prev(); }}
+            disabled={atStart}
+            aria-label="Imagen anterior"
+            type="button"
           >
             ‹
           </button>
 
           <button
             className={styles.tViewerNext}
-            onClick={(e) => {
-              e.stopPropagation();
-              next();
-            }}
+            onClick={(e) => { e.stopPropagation(); next(); }}
+            disabled={atEnd}
+            aria-label="Imagen siguiente"
+            type="button"
           >
             ›
           </button>
+
+          <div className={styles.tViewerCounter} aria-hidden>
+            {current + 1} / {images.length}
+          </div>
         </>
       )}
     </div>
