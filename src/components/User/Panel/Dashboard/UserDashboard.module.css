@@ -573,6 +573,10 @@
   overflow: hidden;
   box-shadow: var(--admin-shadow-card-rest);
   border: 0.5px solid var(--admin-border-subtle);
+  /* El width/height los setea JS (DEVICE * scale). La transición hace que
+     alternar Móvil/Escritorio se anime en vez de saltar. Va en sync con la
+     del iframe de abajo (mismo scale, misma duración/curva). */
+  transition: width var(--transition-md), height var(--transition-md);
 }
 
 .previewIframe {
@@ -580,6 +584,7 @@
   transform-origin: top left;
   display: block;
   background: var(--admin-bg-base);
+  transition: transform var(--transition-md);
 }
 
 .previewSkeleton {

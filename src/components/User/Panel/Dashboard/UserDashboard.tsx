@@ -364,11 +364,24 @@ function PreviewCard({ url }: PreviewCardProps) {
       const rect   = entries[0]?.contentRect;
       const width  = rect?.width  ?? el.clientWidth;
       const height = rect?.height ?? el.clientHeight;
-      // Antes solo se achicaba para entrar a lo ANCHO. En el layout de
-      // escritorio (columna derecha ancha, sin techo de alto) eso dejaba
-      // scale en 1 — el celular se dibujaba a sus 844px reales y estiraba
-      // toda la página, generando el scroll vertical de la ventana.
-      setScale(Math.min(width / DEVICE.w, height / DEVICE.h, 1));
+
+      // El alto del viewport SOLO es una restricción confiable en el layout de
+      // dos columnas (desktop ≥1200px, ver el media query de .rightCol en el
+      // .module.css): ahí el viewport es flex:1 con un techo de alto, así que
+      // su alto es estable e independiente del contenido.
+      //
+      // En el layout apilado (mobile/tablet) el viewport NO tiene alto propio:
+      // lo determina su contenido (el frame escalado). Si ahí metemos el alto
+      // en el cálculo, se arma un bucle — scale más chico → frame más chico →
+      // viewport más bajo → scale aún más chico — y la preview colapsaba a un
+      // tamaño diminuto al alternar Móvil/Escritorio. Por eso ahí escalamos
+      // solo por ancho (el ancho lo fija la columna, es estable).
+      const twoColumn = window.matchMedia("(min-width: 1200px)").matches;
+      const byWidth  = width / DEVICE.w;
+      const scaleNext = twoColumn
+        ? Math.min(byWidth, height / DEVICE.h, 1)
+        : Math.min(byWidth, 1);
+      setScale(scaleNext);
     });
     ro.observe(el);
     return () => ro.disconnect();
