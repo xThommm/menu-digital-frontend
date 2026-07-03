@@ -587,7 +587,7 @@ export default function MenuEditorPage() {
       const res = await fetch("/api/payments/crear-preferencia", {
         method: "POST",
         headers: authHeaders,
-        body: JSON.stringify({ planId: "semestral" }),
+        body: JSON.stringify({ planId: "pro" }),
       });
       if (!res.ok) throw new Error();
       const { init_point } = await res.json();

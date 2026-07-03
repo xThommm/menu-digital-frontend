@@ -48,7 +48,7 @@ export default function UserStats() {
       const res = await fetch("/api/payments/crear-preferencia", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: "semestral" }),
+        body: JSON.stringify({ planId: "pro" }),
       });
       if (!res.ok) throw new Error();
       const { init_point } = await res.json();

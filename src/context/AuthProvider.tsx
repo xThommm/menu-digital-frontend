@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: data.username,
         role: data.admin ? "admin" : "user",
         slug: data.slug,
-        subscription: data.subscription ?? "none",
+        subscription: data.subscription ?? "free",
       };
 
       setToken(data.token);

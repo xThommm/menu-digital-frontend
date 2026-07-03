@@ -105,7 +105,7 @@ export default function UserEditorPage() {
   const [pictures,          setPictures]   = useState<string[]>([]);
   const [backgroundPicture, setBackground] = useState("");
   const [template,          setTemplate]   = useState(1);
-  const [subscription,      setSubscription] = useState<Subscription>("none");
+  const [subscription,      setSubscription] = useState<Subscription>("free");
   const [lockedTemplate,    setLockedTemplate] = useState<typeof TEMPLATES[number] | null>(null);
   const [upgrading,         setUpgrading]      = useState(false);
 
@@ -163,7 +163,7 @@ export default function UserEditorPage() {
         setPictures(data.media?.pictures || []);
         setBackground(data.media?.backgroundPicture || "");
         setTemplate(data.template || 1);
-        setSubscription(data.subscription || "none");
+        setSubscription(data.subscription || "free");
       } catch {
         setError("No se pudo cargar la información del negocio.");
       } finally {
@@ -243,17 +243,17 @@ export default function UserEditorPage() {
   // también lo valida (useTemplate en userController.js): esto es UX,
   // no la única barrera.
   const selectTemplate = (t: typeof TEMPLATES[number]) => {
-    if (t.premium && subscription === "none") {
+    if (t.premium && subscription === "free") {
       setLockedTemplate(t);
       return;
     }
     saveTemplate(t.id);
   };
 
-  // Dispara el pago real del plan Pro ($29.999, id "semestral" en el
-  // backend) desde el modal de upsell. crear-preferencia requiere estar
-  // logueado — ya lo estamos acá — y usa el propio usuario como
-  // external_reference para poder acreditarle el plan cuando MP confirme.
+  // Dispara el pago real del plan Pro ($29.999, id "pro" en el backend)
+  // desde el modal de upsell. crear-preferencia requiere estar logueado
+  // — ya lo estamos acá — y usa el propio usuario como external_reference
+  // para poder acreditarle el plan cuando MP confirme.
   const handleUpgrade = async () => {
     setUpgrading(true);
     setError("");
@@ -261,7 +261,7 @@ export default function UserEditorPage() {
       const res = await fetch("/api/payments/crear-preferencia", {
         method: "POST",
         headers: authHeaders,
-        body: JSON.stringify({ planId: "semestral" }),
+        body: JSON.stringify({ planId: "pro" }),
       });
       if (!res.ok) throw new Error();
       const { init_point } = await res.json();
@@ -722,7 +722,7 @@ export default function UserEditorPage() {
             </p>
             <div className={styles.templateGrid}>
               {TEMPLATES.map(t => {
-                const isLocked = t.premium && subscription === "none";
+                const isLocked = t.premium && subscription === "free";
                 return (
                   <button
                     key={t.id}

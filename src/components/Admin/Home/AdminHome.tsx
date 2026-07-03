@@ -21,7 +21,7 @@ const PLANS: Plan[] = [
     ],
   },
   {
-    id: "mensual",
+    id: "starter",
     name: "Starter",
     price: 5999,
     period: "por mes",
@@ -36,7 +36,7 @@ const PLANS: Plan[] = [
     ],
   },
   {
-    id: "semestral",
+    id: "pro",
     name: "Pro",
     price: 29999,
     period: "cada 6 meses",
@@ -52,7 +52,7 @@ const PLANS: Plan[] = [
     monthlyEquiv: "$5.000/mes",
   },
   {
-    id: "anual",
+    id: "premium",
     name: "Premium",
     price: 49999,
     period: "por año",
@@ -358,7 +358,7 @@ export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(
-  PLANS.find((p) => p.id === "anual") ?? null
+  PLANS.find((p) => p.id === "premium") ?? null
 );
   const [visible, setVisible] = useState(false);
 
@@ -432,7 +432,7 @@ useEffect(() => {
 }, []);
 
   const openBilling = () => {
-  setSelectedPlan(PLANS.find((p) => p.id === "semestral") ?? null);
+  setSelectedPlan(PLANS.find((p) => p.id === "pro") ?? null);
   setBillingOpen(true);
 };
 
