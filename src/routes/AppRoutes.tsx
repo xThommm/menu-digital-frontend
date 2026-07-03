@@ -13,6 +13,7 @@ const Contact = lazy(() => import("../../src/pages/Legal/Contact"));
 
 // CEO / Admin interno
 const AdminHome    = lazy(() => import("../../src/components/Admin/Home/AdminHome"));
+const AdminLayout  = lazy(() => import("../../src/components/Admin/Panel/AdminLayout"));
 const CEODashboard = lazy(() => import("../../src/components/Admin/Panel/CEODashboard"));
 const CrmClients   = lazy(() => import("../../src/components/Admin/Crm/CrmClients"));
 
@@ -38,10 +39,12 @@ export default function AppRoutes() {
       <Route path="/privacidad" element={<Privacy />} />
       <Route path="/contacto"  element={<Contact />} />
 
-      {/* Rutas protegidas — solo admins (CEOs) */}
+      {/* Rutas protegidas — solo admins (CEOs), con sidebar/bottomnav persistente */}
       <Route element={<AdminRoute />}>
-        <Route path="/admin" element={<CEODashboard />} />
-        <Route path="/admin/crm" element={<CrmClients />} />
+        <Route element={<AdminLayout />}>
+          <Route path="/admin"     element={<CEODashboard />} />
+          <Route path="/admin/crm" element={<CrmClients />} />
+        </Route>
       </Route>
 
       {/* Rutas protegidas — solo dueños de restaurante, con sidebar persistente */}

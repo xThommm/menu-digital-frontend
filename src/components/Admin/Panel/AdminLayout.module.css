@@ -83,6 +83,26 @@
   color: var(--admin-gold);
 }
 
+/* Badge de alerta (seguimientos de CRM vencidos) — esquina del botón en el
+   sidebar, esquina del ícono en el bottomnav. */
+.navBadge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--admin-danger-core);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--admin-bg-surface);
+  pointer-events: none;
+}
+
 .sideBtn::after {
   content: attr(data-tooltip);
   position: absolute;
@@ -121,7 +141,6 @@
 /* ── Bottom nav (mobile) ── */
 .bottomNav {
   display: none;
-  
 }
 
 @media (max-width: 599px) {
@@ -171,6 +190,7 @@
   }
 
   .bottomNavIcon {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;

@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../../context/useAuth";
 import s from "./CEODashboard.module.css";
 import type { User, Subscription, AdminStats } from "../../../types"
@@ -35,8 +34,7 @@ function timeAgo(dateStr: string) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function CEODashboard() {
-  const { user, logout, token } = useAuth();
-  const navigate = useNavigate();
+  const { user, token } = useAuth();
 
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [clients, setClients] = useState<User[]>([]);
@@ -70,11 +68,6 @@ export default function CEODashboard() {
     };
     load();
   }, [token]);
-
-  const handleLogout = useCallback(() => {
-    logout();
-    navigate("/login");
-  }, [logout, navigate]);
 
   const handleToggleActive = useCallback(async (clientId: string, current: boolean) => {
     try {
@@ -134,55 +127,6 @@ export default function CEODashboard() {
 
   return (
     <div className={s.dash}>
-
-      {/* ── Top bar — ocupa todo el ancho ── */}
-      <header className={s.topBar}>
-        <div className={s.topBarInner}>
-          <div className={s.logoMark}>
-            <div className={s.logoSq}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="#0c0b09" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 2h1v6a3 3 0 0 0 6 0V2h1" />
-                <path d="M8 2v6" />
-                <path d="M15 2c0 4 3 5 3 9a3 3 0 0 1-6 0c0-4 3-5 3-9z" />
-                <path d="M8 22v-4" /><path d="M15 22v-4" /><path d="M5 22h14" />
-              </svg>
-            </div>
-            <span className={s.brandName}>
-              Menu<span className={s.brandAccent}>Digital</span>
-              <span className={s.ceoTag}>CEO</span>
-            </span>
-          </div>
-
-          <div className={s.topBarRight}>
-            {/* Pill live con fecha */}
-            <div className={s.livePill}>
-              <span className={s.liveDot} />
-              {todayStr}
-            </div>
-
-            <Link to="/admin/crm" className={s.logoutBtn}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-              CRM
-            </Link>
-
-            <button className={s.logoutBtn} onClick={handleLogout}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-              Salir
-            </button>
-          </div>
-        </div>
-      </header>
 
       {/* ── Contenido centrado con máximo ancho ── */}
       <div className={s.dashInner}>
@@ -328,10 +272,10 @@ interface KpiCardProps {
 }
 
 function KpiCard({ label, value, icon, accent }: KpiCardProps) {
-  const accentColor = accent === "green" ? "#4caf82"
-    : accent === "red"  ? "#c97070"
-    : accent === "gold" ? "#c9a84c"
-    : "#a09070";
+  const accentColor = accent === "green" ? "var(--c-emerald)"
+    : accent === "red"  ? "var(--c-garnet)"
+    : accent === "gold" ? "var(--c-gold)"
+    : "var(--c-ink-dim)";
 
   return (
     <div className={s.kpiCard}>

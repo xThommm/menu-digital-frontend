@@ -7,6 +7,14 @@
       "runtimeArgs": ["run", "dev"],
       "port": 5173,
       "autoPort": false
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "../menu-digital-backend",
+      "port": 5000,
+      "autoPort": false
     }
   ]
 }
