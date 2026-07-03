@@ -121,6 +121,7 @@
 /* ── Bottom nav (mobile) ── */
 .bottomNav {
   display: none;
+  
 }
 
 @media (max-width: 599px) {
@@ -146,12 +147,12 @@
   }
 
   .bottomNavBtn {
-    flex: 1;
+    flex: content;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 1.75px;
     background: none;
     border: none;
     color: var(--admin-text-muted);

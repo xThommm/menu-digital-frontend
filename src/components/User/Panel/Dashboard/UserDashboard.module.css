@@ -569,7 +569,7 @@
 
 .previewFrameWrap {
   position: relative;
-  border-radius: var(--admin-radius-xl);
+  border-radius: var(--admin-radius-md);
   overflow: hidden;
   box-shadow: var(--admin-shadow-card-rest);
   border: 0.5px solid var(--admin-border-subtle);

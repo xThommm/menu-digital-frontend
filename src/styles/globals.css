@@ -626,7 +626,7 @@ a:hover { opacity: 0.75; }
   --t-accent-soft: rgba(201, 168, 76, 0.10);
   --t-accent-glow: rgba(201, 168, 76, 0.18);
   --t-btn-text:    #0b0a08;
-  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #0b0a08 90%);
+  --t-hero-grad: linear-gradient(to bottom, transparent 45%, #0b0a08 100%);
 }
 
 /* Template 2 — Midnight Code (oscuro frío) */
@@ -643,7 +643,7 @@ a:hover { opacity: 0.75; }
   --t-accent-soft: rgba(88, 166, 255, 0.08);
   --t-accent-glow: rgba(88, 166, 255, 0.16);
   --t-btn-text:    #0d1117;
-  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #0d1117 90%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #0d1117 100%);
 }
 
 /* Template 3 — Botanical (claro verde) */
@@ -660,7 +660,7 @@ a:hover { opacity: 0.75; }
   --t-accent-soft: rgba(46, 125, 50, 0.09);
   --t-accent-glow: rgba(46, 125, 50, 0.14);
   --t-btn-text:    #f2f6ef;
-  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #f2f6ef 90%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #f2f6ef 100%);
 }
 
 /* Template 4 — Ember (oscuro rojo) */
@@ -677,7 +677,7 @@ a:hover { opacity: 0.75; }
   --t-accent-soft: rgba(224, 85, 85, 0.09);
   --t-accent-glow: rgba(224, 85, 85, 0.20);
   --t-btn-text:    #faf0f0;
-  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #110606 90%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #110606 100%);
 }
 
 /* Template 5 — Minimal Press (blanco limpio) */
@@ -694,7 +694,7 @@ a:hover { opacity: 0.75; }
   --t-accent-soft: rgba(17, 17, 17, 0.05);
   --t-accent-glow: rgba(17, 17, 17, 0.10);
   --t-btn-text:    #ffffff;
-  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #ffffff 90%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #ffffff 100%);
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -721,7 +721,7 @@ a:hover { opacity: 0.75; }
   --t-accent-glow: rgba(168, 112, 63, 0.22);
   --t-btn-text:    #fbf4ea;
   --t-btn-bg:      linear-gradient(135deg, #c99566 0%, #a8703f 45%, #d9ac78 100%);
-  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #efddc9 90%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #efddc9 100%);
 }
 
 /* Template 7 — Noir Gold (negro absoluto + foil dorado, alta gama) */
@@ -739,7 +739,7 @@ a:hover { opacity: 0.75; }
   --t-accent-glow: rgba(212, 175, 55, 0.24);
   --t-btn-text:    #0c0a06;
   --t-btn-bg:      linear-gradient(135deg, #e8c96a 0%, #d4af37 45%, #f0d989 100%);
-  --t-hero-grad:   linear-gradient(to bottom, transparent 15%, #08070a 90%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #08070a 100%);
 }
 
 /* Noir Gold: título con leve resplandor dorado y tracking más ajustado
@@ -776,7 +776,7 @@ a:hover { opacity: 0.75; }
   --t-accent-soft: rgba(42, 145, 196, 0.09);
   --t-accent-glow: rgba(42, 145, 196, 0.16);
   --t-btn-text:    #f4f8fb;
-  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #f4f8fb 90%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #f4f8fb 100%);
 }
 
 /* Template 9 — Charcoal (oscuro neutro + acento coral) · starter */
@@ -793,7 +793,7 @@ a:hover { opacity: 0.75; }
   --t-accent-soft: rgba(255, 107, 92, 0.09);
   --t-accent-glow: rgba(255, 107, 92, 0.18);
   --t-btn-text:    #1a1a1c;
-  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #1a1a1c 90%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #1a1a1c 100%);
 }
 
 /* Template 10 — Terracotta (cálido arcilla/adobe rústico) · pro */
@@ -810,7 +810,7 @@ a:hover { opacity: 0.75; }
   --t-accent-soft: rgba(194, 87, 31, 0.09);
   --t-accent-glow: rgba(194, 87, 31, 0.16);
   --t-btn-text:    #f7ede3;
-  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #f7ede3 90%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #f7ede3 100%);
 }
 
 /* Template 11 — Lavender (claro lila/malva elegante) · pro */
@@ -827,7 +827,7 @@ a:hover { opacity: 0.75; }
   --t-accent-soft: rgba(130, 86, 196, 0.09);
   --t-accent-glow: rgba(130, 86, 196, 0.16);
   --t-btn-text:    #f6f3fa;
-  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #f6f3fa 90%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #f6f3fa 100%);
 }
 
 /* Template 12 — Forest (verde oscuro profundo, wine bar / steakhouse) · pro */
@@ -844,7 +844,7 @@ a:hover { opacity: 0.75; }
   --t-accent-soft: rgba(134, 195, 151, 0.08);
   --t-accent-glow: rgba(134, 195, 151, 0.18);
   --t-btn-text:    #0c1410;
-  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #0c1410 90%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #0c1410 100%);
 }
 
 /* Template 13 — Platinum (premium: negro frío + foil plateado, alta gama).
@@ -865,7 +865,7 @@ a:hover { opacity: 0.75; }
   --t-accent-glow: rgba(184, 194, 207, 0.20);
   --t-btn-text:    #0a0b0d;
   --t-btn-bg:      linear-gradient(135deg, #dfe4ea 0%, #b8c2cf 45%, #eef1f5 100%);
-  --t-hero-grad:   linear-gradient(to bottom, transparent 15%, #0a0b0d 90%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #0a0b0d 100%);
 }
 
 /* Platinum: mismo detalle "fine dining" que Noir Gold, con resplandor frío. */
@@ -904,7 +904,7 @@ a:hover { opacity: 0.75; }
 .t-hero-overlay {
   position: absolute;
   inset: 0;
-  background: var(--t-hero-grad, linear-gradient(to bottom, transparent 30%, var(--t-bg) 100%));
+  background: var(--t-hero-grad, linear-gradient(to bottom, transparent 45%, var(--t-bg) 100%));
   pointer-events: none;
   z-index: var(--z-raised);
 }
