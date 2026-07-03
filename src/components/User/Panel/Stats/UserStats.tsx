@@ -3,6 +3,24 @@ import { useAuth } from "../../../../context/useAuth";
 import type { StatsData } from "../../../../types";
 import s from "./UserStats.module.css";
 
+// Pega a /me/stats y devuelve el resultado ya interpretado. Es pura (no toca
+// estado de React ni el DOM), así se puede reusar desde la carga inicial y
+// desde el refresh automático sin duplicar el fetch y sin volverse una
+// dependencia de efectos. Los efectos hacen el setState después del await.
+type StatsResult =
+  | { kind: "locked" }               // 403 — el plan del usuario no incluye stats
+  | { kind: "data"; data: StatsData } // 200 — datos ok
+  | { kind: "none" };                // otro estado — no tocamos nada
+
+async function requestStats(token: string): Promise<StatsResult> {
+  const res = await fetch("/api/users/me/stats", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 403) return { kind: "locked" };
+  if (res.ok) return { kind: "data", data: await res.json() };
+  return { kind: "none" };
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function UserStats() {
@@ -13,32 +31,72 @@ export default function UserStats() {
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
 
+  // Carga inicial: el spinner arranca en true (useState) y se apaga cuando la
+  // primera request termina. El setState ocurre después del await (no synchrono
+  // dentro del efecto), por eso no dispara renders en cascada.
   useEffect(() => {
-    if (authLoading) return;
-    if (!token) return;
+    if (authLoading || !token) return;
     let cancelled = false;
-    const load = async () => {
+    const run = async () => {
       try {
-        const res = await fetch("/api/users/me/stats", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const r = await requestStats(token);
         if (cancelled) return;
-        if (res.status === 403) {
-          setLocked(true);
-        } else if (res.ok) {
-          setStats(await res.json());
-        }
+        if (r.kind === "locked") setLocked(true);
+        else if (r.kind === "data") setStats(r.data);
       } catch {
         // El panel sigue mostrándose aunque falle la carga de estadísticas
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
-    load();
+    run();
     return () => { cancelled = true; };
-  }, [token, authLoading]);
+  }, [authLoading, token]);
 
-  // Dispara el pago del plan Semestral (mismo patrón que MenuEditor/UserEditor).
+  // "Tiempo real": las visitas se registran en el backend en el momento
+  // (upsert por cada vista de la carta), así que refrescando periódicamente
+  // traemos el conteo al día sin recargar la página. Para no gastar red al
+  // pedo, solo hacemos polling mientras la pestaña está visible, y además
+  // refrescamos apenas el usuario vuelve a la pestaña (visibilitychange).
+  useEffect(() => {
+    if (authLoading || !token || locked) return;
+    const REFRESH_MS = 45_000;
+    let intervalId: number | undefined;
+
+    const refresh = async () => {
+      try {
+        const r = await requestStats(token);
+        if (r.kind === "locked") setLocked(true);
+        else if (r.kind === "data") setStats(r.data);
+      } catch {
+        // silencioso: es un refresh de fondo, no molestamos al usuario
+      }
+    };
+    const stopPolling = () => {
+      if (intervalId !== undefined) { window.clearInterval(intervalId); intervalId = undefined; }
+    };
+    const startPolling = () => {
+      stopPolling();
+      intervalId = window.setInterval(refresh, REFRESH_MS);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refresh(); // refresco inmediato al volver a la pestaña
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    if (document.visibilityState === "visible") startPolling();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [authLoading, token, locked]);
+
+  // Dispara el pago del plan Pro (mismo patrón que MenuEditor/UserEditor).
   // Al volver de MercadoPago, el webhook ya actualizó la suscripción y esta
   // página vuelve a pedir /me/stats, que esta vez responderá 200.
   const handleUpgrade = useCallback(async () => {
