@@ -130,7 +130,7 @@
 .overlayT1 {
   background: linear-gradient(
     to bottom,
-    transparent 15%,
+    transparent 20%,
     color-mix(in srgb, var(--t-bg) 16%, transparent) 36%,
     color-mix(in srgb, var(--t-bg) 50%, transparent) 58%,
     color-mix(in srgb, var(--t-bg) 84%, transparent) 79%,
@@ -141,7 +141,7 @@
 .overlayT3 {
   background: linear-gradient(
     to bottom,
-    transparent 25%,
+    transparent 30%,
     color-mix(in srgb, var(--t-bg) 16%, transparent) 44%,
     color-mix(in srgb, var(--t-bg) 50%, transparent) 63%,
     color-mix(in srgb, var(--t-bg) 84%, transparent) 81%,
@@ -152,7 +152,7 @@
 .overlayT4 {
   background: linear-gradient(
     to bottom,
-    transparent 15%,
+    transparent 20%,
     color-mix(in srgb, var(--t-bg) 16%, transparent) 36%,
     color-mix(in srgb, var(--t-bg) 50%, transparent) 58%,
     color-mix(in srgb, var(--t-bg) 84%, transparent) 79%,
@@ -163,7 +163,7 @@
 .overlayT5 {
   background: linear-gradient(
     to bottom,
-    transparent 25%,
+    transparent 30%,
     color-mix(in srgb, var(--t-bg) 16%, transparent) 44%,
     color-mix(in srgb, var(--t-bg) 50%, transparent) 63%,
     color-mix(in srgb, var(--t-bg) 84%, transparent) 81%,
@@ -175,7 +175,7 @@
 .overlayT6 {
   background: linear-gradient(
     to bottom,
-    transparent 20%,
+    transparent 25%,
     color-mix(in srgb, var(--t-bg) 16%, transparent) 40%,
     color-mix(in srgb, var(--t-bg) 50%, transparent) 60%,
     color-mix(in srgb, var(--t-bg) 84%, transparent) 80%,
@@ -186,7 +186,7 @@
 .overlayT7 {
   background: linear-gradient(
     to bottom,
-    transparent 10%,
+    transparent 15%,
     color-mix(in srgb, var(--t-bg) 16%, transparent) 33%,
     color-mix(in srgb, var(--t-bg) 50%, transparent) 55%,
     color-mix(in srgb, var(--t-bg) 84%, transparent) 78%,
@@ -205,7 +205,7 @@
 .overlayT13 {
   background: linear-gradient(
     to bottom,
-    transparent 18%,
+    transparent 23%,
     color-mix(in srgb, var(--t-bg) 16%, transparent) 39%,
     color-mix(in srgb, var(--t-bg) 50%, transparent) 60%,
     color-mix(in srgb, var(--t-bg) 84%, transparent) 80%,
