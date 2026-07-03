@@ -35,3 +35,18 @@ export const deleteCrmNote = async (userID: string, noteID: string): Promise<Crm
   const res = await apiClient.delete(`/admin/crm/clients/${userID}/notes/${noteID}`)
   return res.data
 }
+
+// GET /api/admin/crm/overdue-count → cantidad de clientes con seguimiento vencido (badge del sidebar)
+export const getCrmOverdueCount = async (): Promise<number> => {
+  const res = await apiClient.get('/admin/crm/overdue-count')
+  return res.data.count
+}
+
+// GET /api/admin/crm/export → descarga el listado (opcionalmente filtrado por etapa) como .xlsx
+export const exportCrmClients = async (stage?: CrmStage | 'all'): Promise<Blob> => {
+  const res = await apiClient.get('/admin/crm/export', {
+    params: stage && stage !== 'all' ? { stage } : undefined,
+    responseType: 'blob',
+  })
+  return res.data
+}

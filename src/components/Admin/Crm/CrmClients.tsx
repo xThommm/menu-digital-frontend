@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
 import type { CrmClient, CrmClientDetail, CrmStage } from "../../../types";
 import {
   listCrmClients,
@@ -7,6 +6,7 @@ import {
   updateCrmProfile,
   addCrmNote,
   deleteCrmNote,
+  exportCrmClients,
 } from "../../../api/crm";
 import { PLAN_LABEL } from "../../../lib/plans";
 import s from "./CrmClients.module.css";
@@ -50,7 +50,7 @@ const timeAgo = (iso: string) => {
 const dateInputValue = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
 
 // ══════════════════════════════════════════════════════════════════
-// Componente principal — lista de clientes + filtros + drawer de detalle
+// Componente principal — lista/kanban de clientes + filtros + drawer de detalle
 // ══════════════════════════════════════════════════════════════════
 export default function CrmClients() {
   const [clients, setClients] = useState<CrmClient[]>([]);
@@ -59,6 +59,10 @@ export default function CrmClients() {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<CrmStage | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
+  const [onlyOverdue, setOnlyOverdue] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [dragOverStage, setDragOverStage] = useState<CrmStage | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,11 +86,25 @@ export default function CrmClients() {
     setClients((prev) => prev.map((c) => (c._id === userID ? { ...c, ...patch } : c)));
   }, []);
 
+  // Cambia de etapa al soltar una tarjeta en otra columna del kanban.
+  // Optimista, igual que saveProfile del drawer.
+  const moveToStage = useCallback(async (userID: string, stage: CrmStage) => {
+    patchClient(userID, { stage });
+    try {
+      await updateCrmProfile(userID, { stage });
+    } catch {
+      /* si falla, el próximo refresh corrige */
+    }
+  }, [patchClient]);
+
   // Conteo por etapa (para los chips de filtro).
   const countByStage = (stage: CrmStage) => clients.filter((c) => c.stage === stage).length;
 
+  const overdueClients = clients.filter((c) => isOverdue(c.nextFollowUp));
+
   const filtered = clients.filter((c) => {
     if (stageFilter !== "all" && c.stage !== stageFilter) return false;
+    if (onlyOverdue && !isOverdue(c.nextFollowUp)) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -95,6 +113,23 @@ export default function CrmClients() {
       c.slug.toLowerCase().includes(q)
     );
   });
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await exportCrmClients(stageFilter);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `crm-clientes${stageFilter !== "all" ? `-${stageFilter}` : ""}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("No se pudo exportar el listado. Intentá de nuevo.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -109,12 +144,6 @@ export default function CrmClients() {
       {/* ── Top bar ── */}
       <header className={s.topBar}>
         <div className={s.topBarInner}>
-          <Link to="/admin" className={s.backLink} aria-label="Volver al panel">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
-            </svg>
-          </Link>
           <div>
             <p className={s.eyebrow}>CRM</p>
             <h1 className={s.title}>Clientes</h1>
@@ -126,70 +155,172 @@ export default function CrmClients() {
       <div className={s.content}>
         {error && <div className={s.errorBanner} role="alert">{error}</div>}
 
-        {/* ── Filtros por etapa ── */}
-        <div className={s.stageFilters}>
+        {/* ── Alerta de seguimientos vencidos ── */}
+        {overdueClients.length > 0 && (
           <button
-            className={`${s.stageChip} ${stageFilter === "all" ? s.stageChipActive : ""}`}
-            onClick={() => setStageFilter("all")}
             type="button"
+            className={`${s.overdueBanner} ${onlyOverdue ? s.overdueBannerActive : ""}`}
+            onClick={() => setOnlyOverdue((v) => !v)}
           >
-            Todos <span className={s.chipCount}>{clients.length}</span>
+            <WarningIcon />
+            {overdueClients.length} {overdueClients.length === 1 ? "cliente tiene" : "clientes tienen"} seguimiento vencido
+            <span className={s.overdueBannerAction}>{onlyOverdue ? "Ver todos" : "Ver solo estos"}</span>
           </button>
-          {STAGE_ORDER.map((st) => (
+        )}
+
+        {/* ── Filtros por etapa (solo en vista lista — en kanban ya están separados por columna) ── */}
+        {viewMode === "list" && (
+          <div className={s.stageFilters}>
             <button
-              key={st}
-              className={`${s.stageChip} ${stageFilter === st ? s.stageChipActive : ""}`}
-              onClick={() => setStageFilter(st)}
+              className={`${s.stageChip} ${stageFilter === "all" ? s.stageChipActive : ""}`}
+              onClick={() => setStageFilter("all")}
               type="button"
             >
-              <span className={s.stageDot} style={{ background: STAGE_META[st].color }} />
-              {STAGE_META[st].label} <span className={s.chipCount}>{countByStage(st)}</span>
+              Todos <span className={s.chipCount}>{clients.length}</span>
             </button>
-          ))}
-        </div>
-
-        {/* ── Buscador ── */}
-        <div className={s.searchRow}>
-          <svg className={s.searchIcon} width="15" height="15" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            className={s.searchInput}
-            placeholder="Buscar por negocio, usuario o slug…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        {/* ── Lista de clientes ── */}
-        {filtered.length === 0 ? (
-          <p className={s.emptyHint}>No hay clientes que coincidan.</p>
-        ) : (
-          <ul className={s.clientList}>
-            {filtered.map((c) => (
-              <li key={c._id}>
-                <button className={s.clientRow} onClick={() => setSelectedId(c._id)} type="button">
-                  <span className={s.stageDot} style={{ background: STAGE_META[c.stage].color }} title={STAGE_META[c.stage].label} />
-                  <span className={s.clientMain}>
-                    <span className={s.clientName}>
-                      {c.businessName || <span className={s.clientNameEmpty}>Sin nombre — @{c.username}</span>}
-                    </span>
-                    <span className={s.clientMeta}>
-                      {STAGE_META[c.stage].label}
-                      {!c.active && <span className={s.inactiveTag}>Inactivo</span>}
-                      {c.nextFollowUp && (
-                        <span className={`${s.followUp} ${isOverdue(c.nextFollowUp) ? s.followUpOverdue : ""}`}>
-                          {isOverdue(c.nextFollowUp) ? "Seguimiento vencido" : "Seguir"} · {fmtDate(c.nextFollowUp)}
-                        </span>
-                      )}
-                    </span>
-                  </span>
-                  <span className={`${s.planBadge} ${s[`plan_${c.subscription}`]}`}>{PLAN_LABEL[c.subscription]}</span>
-                </button>
-              </li>
+            {STAGE_ORDER.map((st) => (
+              <button
+                key={st}
+                className={`${s.stageChip} ${stageFilter === st ? s.stageChipActive : ""}`}
+                onClick={() => setStageFilter(st)}
+                type="button"
+              >
+                <span className={s.stageDot} style={{ background: STAGE_META[st].color }} />
+                {STAGE_META[st].label} <span className={s.chipCount}>{countByStage(st)}</span>
+              </button>
             ))}
-          </ul>
+          </div>
+        )}
+
+        {/* ── Buscador + vista + exportar ── */}
+        <div className={s.toolbarRow}>
+          <div className={s.searchRow}>
+            <svg className={s.searchIcon} width="15" height="15" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              className={s.searchInput}
+              placeholder="Buscar por negocio, usuario o slug…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div className={s.viewToggle}>
+            <button
+              className={`${s.viewToggleBtn} ${viewMode === "list" ? s.viewToggleBtnActive : ""}`}
+              onClick={() => setViewMode("list")}
+              aria-label="Vista lista"
+              aria-current={viewMode === "list" ? "true" : undefined}
+              type="button"
+            >
+              <ListIcon />
+            </button>
+            <button
+              className={`${s.viewToggleBtn} ${viewMode === "kanban" ? s.viewToggleBtnActive : ""}`}
+              onClick={() => setViewMode("kanban")}
+              aria-label="Vista kanban"
+              aria-current={viewMode === "kanban" ? "true" : undefined}
+              type="button"
+            >
+              <KanbanIcon />
+            </button>
+          </div>
+
+          <button className={s.exportBtn} onClick={handleExport} disabled={exporting} type="button">
+            <DownloadIcon />
+            {exporting ? "Exportando…" : "Exportar a Excel"}
+          </button>
+        </div>
+
+        {/* ── Vista lista ── */}
+        {viewMode === "list" && (
+          filtered.length === 0 ? (
+            <p className={s.emptyHint}>No hay clientes que coincidan.</p>
+          ) : (
+            <ul className={s.clientList}>
+              {filtered.map((c) => (
+                <li key={c._id}>
+                  <button className={s.clientRow} onClick={() => setSelectedId(c._id)} type="button">
+                    <span className={s.stageDot} style={{ background: STAGE_META[c.stage].color }} title={STAGE_META[c.stage].label} />
+                    <span className={s.clientMain}>
+                      <span className={s.clientName}>
+                        {c.businessName || <span className={s.clientNameEmpty}>Sin nombre — @{c.username}</span>}
+                      </span>
+                      <span className={s.clientMeta}>
+                        {STAGE_META[c.stage].label}
+                        {!c.active && <span className={s.inactiveTag}>Inactivo</span>}
+                        {c.nextFollowUp && (
+                          <span className={`${s.followUp} ${isOverdue(c.nextFollowUp) ? s.followUpOverdue : ""}`}>
+                            {isOverdue(c.nextFollowUp) ? "Seguimiento vencido" : "Seguir"} · {fmtDate(c.nextFollowUp)}
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                    <span className={`${s.planBadge} ${s[`plan_${c.subscription}`]}`}>{PLAN_LABEL[c.subscription]}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )
+        )}
+
+        {/* ── Vista kanban ── */}
+        {viewMode === "kanban" && (
+          <div className={s.kanbanBoard}>
+            {STAGE_ORDER.map((st) => {
+              const stClients = filtered.filter((c) => c.stage === st);
+              return (
+                <div
+                  key={st}
+                  className={`${s.kanbanColumn} ${dragOverStage === st ? s.kanbanColumnOver : ""}`}
+                  onDragOver={(e) => { e.preventDefault(); setDragOverStage(st); }}
+                  onDragLeave={() => setDragOverStage((cur) => (cur === st ? null : cur))}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOverStage(null);
+                    const id = e.dataTransfer.getData("text/plain");
+                    if (id) moveToStage(id, st);
+                  }}
+                >
+                  <div className={s.kanbanColumnHeader}>
+                    <span className={s.stageDot} style={{ background: STAGE_META[st].color }} />
+                    {STAGE_META[st].label}
+                    <span className={s.chipCount}>{stClients.length}</span>
+                  </div>
+                  <div className={s.kanbanCards}>
+                    {stClients.map((c) => (
+                      <div
+                        key={c._id}
+                        className={s.kanbanCard}
+                        draggable
+                        onDragStart={(e) => e.dataTransfer.setData("text/plain", c._id)}
+                        onClick={() => setSelectedId(c._id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === "Enter") setSelectedId(c._id); }}
+                      >
+                        <span className={s.kanbanCardName}>
+                          {c.businessName || `@${c.username}`}
+                        </span>
+                        <span className={s.kanbanCardMeta}>
+                          <span className={`${s.planBadge} ${s[`plan_${c.subscription}`]}`}>{PLAN_LABEL[c.subscription]}</span>
+                          {!c.active && <span className={s.inactiveTag}>Inactivo</span>}
+                        </span>
+                        {c.nextFollowUp && (
+                          <span className={`${s.followUp} ${isOverdue(c.nextFollowUp) ? s.followUpOverdue : ""}`}>
+                            {fmtDate(c.nextFollowUp)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                    {stClients.length === 0 && <p className={s.kanbanEmpty}>Sin clientes</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
@@ -205,7 +336,7 @@ export default function CrmClients() {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// Drawer de detalle — perfil + controles de CRM + notas
+// Drawer de detalle — perfil + controles de CRM + actividad (notas + eventos)
 // ══════════════════════════════════════════════════════════════════
 function ClientDrawer({
   userID,
@@ -398,9 +529,10 @@ function ClientDrawer({
                 </div>
               </section>
 
-              {/* ── Notas ── */}
+              {/* ── Actividad: notas manuales + eventos automáticos, mezclados
+                   cronológicamente (el backend ya los inserta en orden). ── */}
               <section className={s.section}>
-                <p className={s.sectionLabel}>Notas ({crm.notes.length})</p>
+                <p className={s.sectionLabel}>Actividad ({crm.notes.length})</p>
                 <div className={s.noteComposer}>
                   <textarea
                     className={s.noteTextarea}
@@ -415,19 +547,24 @@ function ClientDrawer({
                 </div>
                 <ul className={s.noteList}>
                   {crm.notes.map((n) => (
-                    <li key={n._id} className={s.noteItem}>
-                      <p className={s.noteText}>{n.text}</p>
+                    <li key={n._id} className={`${s.noteItem} ${n.kind === "event" ? s.eventItem : ""}`}>
+                      <p className={n.kind === "event" ? s.eventText : s.noteText}>
+                        {n.kind === "event" && <EventDotIcon />}
+                        {n.text}
+                      </p>
                       <div className={s.noteFooter}>
                         <span className={s.noteMeta}>
-                          {n.author?.username ? `${n.author.username} · ` : ""}{timeAgo(n.createdAt)}
+                          {n.kind === "event" ? "Sistema" : (n.author?.username ? `${n.author.username} · ` : "")}{timeAgo(n.createdAt)}
                         </span>
-                        <button className={s.noteDelete} onClick={() => removeNote(n._id)} aria-label="Borrar nota" type="button">
-                          Borrar
-                        </button>
+                        {n.kind !== "event" && (
+                          <button className={s.noteDelete} onClick={() => removeNote(n._id)} aria-label="Borrar nota" type="button">
+                            Borrar
+                          </button>
+                        )}
                       </div>
                     </li>
                   ))}
-                  {crm.notes.length === 0 && <p className={s.emptyHint}>Todavía no hay notas.</p>}
+                  {crm.notes.length === 0 && <p className={s.emptyHint}>Todavía no hay actividad.</p>}
                 </ul>
               </section>
             </div>
@@ -435,5 +572,53 @@ function ClientDrawer({
         )}
       </div>
     </div>
+  );
+}
+
+// ── Íconos ────────────────────────────────────────────────────────────────────
+
+function WarningIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  );
+}
+
+function ListIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
+  );
+}
+
+function KanbanIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="3" width="6" height="18" rx="1" /><rect x="9" y="3" width="6" height="11" rx="1" /><rect x="15" y="3" width="6" height="15" rx="1" />
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
+function EventDotIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden className={s.eventDotIcon}>
+      <circle cx="12" cy="12" r="10" />
+    </svg>
   );
 }

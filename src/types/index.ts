@@ -292,9 +292,12 @@ export interface AdminStats {
 
 export type CrmStage = "lead" | "onboarding" | "activo" | "en_riesgo" | "baja"
 
+// kind distingue notas manuales ("note") de eventos que loguea el sistema
+// solo ("event": cambio de plan, activar/desactivar, cambio de template).
 export interface CrmNote {
   _id: string
   text: string
+  kind: "note" | "event"
   createdAt: string
   author?: { _id: string; username: string } | null
 }
