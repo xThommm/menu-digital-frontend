@@ -23,7 +23,9 @@
   justify-content: space-between;
   padding: 0.875rem 1rem;
   border-bottom: 0.5px solid var(--admin-border-subtle);
-  background: rgba(12, 11, 9, 0.9);
+  /* bg-base semi-transparente para que el blur del sticky deje ver algo
+     por detrás; con color-mix sigue el tema (antes era rgba fija oscura). */
+  background: color-mix(in srgb, var(--admin-bg-base) 90%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   position: sticky;
@@ -64,7 +66,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #6b6457;
+  color: var(--admin-text-muted);
   transition: border-color var(--admin-transition), color var(--admin-transition), background var(--admin-transition), box-shadow var(--admin-transition);
   flex-shrink: 0;
 }
@@ -72,7 +74,7 @@
 .backBtn:hover {
   border-color: var(--admin-border-warm);
   color: var(--admin-text-muted);
-  background: #161410;
+  background: var(--admin-bg-elevated);
 }
 
 .backBtn:active {
@@ -135,16 +137,16 @@
   text-transform: uppercase;
   font-weight: 600;
   color: var(--admin-gold);
-  background: #171410;
-  border: 0.5px solid #2e2510;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-default);
   padding: 2px 7px;
   border-radius: 4px;
   white-space: nowrap;
 }
 
 .seccionBadgeDark {
-  background: #161616;
-  border-color: #282828;
+  background: var(--admin-bg-elevated);
+  border-color: var(--admin-border-default);
   color: var(--admin-text-muted);
 }
 
@@ -184,7 +186,7 @@
 .iconBtn.danger:hover {
   border-color: var(--admin-red-border);
   color: var(--admin-red-text);
-  background: #160c0c;
+  background: var(--admin-bg-raised);
 }
 
 .iconBtn:focus-visible {
@@ -218,11 +220,11 @@
   border-color: var(--admin-border-warm);
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
-  background: #111008;
+  background: var(--admin-bg-raised);
 }
 
 .catHeader:hover {
-  background: #131109;
+  background: var(--admin-bg-raised);
 }
 
 /* Botón de chevron independiente (accesible) */
@@ -280,7 +282,7 @@
 
 /* ── Cuerpo del acordeón ── */
 .catBody {
-  background: #0d0c0a;
+  background: var(--admin-bg-base);
   border: 0.5px solid var(--admin-border-warm);
   border-top: none;
   border-bottom-left-radius: var(--admin-radius-lg);
@@ -291,7 +293,7 @@
 
 .catBody.dragOver {
   border-color: var(--admin-gold);
-  background: #0f0e08;
+  background: var(--admin-bg-surface);
   box-shadow: inset 0 0 0 1px var(--admin-gold-glow);
 }
 
@@ -310,17 +312,17 @@
 }
 
 .itemRowAc:hover {
-  background: #100f0d;
+  background: var(--admin-bg-surface);
 }
 
 .itemRowAc.dragging {
   opacity: 0.3;
-  background: #1a1810;
+  background: var(--admin-bg-elevated);
 }
 
 /* Handle de arrastre */
 .dragHandle {
-  color: #2a2720;
+  color: var(--admin-text-faint);
   cursor: grab;
   flex-shrink: 0;
   display: flex;
@@ -507,13 +509,13 @@
 .field textarea:focus,
 .field select:focus {
   border-color: var(--admin-gold);
-  background: #0f0e0c;
+  background: var(--admin-bg-surface);
   box-shadow: 0 0 0 3px var(--admin-gold-glow);
 }
 
 .field input::placeholder,
 .field textarea::placeholder {
-  color: #2a2720;
+  color: var(--admin-text-faint);
 }
 
 .fieldRow {
@@ -540,7 +542,7 @@
 
 .removeBtn {
   background: transparent;
-  border: 0.5px solid #3a1818;
+  border: 0.5px solid var(--admin-red-border);
   border-radius: var(--admin-radius-sm);
   width: 32px;
   height: 32px;
@@ -548,19 +550,19 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #8a4848;
+  color: var(--admin-red-text);
   flex-shrink: 0;
   transition: background var(--admin-transition), border-color var(--admin-transition), color var(--admin-transition);
 }
 
 .removeBtn:hover {
-  background: #1c0e0e;
+  background: var(--admin-red-bg);
   border-color: var(--admin-red-dark-border);
   color: var(--admin-red-text);
 }
 
 .removeBtn:focus-visible {
-  outline: 2px solid #c97070;
+  outline: 2px solid var(--admin-danger-core);
   outline-offset: 2px;
 }
 
@@ -608,8 +610,8 @@
   width: 42px;
   height: 24px;
   border-radius: 12px;
-  background: #1a1813;
-  border: 0.5px solid #252118;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-default);
   cursor: pointer;
   position: relative;
   transition: background 0.2s, border-color 0.2s;
@@ -633,7 +635,7 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #3a3830;
+  background: var(--admin-border-default);
   transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1), background 0.2s;
   pointer-events: none;
 }
@@ -660,7 +662,7 @@
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.93rem;
   font-weight: 500;
-  color: #0c0a06;
+  color: var(--admin-gold-ink);
   cursor: pointer;
   transition: background 0.18s, transform 0.1s, box-shadow 0.18s;
   display: flex;
@@ -704,12 +706,12 @@
 }
 
 .deleteBtn:hover {
-  background: #160d0d;
+  background: var(--admin-red-bg);
   border-color: var(--admin-red-dark-border);
 }
 
 .deleteBtn:focus-visible {
-  outline: 2px solid #c97070;
+  outline: 2px solid var(--admin-danger-core);
   outline-offset: 2px;
 }
 
@@ -740,7 +742,7 @@
 }
 
 .modal {
-  background: #171512;
+  background: var(--admin-bg-elevated);
   border: 0.5px solid var(--admin-border-warm);
   border-radius: var(--admin-radius-2xl);
   padding: 1.5rem;
@@ -823,7 +825,7 @@
 
 .modalConfirm {
   flex: 1;
-  background: #3d1515;
+  background: var(--admin-red-bg);
   border: 0.5px solid var(--admin-red-border);
   border-radius: var(--admin-radius-md);
   padding: 0.72rem;
@@ -836,12 +838,12 @@
 }
 
 .modalConfirm:hover {
-  background: #4d1a1a;
+  background: var(--admin-red-border);
   border-color: var(--admin-red-dark-border);
 }
 
 .modalConfirm:focus-visible {
-  outline: 2px solid #c97070;
+  outline: 2px solid var(--admin-danger-core);
   outline-offset: 2px;
 }
 
@@ -885,7 +887,7 @@
 /* ── Sheet de opciones (Categoría / Sección / Importar) ── */
 /* El overlay reutiliza .modalOverlay — se centra igual */
 .sheet {
-  background: #171512;
+  background: var(--admin-bg-elevated);
   border: 0.5px solid var(--admin-border-warm);
   border-radius: var(--admin-radius-2xl);
   padding: 1.25rem;
@@ -923,7 +925,7 @@
 
 .sheetOption:hover {
   border-color: var(--admin-border-warm);
-  background: #161309;
+  background: var(--admin-bg-elevated);
   box-shadow: 0 0 0 1px var(--admin-gold-glow);
 }
 
@@ -944,9 +946,9 @@
   height: 34px;
   flex-shrink: 0;
   border-radius: var(--admin-radius-md);
-  background: #1a1710;
+  background: var(--admin-bg-elevated);
   color: var(--admin-gold);
-  border: 0.5px solid #2a2316;
+  border: 0.5px solid var(--admin-border-default);
 }
 
 .sheetOptionText {
@@ -1057,8 +1059,8 @@
 }
 
 .errorBanner {
-  background: #160e08;
-  border: 0.5px solid #3a1c0c;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-warm);
   border-radius: var(--admin-radius-md);
   padding: 0.6rem 0.9rem;
   font-size: 0.8rem;
@@ -1177,7 +1179,7 @@
       rgba(201,168,76,.03)
     );
 
-  color: #c9a84c;
+  color: var(--admin-gold);
 
   font-size: .92rem;
   font-weight: 600;
@@ -1222,7 +1224,7 @@
 
   border: 1px solid rgba(255,255,255,.08);
 
-  background: #161616;
+  background: var(--admin-bg-elevated);
 }
 
 .imagePreviewWrapper:focus-visible {

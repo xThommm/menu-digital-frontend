@@ -50,7 +50,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #a09070;
+  color: var(--admin-text-warm);
   transition: border-color var(--admin-transition), color var(--admin-transition), background var(--admin-transition);
   flex-shrink: 0;
 }
@@ -58,7 +58,7 @@
 .backBtn:hover {
   border-color: var(--admin-gold);
   color: var(--admin-gold);
-  background: #1e1a10;
+  background: var(--admin-bg-raised-4);
 }
 
 .backBtn:focus-visible {
@@ -189,12 +189,12 @@
 .field textarea:focus,
 .field select:focus {
   border-color: var(--admin-gold);
-  background: #0f0e0c;
+  background: var(--admin-bg-surface);
 }
 
 .field input::placeholder,
 .field textarea::placeholder {
-  color: #2e2b23;
+  color: var(--admin-text-faint);
 }
 
 /* Estado de error en campo */
@@ -246,8 +246,8 @@
   width: 44px;
   height: 26px;
   border-radius: 13px;
-  background: #1e1c17;
-  border: 0.5px solid #2e2b23;
+  background: var(--admin-border-subtle);
+  border: 0.5px solid var(--admin-border-default);
   cursor: pointer;
   position: relative;
   transition: background 0.2s, border-color 0.2s;
@@ -399,7 +399,7 @@
 }
 
 .bgPreview:hover {
-  border-color: #3a3020;
+  border-color: var(--admin-border-warm);
 }
 
 .bgPreview:focus-visible {
@@ -549,7 +549,7 @@
 
 .galleryAdd:hover:not(:disabled) {
   border-color: var(--admin-gold);
-  background: #0f0e0b;
+  background: var(--admin-bg-surface);
 }
 
 .galleryAdd:focus-visible {
@@ -593,7 +593,7 @@
 }
 
 .templateCard:hover:not(.selected) {
-  border-color: #3a3020;
+  border-color: var(--admin-border-warm);
 }
 
 .templateCard:active {
@@ -675,7 +675,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.6rem 0.75rem;
-  border-top: 0.5px solid #1a1816;
+  border-top: 0.5px solid var(--admin-border-subtle);
 }
 
 .templateName {
@@ -688,7 +688,7 @@
   font-size: 0.65rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  background: #1e1a10;
+  background: var(--admin-bg-raised-4);
   color: var(--admin-gold);
   border: 0.5px solid var(--admin-border-warm);
   padding: 2px 7px;
@@ -771,7 +771,7 @@
 }
 
 .modal {
-  background: #171512;
+  background: var(--admin-bg-elevated);
   border: 0.5px solid var(--admin-border-warm);
   border-radius: var(--admin-radius-2xl);
   padding: 1.5rem;

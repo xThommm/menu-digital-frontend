@@ -207,7 +207,7 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
                 </div>
               ) : (
                 <>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#3d3a33", marginBottom: "0.5rem" }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--admin-text-faint)", marginBottom: "0.5rem" }}>
                     <rect x="3" y="3" width="18" height="18" rx="2" />
                     <path d="M3 9h18M9 21V9" />
                   </svg>
@@ -329,8 +329,8 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         .me {
-          min-height: 100vh; background: #0c0b09;
-          font-family: 'DM Sans', system-ui, sans-serif; color: #d4c9b0;
+          min-height: 100vh; background: var(--admin-bg-base);
+          font-family: 'DM Sans', system-ui, sans-serif; color: var(--admin-text-secondary);
           display: flex; flex-direction: column;
           max-width: 600px; margin: 0 auto;
         }
@@ -338,16 +338,16 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
         /* Top bar */
         .top-bar {
           display: flex; align-items: center; justify-content: space-between;
-          padding: 1rem; border-bottom: 0.5px solid #1e1c18;
-          background: #0c0b09; position: sticky; top: 0; z-index: 10;
+          padding: 1rem; border-bottom: 0.5px solid var(--admin-border-subtle);
+          background: var(--admin-bg-base); position: sticky; top: 0; z-index: 10;
         }
-        .top-title { font-size: 1rem; font-weight: 500; color: #ede4d0; }
+        .top-title { font-size: 1rem; font-weight: 500; color: var(--admin-text-primary); }
         .back-btn {
-          width: 36px; height: 36px; background: #181614; border: 0.5px solid #272420;
+          width: 36px; height: 36px; background: var(--admin-bg-elevated); border: 0.5px solid var(--admin-border-default);
           border-radius: 10px; display: flex; align-items: center; justify-content: center;
-          cursor: pointer; color: #a09070; transition: border-color .15s, color .15s;
+          cursor: pointer; color: var(--admin-text-warm); transition: border-color .15s, color .15s;
         }
-        .back-btn:hover { border-color: #c9a84c; color: #c9a84c; }
+        .back-btn:hover { border-color: var(--admin-gold); color: var(--admin-gold); }
 
         /* Step bar */
         .step-bar {
@@ -357,16 +357,16 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
         .step-item { display: flex; align-items: center; gap: 6px; }
         .step-dot {
           width: 22px; height: 22px; border-radius: 50%;
-          background: #181614; border: 0.5px solid #272420;
+          background: var(--admin-bg-elevated); border: 0.5px solid var(--admin-border-default);
           display: flex; align-items: center; justify-content: center;
-          font-size: 11px; font-weight: 500; color: #5c5649;
+          font-size: 11px; font-weight: 500; color: var(--admin-text-muted);
           flex-shrink: 0; transition: all .2s;
         }
-        .step-dot.active { background: #1e1a10; border-color: #c9a84c; color: #c9a84c; }
+        .step-dot.active { background: var(--admin-bg-raised-4); border-color: var(--admin-gold); color: var(--admin-gold); }
         .step-dot.done   { background: #0d2b18; border-color: #4c7a2e; color: #7ec850; }
-        .step-label { font-size: 0.75rem; color: #3d3a33; white-space: nowrap; }
-        .step-label.active { color: #c9a84c; }
-        .step-line { flex: 1; height: 0.5px; background: #272420; min-width: 20px; margin: 0 6px; }
+        .step-label { font-size: 0.75rem; color: var(--admin-text-faint); white-space: nowrap; }
+        .step-label.active { color: var(--admin-gold); }
+        .step-line { flex: 1; height: 0.5px; background: var(--admin-border-default); min-width: 20px; margin: 0 6px; }
         .step-line.done { background: #4c7a2e; }
 
         /* Content */
@@ -375,30 +375,30 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
         /* Info card */
         .info-card {
           display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-          background: #131210; border: 0.5px solid #272420; border-radius: 12px;
+          background: var(--admin-bg-raised); border: 0.5px solid var(--admin-border-default); border-radius: 12px;
           padding: .9rem 1rem;
         }
-        .info-card-left { display: flex; align-items: flex-start; gap: 10px; color: #c9a84c; }
-        .info-card-title { font-size: .88rem; font-weight: 500; color: #ede4d0; margin-bottom: 2px; }
-        .info-card-desc  { font-size: .75rem; color: #5c5649; line-height: 1.4; }
+        .info-card-left { display: flex; align-items: flex-start; gap: 10px; color: var(--admin-gold); }
+        .info-card-title { font-size: .88rem; font-weight: 500; color: var(--admin-text-primary); margin-bottom: 2px; }
+        .info-card-desc  { font-size: .75rem; color: var(--admin-text-muted); line-height: 1.4; }
 
         /* Drop zone */
         .drop-zone {
-          border: 1.5px dashed #272420; border-radius: 12px;
+          border: 1.5px dashed var(--admin-border-default); border-radius: 12px;
           padding: 2rem 1.5rem; text-align: center; cursor: pointer;
           transition: border-color .2s, background .2s;
           display: flex; flex-direction: column; align-items: center;
         }
         .drop-zone:hover, .drop-zone.dragover { border-color: #c9a84c44; background: #1e1a1044; }
         .drop-zone.has-file { border-style: solid; border-color: #4c7a2e; background: #0d2b1833; cursor: default; }
-        .drop-title { font-size: .88rem; font-weight: 500; color: #ede4d0; margin-bottom: .25rem; }
-        .drop-sub   { font-size: .75rem; color: #3d3a33; }
+        .drop-title { font-size: .88rem; font-weight: 500; color: var(--admin-text-primary); margin-bottom: .25rem; }
+        .drop-sub   { font-size: .75rem; color: var(--admin-text-faint); }
 
         /* File selected */
         .file-selected { display: flex; align-items: center; gap: 10px; width: 100%; }
         .file-info { flex: 1; text-align: left; }
-        .file-name { display: block; font-size: .88rem; font-weight: 500; color: #ede4d0; }
-        .file-size { display: block; font-size: .72rem; color: #5c5649; margin-top: 2px; }
+        .file-name { display: block; font-size: .88rem; font-weight: 500; color: var(--admin-text-primary); }
+        .file-size { display: block; font-size: .72rem; color: var(--admin-text-muted); margin-top: 2px; }
         .remove-file-btn {
           background: #1e1209; border: 0.5px solid #4a2010; border-radius: 8px;
           width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
@@ -407,27 +407,27 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
 
         /* Buttons */
         .save-btn {
-          width: 100%; background: #c9a84c; border: none; border-radius: 12px;
+          width: 100%; background: var(--admin-gold); border: none; border-radius: 12px;
           padding: .9rem; font-family: 'DM Sans', system-ui, sans-serif;
-          font-size: .95rem; font-weight: 500; color: #0c0b09;
+          font-size: .95rem; font-weight: 500; color: var(--admin-bg-base);
           cursor: pointer; transition: background .2s;
         }
-        .save-btn:hover:not(:disabled) { background: #dabb62; }
+        .save-btn:hover:not(:disabled) { background: var(--admin-gold-hover); }
         .save-btn:disabled { opacity: .4; cursor: not-allowed; }
         .outline-btn {
-          background: none; border: 0.5px solid #3a3020; border-radius: 10px;
+          background: none; border: 0.5px solid var(--admin-border-warm); border-radius: 10px;
           padding: .7rem 1.1rem; font-family: 'DM Sans', system-ui, sans-serif;
-          font-size: .88rem; color: #c9a84c; cursor: pointer; transition: border-color .15s;
+          font-size: .88rem; color: var(--admin-gold); cursor: pointer; transition: border-color .15s;
           white-space: nowrap;
         }
-        .outline-btn:hover { border-color: #c9a84c; }
+        .outline-btn:hover { border-color: var(--admin-gold); }
         .delete-btn {
-          width: 100%; background: none; border: 0.5px solid #272420; border-radius: 12px;
+          width: 100%; background: none; border: 0.5px solid var(--admin-border-default); border-radius: 12px;
           padding: .9rem; font-family: 'DM Sans', system-ui, sans-serif;
-          font-size: .95rem; font-weight: 500; color: #6b6457;
+          font-size: .95rem; font-weight: 500; color: var(--admin-text-muted);
           cursor: pointer; transition: border-color .2s;
         }
-        .delete-btn:hover:not(:disabled) { border-color: #5c5649; color: #a09070; }
+        .delete-btn:hover:not(:disabled) { border-color: var(--admin-text-muted); color: var(--admin-text-warm); }
         .delete-btn:disabled { opacity: .4; cursor: not-allowed; }
         .form-btns { display: flex; gap: .6rem; margin-top: .25rem; }
         .form-btns .save-btn { flex: 2; }
@@ -437,60 +437,60 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
         .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
         .metric-card {
           border-radius: 10px; padding: .75rem; text-align: center;
-          border: 0.5px solid #1e1c18;
+          border: 0.5px solid var(--admin-border-subtle);
         }
         .metric-card.green  { background: #0d2b1855; border-color: #1a4a2a; }
-        .metric-card.amber  { background: #1e1a1055; border-color: #3a3020; }
+        .metric-card.amber  { background: #1e1a1055; border-color: var(--admin-border-warm); }
         .metric-card.red    { background: #1c100955; border-color: #4a2010; }
-        .metric-card.neutral{ background: #131210;   border-color: #1e1c18; }
+        .metric-card.neutral{ background: var(--admin-bg-raised);   border-color: var(--admin-border-subtle); }
         .metric-num {
           display: block; font-size: 1.5rem; font-weight: 500;
-          color: #ede4d0; margin-bottom: 2px;
+          color: var(--admin-text-primary); margin-bottom: 2px;
         }
         .metric-card.green  .metric-num { color: #7ec850; }
-        .metric-card.amber  .metric-num { color: #c9a84c; }
-        .metric-card.red    .metric-num { color: #c97070; }
-        .metric-lbl { font-size: .72rem; color: #5c5649; }
+        .metric-card.amber  .metric-num { color: var(--admin-gold); }
+        .metric-card.red    .metric-num { color: var(--admin-danger-core); }
+        .metric-lbl { font-size: .72rem; color: var(--admin-text-muted); }
 
         /* Resumen/Resultado sections */
         .rs-block {
-          background: #131210; border: 0.5px solid #272420; border-radius: 12px; overflow: hidden;
+          background: var(--admin-bg-raised); border: 0.5px solid var(--admin-border-default); border-radius: 12px; overflow: hidden;
         }
         .rs-header {
-          padding: .75rem 1rem; border-bottom: 0.5px solid #1e1c18;
+          padding: .75rem 1rem; border-bottom: 0.5px solid var(--admin-border-subtle);
           display: flex; align-items: center; gap: 8px;
         }
-        .rs-titulo { font-size: .82rem; font-weight: 500; color: #ede4d0; }
-        .rs-group { border-bottom: 0.5px solid #1e1c18; }
+        .rs-titulo { font-size: .82rem; font-weight: 500; color: var(--admin-text-primary); }
+        .rs-group { border-bottom: 0.5px solid var(--admin-border-subtle); }
         .rs-group:last-child { border-bottom: none; }
         .rs-group-title {
           padding: .5rem 1rem; font-size: .68rem; letter-spacing: .1em;
-          text-transform: uppercase; color: #3d3a33;
+          text-transform: uppercase; color: var(--admin-text-faint);
           display: flex; align-items: center; gap: 6px;
         }
         .rs-row {
           display: flex; align-items: flex-start; gap: 8px;
           padding: .5rem 1rem; border-top: 0.5px solid #18160f;
         }
-        .rs-fila { font-size: .72rem; color: #3d3a33; flex-shrink: 0; min-width: 42px; }
-        .rs-codigo { font-size: .82rem; color: #d4c9b0; font-weight: 500; }
-        .rs-titulo-item { font-size: .75rem; color: #5c5649; }
+        .rs-fila { font-size: .72rem; color: var(--admin-text-faint); flex-shrink: 0; min-width: 42px; }
+        .rs-codigo { font-size: .82rem; color: var(--admin-text-secondary); font-weight: 500; }
+        .rs-titulo-item { font-size: .75rem; color: var(--admin-text-muted); }
         .rs-cambios { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
         .rs-tag {
           font-size: .65rem; padding: 2px 6px; border-radius: 4px;
-          background: #1e1a10; border: 0.5px solid #3a3020; color: #c9a84c;
+          background: var(--admin-bg-raised-4); border: 0.5px solid var(--admin-border-warm); color: var(--admin-gold);
         }
-        .rs-error { font-size: .75rem; color: #c97070; margin-top: 2px; }
-        .rs-empty { padding: .6rem 1rem; font-size: .78rem; color: #3d3a33; font-style: italic; }
+        .rs-error { font-size: .75rem; color: var(--admin-danger-core); margin-top: 2px; }
+        .rs-empty { padding: .6rem 1rem; font-size: .78rem; color: var(--admin-text-faint); font-style: italic; }
 
         /* Badges count */
         .badge-count {
           font-size: .68rem; padding: 1px 7px; border-radius: 20px; font-weight: 500;
         }
         .badge-count.green  { background: #0d2b18; color: #7ec850; border: 0.5px solid #1a4a2a; }
-        .badge-count.amber  { background: #1e1a10; color: #c9a84c; border: 0.5px solid #3a3020; }
-        .badge-count.red    { background: #1c1009; color: #c97070; border: 0.5px solid #4a2010; }
-        .badge-count.neutral{ background: #181614; color: #5c5649; border: 0.5px solid #272420; }
+        .badge-count.amber  { background: var(--admin-bg-raised-4); color: var(--admin-gold); border: 0.5px solid var(--admin-border-warm); }
+        .badge-count.red    { background: #1c1009; color: var(--admin-danger-core); border: 0.5px solid #4a2010; }
+        .badge-count.neutral{ background: var(--admin-bg-elevated); color: var(--admin-text-muted); border: 0.5px solid var(--admin-border-default); }
 
         /* Banners */
         .error-banner {
@@ -498,8 +498,8 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
           padding: .65rem 1rem; font-size: .82rem; color: #b86040;
         }
         .warn-banner {
-          background: #1e1a10; border: 0.5px solid #3a3020; border-radius: 8px;
-          padding: .65rem 1rem; font-size: .78rem; color: #a09070;
+          background: var(--admin-bg-raised-4); border: 0.5px solid var(--admin-border-warm); border-radius: 8px;
+          padding: .65rem 1rem; font-size: .78rem; color: var(--admin-text-warm);
           display: flex; align-items: flex-start; gap: 8px; line-height: 1.4;
         }
 
@@ -509,7 +509,7 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
           padding: 2rem; text-align: center; display: flex; flex-direction: column;
           align-items: center; gap: .5rem;
         }
-        .success-title { font-size: 1rem; font-weight: 500; color: #ede4d0; }
+        .success-title { font-size: 1rem; font-weight: 500; color: var(--admin-text-primary); }
         .success-sub   { font-size: .82rem; color: #5c9040; }
       `}</style>
     </div>
@@ -556,7 +556,7 @@ function ResumenSection({ titulo, crear, actualizar, errores }: {
       {actualizar.length > 0 && (
         <div className="rs-group">
           <div className="rs-group-title">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" strokeWidth="2.5"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4.33" /></svg>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--admin-gold)" strokeWidth="2.5"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4.33" /></svg>
             A actualizar
           </div>
           {actualizar.map((r, i) => (
@@ -578,7 +578,7 @@ function ResumenSection({ titulo, crear, actualizar, errores }: {
       {errores.length > 0 && (
         <div className="rs-group">
           <div className="rs-group-title">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#c97070" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--admin-danger-core)" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             Errores (se omitirán)
           </div>
           {errores.map((r, i) => (
