@@ -285,3 +285,43 @@ export interface AdminStats {
     createdAt: string
   }[]
 }
+
+// ── CRM interno (panel del CEO) ─────────────────────────────────────────────
+// Espejo de los modelos del backend (CrmProfile). Solo lo consume el panel
+// admin — estos datos nunca vienen en respuestas públicas de usuario.
+
+export type CrmStage = "lead" | "onboarding" | "activo" | "en_riesgo" | "baja"
+
+export interface CrmNote {
+  _id: string
+  text: string
+  createdAt: string
+  author?: { _id: string; username: string } | null
+}
+
+export interface CrmProfile {
+  stage: CrmStage
+  tags: string[]
+  nextFollowUp: string | null
+  notes: CrmNote[]
+}
+
+// Fila del listado del CRM: datos del local + resumen de su CRM.
+export interface CrmClient {
+  _id: string
+  username: string
+  businessName: string
+  slug: string
+  subscription: Subscription
+  active: boolean
+  createdAt: string
+  stage: CrmStage
+  tags: string[]
+  nextFollowUp: string | null
+}
+
+export interface CrmClientDetail {
+  user: User
+  crm: CrmProfile
+  activity: { categoryCount: number; sectionCount: number; itemCount: number }
+}
