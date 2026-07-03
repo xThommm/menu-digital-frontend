@@ -367,15 +367,19 @@ function PreviewCard({ url }: PreviewCardProps) {
 
       // El alto del viewport SOLO es una restricción confiable en el layout de
       // dos columnas (desktop ≥1200px, ver el media query de .rightCol en el
-      // .module.css): ahí el viewport es flex:1 con un techo de alto, así que
-      // su alto es estable e independiente del contenido.
+      // .module.css): ahí .previewCard tiene "height" FIJO (no max-height —
+      // eso importa, ver el comentario en el CSS) y .previewViewport es
+      // flex:1 dentro de esa altura ya definida, así que su alto es estable
+      // e independiente del contenido, igual que su ancho.
       //
-      // En el layout apilado (mobile/tablet) el viewport NO tiene alto propio:
-      // lo determina su contenido (el frame escalado). Si ahí metemos el alto
-      // en el cálculo, se arma un bucle — scale más chico → frame más chico →
-      // viewport más bajo → scale aún más chico — y la preview colapsaba a un
-      // tamaño diminuto al alternar Móvil/Escritorio. Por eso ahí escalamos
-      // solo por ancho (el ancho lo fija la columna, es estable).
+      // En el layout apilado (mobile/tablet) el viewport NO tiene alto propio
+      // a propósito: lo determina su contenido (el frame escalado), para que
+      // la card se ajuste al tamaño del dispositivo simulado en vez de dejar
+      // espacio vacío. Si ahí metemos el alto en el cálculo, se arma un
+      // bucle — scale más chico → frame más chico → viewport más bajo →
+      // scale aún más chico — y la preview colapsaba a un tamaño diminuto al
+      // alternar Móvil/Escritorio. Por eso ahí escalamos solo por ancho (el
+      // ancho lo fija la columna, es estable).
       const twoColumn = window.matchMedia("(min-width: 1200px)").matches;
       const byWidth  = width / DEVICE.w;
       const scaleNext = twoColumn
