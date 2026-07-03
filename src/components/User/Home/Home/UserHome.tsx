@@ -6,7 +6,7 @@ import type { User, ContactInfo } from "../../../../types/index";
 
 // ── Tokens por template ───────────────────────────────────────────────────────
 
-type TemplateId = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+type TemplateId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
 
 interface TemplateTokens {
   heroClass: string;
@@ -78,6 +78,66 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
     showDeliveryRow: false,
     heroClass: styles.heroT7,
     overlayClass: styles.overlayT7,
+    titleClass: "t-title",
+    galleryRadius: "6px",
+    btnLabel: "Ver menú",
+    useAvatar: false,
+  },
+  // ── Templates nuevos (8-13) ──
+  // 8 Coastal — claro y aireado, título sans para un look fresco de costa.
+  8: {
+    showDeliveryRow: false,
+    heroClass: styles.heroT8,
+    overlayClass: styles.overlayT8,
+    titleClass: "t-title-sans",
+    galleryRadius: "12px",
+    btnLabel: "Ver menú",
+    useAvatar: false,
+  },
+  // 9 Charcoal — usa el layout con avatar (como el 2), sin hero con foto.
+  9: {
+    showDeliveryRow: true,
+    heroClass: "",
+    titleClass: "t-title-sans",
+    galleryRadius: "8px",
+    btnLabel: "Ver menú →",
+    useAvatar: true,
+  },
+  // 10 Terracotta — cálido y rústico, título serif.
+  10: {
+    showDeliveryRow: false,
+    heroClass: styles.heroT10,
+    overlayClass: styles.overlayT10,
+    titleClass: "t-title",
+    galleryRadius: "10px",
+    btnLabel: "Ver menú",
+    useAvatar: false,
+  },
+  // 11 Lavender — elegante, esquinas más redondeadas, serif.
+  11: {
+    showDeliveryRow: false,
+    heroClass: styles.heroT11,
+    overlayClass: styles.overlayT11,
+    titleClass: "t-title",
+    galleryRadius: "14px",
+    btnLabel: "Ver menú",
+    useAvatar: false,
+  },
+  // 12 Forest — oscuro luxe, serif.
+  12: {
+    showDeliveryRow: false,
+    heroClass: styles.heroT12,
+    overlayClass: styles.overlayT12,
+    titleClass: "t-title",
+    galleryRadius: "8px",
+    btnLabel: "Ver menú",
+    useAvatar: false,
+  },
+  // 13 Platinum — premium, esquinas ajustadas para un look afilado.
+  13: {
+    showDeliveryRow: false,
+    heroClass: styles.heroT13,
+    overlayClass: styles.overlayT13,
     titleClass: "t-title",
     galleryRadius: "6px",
     btnLabel: "Ver menú",

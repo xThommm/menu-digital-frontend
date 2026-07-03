@@ -671,6 +671,129 @@ a:hover { opacity: 0.75; }
   text-shadow: 0 2px 24px color-mix(in srgb, var(--t-accent) 35%, transparent);
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   TEMPLATES NUEVOS (8-13) — reparto escalonado por plan.
+   Mismo sistema .t-* que el resto: solo cambian los tokens de color,
+   ningún componente nuevo. El gating (qué plan desbloquea cada uno)
+   vive en TEMPLATE_MIN_PLAN, tanto en el backend (config/plans.js)
+   como en el front (src/lib/plans.ts).
+     starter: 8 Coastal · 9 Charcoal
+     pro:     10 Terracotta · 11 Lavender · 12 Forest
+     premium: 13 Platinum
+   ───────────────────────────────────────────────────────────────── */
+
+/* Template 8 — Coastal (claro, celeste/arena mediterráneo) · starter */
+[data-template="8"] {
+  --t-bg:          #f4f8fb;
+  --t-surface:     #e8f1f7;
+  --t-surface-2:   #d8e8f2;
+  --t-border:      #c4dcea;
+  --t-border-md:   #a5c8de;
+  --t-text:        #2c4656;
+  --t-title:       #14303f;
+  --t-muted:       #6b8ca0;
+  --t-accent:      #2a91c4;
+  --t-accent-soft: rgba(42, 145, 196, 0.09);
+  --t-accent-glow: rgba(42, 145, 196, 0.16);
+  --t-btn-text:    #f4f8fb;
+  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #f4f8fb 90%);
+}
+
+/* Template 9 — Charcoal (oscuro neutro + acento coral) · starter */
+[data-template="9"] {
+  --t-bg:          #1a1a1c;
+  --t-surface:     #232326;
+  --t-surface-2:   #2b2b2f;
+  --t-border:      #333338;
+  --t-border-md:   #444449;
+  --t-text:        #cececf;
+  --t-title:       #f0f0f2;
+  --t-muted:       #737378;
+  --t-accent:      #ff6b5c;
+  --t-accent-soft: rgba(255, 107, 92, 0.09);
+  --t-accent-glow: rgba(255, 107, 92, 0.18);
+  --t-btn-text:    #1a1a1c;
+  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #1a1a1c 90%);
+}
+
+/* Template 10 — Terracotta (cálido arcilla/adobe rústico) · pro */
+[data-template="10"] {
+  --t-bg:          #f7ede3;
+  --t-surface:     #f0e0d0;
+  --t-surface-2:   #e6d0bc;
+  --t-border:      #d9bda2;
+  --t-border-md:   #c49f7e;
+  --t-text:        #5c4433;
+  --t-title:       #3d2818;
+  --t-muted:       #977c64;
+  --t-accent:      #c2571f;
+  --t-accent-soft: rgba(194, 87, 31, 0.09);
+  --t-accent-glow: rgba(194, 87, 31, 0.16);
+  --t-btn-text:    #f7ede3;
+  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #f7ede3 90%);
+}
+
+/* Template 11 — Lavender (claro lila/malva elegante) · pro */
+[data-template="11"] {
+  --t-bg:          #f6f3fa;
+  --t-surface:     #ece5f4;
+  --t-surface-2:   #e0d4ee;
+  --t-border:      #d0bfe2;
+  --t-border-md:   #b89fd2;
+  --t-text:        #443a52;
+  --t-title:       #2a2135;
+  --t-muted:       #8878a0;
+  --t-accent:      #8256c4;
+  --t-accent-soft: rgba(130, 86, 196, 0.09);
+  --t-accent-glow: rgba(130, 86, 196, 0.16);
+  --t-btn-text:    #f6f3fa;
+  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #f6f3fa 90%);
+}
+
+/* Template 12 — Forest (verde oscuro profundo, wine bar / steakhouse) · pro */
+[data-template="12"] {
+  --t-bg:          #0c1410;
+  --t-surface:     #131e18;
+  --t-surface-2:   #1a2820;
+  --t-border:      #24352b;
+  --t-border-md:   #35493c;
+  --t-text:        #c4d4c8;
+  --t-title:       #e4f0e8;
+  --t-muted:       #5e7466;
+  --t-accent:      #86c397;
+  --t-accent-soft: rgba(134, 195, 151, 0.08);
+  --t-accent-glow: rgba(134, 195, 151, 0.18);
+  --t-btn-text:    #0c1410;
+  --t-hero-grad:   linear-gradient(to bottom, transparent 20%, #0c1410 90%);
+}
+
+/* Template 13 — Platinum (premium: negro frío + foil plateado, alta gama).
+   Hermano de Noir Gold pero en tono frío: usa --t-bg-image (degradé sutil)
+   y --t-btn-bg (sheen metálico) igual que los otros premium. */
+[data-template="13"] {
+  --t-bg:          #0a0b0d;
+  --t-bg-image:    linear-gradient(160deg, #101216 0%, #0a0b0d 55%, #14161b 100%);
+  --t-surface:     #131519;
+  --t-surface-2:   #1a1d22;
+  --t-border:      #262a30;
+  --t-border-md:   #3a3f47;
+  --t-text:        #cdd2d8;
+  --t-title:       #eef1f5;
+  --t-muted:       #6a7078;
+  --t-accent:      #b8c2cf;
+  --t-accent-soft: rgba(184, 194, 207, 0.08);
+  --t-accent-glow: rgba(184, 194, 207, 0.20);
+  --t-btn-text:    #0a0b0d;
+  --t-btn-bg:      linear-gradient(135deg, #dfe4ea 0%, #b8c2cf 45%, #eef1f5 100%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 15%, #0a0b0d 90%);
+}
+
+/* Platinum: mismo detalle "fine dining" que Noir Gold, con resplandor frío. */
+[data-template="13"] .t-title {
+  letter-spacing: 0.005em;
+  text-shadow: 0 2px 24px color-mix(in srgb, var(--t-accent) 30%, transparent);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    COMPONENTES DE TEMPLATE — .t-*
    Viven aquí para que no haya necesidad de :global() en módulos

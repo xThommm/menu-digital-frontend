@@ -102,6 +102,13 @@
 .heroT5 { height: clamp(160px, 24vw, 240px); }
 .heroT6 { height: clamp(200px, 30vw, 300px); }
 .heroT7 { height: clamp(220px, 34vw, 340px); }
+/* Templates nuevos (8-13). Igual que arriba: sin .heroT9 porque Charcoal
+   usa el layout con avatar (useAvatar: true), no un hero con foto. */
+.heroT8  { height: clamp(190px, 30vw, 300px); }
+.heroT10 { height: clamp(180px, 28vw, 300px); }
+.heroT11 { height: clamp(180px, 27vw, 280px); }
+.heroT12 { height: clamp(210px, 32vw, 320px); }
+.heroT13 { height: clamp(220px, 34vw, 340px); }
 
 /* ── Overlays de hero por template ──
    Los !important son necesarios aquí porque sobreescriben
@@ -183,6 +190,25 @@
     color-mix(in srgb, var(--t-bg) 16%, transparent) 33%,
     color-mix(in srgb, var(--t-bg) 50%, transparent) 55%,
     color-mix(in srgb, var(--t-bg) 84%, transparent) 78%,
+    var(--t-bg) 100%
+  ) !important;
+}
+
+/* ── Overlays de los templates nuevos (8, 10-13) ──
+   Todos usan la misma curva suave de 5 paradas apoyada en var(--t-bg), que
+   se adapta sola al color de fondo de cada template vía color-mix — así no
+   hay que repetir hex por template. (No hay overlayT9: Charcoal usa avatar.) */
+.overlayT8,
+.overlayT10,
+.overlayT11,
+.overlayT12,
+.overlayT13 {
+  background: linear-gradient(
+    to bottom,
+    transparent 18%,
+    color-mix(in srgb, var(--t-bg) 16%, transparent) 39%,
+    color-mix(in srgb, var(--t-bg) 50%, transparent) 60%,
+    color-mix(in srgb, var(--t-bg) 84%, transparent) 80%,
     var(--t-bg) 100%
   ) !important;
 }

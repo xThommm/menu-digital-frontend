@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "../../../../context/useAuth";
 import type { Subscription } from "../../../../types/index";
+import { planMeetsMin, PLAN_LABEL } from "../../../../lib/plans";
 import styles from "./UserEditor.module.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -27,18 +28,38 @@ const EMPTY_FORM: FormState = {
   hasDelivery: false,
 };
 
-const TEMPLATES = [
-  { id: 1, name: "Clásico",   color: "#1a1714", accent: "#c9a84c", premium: false },
-  { id: 2, name: "Moderno",   color: "#0d1117", accent: "#58a6ff", premium: false },
-  { id: 3, name: "Natural",   color: "#1a2a1a", accent: "#4caf82", premium: false },
-  { id: 4, name: "Rojo",      color: "#1a0a0a", accent: "#e05555", premium: false },
-  { id: 5, name: "Minimal",   color: "#f5f5f5", accent: "#222222", premium: false },
-  { id: 6, name: "Aurora",    color: "#f3e2cc", accent: "#a8703f", premium: true },
-  { id: 7, name: "Noir Gold", color: "#08070a", accent: "#d4af37", premium: true },
+// Templates de la carta pública, ordenados por plan (free → premium) para que
+// la grilla del editor se lea como una progresión. `minPlan` es el plan mínimo
+// que desbloquea cada uno; espeja TEMPLATE_MIN_PLAN del backend (que es la
+// barrera real). `color`/`accent` son solo para el mini-preview de la tarjeta
+// y coinciden con los tokens --t-bg / --t-accent de globals.css.
+interface TemplateOption {
+  id: number;
+  name: string;
+  color: string;
+  accent: string;
+  minPlan: Subscription;
+}
+
+const TEMPLATES: TemplateOption[] = [
+  // free
+  { id: 1,  name: "Clásico",    color: "#0b0a08", accent: "#c9a84c", minPlan: "free" },
+  { id: 3,  name: "Natural",    color: "#f2f6ef", accent: "#2e7d32", minPlan: "free" },
+  { id: 5,  name: "Minimal",    color: "#ffffff", accent: "#111111", minPlan: "free" },
+  // starter
+  { id: 2,  name: "Moderno",    color: "#0d1117", accent: "#58a6ff", minPlan: "starter" },
+  { id: 4,  name: "Rojo",       color: "#110606", accent: "#e05555", minPlan: "starter" },
+  { id: 8,  name: "Coastal",    color: "#f4f8fb", accent: "#2a91c4", minPlan: "starter" },
+  { id: 9,  name: "Charcoal",   color: "#1a1a1c", accent: "#ff6b5c", minPlan: "starter" },
+  // pro
+  { id: 10, name: "Terracotta", color: "#f7ede3", accent: "#c2571f", minPlan: "pro" },
+  { id: 11, name: "Lavender",   color: "#f6f3fa", accent: "#8256c4", minPlan: "pro" },
+  { id: 12, name: "Forest",     color: "#0c1410", accent: "#86c397", minPlan: "pro" },
+  // premium
+  { id: 6,  name: "Aurora",     color: "#efddc9", accent: "#a8703f", minPlan: "premium" },
+  { id: 7,  name: "Noir Gold",  color: "#08070a", accent: "#d4af37", minPlan: "premium" },
+  { id: 13, name: "Platinum",   color: "#0a0b0d", accent: "#b8c2cf", minPlan: "premium" },
 ];
-// El campo `premium` también se valida en el backend (useTemplate en
-// userController.js) con su propio set de IDs — el gating no depende
-// solo de esta lista del front.
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -242,26 +263,27 @@ export default function UserEditorPage() {
   // aplicamos — mostramos el modal de upsell en su lugar. El backend
   // también lo valida (useTemplate en userController.js): esto es UX,
   // no la única barrera.
-  const selectTemplate = (t: typeof TEMPLATES[number]) => {
-    if (t.premium && subscription === "free") {
+  const selectTemplate = (t: TemplateOption) => {
+    if (!planMeetsMin(subscription, t.minPlan)) {
       setLockedTemplate(t);
       return;
     }
     saveTemplate(t.id);
   };
 
-  // Dispara el pago real del plan Pro ($29.999, id "pro" en el backend)
-  // desde el modal de upsell. crear-preferencia requiere estar logueado
-  // — ya lo estamos acá — y usa el propio usuario como external_reference
-  // para poder acreditarle el plan cuando MP confirme.
+  // Dispara el pago real desde el modal de upsell, apuntando al plan que el
+  // template bloqueado requiere (starter/pro/premium). crear-preferencia
+  // requiere estar logueado — ya lo estamos acá — y usa el propio usuario
+  // como external_reference para acreditarle el plan cuando MP confirme.
   const handleUpgrade = async () => {
+    const planId = lockedTemplate?.minPlan ?? "pro";
     setUpgrading(true);
     setError("");
     try {
       const res = await fetch("/api/payments/crear-preferencia", {
         method: "POST",
         headers: authHeaders,
-        body: JSON.stringify({ planId: "pro" }),
+        body: JSON.stringify({ planId }),
       });
       if (!res.ok) throw new Error();
       const { init_point } = await res.json();
@@ -722,7 +744,7 @@ export default function UserEditorPage() {
             </p>
             <div className={styles.templateGrid}>
               {TEMPLATES.map(t => {
-                const isLocked = t.premium && subscription === "free";
+                const isLocked = !planMeetsMin(subscription, t.minPlan);
                 return (
                   <button
                     key={t.id}
@@ -748,8 +770,10 @@ export default function UserEditorPage() {
                       <span className={styles.templateName}>{t.name}</span>
                       {template === t.id ? (
                         <span className={styles.templateActive}>Activo</span>
-                      ) : t.premium ? (
-                        <span className={styles.templatePro}>PRO</span>
+                      ) : t.minPlan !== "free" ? (
+                        // Muestra el plan que desbloquea el template (Starter/Pro/
+                        // Premium) en vez de un "PRO" genérico.
+                        <span className={styles.templatePro}>{PLAN_LABEL[t.minPlan]}</span>
                       ) : null}
                     </div>
                   </button>
@@ -773,11 +797,11 @@ export default function UserEditorPage() {
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <div className={styles.modalIcon}><LockIcon size={20} /></div>
             <p id="premium-modal-title" className={styles.modalTitle}>
-              {lockedTemplate.name} es un template PRO
+              {lockedTemplate.name} es un template {PLAN_LABEL[lockedTemplate.minPlan]}
             </p>
             <p className={styles.modalDesc}>
-              Con el plan Pro ($29.999) desbloqueás este estilo y el resto de
-              los templates premium.
+              Con el plan {PLAN_LABEL[lockedTemplate.minPlan]} desbloqueás este
+              estilo y todos los templates de ese nivel.
             </p>
             <div className={styles.modalBtns}>
               <button
@@ -794,7 +818,7 @@ export default function UserEditorPage() {
                 type="button"
                 disabled={upgrading}
               >
-                {upgrading ? <><Spinner size={14} /> Redirigiendo...</> : "Mejorar a Pro"}
+                {upgrading ? <><Spinner size={14} /> Redirigiendo...</> : `Mejorar a ${PLAN_LABEL[lockedTemplate.minPlan]}`}
               </button>
             </div>
           </div>
