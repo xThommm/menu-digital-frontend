@@ -1,0 +1,228 @@
+/* ═══════════════════════════════════════════════════════════════
+   CARRITO — reusa los tokens --t-* del template activo, así se ve
+   consistente con cualquiera de los 13 estilos de la carta pública.
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes cartFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cartSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: cartFadeIn 0.2s ease both;
+}
+
+@media (min-width: 768px) {
+  .overlay { align-items: center; }
+}
+
+.drawer {
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  background: var(--t-surface);
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: cartSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.3);
+}
+
+@media (min-width: 768px) {
+  .drawer { border-radius: 16px; max-height: 80vh; }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 0.5px solid var(--t-border);
+  flex-shrink: 0;
+}
+
+.title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--t-title);
+  margin: 0;
+}
+
+.close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 0.5px solid var(--t-border-md);
+  background: none;
+  color: var(--t-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.close:hover { background: color-mix(in srgb, var(--t-accent) 8%, transparent); color: var(--t-accent); }
+
+.empty {
+  padding: 2.5rem 1.25rem;
+  text-align: center;
+  color: var(--t-muted);
+  font-size: 0.875rem;
+}
+
+.lines {
+  list-style: none;
+  overflow-y: auto;
+  padding: 0.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.line {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 0.5px solid var(--t-border);
+}
+
+.line:last-child { border-bottom: none; padding-bottom: 0; }
+
+.lineInfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.lineTitle {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--t-title);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lineVariant { font-size: 0.7rem; color: var(--t-muted); }
+
+.lineQty {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--t-bg);
+  border: 0.5px solid var(--t-border-md);
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+}
+
+.lineQty button {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--t-accent);
+  font-size: 0.9rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.lineQty span { font-size: 0.8rem; font-weight: 600; color: var(--t-text); min-width: 1ch; text-align: center; }
+
+.linePrice {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--t-accent);
+  white-space: nowrap;
+}
+
+.lineRemove {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--t-muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.lineRemove:hover { color: #e2543d; }
+
+.total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.25rem;
+  border-top: 0.5px solid var(--t-border);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--t-title);
+  flex-shrink: 0;
+}
+
+/* Zona de acciones de checkout — ver comentario en CartDrawer.tsx: sumar un
+   segundo botón acá (MercadoPago) es un cambio aislado a este bloque. */
+.checkoutActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0 1.25rem 1.25rem;
+  flex-shrink: 0;
+}
+
+.waBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: #25d366;
+  color: #06210f;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  text-decoration: none;
+  min-height: 46px;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.waBtn:hover { opacity: 0.92; }
+.waBtn:active { transform: scale(0.98); }
+
+.noWa {
+  font-size: 0.78rem;
+  color: var(--t-muted);
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+.clearBtn {
+  background: none;
+  border: none;
+  color: var(--t-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0.35rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.clearBtn:hover { color: var(--t-accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay, .drawer { animation: none; }
+}

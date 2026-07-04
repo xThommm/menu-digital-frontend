@@ -2,6 +2,9 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import type { User, Item, MenuData, Tab } from "../../../../types/index";
 import { useReveal } from "../../../../hooks/useReveal";
+import { CartProvider } from "../../../../context/CartProvider";
+import { useCart } from "../../../../context/useCart";
+import CartDrawer from "./CartDrawer";
 import styles from "./UserMenu.module.css";
 
 // ── Helpers de formato ────────────────────────────────────────────────────────
@@ -33,6 +36,7 @@ export default function MenuPage() {
   const [loading, setLoading]   = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [cartOpen, setCartOpen] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -138,87 +142,127 @@ export default function MenuPage() {
   );
 
   return (
-    <div className={styles.mp} data-template={user.template ?? 1}>
+    <CartProvider slug={slug ?? ""}>
+      <div className={styles.mp} data-template={user.template ?? 1}>
 
-      {/* ── Cabecera ── */}
-      <header className={styles.mpHeader}>
-        <button className={styles.mpBack} onClick={goBack} aria-label="Volver al inicio del local">
-          <BackIcon />
-        </button>
-        <div className={styles.mpHeaderInfo}>
-          <h1 className={styles.mpName}>{info.businessName || "Menú"}</h1>
-          <div className={styles.mpMeta}>
-            {info.address     && <span><PinIcon /> {info.address}</span>}
-            {user.hasDelivery && <span><DeliveryIcon /> Delivery</span>}
+        {/* ── Cabecera ── */}
+        <header className={styles.mpHeader}>
+          <button className={styles.mpBack} onClick={goBack} aria-label="Volver al inicio del local">
+            <BackIcon />
+          </button>
+          <div className={styles.mpHeaderInfo}>
+            <h1 className={styles.mpName}>{info.businessName || "Menú"}</h1>
+            <div className={styles.mpMeta}>
+              {info.address     && <span><PinIcon /> {info.address}</span>}
+              {user.hasDelivery && <span><DeliveryIcon /> Delivery</span>}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* ── Tabs (solo si hay más de una) ── */}
-      {tabs.length > 1 && (
-        <nav className={styles.mpTabs} role="tablist" aria-label="Secciones del menú">
-          {tabs.map((tab, i) => (
-            hasVisibleItems(tab) && ( 
-            <button
-              key={i}
-              ref={el => { tabRefs.current[i] = el; }}
-              id={`mp-tab-${i}`}
-              role="tab"
-              type="button"
-              tabIndex={activeTab === i ? 0 : -1}
-              aria-selected={activeTab === i}
-              aria-controls="mp-tabpanel"
-              className={`${styles.mpTab} ${activeTab === i ? styles.active : ""}`}
-              onClick={() => handleTabChange(i)}
-              onKeyDown={e => handleTabKeyDown(e, i)}
-            >
-              {tab.label}
-            </button>
-            )
-          ))}
-        </nav>
-      )}
-
-      {/* ── Contenido del tab activo ── */}
-      {/* key=activeTab fuerza re-animación de entrada al cambiar de tab,
-          sin desmontar el <main> en sí (mantiene el ref y el scroll estables). */}
-      <main
-        ref={contentRef}
-        id="mp-tabpanel"
-        role="tabpanel"
-        aria-labelledby={`mp-tab-${activeTab}`}
-        className={styles.mpContent}
-        key={activeTab}
-      >
-        {totalItems === 0 ? (
-          <p className={styles.mpCatEmpty}>Esta sección no tiene productos disponibles por ahora.</p>
-        ) : (
-          currentTab.categorias.map(cat => {
-            const visibleItems = cat.items.filter(it => !it.hidden);
-            if (visibleItems.length === 0) return null;
-
-            return (
-              <section key={cat._id} className={styles.mpCat}>
-                <h2 className={styles.mpCatTitle}>{cat.title}</h2>
-                {visibleItems.map((item, idx) => (
-                  <ItemCard key={item._id} item={item} index={idx} />
-                ))}
-              </section>
-            );
-          })
+        {/* ── Tabs (solo si hay más de una) ── */}
+        {tabs.length > 1 && (
+          <nav className={styles.mpTabs} role="tablist" aria-label="Secciones del menú">
+            {tabs.map((tab, i) => (
+              hasVisibleItems(tab) && (
+              <button
+                key={i}
+                ref={el => { tabRefs.current[i] = el; }}
+                id={`mp-tab-${i}`}
+                role="tab"
+                type="button"
+                tabIndex={activeTab === i ? 0 : -1}
+                aria-selected={activeTab === i}
+                aria-controls="mp-tabpanel"
+                className={`${styles.mpTab} ${activeTab === i ? styles.active : ""}`}
+                onClick={() => handleTabChange(i)}
+                onKeyDown={e => handleTabKeyDown(e, i)}
+              >
+                {tab.label}
+              </button>
+              )
+            ))}
+          </nav>
         )}
-      </main>
 
-    </div>
+        {/* ── Contenido del tab activo ── */}
+        {/* key=activeTab fuerza re-animación de entrada al cambiar de tab,
+            sin desmontar el <main> en sí (mantiene el ref y el scroll estables). */}
+        <main
+          ref={contentRef}
+          id="mp-tabpanel"
+          role="tabpanel"
+          aria-labelledby={`mp-tab-${activeTab}`}
+          className={styles.mpContent}
+          key={activeTab}
+        >
+          {totalItems === 0 ? (
+            <p className={styles.mpCatEmpty}>Esta sección no tiene productos disponibles por ahora.</p>
+          ) : (
+            currentTab.categorias.map(cat => {
+              const visibleItems = cat.items.filter(it => !it.hidden);
+              if (visibleItems.length === 0) return null;
+
+              return (
+                <section key={cat._id} className={styles.mpCat}>
+                  <h2 className={styles.mpCatTitle}>{cat.title}</h2>
+                  {visibleItems.map((item, idx) => (
+                    <ItemCard key={item._id} item={item} index={idx} slug={slug ?? ""} />
+                  ))}
+                </section>
+              );
+            })
+          )}
+
+          {info.googleReviewUrl && (
+            <div className={styles.reviewBanner}>
+              <span className={styles.reviewBannerText}>¿Te gustó lo que viste? Contanos en Google.</span>
+              <a
+                className={styles.reviewBannerBtn}
+                href={info.googleReviewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <StarIcon /> Dejar reseña
+              </a>
+            </div>
+          )}
+        </main>
+
+        <CartFab onClick={() => setCartOpen(true)} />
+      </div>
+
+      <CartDrawer
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        businessName={info.businessName || "el local"}
+        whatsappNumber={info.number}
+      />
+    </CartProvider>
+  );
+}
+
+// ── Botón flotante del carrito ────────────────────────────────────────────────
+
+function CartFab({ onClick }: { onClick: () => void }) {
+  const { totalItems } = useCart();
+  if (totalItems === 0) return null;
+
+  return (
+    <button className={styles.cartFab} onClick={onClick} type="button" aria-label={`Ver pedido (${totalItems} productos)`}>
+      <CartIcon />
+      <span className={styles.cartFabBadge}>{totalItems}</span>
+    </button>
   );
 }
 
 // ── ItemCard ──────────────────────────────────────────────────────────────────
-function ItemCard({ item, index }: { item: Item; index: number }) {
+function ItemCard({ item, index, slug }: { item: Item; index: number; slug: string }) {
 
   const [imgError, setImgError] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const { ref, revealed } = useReveal<HTMLElement>();
+  const { items: cartItems, addItem, updateQuantity } = useCart();
+  const tracked = useRef(false);
 
   const hasOptions  = Object.keys(item.options ?? {}).length > 0;
   const minPrice    = hasOptions ? minOption(item.options) : null;
@@ -227,6 +271,31 @@ function ItemCard({ item, index }: { item: Item; index: number }) {
   const activePrice = isOnOffer ? item.offerPrice! : basePrice;
   const pct         = isOnOffer ? offerPct(item.price!, item.offerPrice!) : null;
 
+  // Analítica por plato (fase 3): una sola vez por tarjeta montada, fire-and-
+  // forget — nunca debe afectar la experiencia del cliente si falla.
+  const trackView = () => {
+    if (tracked.current) return;
+    tracked.current = true;
+    fetch(`/api/users/${slug}/menu/items/${item._id}/view`, { method: "POST" }).catch(() => {});
+  };
+
+  // Solo se permite elegir variante puntual cuando NO hay una oferta a nivel
+  // de producto (si la hay, "activePrice" ya es un precio único y se agrega
+  // como ítem simple, sin variante — ver el control en itemBottom).
+  const canPickVariant = hasOptions && !isOnOffer;
+
+  const qtyOf = (selectedOption?: string) =>
+    cartItems.find(l => l.itemId === item._id && l.selectedOption === selectedOption)?.quantity ?? 0;
+
+  const handleAddSimple = () => {
+    if (!item.available || activePrice == null) return;
+    addItem({ itemId: item._id, title: item.title, unitPrice: activePrice });
+  };
+
+  const handleAddVariant = (name: string, price: number) => {
+    if (!item.available) return;
+    addItem({ itemId: item._id, title: item.title, unitPrice: price, selectedOption: name });
+  };
 
   const showImage = item.image && !imgError;
 
@@ -235,6 +304,7 @@ return (
   ref={ref}
   className={`${styles.itemCard} ${!item.available ? styles.unavailable : ""} ${item.recommended ? styles.recommended : ""} ${revealed ? styles.itemRevealed : ""}`}
   style={{ "--reveal-delay": `${Math.min(index * 0.05, 0.3)}s` } as React.CSSProperties}
+  onClick={trackView}
 >
     {showImage ? (
   <img
@@ -296,18 +366,33 @@ return (
     Variantes {expanded ? "▲" : "▼"}
   </button>
 )}
-          
 
-          
+
           {!item.available && (
             <span className={styles.itemUnavail}>No disponible</span>
           )}
-          {hasOptions && expanded && (
+          {(!hasOptions || isOnOffer) && item.available && activePrice != null && (
+            <AddControl
+              qty={qtyOf(undefined)}
+              onAdd={handleAddSimple}
+              onChange={(q) => updateQuantity(item._id, undefined, q)}
+            />
+          )}
+          {canPickVariant && expanded && (
   <div className={styles.optionsContainer}>
     {Object.entries(item.options).map(([name, price]) => (
-      <div key={name}>
-        <span>{name + "     "} </span>
-        <span className={styles.itemPrice}>{fmt(price)}</span>
+      <div key={name} className={styles.optionRow}>
+        <span>{name}</span>
+        <div className={styles.optionRowRight}>
+          <span className={styles.itemPrice}>{fmt(price)}</span>
+          {item.available && (
+            <AddControl
+              qty={qtyOf(name)}
+              onAdd={() => handleAddVariant(name, price)}
+              onChange={(q) => updateQuantity(item._id, name, q)}
+            />
+          )}
+        </div>
       </div>
     ))}
   </div>
@@ -315,6 +400,37 @@ return (
         </div>
       </div>
     </article>
+  );
+}
+
+// ── Control de agregar / cantidad (carrito) ───────────────────────────────────
+function AddControl({
+  qty,
+  onAdd,
+  onChange,
+}: {
+  qty: number;
+  onAdd: () => void;
+  onChange: (q: number) => void;
+}) {
+  if (qty === 0) {
+    return (
+      <button
+        type="button"
+        className={styles.addBtn}
+        onClick={(e) => { e.stopPropagation(); onAdd(); }}
+        aria-label="Agregar al pedido"
+      >
+        +
+      </button>
+    );
+  }
+  return (
+    <div className={styles.qtyStepper} onClick={(e) => e.stopPropagation()}>
+      <button type="button" onClick={() => onChange(qty - 1)} aria-label="Quitar uno">−</button>
+      <span>{qty}</span>
+      <button type="button" onClick={() => onChange(qty + 1)} aria-label="Agregar uno">+</button>
+    </div>
   );
 }
 
@@ -410,6 +526,16 @@ function StarIcon() {
     <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden
       style={{ display: "inline", verticalAlign: "-1px" }}>
       <path d="M12 2 9.1 8.6 2 9.3l5.5 4.8L5.8 21 12 17.3 18.2 21l-1.7-6.9L22 9.3l-7.1-.7Z" />
+    </svg>
+  );
+}
+
+function CartIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
     </svg>
   );
 }
