@@ -87,7 +87,12 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  /* min-height:0 es necesario para que un hijo flex con overflow-y:auto
+     realmente scrollee en vez de estirar al padre — sin esto, en pantallas
+     bajas (iPhone SE) un carrito con muchos ítems empuja el total y los
+     botones de checkout fuera del viewport en vez de scrollear internamente. */
   flex: 1;
+  min-height: 0;
 }
 
 .line {

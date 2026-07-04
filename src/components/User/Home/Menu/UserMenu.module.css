@@ -296,7 +296,7 @@
 .optionsContainer {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(255,255,255,.08);
+  border-top: 1px solid var(--t-border);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -399,6 +399,11 @@
 .cartFab:hover { transform: translateY(-2px); }
 .cartFab:active { transform: scale(0.94); }
 
+/* Relleno claro (--t-bg) + texto/borde --t-accent: siempre coordina con la
+   paleta del template activo Y siempre contrasta contra el botón (que usa
+   --t-accent de fondo), sin depender de que un color fijo "le pegue" a los
+   13 templates — antes era un rojo (#e2543d) que desentonaba con acentos
+   fríos o quedaba casi invisible contra templates con acento rojo similar. */
 .cartFabBadge {
   position: absolute;
   top: -2px;
@@ -407,8 +412,9 @@
   height: 20px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #e2543d;
-  color: #fff;
+  background: var(--t-bg);
+  color: var(--t-accent);
+  border: 1.5px solid var(--t-accent);
   font-size: 0.68rem;
   font-weight: 700;
   display: flex;

@@ -86,7 +86,15 @@ export default function CartDrawer({ open, onClose, businessName, whatsappNumber
               ) : (
                 <p className={styles.noWa}>Este local todavía no cargó un WhatsApp para pedidos.</p>
               )}
-              <button className={styles.clearBtn} onClick={clearCart} type="button">
+              <button
+                className={styles.clearBtn}
+                onClick={() => {
+                  // Acción destructiva sin undo — confirmación nativa simple,
+                  // no amerita un modal propio para un solo botón.
+                  if (window.confirm("¿Vaciar todo el pedido?")) clearCart();
+                }}
+                type="button"
+              >
                 Vaciar pedido
               </button>
             </div>
