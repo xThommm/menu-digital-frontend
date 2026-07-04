@@ -151,6 +151,59 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   PRODUCTOS MÁS VISTOS (analítica por plato)
+   ═══════════════════════════════════════════════════════════════ */
+.topItemsList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.topItemRow {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr) 4rem 1.75rem;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.topItemRank {
+  font-family: var(--font-serif);
+  font-size: var(--text-sm);
+  color: var(--admin-text-faint);
+  text-align: center;
+}
+
+.topItemName {
+  font-size: var(--text-sm);
+  color: var(--admin-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topItemBarWrap {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--admin-pill-muted-bg);
+  overflow: hidden;
+}
+
+.topItemBar {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--admin-gold);
+}
+
+.topItemCount {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    ESTADO BLOQUEADO (UPSELL)
    ═══════════════════════════════════════════════════════════════ */
 .lockCard {

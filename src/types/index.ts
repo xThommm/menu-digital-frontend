@@ -29,6 +29,7 @@ export interface ContactInfo {
   address: string
   social: Record<string, string>
   businessName: string
+  googleReviewUrl: string
 }
 
 export interface Media {
@@ -218,6 +219,18 @@ export interface DayCount {
 export interface StatsData {
   totalViews: number
   last30Days: DayCount[]
+}
+
+export interface TopItemStat {
+  itemID: string
+  title: string
+  image: string
+  totalViews: number
+}
+
+export interface ItemStatsData {
+  topItems: TopItemStat[]
+  windowDays: number
 }
 
 // ── Import masivo (Excel) ──────────────────────────────────────────────────

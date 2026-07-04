@@ -15,6 +15,7 @@ interface FormState {
   address: string;
   instagram: string;
   facebook: string;
+  googleReviewUrl: string;
   hasDelivery: boolean;
 }
 
@@ -25,6 +26,7 @@ const EMPTY_FORM: FormState = {
   address: "",
   instagram: "",
   facebook: "",
+  googleReviewUrl: "",
   hasDelivery: false,
 };
 
@@ -177,6 +179,7 @@ export default function UserEditorPage() {
           address:      data.contactInfo?.address      || "",
           instagram:    data.contactInfo?.social?.instagram || "",
           facebook:     data.contactInfo?.social?.facebook  || "",
+          googleReviewUrl: data.contactInfo?.googleReviewUrl || "",
           hasDelivery:  data.hasDelivery ?? false,
         };
         setForm(loaded);
@@ -205,6 +208,11 @@ export default function UserEditorPage() {
       setError("El teléfono no es válido.");
       return;
     }
+    const reviewUrl = form.googleReviewUrl.trim();
+    if (reviewUrl && !/^https?:\/\//i.test(reviewUrl)) {
+      setError("El link de reseñas debe empezar con http:// o https://");
+      return;
+    }
 
     setSaving(true); setError(""); setSuccess("");
     try {
@@ -221,6 +229,7 @@ export default function UserEditorPage() {
               instagram: form.instagram.trim(),
               facebook:  form.facebook.trim(),
             },
+            googleReviewUrl: reviewUrl,
           },
           hasDelivery: form.hasDelivery,
         }),
@@ -562,6 +571,17 @@ export default function UserEditorPage() {
                   onChange={e => setForm(f => ({ ...f, facebook: e.target.value }))}
                 />
               </div>
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="googleReviewUrl">Link de reseñas de Google Maps</label>
+              <input
+                id="googleReviewUrl"
+                type="url"
+                placeholder="https://g.page/r/tu-negocio/review"
+                value={form.googleReviewUrl}
+                onChange={e => setForm(f => ({ ...f, googleReviewUrl: e.target.value }))}
+              />
             </div>
 
             <div className={styles.toggleGroup}>

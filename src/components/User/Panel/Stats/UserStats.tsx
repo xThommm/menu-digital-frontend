@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../../../context/useAuth";
-import type { StatsData } from "../../../../types";
+import type { StatsData, ItemStatsData } from "../../../../types";
 import s from "./UserStats.module.css";
 
 // Pega a /me/stats y devuelve el resultado ya interpretado. Es pura (no toca
@@ -21,12 +21,27 @@ async function requestStats(token: string): Promise<StatsResult> {
   return { kind: "none" };
 }
 
+// Mismo patrón que requestStats, para el endpoint de "platos más vistos"
+// (mismo gate de plan — si /me/stats no está bloqueado, este tampoco).
+type ItemStatsResult =
+  | { kind: "data"; data: ItemStatsData }
+  | { kind: "none" };
+
+async function requestItemStats(token: string): Promise<ItemStatsResult> {
+  const res = await fetch("/api/users/me/item-stats", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.ok) return { kind: "data", data: await res.json() };
+  return { kind: "none" };
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function UserStats() {
   const { token, isLoading: authLoading } = useAuth();
 
-  const [stats, setStats]     = useState<StatsData | null>(null);
+  const [stats, setStats]         = useState<StatsData | null>(null);
+  const [itemStats, setItemStats] = useState<ItemStatsData | null>(null);
   const [locked, setLocked]   = useState(false);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
@@ -41,8 +56,13 @@ export default function UserStats() {
       try {
         const r = await requestStats(token);
         if (cancelled) return;
-        if (r.kind === "locked") setLocked(true);
-        else if (r.kind === "data") setStats(r.data);
+        if (r.kind === "locked") { setLocked(true); return; }
+        if (r.kind === "data") setStats(r.data);
+        // Mismo gate de plan que /me/stats — si esa no está bloqueada, esta
+        // tampoco. Se pide después (no en paralelo) para no duplicar el
+        // manejo del 403 en dos lugares.
+        const ir = await requestItemStats(token);
+        if (!cancelled && ir.kind === "data") setItemStats(ir.data);
       } catch {
         // El panel sigue mostrándose aunque falle la carga de estadísticas
       } finally {
@@ -194,6 +214,30 @@ export default function UserStats() {
             <span>{formatDay(days[days.length - 1]?.date)}</span>
           </div>
         </div>
+
+        {itemStats && itemStats.topItems.length > 0 && (
+          <div className={s.chartCard}>
+            <p className={s.chartLabel}>Productos más vistos (últimos {itemStats.windowDays} días)</p>
+            <ol className={s.topItemsList}>
+              {itemStats.topItems.map((it, i) => {
+                const maxViews = itemStats.topItems[0].totalViews;
+                return (
+                  <li key={it.itemID} className={s.topItemRow}>
+                    <span className={s.topItemRank}>{i + 1}</span>
+                    <span className={s.topItemName}>{it.title}</span>
+                    <div className={s.topItemBarWrap}>
+                      <div
+                        className={s.topItemBar}
+                        style={{ width: `${Math.max((it.totalViews / maxViews) * 100, 6)}%` }}
+                      />
+                    </div>
+                    <span className={s.topItemCount}>{it.totalViews}</span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        )}
       </main>
     </div>
   );

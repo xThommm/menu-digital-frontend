@@ -348,6 +348,7 @@ function ContactList({ info, hasDelivery, showDeliveryRow }: ContactListProps) {
     info.mail ||
     instagram ||
     facebook ||
+    info.googleReviewUrl ||
     (showDeliveryRow && hasDelivery);
 
   if (!hasAnyInfo) return null;
@@ -387,6 +388,9 @@ function ContactList({ info, hasDelivery, showDeliveryRow }: ContactListProps) {
         )}
         {showDeliveryRow && hasDelivery && (
           <InfoRow icon={<DeliveryIcon />} text="Delivery disponible" />
+        )}
+        {info.googleReviewUrl && (
+          <InfoRow icon={<StarIcon />} text="Dejanos tu reseña en Google" href={info.googleReviewUrl} />
         )}
       </div>
     </div>
@@ -723,6 +727,15 @@ function DeliveryIcon() {
       <circle cx="5.5" cy="17.5" r="2.5" />
       <circle cx="18.5" cy="17.5" r="2.5" />
       <path d="M15 17.5H9m6 0V6h-3l-6 6v5.5m6-11 4.5 4.5H21l-1.5-4.5H15Z" />
+    </svg>
+  );
+}
+
+function StarIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2 9.1 8.6 2 9.3l5.5 4.8L5.8 21 12 17.3 18.2 21l-1.7-6.9L22 9.3l-7.1-.7Z" />
     </svg>
   );
 }
