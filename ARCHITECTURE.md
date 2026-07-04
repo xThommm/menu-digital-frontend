@@ -115,8 +115,9 @@ Schema del dueño de local. Campos: `username` (único), `password` (hasheado,
 `select:false`, min 8), `slug` (URL pública), `active`, `admin`, `subscription`
 (enum `free/starter/pro/premium`, default `free`), `menu` (bool, si ya creó menú),
 `hasDelivery`, `template` (nº, default 1), `contactInfo` (objeto: businessName, mail,
-number, address, social...), `media` (pictures[], backgroundPicture),
-`acceptedTerms*`. `timestamps`. Incluye hook de hasheo de password con bcrypt.
+number, address, social, `googleReviewUrl` — link "Dejanos tu reseña" de Google Maps),
+`media` (pictures[], backgroundPicture), `acceptedTerms*`. `timestamps`. Incluye hook
+de hasheo de password con bcrypt.
 
 ### `models/Menu.js`
 Cada documento es una **sección o categoría** del menú de un local. Campos: `userID`
@@ -137,13 +138,22 @@ contador). `userID` (ref User), `date` (string `"YYYY-MM-DD"`), `count`. Índice
 `{userID, date}`. Se guarda como string (no Date) para hacer upsert por día sin lidiar
 con husos horarios en la query.
 
+### `models/ItemView.js`
+Igual que PageView pero a **nivel de producto**: cuántas veces se tocó cada item de la
+carta, agregado por día. `userID` (ref User), `itemID` (ref Item), `date` (string
+`"YYYY-MM-DD"` en horario BA), `count`. Índice único `{userID, itemID, date}` + índice
+secundario `{userID, date}` para la agregación de "top platos". Guarda `userID`
+denormalizado (derivable vía Item→Menu→User) para que la consulta no necesite joins.
+
 ### `models/CrmProfile.js`
 Datos de **CRM** de un cliente (un local suscripto), para uso interno del panel del CEO.
 Vive en su propia colección — NO se mete en User — a propósito: así estos datos internos
 nunca se filtran por los endpoints públicos de usuario. `userID` (ref User, único),
 `stage` (enum del pipeline: `lead/onboarding/activo/en_riesgo/baja`), `tags [String]`,
-`nextFollowUp` (Date), `notes` (subdocs `{text, author, createdAt}`). Exporta también
-`STAGES`.
+`nextFollowUp` (Date), `notes` (subdocs `{text, kind, author, createdAt}`). `kind`
+distingue notas manuales (`"note"`) de **eventos automáticos del sistema** (`"event"`:
+cambio de plan, activar/desactivar cuenta, cambio de template — ver `utils/crmEvents.js`).
+Exporta también `STAGES`.
 
 ## middleware/
 
@@ -167,6 +177,8 @@ nunca se filtran por los endpoints públicos de usuario. `userID` (ref User, ún
 Helpers internos:
 - **`trackView(userID)`** — suma 1 a la visita de hoy del local (upsert no bloqueante).
   El "hoy" se calcula en horario de Buenos Aires (`buenosAiresDateStr`).
+- **`trackItemView(userID, itemID)`** — mismo patrón que `trackView`, a nivel de
+  producto (colección `ItemView`).
 - **`generateToken(id)`** — firma un JWT HS256 con el id, expira en `JWT_EXPIRES_IN`.
 - **`generateSlug(name)`** — normaliza un nombre a slug URL-friendly (saca acentos,
   espacios→guiones, colapsa guiones).
@@ -190,15 +202,24 @@ Endpoints:
 - **`fetchStats`** `GET /api/users/me/stats` (plan pro+) — devuelve `totalViews` y la
   serie `last30Days` (30 puntos, rellenando días sin visitas con 0), con las fechas
   calculadas en horario de Buenos Aires.
+- **`trackItemViewEndpoint`** `POST /api/users/:slug/menu/items/:itemID/view` (público) —
+  registra que se tocó un producto de la carta. Resuelve el dueño desde el **slug** (no
+  confía en un userID del cliente) y valida que el item sea realmente de ese local antes
+  de contarlo. Responde siempre `204` (fire-and-forget, nunca rompe la experiencia).
+- **`fetchItemStats`** `GET /api/users/me/item-stats` (plan pro+) — top 10 de productos
+  más vistos en los últimos 30 días (agregación sobre `ItemView` + join contra `Item`
+  para título/imagen; un producto borrado se muestra como "(producto eliminado)").
 - **`fetchUser`** `GET /api/users/:slug` — datos públicos de un local (landing por slug).
 - **`editUser`** `PUT /api/users/me` — edita `contactInfo/hasDelivery/media` (whitelist;
-  `template` queda afuera a propósito, va por `useTemplate`).
+  `template` queda afuera a propósito, va por `useTemplate`). `googleReviewUrl` es el
+  único campo de contactInfo con validación propia (debe empezar con `http(s)://`,
+  porque se renderiza como link real en la carta pública).
 - **`uploadImage`** / **`uploadBackground`** — suben foto a la galería / de fondo del
   local (a Cloudinary).
 - **`removeImage`** / **`deleteBackground`** — sacan una foto de la galería / el fondo.
 - **`useTemplate`** `PATCH /api/users/template` — cambia el template; valida contra
   `TEMPLATE_MIN_PLAN` (id conocido + plan suficiente). **Barrera real** del gating de
-  templates.
+  templates. Si el template realmente cambió, loguea un evento de CRM (`logCrmEvent`).
 - **`setActive`** `PATCH /api/users/active` — el dueño activa/desactiva su propia cuenta.
 
 ### `controllers/menuController.js`
@@ -232,7 +253,8 @@ Endpoints:
 - **`getAllUsers`** `GET /api/admin/allUsers` — lista todos los usuarios (sin password).
 - **`getUser`** `GET /api/admin/:userID` — un usuario por id.
 - **`setActiveUser`** `PATCH /api/admin/users/:userID/active` — activa/desactiva a
-  cualquier cliente (no a sí mismo ni a otros admins).
+  cualquier cliente (no a sí mismo ni a otros admins). Loguea el evento en el CRM
+  ("Cuenta activada/desactivada por el CEO").
 - **`getStats`** `GET /api/admin/stats` — métricas globales de la plataforma (usuarios
   activos/inactivos/con menú, totales de menús/secciones/categorías/items, 5 usuarios
   recientes), todo en queries paralelas.
@@ -252,7 +274,8 @@ Endpoints:
   (categorías primero, después productos) e informa qué se creó/actualizó/falló.
 
 ### `controllers/crmController.js` (CRM interno — admin)
-Todas las rutas pasan por protect + isAdmin. `defaultProfile()` / `isValidId()` helpers.
+Todas las rutas pasan por protect + isAdmin. `defaultProfile()` / `isValidId()` helpers,
+más `STAGE_LABEL`/`PLAN_LABEL` (etiquetas legibles para el Excel exportado).
 - **`listClients`** `GET /api/admin/crm/clients` — lista de clientes (locales) enriquecida
   con su etapa/tags/próximo seguimiento (dos queries que se cruzan en memoria).
 - **`getClient`** `GET /api/admin/crm/clients/:userID` — detalle: datos del local + su
@@ -261,6 +284,11 @@ Todas las rutas pasan por protect + isAdmin. `defaultProfile()` / `isValidId()` 
   valida la etapa y que el user exista).
 - **`addNote`** `POST /.../:userID/notes` — agrega una nota (autor = admin logueado).
 - **`deleteNote`** `DELETE /.../:userID/notes/:noteID` — borra una nota puntual.
+- **`getOverdueCount`** `GET /api/admin/crm/overdue-count` — cantidad de clientes con
+  seguimiento vencido (`nextFollowUp` en el pasado). Endpoint liviano para el badge de
+  alerta del sidebar del panel.
+- **`exportClients`** `GET /api/admin/crm/export?stage=` — exporta el listado (opcional
+  filtrado por etapa) a un `.xlsx` con ExcelJS (mismo patrón que el exportador de menús).
 
 ### `controllers/paymentController.js` (MercadoPago)
 - **`verifyMpSignature(req)`** — valida la firma HMAC-SHA256 del header `x-signature`
@@ -270,16 +298,18 @@ Todas las rutas pasan por protect + isAdmin. `defaultProfile()` / `isValidId()` 
   firma, consulta el estado **real** del pago contra la API de MP (nunca confía en el
   query string), y si está `approved` actualiza `User.subscription` según el
   `external_reference` (userId) y `metadata.plan_id`. Es la **única** vía legítima para
-  cambiar de plan.
+  cambiar de plan. Si el plan realmente cambió, loguea el evento en el CRM
+  ("Cambió de plan X → Y").
 
 ## routes/
 
 Cada archivo define un `express.Router` y ata rutas → middlewares → controllers.
 
 - **`routes/userRoutes.js`** — `/register` y `/login` (con `authLimiter`); rutas privadas
-  `/me`, `/me/menu`, `/me/stats` (requirePlan "pro"), `PUT /me`, uploads, `/template`,
-  `/active`; y al final las públicas por slug `/:slug/menu` y `/:slug` (van últimas para
-  no interceptar las rutas fijas).
+  `/me`, `/me/menu`, `/me/stats` y `/me/item-stats` (ambas requirePlan "pro"), `PUT /me`,
+  uploads, `/template`, `/active`; y al final las públicas por slug
+  `POST /:slug/menu/items/:itemID/view` (tracking por plato), `/:slug/menu` y `/:slug`
+  (van últimas para no interceptar las rutas fijas).
 - **`routes/menuRoutes.js`** — CRUD de menús (todas `protect`).
 - **`routes/itemRoutes.js`** — CRUD de items (todas `protect`).
 - **`routes/adminRoutes.js`** — rutas admin (todas `protect + isAdmin`).
@@ -287,6 +317,7 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   `requirePlan("starter")`; multer en memoria con límite de 5MB.
 - **`routes/crmRoutes.js`** — CRM interno bajo `/api/admin/crm` (montado en app.js
   ANTES de `/api/admin` para que su prefijo matchee primero). Todas `protect + isAdmin`:
+  `GET /overdue-count` y `GET /export` (de nombre fijo, van antes del param),
   `GET /clients`, `GET /clients/:userID`, `PATCH /clients/:userID`,
   `POST /clients/:userID/notes`, `DELETE /clients/:userID/notes/:noteID`.
 - **`routes/paymentRoutes.js`** — define `PLANES` (title/price/description de starter,
@@ -302,6 +333,11 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   `"YYYY-MM-DD"` del instante leída en `America/Argentina/Buenos_Aires` (vía `Intl`, sin
   dependencias). Evita que las visitas después de las 21:00 se cuenten al día siguiente.
   También exporta `TIMEZONE_BA`.
+- **`utils/crmEvents.js`** — **`logCrmEvent(userID, text)`**: inserta un evento
+  automático (`kind:"event"`, sin autor) al principio del historial de CRM del cliente
+  (upsert). Lo llaman `mpWebhook` (cambio de plan), `setActiveUser` (activar/desactivar)
+  y `useTemplate` (cambio de template). Atrapa su propio error: nunca rompe el flujo
+  principal si el logueo falla.
 
 ---
 
@@ -329,7 +365,8 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
 - **`AppRoutes`** — declara todas las rutas con `lazy()`:
   - Públicas: `/` (AdminHome = landing comercial), `/login`, `/register`, `/terminos`,
     `/privacidad`, `/contacto`.
-  - Admin (protegidas por `AdminRoute`): `/admin` (CEODashboard), `/admin/crm` (CrmClients).
+  - Admin (protegidas por `AdminRoute` + `AdminLayout`, el shell con sidebar/bottomnav):
+    `/admin` (CEODashboard), `/admin/crm` (CrmClients).
   - Dueño (protegidas por `UserRoute` + `DashboardLayout`): `/dashboard`,
     `/menu/editor`, `/user/editor`, `/estadisticas`.
   - Tenant público por slug (al final): `/:slug` (UserHome) y `/:slug/menu` (UserMenu).
@@ -363,6 +400,23 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
 - **`useAuth()`** — hook que devuelve el `AuthContext`; tira error si se usa fuera del
   `AuthProvider`.
 
+### `context/CartContext.tsx`
+- **`CartLine`** (interface: itemId, title, unitPrice, quantity, selectedOption?) y
+  **`CartContextType`** / **`CartContext`** — el contexto del **carrito de la carta
+  pública** (items, addItem, removeItem, updateQuantity, clearCart, totalItems,
+  totalPrice). Dos variantes distintas del mismo producto son líneas separadas.
+
+### `context/CartProvider.tsx`
+- **`lineKey(itemId, selectedOption)`** — clave única de línea (producto + variante).
+- **`readCart(slug)`** — lee el carrito de localStorage (tolerante a JSON corrupto).
+- **`CartProvider({slug, children})`** — provee el carrito. Persiste en localStorage
+  bajo `cart:<slug>` (un carrito **por local**, no global); si el slug cambia por
+  navegación SPA recarga el carrito de ese local (ajuste de estado durante el render,
+  sin efecto). Si localStorage no está disponible sigue funcionando en memoria.
+
+### `context/useCart.ts`
+- **`useCart()`** — hook consumidor del `CartContext` (mismo patrón que `useAuth`).
+
 ## hooks/
 
 ### `hooks/useReveal.tsx`
@@ -391,6 +445,16 @@ Espejo del sistema de planes del backend, para la UI.
 - **`PLAN_ORDER`**, **`PLAN_LABEL`** (nombres visibles), **`TEMPLATE_MIN_PLAN`** (mapa
   template→plan), y **`planMeetsMin(userPlan, minPlan)`** (helper de gating para
   candados/badges en el editor).
+
+### `lib/whatsapp.ts`
+Helpers puros del **pedido por WhatsApp** (sin backend, sin gating por plan).
+- **`sanitizePhoneForWa(number)`** — convierte el teléfono guardado (dígitos locales
+  sin código de país) al formato `54 9 <área><número>` que exige `wa.me` para celulares
+  argentinos; saca un `0` inicial de discado si lo hubiera. Devuelve null si no hay número.
+- **`buildOrderMessage(cart, businessName)`** — arma el texto legible del pedido
+  (cantidad × producto, variante, subtotal por línea y total).
+- **`buildWaLink(number, message)`** — devuelve el link `https://wa.me/...?text=` (URL-
+  encoded) o null si el número no sirve (el caller oculta el botón en ese caso).
 
 ## api/
 
@@ -432,7 +496,9 @@ descarga en el navegador).
 
 ### `api/crm.ts`
 CRM interno (admin): **`listCrmClients`**, **`getCrmClient`**, **`updateCrmProfile`**,
-**`addCrmNote`**, **`deleteCrmNote`**.
+**`addCrmNote`**, **`deleteCrmNote`**, **`getCrmOverdueCount`** (conteo de seguimientos
+vencidos para el badge del sidebar) y **`exportCrmClients(stage?)`** (descarga el
+listado como blob `.xlsx`, respetando el filtro de etapa).
 
 ### `api/index.ts`
 Barrel: re-exporta `users/menus/items`, el `apiClient` (axios) y
@@ -447,9 +513,12 @@ normalizada del user logueado en el contexto), `Menu`, `Item`, respuestas
 (`PublicMenuResponse`, `AuthResponse`, `TemplateResponse`, ...), el menú público
 agrupado (`Categoria`, `Seccion`, `MenuData`, `Tab`, `UserMenuResponse`), el menú del
 panel (`AdminItem/AdminCategoria/AdminSeccion/AdminMenuData`, con campos que solo usa el
-editor), `DashData`, `DayCount`, `StatsData`, tipos de import masivo (`MassiveRowResult`,
-`MassivePreviewResponse`, `MassiveConfirmResponse`), de admin (`Plan`, `AdminStats`) y de
-CRM (`CrmStage`, `CrmNote`, `CrmProfile`, `CrmClient`, `CrmClientDetail`).
+editor), `DashData`, `DayCount`, `StatsData`, la analítica por plato (`TopItemStat`,
+`ItemStatsData`), tipos de import masivo (`MassiveRowResult`, `MassivePreviewResponse`,
+`MassiveConfirmResponse`), de admin (`Plan`, `AdminStats`) y de CRM (`CrmStage`,
+`CrmNote` — con `kind: "note" | "event"` para distinguir notas manuales de eventos del
+sistema —, `CrmProfile`, `CrmClient`, `CrmClientDetail`). `ContactInfo` incluye
+`googleReviewUrl` (link de reseñas de Google Maps).
 
 ## components/
 
@@ -468,22 +537,39 @@ hooks de animación (`useParallax`, `useReveal`, `useCounterOnView`, steam rings
 modal de billing, `CustomCursor`, y navegación mobile. `goRegister()` manda a
 `/register` (el cobro real se dispara ya logueado desde el panel).
 
+### `components/Admin/Panel/AdminLayout.tsx`
+Shell del **panel CEO** (sidebar desktop + bottom nav mobile + `<Outlet/>` para `/admin`
+y `/admin/crm`), mismo patrón que el `DashboardLayout` del dueño.
+- **`AdminLayout`** — nav items (Panel / CRM), `useTheme` (toggle claro/oscuro),
+  `handleLogout`, y un **badge de alerta** en el ítem CRM con la cantidad de clientes
+  con seguimiento vencido (`getCrmOverdueCount`, se refresca en cada cambio de ruta).
+  Íconos: `GridIcon`, `UsersIcon`, `LogoutIcon`, `SunIcon`, `MoonIcon`.
+
 ### `components/Admin/Panel/CEODashboard.tsx`
 Panel interno del CEO (`/admin`). Helpers: `SUBSCRIPTION_LABEL`, `SUBSCRIPTION_COLOR`,
 `timeAgo(date)`. Componente **`CEODashboard`**: trae `/admin/stats` y `/admin/allUsers`,
 muestra KPIs, breakdown de suscripciones (free/starter/pro/premium), buscador de
-clientes y toggle activar/desactivar. Sub-componente **`KpiCard`** y varios íconos SVG.
+clientes y toggle activar/desactivar. Sub-componente **`KpiCard`** (acentos vía CSS
+vars, theme-aware) y varios íconos SVG. La navegación/logout viven en `AdminLayout`; el
+`.module.css` define sus tokens locales (`--c-*`, glass, sombras) con un bloque
+`[data-theme="light"]` para el tema claro.
 
 ### `components/Admin/Crm/CrmClients.tsx`
 **CRM interno** del CEO (`/admin/crm`). Helpers: `STAGE_META` (etiqueta+color por etapa),
-`fmtDate`, `isOverdue`, `timeAgo`, `dateInputValue`.
+`STAGE_ORDER`, `fmtDate`, `isOverdue`, `timeAgo`, `dateInputValue`.
 - **`CrmClients`** — trae la lista (`listCrmClients`), la filtra por etapa (chips con
-  contadores) y búsqueda, y renderiza las filas (etapa, plan, próximo seguimiento
-  resaltado si venció). Al seleccionar un cliente abre el drawer.
+  contadores) y búsqueda, con **dos vistas alternables**: lista y **Kanban** (columnas
+  por etapa, tarjetas arrastrables con drag & drop nativo que llaman a
+  `updateCrmProfile` al soltarlas — `moveToStage`, optimista). Arriba, un **banner de
+  seguimientos vencidos** (clickeable: filtra solo esos clientes) y un botón
+  **"Exportar a Excel"** (`exportCrmClients`, respeta el filtro de etapa activo). Al
+  seleccionar un cliente abre el drawer.
 - **`ClientDrawer`** — panel lateral de detalle: trae `getCrmClient`, muestra perfil +
   actividad + link a la carta, y permite cambiar etapa, editar tags, setear el próximo
-  seguimiento y gestionar el historial de notas (agregar/borrar). Los cambios se guardan
-  al backend y se sincronizan con la fila del listado (optimista). Cierra con Escape.
+  seguimiento y gestionar el historial de **Actividad**: notas manuales mezcladas
+  cronológicamente con los eventos automáticos del sistema (`kind:"event"` — estilo
+  discreto, autor "Sistema", sin botón de borrar). Los cambios se guardan al backend y
+  se sincronizan con la fila del listado (optimista). Cierra con Escape.
 
 ### `components/Login/Login.tsx`
 - **`Login`** — formulario de login. Usa `useAuth().login`, muestra errores, redirige
@@ -504,7 +590,8 @@ clientes y toggle activar/desactivar. Sub-componente **`KpiCard`** y varios íco
 - **`Template`** — layout unificado (hero con foto/overlay o header con avatar según
   `useAvatar`, título, badge de delivery, lista de contacto, galería bento, botón "Ver
   menú"). Setea `document.title`.
-- Sub-componentes: **`ContactList`** (chips de contacto con `useReveal`), **`Gallery`**
+- Sub-componentes: **`ContactList`** (chips de contacto con `useReveal`; incluye la fila
+  "Dejanos tu reseña en Google" si el dueño cargó `googleReviewUrl`), **`Gallery`**
   (galería bento con foto destacada), **`Loader`** (skeleton con la silueta real),
   **`NotFound`**.
 - **`ImageViewer`** — lightbox a pantalla completa (se abre al tocar la foto de portada
@@ -518,10 +605,33 @@ clientes y toggle activar/desactivar. Sub-componente **`KpiCard`** y varios íco
 **Carta pública** (`/:slug/menu`). Helpers: `minOption(options)` (precio mínimo entre
 variantes), `fmt(n)` (formato de precio AR), `offerPct(orig, offer)` (% de descuento).
 - **`MenuPage`** — trae `/users/:slug/menu`, arma tabs por sección, aplica el template,
-  scroll-reveal, `document.title`.
+  scroll-reveal, `document.title`. Envuelve todo en **`CartProvider`** (carrito por
+  slug), renderiza el **`CartFab`** (botón flotante con badge de cantidad, solo si el
+  carrito tiene algo), el **`CartDrawer`** y — si hay `googleReviewUrl` — un **banner de
+  reseñas** al final del listado ("¿Te gustó lo que viste? Contanos en Google").
 - **`ItemCard`** — tarjeta de producto (imagen, precio/oferta, badges recomendado/apto).
+  Agrega el control de **carrito**: `AddControl` simple si el producto no tiene
+  variantes, o un `AddControl` por variante dentro del panel expandible (con opciones,
+  hay que elegir una — salvo que haya oferta a nivel producto, que se agrega como ítem
+  simple). Además, el primer tap sobre la tarjeta dispara el **tracking de vista por
+  plato** (`POST /:slug/menu/items/:itemID/view`, fire-and-forget, una vez por montaje).
+- **`AddControl`** — botón "+" que al agregar se convierte en stepper −/cantidad/+
+  (sincronizado con el carrito vía `useCart`).
+- **`CartFab`** — botón flotante del carrito (abre el drawer).
 - Sub-componentes: **`MenuSkeleton`**, **`NotFound`**, **`EmptyMenu`**, e íconos SVG
-  (`BackIcon`, `PinIcon`, `DeliveryIcon`, `StarIcon`, `ImagePlaceholderIcon`).
+  (`BackIcon`, `PinIcon`, `DeliveryIcon`, `StarIcon`, `CartIcon`,
+  `ImagePlaceholderIcon`).
+
+### `components/User/Home/Menu/CartDrawer.tsx`
+Panel deslizable del **pedido** (bottom-sheet en mobile, modal centrado en desktop),
+tematizado con los tokens `--t-*` del template activo.
+- **`CartDrawer({open, onClose, businessName, whatsappNumber})`** — lista las líneas
+  del carrito (título, variante, stepper de cantidad, subtotal, quitar), muestra el
+  total, y la **zona de acciones de checkout**: hoy el botón "Pedir por WhatsApp"
+  (arma el link con `buildWaLink` + `buildOrderMessage` y lo abre en otra pestaña; si el
+  local no cargó teléfono muestra un aviso en su lugar) y "Vaciar pedido". La zona está
+  separada a propósito para que sumar un botón de pago con MercadoPago después sea un
+  cambio aislado. Íconos: `CloseIcon`, `TrashIcon`, `WhatsAppIcon`.
 
 ### `components/User/Panel/DashboardLayout/DashboardLayout.tsx`
 Shell del panel del dueño (sidebar desktop + bottom nav mobile + `<Outlet/>`).
@@ -556,19 +666,23 @@ Editor del menú (`/menu/editor`). El componente más grande.
 "Mi negocio" (`/user/editor`). Tabs info / media / template.
 - `TEMPLATES` (los 13 con `minPlan`), `EMPTY_FORM`. Sub-componentes `Toggle`, `Spinner`,
   `LockIcon`.
-- **`UserEditorPage`** — edita datos de contacto, delivery, galería (subida múltiple a
-  Cloudinary con progreso, drag & drop) y **selección de template** con gating por plan
-  (`planMeetsMin`): candado + badge del plan requerido + modal de upsell que dispara el
-  pago del plan exacto (`handleUpgrade`).
+- **`UserEditorPage`** — edita datos de contacto (incluido el **link de reseñas de
+  Google Maps**, con validación de que empiece con `http(s)://`), delivery, galería
+  (subida múltiple a Cloudinary con progreso, drag & drop) y **selección de template**
+  con gating por plan (`planMeetsMin`): candado + badge del plan requerido + modal de
+  upsell que dispara el pago del plan exacto (`handleUpgrade`).
 
 ### `components/User/Panel/Stats/UserStats.tsx`
 Estadísticas de visitas (`/estadisticas`, plan pro+).
 - **`requestStats(token)`** — fetch puro (sin React) de `/users/me/stats`; devuelve
   `{kind:"locked"|"data"|"none"}`.
+- **`requestItemStats(token)`** — ídem para `/users/me/item-stats` (mismo gate de plan;
+  se pide después de stats para no duplicar el manejo del 403).
 - **`UserStats`** — carga inicial (con spinner) + **auto-refresh en tiempo real**
   (polling cada 45s solo con la pestaña visible + refresco al volver el foco). Muestra
-  total y gráfico de los últimos 30 días. Si el plan no incluye stats (403), muestra
-  paywall con `handleUpgrade` (pago del plan Pro).
+  total y gráfico de los últimos 30 días, más la sección **"Productos más vistos"**
+  (ranking top 10 con barra proporcional al más visto, solo si hay datos). Si el plan
+  no incluye stats (403), muestra paywall con `handleUpgrade` (pago del plan Pro).
 
 ## pages/
 
@@ -605,11 +719,27 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   actualiza `User.subscription`. El gating de features (límite de items, Excel, stats,
   templates) se valida en el backend (`requirePlan` / `TEMPLATE_MIN_PLAN`) y se refleja
   en la UI (`lib/plans.ts`).
-- **Estadísticas**: cada visita incrementa `PageView` del día (BA). Los planes pro+ ven
-  la serie de 30 días en `UserStats`, con auto-refresh en tiempo real.
+- **Pedido por WhatsApp**: en la carta pública el cliente arma un carrito
+  (`CartProvider`, persistido en localStorage por slug) tocando "+" en cada producto
+  (con selección de variante si tiene opciones). El `CartDrawer` muestra el pedido y
+  el botón "Pedir por WhatsApp" abre `wa.me` con el mensaje prearmado
+  (`lib/whatsapp.ts`) al número del local. 100% client-side, sin backend, sin gating
+  por plan (el teléfono ya es público vía el link `tel:` existente).
+- **Reseñas de Google**: el dueño carga `contactInfo.googleReviewUrl` en "Mi negocio";
+  la landing pública (`ContactList`) y la carta (banner al final del menú) muestran el
+  CTA "Dejanos tu reseña" solo si el campo está cargado. Gratis para todos los planes.
+- **Estadísticas**: cada visita incrementa `PageView` del día (BA), y cada tap sobre un
+  producto incrementa `ItemView` (mismo esquema, a nivel plato). Los planes pro+ ven en
+  `UserStats` la serie de 30 días con auto-refresh en tiempo real más el ranking de
+  "Productos más vistos" (top 10 de la misma ventana).
 - **Import/export Excel** (plan starter+): `getTemplate` genera el `.xlsx`;
   `previewMassive`/`confirmMassive` procesan la reimportación fila por fila.
 - **CRM interno** (solo CEO/admin): desde `/admin/crm` se gestiona a los locales
-  suscriptos como clientes (etapa del pipeline, tags, seguimiento, notas). Los datos
+  suscriptos como clientes (etapa del pipeline — en vista lista o Kanban con drag &
+  drop —, tags, seguimiento, notas). El historial mezcla notas manuales con eventos
+  automáticos del sistema (`logCrmEvent`: cambios de plan vía webhook de MP,
+  activar/desactivar cuenta, cambios de template). Los seguimientos vencidos se
+  destacan con un banner en el CRM y un badge en el sidebar del panel
+  (`/overdue-count`), y el listado se puede exportar a Excel (`/export`). Los datos
   viven en `CrmProfile`, aislados del modelo User para no filtrarse por ningún endpoint
   público; solo se acceden vía `/api/admin/crm` (protect + isAdmin).
