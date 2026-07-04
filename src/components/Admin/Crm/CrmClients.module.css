@@ -11,22 +11,6 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Loader ── */
-.pageCenter {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  background: var(--admin-bg-base);
-}
-.loaderRing {
-  width: 30px;
-  height: 30px;
-  border: 2px solid var(--admin-border-default);
-  border-top-color: var(--admin-gold);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
 /* ── Top bar ── */
 .topBar {
   border-bottom: 0.5px solid var(--admin-border-subtle);
@@ -648,5 +632,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .drawerOverlay, .drawer, .loaderRing { animation: none; }
+  .drawerOverlay, .drawer { animation: none; }
 }

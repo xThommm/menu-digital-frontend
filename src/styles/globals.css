@@ -485,6 +485,10 @@ a:hover { opacity: 0.75; }
   to { transform: rotate(360deg); }
 }
 
+@keyframes spinReverse {
+  to { transform: rotate(-360deg); }
+}
+
 @keyframes t-fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
@@ -567,16 +571,68 @@ a:hover { opacity: 0.75; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SPINNER DE CARGA
+   SPINNERS DE CARGA — 3 variantes, todas centralizadas acá para que
+   ningún .module.css vuelva a redefinir su propio anillo/keyframes.
+
+   1) .pageLoaderScreen + .pageLoaderRing — carga de página completa
+      (rutas del panel, Suspense de rutas, auth-check). Doble anillo
+      conic-gradient (antes solo en CEODashboard, duplicado en versión
+      "simple" en UserEditor/MenuEditor/CrmClients) con --admin-gold/
+      --admin-success-core, así hereda el tema claro/oscuro del panel
+      sin código extra.
+   2) .iconSpinner — spinner SVG inline (dasharray) para botones y
+      overlays puntuales (Guardando..., subiendo imagen, etc). Hereda
+      color vía currentColor, así se ve bien en cualquier botón.
+   3) .btnSpinnerDark — anillo oscuro sobre fondo ámbar/dorado, para
+      los botones de submit de Login/Register/AdminHome/Contact.
    ═══════════════════════════════════════════════════════════════ */
-.loader {
-  width: 28px;
-  height: 28px;
-  border: 2px solid var(--border);
-  border-top-color: var(--gold);
-  border-radius: var(--radius-full);
-  animation: spin 0.65s linear infinite;
-  will-change: transform;
+.pageLoaderScreen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--admin-bg-base);
+}
+
+.pageLoaderRing {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0%, var(--admin-gold) 80%, transparent 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #fff calc(100% - 2.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #fff calc(100% - 2.5px));
+  animation: spin 0.85s linear infinite;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--admin-gold) 45%, transparent));
+}
+
+.pageLoaderRing::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: conic-gradient(from 180deg, transparent 0%, var(--admin-success-core) 70%, transparent 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff calc(100% - 2px));
+  animation: spinReverse 1.1s linear infinite;
+  opacity: 0.7;
+}
+
+.iconSpinner {
+  color: currentColor;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.btnSpinnerDark {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════

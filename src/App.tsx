@@ -4,15 +4,8 @@ import { AuthProvider } from "./context/AuthProvider";
 import AppRoutes from "./routes/AppRoutes";
 
 const PageLoader = () => (
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      height: "100vh",
-    }}
-  >
-    <div className="loader" />
+  <div className="pageLoaderScreen">
+    <div className="pageLoaderRing" />
   </div>
 );
 

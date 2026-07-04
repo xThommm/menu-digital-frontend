@@ -218,7 +218,7 @@ export default function Contact() {
                   disabled={formState === "sending"}
                 >
                   {formState === "sending" ? (
-                    <><span className={styles.spinner} /> Enviando...</>
+                    <><span className="btnSpinnerDark" /> Enviando...</>
                   ) : (
                     "Enviar mensaje →"
                   )}

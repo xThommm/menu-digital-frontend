@@ -229,14 +229,16 @@ export default function MenuPage() {
         </main>
 
         <CartFab onClick={() => setCartOpen(true)} />
-      </div>
 
-      <CartDrawer
-        open={cartOpen}
-        onClose={() => setCartOpen(false)}
-        businessName={info.businessName || "el local"}
-        whatsappNumber={info.number}
-      />
+        {/* Dentro de .mp a propósito: el drawer usa los tokens --t-* del
+            template activo, que solo existen dentro de este contenedor. */}
+        <CartDrawer
+          open={cartOpen}
+          onClose={() => setCartOpen(false)}
+          businessName={info.businessName || "el local"}
+          whatsappNumber={info.number}
+        />
+      </div>
     </CartProvider>
   );
 }

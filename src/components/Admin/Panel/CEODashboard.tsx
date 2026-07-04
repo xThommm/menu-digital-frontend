@@ -119,8 +119,8 @@ export default function CEODashboard() {
 
   if (loading) {
     return (
-      <div className={s.pageCenter}>
-        <div className={s.loaderRing} />
+      <div className="pageLoaderScreen">
+        <div className="pageLoaderRing" />
       </div>
     );
   }

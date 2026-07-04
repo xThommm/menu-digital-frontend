@@ -319,13 +319,6 @@
   outline-offset: 2px;
 }
 
-/* ── Spinner ── */
-.spinner {
-  color: currentColor;
-  animation: spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
 /* ── Media ── */
 .mediaSection {
   margin-bottom: 1.75rem;
@@ -705,23 +698,6 @@
   line-height: 1.6;
 }
 
-.pageCenter {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--admin-bg-base);
-}
-
-.loaderRing {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid var(--admin-border-default);
-  border-top-color: var(--admin-gold);
-  animation: spin 0.7s linear infinite;
-}
-
 /* ── Responsive ── */
 @media (max-width: 400px) {
   .fieldRow {
@@ -735,8 +711,6 @@
 
 /* ── Reduce motion ── */
 @media (prefers-reduced-motion: reduce) {
-  .spinner,
-  .loaderRing,
   .dirtyDot,
   .toggleKnob {
     animation: none;

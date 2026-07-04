@@ -214,7 +214,7 @@ export default function LoginPage() {
             <span className={styles.btnInner}>
               {isSubmitting ? (
                 <>
-                  <span className={styles.spinner} aria-hidden="true" />
+                  <span className="btnSpinnerDark" aria-hidden="true" />
                   Ingresando...
                 </>
               ) : (

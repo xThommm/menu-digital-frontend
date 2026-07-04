@@ -133,8 +133,8 @@ export default function CrmClients() {
 
   if (loading) {
     return (
-      <div className={s.pageCenter}>
-        <div className={s.loaderRing} aria-label="Cargando clientes…" />
+      <div className="pageLoaderScreen">
+        <div className="pageLoaderRing" aria-label="Cargando clientes…" />
       </div>
     );
   }
@@ -427,7 +427,7 @@ function ClientDrawer({
     <div className={s.drawerOverlay} onClick={onClose} role="dialog" aria-modal="true" aria-label="Detalle del cliente">
       <div className={s.drawer} onClick={(e) => e.stopPropagation()}>
         {loading || !detail || !u || !crm ? (
-          <div className={s.drawerLoading}><div className={s.loaderRing} /></div>
+          <div className={s.drawerLoading}><div className="pageLoaderRing" /></div>
         ) : (
           <>
             <header className={s.drawerHeader}>

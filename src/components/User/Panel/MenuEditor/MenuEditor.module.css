@@ -715,17 +715,6 @@
   outline-offset: 2px;
 }
 
-/* ── Spinner ── */
-.spinner {
-  color: currentColor;
-  animation: spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 /* ── Modal de confirmación ── */
 .modalOverlay {
   position: fixed;
@@ -1075,23 +1064,6 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.pageCenter {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--admin-bg-base);
-}
-
-.loaderRing {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1.5px solid var(--admin-border-default);
-  border-top-color: var(--admin-gold);
-  animation: spin 0.7s linear infinite;
-}
-
 /* ── Responsive web (desktop) ── */
 @media (min-width: 600px) {
   .me {
@@ -1117,8 +1089,6 @@
 
 /* ── Reduce motion ── */
 @media (prefers-reduced-motion: reduce) {
-  .spinner,
-  .loaderRing,
   .toggleKnob,
   .catChevron,
   .modal,

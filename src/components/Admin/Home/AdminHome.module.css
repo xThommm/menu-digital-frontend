@@ -676,15 +676,6 @@
 .payBtn:disabled { opacity: .6; cursor: not-allowed; }
 .paySafe { text-align: center; font-family: 'DM Mono', monospace; font-size: .6rem; color: var(--auth-cream-dim); margin-top: 12px; letter-spacing: .12em; }
 
-/* ── SPINNER ── */
-.spinner {
-  width: 18px; height: 18px;
-  border: 2px solid rgba(0,0,0,.2); border-top-color: #000;
-  border-radius: 50%;
-  animation: spin .7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
 /* ══════════════════════════════════════════════
    RESPONSIVE — DOS BLOQUES: NAV Y RESTO DEL LAYOUT
    ══════════════════════════════════════════════ */

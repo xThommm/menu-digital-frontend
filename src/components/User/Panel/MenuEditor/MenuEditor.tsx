@@ -7,6 +7,7 @@ import type {
   AdminSeccion as Seccion,
   AdminMenuData as MenuData,
 } from "../../../../types";
+import Spinner from "../../../Common/Spinner";
 import styles from "./MenuEditor.module.css";
 
 // ── Estado vacío para formulario de item ───────────────────────────────────────
@@ -173,18 +174,6 @@ function TopBar({ title, onBack, rightSlot }: { title: string; onBack: () => voi
         {rightSlot}
       </div>
     </header>
-  );
-}
-
-// ── Spinner ───────────────────────────────────────────────────────────────────
-
-function Spinner({ size = 16 }: { size?: number }) {
-  return (
-    <svg className={styles.spinner} width={size} height={size} viewBox="0 0 24 24"
-      fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5"
-        strokeDasharray="31.4" strokeDashoffset="10" strokeLinecap="round" />
-    </svg>
   );
 }
 
@@ -803,8 +792,8 @@ export default function MenuEditorPage() {
 
   if (loading) {
     return (
-      <div className={styles.pageCenter}>
-        <div className={styles.loaderRing} aria-label="Cargando menú..." />
+      <div className="pageLoaderScreen">
+        <div className="pageLoaderRing" aria-label="Cargando menú..." />
       </div>
     );
   }
