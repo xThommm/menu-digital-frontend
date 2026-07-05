@@ -2,7 +2,9 @@
 
 Documentación técnica de los dos repositorios que componen **MenuDigital**, un
 SaaS de menús/cartas digitales para bares y restaurantes de Argentina. Describe
-cada archivo de código y cada función (se excluyen los `.css`).
+cada archivo de código y cada función (los `.module.css` por componente no se
+documentan; `styles/globals.css` sí, por ser la fuente compartida de tokens,
+keyframes y utilidades — ver [styles/](#styles)).
 
 - **Frontend** (`menu-digital-frontend`): React 19 + TypeScript + Vite. Deploy en Vercel.
 - **Backend** (`menu-digital-backend`): Node + Express 4 + Mongoose 7 (MongoDB Atlas). Deploy en Koyeb.
@@ -35,6 +37,7 @@ obtiene una carta pública en `menudigitalapp.com.ar/<slug>/menu`. Los planes pa
   - [components/](#components)
   - [pages/](#pages)
   - [Utils/](#utils-frontend)
+  - [styles/](#styles)
 - [Flujos clave](#flujos-clave)
 
 ---
@@ -345,7 +348,8 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
 
 Estructura: `src/{main.tsx, App.tsx, routes, context, hooks, lib, api, types,
 components, pages, Utils, styles}`. Cada componente tiene su `.module.css` (no
-documentado acá). Tokens de diseño centralizados en `styles/globals.css`.
+documentado individualmente); tokens, keyframes, spinners y utilidades compartidas
+viven en `styles/globals.css` (ver [styles/](#styles)).
 
 ## Entry / bootstrap
 
@@ -527,7 +531,11 @@ sistema —, `CrmProfile`, `CrmClient`, `CrmClientDetail`). `ContactInfo` incluy
   modo de atrapar errores de render). `getDerivedStateFromError`, `componentDidCatch`
   (loguea, hook para Sentry), `handleReload` y un fallback con botón "Recargar".
 - **`FullScreenLoader.tsx`** — **`FullScreenLoader`**: spinner a pantalla completa (guard
-  de rutas).
+  de rutas). Usa las clases globales `.pageLoaderScreen`/`.pageLoaderRing` (mismo loader
+  que el fallback de Suspense y las pantallas de carga del panel).
+- **`Spinner.tsx`** — **`Spinner({size})`**: spinner SVG inline para botones y overlays
+  ("Guardando...", subiendo imagen, etc). Hereda color vía `currentColor` y gira con la
+  clase global `.iconSpinner`. Antes estaba copiado idéntico en UserEditor y MenuEditor.
 
 ### `components/Admin/Home/AdminHome.tsx`
 Landing comercial pública (la home de `/`). Presenta la propuesta, precios y CTA a
@@ -593,7 +601,7 @@ vars, theme-aware) y varios íconos SVG. La navegación/logout viven en `AdminLa
 - Sub-componentes: **`ContactList`** (chips de contacto con `useReveal`; incluye la fila
   "Dejanos tu reseña en Google" si el dueño cargó `googleReviewUrl`), **`Gallery`**
   (galería bento con foto destacada), **`Loader`** (skeleton con la silueta real),
-  **`NotFound`**.
+  **`NotFound`** (clases globales `.t-notfound*`, compartidas con la carta).
 - **`ImageViewer`** — lightbox a pantalla completa (se abre al tocar la foto de portada
   o una de la galería). Theme-agnóstico: backdrop con blur, imagen con zoom de entrada,
   botones glassmorphic (cerrar / prev / next con estado disabled en los extremos) y
@@ -605,33 +613,48 @@ vars, theme-aware) y varios íconos SVG. La navegación/logout viven en `AdminLa
 **Carta pública** (`/:slug/menu`). Helpers: `minOption(options)` (precio mínimo entre
 variantes), `fmt(n)` (formato de precio AR), `offerPct(orig, offer)` (% de descuento).
 - **`MenuPage`** — trae `/users/:slug/menu`, arma tabs por sección, aplica el template,
-  scroll-reveal, `document.title`. Envuelve todo en **`CartProvider`** (carrito por
-  slug), renderiza el **`CartFab`** (botón flotante con badge de cantidad, solo si el
-  carrito tiene algo), el **`CartDrawer`** y — si hay `googleReviewUrl` — un **banner de
-  reseñas** al final del listado ("¿Te gustó lo que viste? Contanos en Google").
-- **`ItemCard`** — tarjeta de producto (imagen, precio/oferta, badges recomendado/apto).
-  Agrega el control de **carrito**: `AddControl` simple si el producto no tiene
-  variantes, o un `AddControl` por variante dentro del panel expandible (con opciones,
-  hay que elegir una — salvo que haya oferta a nivel producto, que se agrega como ítem
-  simple). Además, el primer tap sobre la tarjeta dispara el **tracking de vista por
-  plato** (`POST /:slug/menu/items/:itemID/view`, fire-and-forget, una vez por montaje).
+  scroll-reveal, `document.title`. La cabecera y las tabs viven en un **único wrapper
+  sticky** (`.mpSticky`): las tabs quedan pegadas exactamente debajo del header sin
+  acoplar un `top:` fijo a una altura que cambia entre mobile y desktop; al cambiar de
+  tab se vuelve al tope de la página (el inicio visible del contenido). Envuelve todo en
+  **`CartProvider`** (carrito por slug), renderiza el **`CartFab`** (botón flotante con
+  badge de cantidad, solo si el carrito tiene algo), el **`CartDrawer`** — **dentro** del
+  contenedor `[data-template]`, porque los tokens `--t-*` solo existen ahí — y, si hay
+  `googleReviewUrl`, un **banner de reseñas** al final del listado ("¿Te gustó lo que
+  viste? Contanos en Google"). **Responsive**: columna única estilo mobile hasta 1024px;
+  de ahí en adelante el contenedor crece (~1080px) y cada categoría pasa a una **grilla
+  de 2 columnas** (título ocupando ambas; `align-items:start` para que expandir
+  variantes en una tarjeta no estire a su vecina).
+- **`ItemCard`** — tarjeta de producto (imagen con `loading="lazy"`, precio, badges).
+  El precio muestra un solo estado a la vez: oferta (precio nuevo + tachado + badge de
+  descuento) > variantes ("Desde" el mínimo) > precio simple. Control de **carrito**:
+  `AddControl` simple si el producto no tiene variantes, o un `AddControl` por variante
+  dentro del panel expandible; el botón "Variantes" solo aparece cuando el panel
+  realmente abre (con oferta activa el producto se agrega como ítem simple al precio de
+  oferta). El primer tap sobre la tarjeta dispara el **tracking de vista por plato**
+  (`POST /:slug/menu/items/:itemID/view`, fire-and-forget, una vez por montaje).
 - **`AddControl`** — botón "+" que al agregar se convierte en stepper −/cantidad/+
   (sincronizado con el carrito vía `useCart`).
 - **`CartFab`** — botón flotante del carrito (abre el drawer).
-- Sub-componentes: **`MenuSkeleton`**, **`NotFound`**, **`EmptyMenu`**, e íconos SVG
-  (`BackIcon`, `PinIcon`, `DeliveryIcon`, `StarIcon`, `CartIcon`,
-  `ImagePlaceholderIcon`).
+- Sub-componentes: **`MenuSkeleton`** (misma silueta que el contenido real, incluida la
+  grilla de 2 columnas en desktop), **`NotFound`** (clases globales `.t-notfound*`),
+  **`EmptyMenu`**, e íconos SVG (`BackIcon`, `PinIcon`, `DeliveryIcon`, `StarIcon`,
+  `CartIcon`, `ImagePlaceholderIcon`).
 
 ### `components/User/Home/Menu/CartDrawer.tsx`
 Panel deslizable del **pedido** (bottom-sheet en mobile, modal centrado en desktop),
 tematizado con los tokens `--t-*` del template activo.
 - **`CartDrawer({open, onClose, businessName, whatsappNumber})`** — lista las líneas
-  del carrito (título, variante, stepper de cantidad, subtotal, quitar), muestra el
-  total, y la **zona de acciones de checkout**: hoy el botón "Pedir por WhatsApp"
-  (arma el link con `buildWaLink` + `buildOrderMessage` y lo abre en otra pestaña; si el
-  local no cargó teléfono muestra un aviso en su lugar) y "Vaciar pedido". La zona está
-  separada a propósito para que sumar un botón de pago con MercadoPago después sea un
-  cambio aislado. Íconos: `CloseIcon`, `TrashIcon`, `WhatsAppIcon`.
+  del carrito (título, variante, stepper de cantidad, subtotal, quitar) con scroll
+  interno propio (en pantallas bajas el listado scrollea en vez de empujar el total y
+  el checkout fuera del viewport), muestra el total, y la **zona de acciones de
+  checkout**: hoy el botón "Pedir por WhatsApp" (arma el link con `buildWaLink` +
+  `buildOrderMessage` y lo abre en otra pestaña; si el local no cargó teléfono muestra
+  un aviso en su lugar) y "Vaciar pedido" (con confirmación nativa — acción destructiva
+  sin undo). La zona está separada a propósito para que sumar un botón de pago con
+  MercadoPago después sea un cambio aislado. Debe renderizarse dentro del contenedor
+  `[data-template]` (hereda los tokens `--t-*` de ahí). Íconos: `CloseIcon`,
+  `TrashIcon`, `WhatsAppIcon`.
 
 ### `components/User/Panel/DashboardLayout/DashboardLayout.tsx`
 Shell del panel del dueño (sidebar desktop + bottom nav mobile + `<Outlet/>`).
@@ -655,8 +678,9 @@ Home del panel (`/dashboard`). Layout de dos columnas en desktop.
 Editor del menú (`/menu/editor`). El componente más grande.
 - Tipos importados de `types` como `Item/Categoria/Seccion/MenuData` (alias de los
   `Admin*`). `EMPTY_ITEM`, `icons`, constantes de Cloudinary.
-- Sub-componentes: **`Toggle`**, **`TopBar`**, **`Spinner`**, **`CategoriaAcordeon`**
-  (memoizado — acordeón de categoría con items, drag & drop).
+- Sub-componentes: **`Toggle`**, **`TopBar`**, **`CategoriaAcordeon`** (memoizado —
+  acordeón de categoría con items, drag & drop). El spinner inline viene de
+  `Common/Spinner`.
 - **`MenuEditorPage`** — estado del editor (menú, límites, vistas item/categoría/sección/
   massive-import, modales de borrado y de upgrade). Fetch a `/users/me/menu`, `refetch`,
   handlers CRUD de items/categorías/secciones, drag & drop, subida de imágenes directo a
@@ -664,8 +688,8 @@ Editor del menú (`/menu/editor`). El componente más grande.
 
 ### `components/User/Panel/UserEditor/UserEditor.tsx`
 "Mi negocio" (`/user/editor`). Tabs info / media / template.
-- `TEMPLATES` (los 13 con `minPlan`), `EMPTY_FORM`. Sub-componentes `Toggle`, `Spinner`,
-  `LockIcon`.
+- `TEMPLATES` (los 13 con `minPlan`), `EMPTY_FORM`. Sub-componentes `Toggle` y
+  `LockIcon`; el spinner inline viene de `Common/Spinner`.
 - **`UserEditorPage`** — edita datos de contacto (incluido el **link de reseñas de
   Google Maps**, con validación de que empiece con `http(s)://`), delivery, galería
   (subida múltiple a Cloudinary con progreso, drag & drop) y **selección de template**
@@ -702,6 +726,39 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   plantilla, drag & drop del archivo (valida .xlsx y ≤5MB), preview de cambios y
   confirmación. Sub-componentes **`ResumenSection`** y **`ResultadoSection`** (render de
   las filas a crear/actualizar/errores).
+
+## <a id="styles"></a>styles/
+
+### `styles/globals.css`
+Única hoja global; todo lo demás son CSS Modules por componente. La regla de la casa:
+**lo que se repite en 2+ módulos se centraliza acá**. Contiene:
+
+- **Design tokens**, en 4 familias con prefijo propio para no colisionar:
+  - Paleta base del storefront claro (`--gold`, `--cream`, `--text-*`, `--surface-*`,
+    radios, sombras, espaciado, escala tipográfica, easings, z-index).
+  - **`--admin-*`** — panel de administración (Dashboard, editores, CEO, CRM). Tema
+    oscuro default + bloque `:root[data-theme="light"]` que redefine solo las bases
+    (los derivados se recalculan solos vía `color-mix()`).
+  - **`--auth-*`** — Login/Register/AdminHome (tema oscuro/ámbar).
+  - **`--t-*`** — tokens **por template** de la carta pública: 13 bloques
+    `[data-template="N"]` (bg, surface, borders, text, accent, gradientes de hero;
+    los premium suman `--t-bg-image` y `--t-btn-bg` metálico). Solo existen dentro
+    del contenedor con `data-template`.
+- **Keyframes globales** (`spin`, `spinReverse`, `t-fadeIn`, `t-fadeUp`,
+  `t-slideRight`, `fadeUp`, `scaleIn`, `pulse`, `shimmer`, `slideDown`, `slideUp`) —
+  los módulos los referencian sin redeclararlos.
+- **Spinners de carga** (3 variantes): `.pageLoaderScreen` + `.pageLoaderRing`
+  (página completa, doble anillo conic-gradient, theme-aware vía `--admin-*`),
+  `.iconSpinner` (SVG inline de botones — lo usa `Common/Spinner`) y
+  `.btnSpinnerDark` (anillo oscuro sobre botón ámbar/dorado de Login/Contact).
+- **Utilidades compartidas**: `.sr-only` (texto solo para lectores de pantalla),
+  `.t-notfound`/`.t-notfound-title`/`.t-notfound-sub` (estado "no encontrado" de las
+  vistas públicas — colores fijos porque sin negocio no hay template del que heredar),
+  `.grain` (textura), `.t-reveal`/`.t-reveal-in` (scroll-reveal con `useReveal`).
+- **Componentes de template `.t-*`** (hero, header con avatar, badges, info-rows,
+  galería bento, botones, cards, stats) que consumen los tokens `--t-*` — el layout de
+  `UserHome` se arma con estas clases.
+- Reset, base de `html/body`, `:focus-visible` global y `prefers-reduced-motion`.
 
 ---
 

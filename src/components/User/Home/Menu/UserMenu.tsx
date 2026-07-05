@@ -82,13 +82,16 @@ export default function MenuPage() {
   const hasVisibleItems = (tab: Tab) =>
     tab.categorias.some(cat => cat.items.some(it => !it.hidden));
 
-  // Referencias para manejar foco y scroll entre tabs.
-  const contentRef = useRef<HTMLDivElement>(null);
-  const tabRefs     = useRef<(HTMLButtonElement | null)[]>([]);
+  // Referencias para manejar el foco entre tabs.
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const handleTabChange = useCallback((index: number, opts?: { focus?: boolean }) => {
     setActiveTab(index);
-    contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Volver al inicio de la lista: como header+tabs son sticky arriba de
+    // todo, el tope de la página ya es el inicio visible del contenido.
+    // Antes se hacía scrollIntoView(mpContent), que dejaba el arranque de
+    // la lista tapado debajo del bloque sticky.
+    window.scrollTo({ top: 0, behavior: "smooth" });
     if (opts?.focus) tabRefs.current[index]?.focus();
   }, []);
 
@@ -145,50 +148,50 @@ export default function MenuPage() {
     <CartProvider slug={slug ?? ""}>
       <div className={styles.mp} data-template={user.template ?? 1}>
 
-        {/* ── Cabecera ── */}
-        <header className={styles.mpHeader}>
-          <button className={styles.mpBack} onClick={goBack} aria-label="Volver al inicio del local">
-            <BackIcon />
-          </button>
-          <div className={styles.mpHeaderInfo}>
-            <h1 className={styles.mpName}>{info.businessName || "Menú"}</h1>
-            <div className={styles.mpMeta}>
-              {info.address     && <span><PinIcon /> {info.address}</span>}
-              {user.hasDelivery && <span><DeliveryIcon /> Delivery</span>}
+        {/* ── Cabecera + tabs (un solo bloque sticky — ver .mpSticky) ── */}
+        <div className={styles.mpSticky}>
+          <header className={styles.mpHeader}>
+            <button className={styles.mpBack} onClick={goBack} aria-label="Volver al inicio del local">
+              <BackIcon />
+            </button>
+            <div className={styles.mpHeaderInfo}>
+              <h1 className={styles.mpName}>{info.businessName || "Menú"}</h1>
+              <div className={styles.mpMeta}>
+                {info.address     && <span><PinIcon /> {info.address}</span>}
+                {user.hasDelivery && <span><DeliveryIcon /> Delivery</span>}
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        {/* ── Tabs (solo si hay más de una) ── */}
-        {tabs.length > 1 && (
-          <nav className={styles.mpTabs} role="tablist" aria-label="Secciones del menú">
-            {tabs.map((tab, i) => (
-              hasVisibleItems(tab) && (
-              <button
-                key={i}
-                ref={el => { tabRefs.current[i] = el; }}
-                id={`mp-tab-${i}`}
-                role="tab"
-                type="button"
-                tabIndex={activeTab === i ? 0 : -1}
-                aria-selected={activeTab === i}
-                aria-controls="mp-tabpanel"
-                className={`${styles.mpTab} ${activeTab === i ? styles.active : ""}`}
-                onClick={() => handleTabChange(i)}
-                onKeyDown={e => handleTabKeyDown(e, i)}
-              >
-                {tab.label}
-              </button>
-              )
-            ))}
-          </nav>
-        )}
+          {/* Tabs (solo si hay más de una) */}
+          {tabs.length > 1 && (
+            <nav className={styles.mpTabs} role="tablist" aria-label="Secciones del menú">
+              {tabs.map((tab, i) => (
+                hasVisibleItems(tab) && (
+                  <button
+                    key={i}
+                    ref={el => { tabRefs.current[i] = el; }}
+                    id={`mp-tab-${i}`}
+                    role="tab"
+                    type="button"
+                    tabIndex={activeTab === i ? 0 : -1}
+                    aria-selected={activeTab === i}
+                    aria-controls="mp-tabpanel"
+                    className={`${styles.mpTab} ${activeTab === i ? styles.active : ""}`}
+                    onClick={() => handleTabChange(i)}
+                    onKeyDown={e => handleTabKeyDown(e, i)}
+                  >
+                    {tab.label}
+                  </button>
+                )
+              ))}
+            </nav>
+          )}
+        </div>
 
         {/* ── Contenido del tab activo ── */}
-        {/* key=activeTab fuerza re-animación de entrada al cambiar de tab,
-            sin desmontar el <main> en sí (mantiene el ref y el scroll estables). */}
+        {/* key=activeTab fuerza re-animación de entrada al cambiar de tab. */}
         <main
-          ref={contentRef}
           id="mp-tabpanel"
           role="tabpanel"
           aria-labelledby={`mp-tab-${activeTab}`}
@@ -301,25 +304,33 @@ function ItemCard({ item, index, slug }: { item: Item; index: number; slug: stri
 
   const showImage = item.image && !imgError;
 
-return (
-  <article
-  ref={ref}
-  className={`${styles.itemCard} ${!item.available ? styles.unavailable : ""} ${item.recommended ? styles.recommended : ""} ${revealed ? styles.itemRevealed : ""}`}
-  style={{ "--reveal-delay": `${Math.min(index * 0.05, 0.3)}s` } as React.CSSProperties}
-  onClick={trackView}
->
-    {showImage ? (
-  <img
-    src={item.image}
-    alt={item.title}
-    className={styles.itemImg}
-    onError={() => setImgError(true)}
-  />
-) : (
-  <div className={styles.itemImgPlaceholder}>
-    <ImagePlaceholderIcon />
-  </div>
-)}
+  const cardClass = [
+    styles.itemCard,
+    !item.available ? styles.unavailable : "",
+    item.recommended ? styles.recommended : "",
+    revealed ? styles.itemRevealed : "",
+  ].filter(Boolean).join(" ");
+
+  return (
+    <article
+      ref={ref}
+      className={cardClass}
+      style={{ "--reveal-delay": `${Math.min(index * 0.05, 0.3)}s` } as React.CSSProperties}
+      onClick={trackView}
+    >
+      {showImage ? (
+        <img
+          src={item.image}
+          alt={item.title}
+          className={styles.itemImg}
+          loading="lazy"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <div className={styles.itemImgPlaceholder}>
+          <ImagePlaceholderIcon />
+        </div>
+      )}
 
       <div className={styles.itemBody}>
         <div className={styles.itemTop}>
@@ -336,43 +347,43 @@ return (
         )}
 
         <div className={styles.itemBottom}>
-          {activePrice != null && !(hasOptions && !isOnOffer) && (
-            <span className={styles.itemPrice}>
-              {
-              hasOptions && !isOnOffer ? fmt(basePrice!) : fmt(activePrice)
-              }
-            </span>
-          )}
-          {hasOptions && activePrice && !isOnOffer && (
-            <span className={styles.itemPrice}>
-              {
-              hasOptions ? "Desde " + (minPrice != null ? fmt(minPrice) : "Consultar") : fmt(activePrice)
-              }
-            </span>
-          )}
-          {isOnOffer && (
+          {/* Precio — un solo estado a la vez: oferta (precio nuevo + tachado
+              + badge de descuento) > variantes ("Desde" el mínimo) > simple. */}
+          {isOnOffer ? (
             <>
+              <span className={styles.itemPrice}>{fmt(activePrice!)}</span>
               <span className={styles.itemOffer}>{fmt(item.price!)}</span>
               <span className={`${styles.badge} ${styles.badgeOffer}`}>-{pct}%</span>
             </>
+          ) : hasOptions ? (
+            <span className={styles.itemPrice}>
+              Desde {minPrice != null ? fmt(minPrice) : "Consultar"}
+            </span>
+          ) : (
+            activePrice != null && <span className={styles.itemPrice}>{fmt(activePrice)}</span>
           )}
-          {hasOptions && (
-  <button
-    type="button"
-    className={`${styles.badge} ${styles.badgeVariant}`}
-    onClick={(e) => {
-      e.stopPropagation();
-      setExpanded(prev => !prev);
-    }}
-  >
-    Variantes {expanded ? "▲" : "▼"}
-  </button>
-)}
 
+          {/* Con oferta activa el producto se agrega como ítem simple al
+              precio de oferta (canPickVariant es false), así que el botón
+              de variantes solo aparece cuando el panel realmente abre. */}
+          {canPickVariant && (
+            <button
+              type="button"
+              className={`${styles.badge} ${styles.badgeVariant}`}
+              aria-expanded={expanded}
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpanded(prev => !prev);
+              }}
+            >
+              Variantes {expanded ? "▲" : "▼"}
+            </button>
+          )}
 
           {!item.available && (
             <span className={styles.itemUnavail}>No disponible</span>
           )}
+
           {(!hasOptions || isOnOffer) && item.available && activePrice != null && (
             <AddControl
               qty={qtyOf(undefined)}
@@ -380,25 +391,26 @@ return (
               onChange={(q) => updateQuantity(item._id, undefined, q)}
             />
           )}
+
           {canPickVariant && expanded && (
-  <div className={styles.optionsContainer}>
-    {Object.entries(item.options).map(([name, price]) => (
-      <div key={name} className={styles.optionRow}>
-        <span>{name}</span>
-        <div className={styles.optionRowRight}>
-          <span className={styles.itemPrice}>{fmt(price)}</span>
-          {item.available && (
-            <AddControl
-              qty={qtyOf(name)}
-              onAdd={() => handleAddVariant(name, price)}
-              onChange={(q) => updateQuantity(item._id, name, q)}
-            />
+            <div className={styles.optionsContainer}>
+              {Object.entries(item.options).map(([name, price]) => (
+                <div key={name} className={styles.optionRow}>
+                  <span>{name}</span>
+                  <div className={styles.optionRowRight}>
+                    <span className={styles.itemPrice}>{fmt(price)}</span>
+                    {item.available && (
+                      <AddControl
+                        qty={qtyOf(name)}
+                        onAdd={() => handleAddVariant(name, price)}
+                        onChange={(q) => updateQuantity(item._id, name, q)}
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
-        </div>
-      </div>
-    ))}
-  </div>
-)}
         </div>
       </div>
     </article>
@@ -443,32 +455,38 @@ function AddControl({
 function MenuSkeleton() {
   return (
     <div className={styles.mp} aria-hidden="true">
-      <div className={styles.mpHeader}>
-        <div className={`${styles.skelBox} ${styles.skelBack}`} />
-        <div className={styles.mpHeaderInfo}>
-          <div className={`${styles.skelBox} ${styles.skelTitle}`} />
-          <div className={`${styles.skelBox} ${styles.skelMeta}`} />
+      <div className={styles.mpSticky}>
+        <div className={styles.mpHeader}>
+          <div className={`${styles.skelBox} ${styles.skelBack}`} />
+          <div className={styles.mpHeaderInfo}>
+            <div className={`${styles.skelBox} ${styles.skelTitle}`} />
+            <div className={`${styles.skelBox} ${styles.skelMeta}`} />
+          </div>
+        </div>
+        <div className={styles.mpTabsSkeleton}>
+          {[0, 1, 2].map(i => (
+            <div key={i} className={`${styles.skelBox} ${styles.skelTab}`} />
+          ))}
         </div>
       </div>
-      <div className={styles.mpTabsSkeleton}>
-        {[0, 1, 2].map(i => (
-          <div key={i} className={`${styles.skelBox} ${styles.skelTab}`} />
-        ))}
-      </div>
       <div className={styles.mpContent}>
-        <div className={`${styles.skelBox} ${styles.skelCatTitle}`} />
-        {[0, 1, 2, 3].map(i => (
-          <div key={i} className={styles.skelItemCard}>
-            <div className={`${styles.skelBox} ${styles.skelImg}`} />
-            <div className={styles.skelItemBody}>
-              <div className={`${styles.skelBox} ${styles.skelLine}`} style={{ width: "60%" }} />
-              <div className={`${styles.skelBox} ${styles.skelLine}`} style={{ width: "90%" }} />
-              <div className={`${styles.skelBox} ${styles.skelLine}`} style={{ width: "35%" }} />
+        {/* Dentro de .mpCat para heredar la grilla de 2 columnas en
+            desktop — misma silueta que el contenido real. */}
+        <div className={styles.mpCat}>
+          <div className={`${styles.skelBox} ${styles.skelCatTitle}`} />
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className={styles.skelItemCard}>
+              <div className={`${styles.skelBox} ${styles.skelImg}`} />
+              <div className={styles.skelItemBody}>
+                <div className={`${styles.skelBox} ${styles.skelLine}`} style={{ width: "60%" }} />
+                <div className={`${styles.skelBox} ${styles.skelLine}`} style={{ width: "90%" }} />
+                <div className={`${styles.skelBox} ${styles.skelLine}`} style={{ width: "35%" }} />
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-      <span className={styles.srOnly} role="status">Cargando menú…</span>
+      <span className="sr-only" role="status">Cargando menú…</span>
     </div>
   );
 }
@@ -546,9 +564,9 @@ function CartIcon() {
 
 function NotFound() {
   return (
-    <div className={styles.notFound} role="alert">
-      <p className={styles.notFoundTitle}>Menú no encontrado</p>
-      <p className={styles.notFoundSub}>Este negocio no tiene menú disponible.</p>
+    <div className="t-notfound" role="alert">
+      <p className="t-notfound-title">Menú no encontrado</p>
+      <p className="t-notfound-sub">Este negocio no tiene menú disponible.</p>
     </div>
   );
 }

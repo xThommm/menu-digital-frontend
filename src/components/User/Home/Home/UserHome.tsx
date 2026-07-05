@@ -761,7 +761,7 @@ function Loader() {
         />
         <div className={`${styles.skelBox} ${styles.skelBtn}`} />
       </div>
-      <span className={styles.srOnly} role="status">
+      <span className="sr-only" role="status">
         Cargando…
       </span>
     </div>
@@ -770,9 +770,9 @@ function Loader() {
 
 function NotFound() {
   return (
-    <div className={styles.notFound} role="alert">
-      <p className={styles.notFoundTitle}>Local no encontrado</p>
-      <p className={styles.notFoundSub}>
+    <div className="t-notfound" role="alert">
+      <p className="t-notfound-title">Local no encontrado</p>
+      <p className="t-notfound-sub">
         El negocio que buscás no existe o no está activo.
       </p>
     </div>
