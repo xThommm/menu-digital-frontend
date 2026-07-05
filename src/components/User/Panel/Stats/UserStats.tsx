@@ -137,7 +137,11 @@ export default function UserStats() {
   }, [token, upgrading]);
 
   if (loading) {
-    return <div className={s.root}><main className={s.main} /></div>;
+    return (
+      <div className="pageLoaderScreen">
+        <div className="pageLoaderRing" aria-label="Cargando estadísticas..." />
+      </div>
+    );
   }
 
   if (locked) {
