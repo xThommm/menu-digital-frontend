@@ -316,6 +316,78 @@
   .tViewerClose:hover { transform: none; }
 }
 
+/* ── Badges del hero (Delivery + Abierto/Cerrado) ──
+   Wrapper solo para darles gap cuando hay más de uno; si .t-badge trae su
+   propio margin-top (globals.css) cada badge lo conserva individualmente,
+   este flex no lo pisa, solo alinea horizontalmente. */
+.badgeRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Mismo look que .t-badge (Delivery) en cualquier template — el único
+   agregado es el punto de estado. */
+.scheduleBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scheduleBadgeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Verde universal para "abierto" — a propósito no usa --t-accent: es un
+   código de color que conviene que se lea igual sin importar la paleta del
+   template (rojo/dorado/lo que sea), con un halo sutil para que no se
+   pierda sobre fondos oscuros o fotos. */
+.scheduleBadgeDotOpen {
+  background: #3fbf5f;
+  box-shadow: 0 0 0 3px rgba(63, 191, 95, 0.25);
+}
+
+/* Para "cerrado" no se fuerza un color nuevo: hereda el color de texto que
+   .t-badge ya resuelve para ese template, solo se le baja la opacidad. */
+.scheduleBadgeDotClosed {
+  background: currentColor;
+  opacity: 0.5;
+}
+
+.scheduleTable {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  margin-bottom: 1.00rem;
+}
+
+.scheduleTableRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  border-bottom: 0.5px solid color-mix(in srgb, var(--t-text, currentColor) 12%, transparent);
+  opacity: 0.85;
+}
+
+.scheduleTableRow:last-child {
+  border-bottom: none;
+}
+
+.scheduleTableToday {
+  opacity: 1;
+  font-weight: 600;
+}
+
+.scheduleTableClosed {
+  opacity: 0.6;
+  font-style: italic;
+}
+
 /* ── Fila de teléfono: menú "Llamar / WhatsApp" ──
    .t-info-row (globals.css) es un <a>; acá el trigger es un <button> pero
    reutiliza esa misma clase para que se vea idéntico al resto de las

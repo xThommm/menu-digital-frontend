@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styles from "./UserHome.module.css";
 import { useReveal } from "../../../../hooks/useReveal";
-import type { User, ContactInfo } from "../../../../types/index";
+import type { User, ContactInfo, DayKey, Schedule } from "../../../../types/index";
 
 // ── Tokens por template ───────────────────────────────────────────────────────
 
@@ -19,6 +19,45 @@ interface TemplateTokens {
 }
 
 const SLUG_REGEX = /^[a-z0-9-]{2,80}$/;
+
+// ── Horario de atención ──
+// El tipo Schedule vive en types/index.ts (espejo del backend) — acá solo
+// las constantes/helpers de UI que lo consumen.
+const DAY_ORDER: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+const DAY_LABEL: Record<DayKey, string> = {
+  mon: "Lunes",
+  tue: "Martes",
+  wed: "Miércoles",
+  thu: "Jueves",
+  fri: "Viernes",
+  sat: "Sábado",
+  sun: "Domingo",
+};
+
+// Date.getDay(): 0 = domingo. Se mapea a nuestras claves fijas.
+const JS_DAY_TO_KEY: DayKey[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+// Nota: usa la hora local del navegador de quien visita la carta, no la del
+// negocio. Para el caso de uso real (negocio y clientes en la misma zona
+// horaria) es correcto; si el negocio pudiera cargar una carta desde otro
+// huso horario habría que guardar el horario junto con una zona horaria.
+function getOpenStatus(schedule?: Schedule): boolean {
+  if (!schedule) return false;
+  const now = new Date();
+  const today = schedule[JS_DAY_TO_KEY[now.getDay()]];
+  if (!today?.enabled) return false;
+  const hhmm = now.toTimeString().slice(0, 5);
+  return hhmm >= today.open && hhmm < today.close;
+}
+
+// true si el negocio cargó horario y tiene al menos un día abierto. Un
+// schedule con los 7 días en `enabled: false` se trata igual que no haber
+// cargado nada — ni el badge del hero ni la sección de abajo tienen sentido
+// si el negocio nunca está abierto.
+function scheduleHasData(schedule?: Schedule): boolean {
+  return !!schedule && DAY_ORDER.some(day => schedule[day]?.enabled);
+}
 
 const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
   1: {
@@ -214,7 +253,7 @@ interface TemplateProps {
 }
 
 function Template({ user, tokens, goMenu }: TemplateProps) {
-  const { contactInfo: info, media, hasDelivery, template } = user;
+  const { contactInfo: info, media, hasDelivery, template, schedule } = user;
   const bg = media?.backgroundPicture;
 
   // Guardamos qué URL específica falló, no solo un booleano. Así, cuando `bg`
@@ -246,6 +285,12 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
   const businessName = info.businessName || "Mi Negocio";
   const galleryImages = media?.pictures ?? [];
 
+  // Se calcula una sola vez acá (no dentro de cada variante de hero) porque
+  // se usa en las dos ramas de abajo y también lo necesita ScheduleSection.
+  const scheduleActive = scheduleHasData(schedule);
+  const isOpenNow = scheduleActive ? getOpenStatus(schedule) : false;
+  const showHeroBadges = hasDelivery || scheduleActive;
+
   useEffect(() => {
     document.title = businessName;
   }, [businessName]);
@@ -262,7 +307,12 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
           />
           <div>
             <h1 className={tokens.titleClass}>{businessName}</h1>
-            {hasDelivery && <DeliveryBadge />}
+            {showHeroBadges && (
+              <div className={styles.badgeRow}>
+                {hasDelivery && <DeliveryBadge />}
+                {scheduleActive && <OpenStatusBadge isOpen={isOpenNow} />}
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -282,7 +332,12 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
           <div className={`t-hero-overlay ${tokens.overlayClass ?? ""}`} />
           <div className="t-hero-content">
             <h1 className={tokens.titleClass}>{businessName}</h1>
-            {hasDelivery && <DeliveryBadge />}
+            {showHeroBadges && (
+              <div className={styles.badgeRow}>
+                {hasDelivery && <DeliveryBadge />}
+                {scheduleActive && <OpenStatusBadge isOpen={isOpenNow} />}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -300,6 +355,8 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
           showDeliveryRow={tokens.showDeliveryRow}
           businessName={businessName}
         />
+
+        <ScheduleSection schedule={schedule} />
 
         <Gallery
   pictures={media?.pictures}
@@ -330,6 +387,25 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
 
 function DeliveryBadge() {
   return <span className="t-badge">Delivery disponible</span>;
+}
+
+// Mismo componente base que DeliveryBadge (.t-badge — tipografía, padding y
+// fondo ya resueltos por template en globals.css) para que quede "acorde a
+// la página" en cualquiera de los 13 estilos; el único agregado es el punto
+// de color. Verde para "abierto" es un código universal que conviene no
+// adaptar por template; para "cerrado" se usa currentColor (el mismo color
+// de texto que ya trae .t-badge en ese template) para no introducir un rojo
+// que no siempre combina.
+function OpenStatusBadge({ isOpen }: { isOpen: boolean }) {
+  return (
+    <span className={`t-badge ${styles.scheduleBadge}`}>
+      <span
+        className={`${styles.scheduleBadgeDot} ${isOpen ? styles.scheduleBadgeDotOpen : styles.scheduleBadgeDotClosed}`}
+        aria-hidden
+      />
+      {isOpen ? "Abierto ahora" : "Cerrado ahora"}
+    </span>
+  );
 }
 
 
@@ -512,6 +588,37 @@ function ContactList({ info, hasDelivery, showDeliveryRow, businessName }: Conta
           businessName={businessName}
         />
       )}
+    </div>
+  );
+}
+
+// Lista completa de la semana, con el día de hoy resaltado. El estado
+// "abierto/cerrado ahora" ya se muestra como badge arriba, en el hero
+// (ver OpenStatusBadge) — acá solo el detalle día por día.
+function ScheduleSection({ schedule }: { schedule?: Schedule }) {
+  if (!scheduleHasData(schedule)) return null;
+
+  const todayKey = JS_DAY_TO_KEY[new Date().getDay()];
+
+  return (
+    <div className="t-section">
+      <p className="t-section-label">Horario</p>
+      <div className={styles.scheduleTable}>
+        {DAY_ORDER.map(day => {
+          const d = schedule![day];
+          return (
+            <div
+              key={day}
+              className={`${styles.scheduleTableRow} ${day === todayKey ? styles.scheduleTableToday : ""}`}
+            >
+              <span>{DAY_LABEL[day]}</span>
+              <span className={!d?.enabled ? styles.scheduleTableClosed : undefined}>
+                {d?.enabled ? `${d.open} – ${d.close}` : "Cerrado"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "../../../../context/useAuth";
-import type { Subscription } from "../../../../types/index";
+import type { Subscription, DayKey, DayHours, Schedule } from "../../../../types/index";
 import { planMeetsMin, PLAN_LABEL } from "../../../../lib/plans";
 import Spinner from "../../../Common/Spinner";
 import styles from "./UserEditor.module.css";
@@ -34,6 +34,45 @@ const EMPTY_FORM: FormState = {
   hasDelivery: false,
   reservationMessage: "",
 };
+
+// ── Horario de atención ──
+// Los tipos (DayKey/DayHours/Schedule) viven en types/index.ts, espejo del
+// shape que guarda el backend — acá solo las constantes/helpers de UI que
+// los usan.
+const DAY_ORDER: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+const DAY_LABEL: Record<DayKey, string> = {
+  mon: "Lunes",
+  tue: "Martes",
+  wed: "Miércoles",
+  thu: "Jueves",
+  fri: "Viernes",
+  sat: "Sábado",
+  sun: "Domingo",
+};
+
+const DEFAULT_DAY_HOURS: DayHours = { enabled: true, open: "09:00", close: "18:00" };
+
+const EMPTY_SCHEDULE: Schedule = DAY_ORDER.reduce((acc, day) => {
+  acc[day] = { ...DEFAULT_DAY_HOURS };
+  return acc;
+}, {} as Schedule);
+
+// Completa días faltantes con el default en vez de asumir que el backend
+// siempre manda los 7 — así datos viejos (de antes de esta funcionalidad)
+// no rompen el render.
+function normalizeSchedule(raw: unknown): Schedule {
+  const src = (raw && typeof raw === "object" ? raw : {}) as Partial<Record<DayKey, Partial<DayHours>>>;
+  return DAY_ORDER.reduce((acc, day) => {
+    const d = src[day];
+    acc[day] = {
+      enabled: d?.enabled ?? DEFAULT_DAY_HOURS.enabled,
+      open:    d?.open    ?? DEFAULT_DAY_HOURS.open,
+      close:   d?.close   ?? DEFAULT_DAY_HOURS.close,
+    };
+    return acc;
+  }, {} as Schedule);
+}
 
 // Templates de la carta pública, ordenados por plan (free → premium) para que
 // la grilla del editor se lea como una progresión. `minPlan` es el plan mínimo
@@ -120,6 +159,8 @@ export default function UserEditorPage() {
   const [tab, setTab] = useState<Tab>("info");
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [schedule, setSchedule] = useState<Schedule>(EMPTY_SCHEDULE);
+  const initialScheduleRef = useRef<Schedule>(EMPTY_SCHEDULE);
   const [pictures,          setPictures]   = useState<string[]>([]);
   const [backgroundPicture, setBackground] = useState("");
   const [template,          setTemplate]   = useState(1);
@@ -174,13 +215,17 @@ export default function UserEditorPage() {
   }, [cropSrc]);
 
   // Dirty tracking
+  // El horario se compara por JSON (no shallow) porque es un objeto anidado:
+  // un shallow `!==` en `schedule` cambiaría de referencia en cada setState
+  // y siempre marcaría dirty aunque el contenido sea igual.
   useEffect(() => {
     const initial = initialFormRef.current;
-    const dirty = (Object.keys(form) as (keyof FormState)[]).some(
+    const formDirty = (Object.keys(form) as (keyof FormState)[]).some(
       k => form[k] !== initial[k]
     );
-    setIsDirty(dirty);
-  }, [form]);
+    const scheduleDirty = JSON.stringify(schedule) !== JSON.stringify(initialScheduleRef.current);
+    setIsDirty(formDirty || scheduleDirty);
+  }, [form, schedule]);
 
   // Load initial data
   useEffect(() => {
@@ -206,6 +251,9 @@ export default function UserEditorPage() {
         };
         setForm(loaded);
         initialFormRef.current = loaded;
+        const loadedSchedule = normalizeSchedule(data.schedule);
+        setSchedule(loadedSchedule);
+        initialScheduleRef.current = loadedSchedule;
         setPictures(data.media?.pictures || []);
         setBackground(data.media?.backgroundPicture || "");
         setTemplate(data.template || 1);
@@ -235,6 +283,13 @@ export default function UserEditorPage() {
       setError("El link de reseñas debe empezar con http:// o https://");
       return;
     }
+    for (const day of DAY_ORDER) {
+      const d = schedule[day];
+      if (d.enabled && d.open >= d.close) {
+        setError(`En ${DAY_LABEL[day]} la hora de cierre debe ser posterior a la de apertura.`);
+        return;
+      }
+    }
 
     setSaving(true); setError(""); setSuccess("");
     try {
@@ -256,10 +311,12 @@ export default function UserEditorPage() {
             reservationMessage: form.reservationMessage.trim(),
           },
           hasDelivery: form.hasDelivery,
+          schedule,
         }),
       });
       if (!res.ok) throw new Error();
       initialFormRef.current = form;
+      initialScheduleRef.current = schedule;
       setIsDirty(false);
       setSuccess("Información guardada.");
     } catch {
@@ -570,6 +627,25 @@ export default function UserEditorPage() {
     if (files.length > 0) uploadGalleryFiles(files);
   };
 
+  const updateDay = (day: DayKey, patch: Partial<DayHours>) => {
+    setSchedule(s => ({ ...s, [day]: { ...s[day], ...patch } }));
+  };
+
+  // Atajo para el caso común (mismo horario todos los días abiertos): copia
+  // apertura/cierre del lunes a los demás días, sin tocar cuáles están
+  // habilitados o cerrados.
+  const copyMondayToAll = () => {
+    const { open, close } = schedule.mon;
+    setSchedule(s => {
+      const next = { ...s };
+      for (const day of DAY_ORDER) {
+        if (day === "mon") continue;
+        next[day] = { ...next[day], open, close };
+      }
+      return next;
+    });
+  };
+
   const changeTab = (next: Tab) => {
     setTab(next);
     setError("");
@@ -676,7 +752,7 @@ export default function UserEditorPage() {
                 <input
                   id="phone"
                   type="tel"
-                  placeholder="11 1234-5678"
+                  placeholder="+54 9 111234-5678"
                   value={form.number}
                   onChange={e => setForm(f => ({ ...f, number: e.target.value }))}
                   autoComplete="tel"
@@ -778,6 +854,63 @@ export default function UserEditorPage() {
                   label="Activar delivery"
                 />
               </div>
+            </div>
+
+            <div className={styles.scheduleSection}>
+              <div className={styles.scheduleHeader}>
+                <p className={styles.mediaLabel}>Horario de atención</p>
+                <button
+                  type="button"
+                  className={styles.textBtn}
+                  onClick={copyMondayToAll}
+                >
+                  Copiar horario del lunes a todos
+                </button>
+              </div>
+
+              <div className={styles.scheduleList}>
+                {DAY_ORDER.map(day => {
+                  const d = schedule[day];
+                  return (
+                    <div key={day} className={styles.scheduleRow}>
+                      <div className={styles.scheduleDay}>
+                        <Toggle
+                          checked={d.enabled}
+                          onChange={() => updateDay(day, { enabled: !d.enabled })}
+                          label={`Abierto los ${DAY_LABEL[day]}`}
+                        />
+                        <span className={d.enabled ? "" : styles.scheduleDayNameOff}>
+                          {DAY_LABEL[day]}
+                        </span>
+                      </div>
+
+                      {d.enabled ? (
+                        <div className={styles.scheduleTimes}>
+                          <input
+                            type="time"
+                            value={d.open}
+                            onChange={e => updateDay(day, { open: e.target.value })}
+                            aria-label={`Hora de apertura, ${DAY_LABEL[day]}`}
+                          />
+                          <span className={styles.scheduleSep}>a</span>
+                          <input
+                            type="time"
+                            value={d.close}
+                            onChange={e => updateDay(day, { close: e.target.value })}
+                            aria-label={`Hora de cierre, ${DAY_LABEL[day]}`}
+                          />
+                        </div>
+                      ) : (
+                        <span className={styles.scheduleClosedLabel}>Cerrado</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className={styles.fieldHint}>
+                Se muestra en tu carta pública, junto con si el negocio está
+                abierto en este momento.
+              </p>
             </div>
 
             <button

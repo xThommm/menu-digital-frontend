@@ -224,6 +224,95 @@
   opacity: 0.8;
 }
 
+/* ── Horario de atención ── */
+.scheduleSection {
+  margin: 1.25rem 0 1.5rem;
+}
+
+.scheduleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.scheduleList {
+  border: 0.5px solid var(--admin-border-subtle);
+  border-radius: var(--admin-radius-lg);
+  overflow: hidden;
+}
+
+.scheduleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 0.5px solid var(--admin-border-subtle);
+  flex-wrap: wrap;
+}
+
+.scheduleRow:last-child {
+  border-bottom: none;
+}
+
+.scheduleDay {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 0.86rem;
+  color: var(--admin-text-primary);
+  min-width: 120px;
+}
+
+.scheduleDayNameOff {
+  color: var(--admin-text-faint);
+}
+
+.scheduleTimes {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.scheduleTimes input[type="time"] {
+  background: var(--admin-bg-surface);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  padding: 0.4rem 0.55rem;
+  font-size: 0.85rem;
+  color: var(--admin-text-secondary);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.scheduleTimes input[type="time"]:focus {
+  border-color: var(--admin-gold);
+}
+
+.scheduleSep {
+  font-size: 0.8rem;
+  color: var(--admin-text-faint);
+}
+
+.scheduleClosedLabel {
+  font-size: 0.8rem;
+  color: var(--admin-text-faint);
+  font-style: italic;
+}
+
+@media (max-width: 420px) {
+  .scheduleRow {
+    align-items: flex-start;
+  }
+  .scheduleTimes {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
 /* ── Toggle ── */
 .toggleGroup {
   margin: 1.25rem 0;

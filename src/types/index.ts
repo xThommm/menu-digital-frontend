@@ -41,6 +41,22 @@ export interface Media {
   backgroundPicture: string
 }
 
+// Horario de atención del negocio: un DayHours fijo por día de la semana.
+// `open`/`close` son horas locales del negocio en formato "HH:mm" (ej:
+// "09:00"); se ignoran cuando `enabled` es false. Opcional en `User` porque
+// los negocios creados antes de esta funcionalidad no lo tienen guardado
+// todavía — el front (UserEditor/UserHome) debe tratar su ausencia como
+// "sin horario cargado", no como "cerrado todos los días".
+export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"
+
+export interface DayHours {
+  enabled: boolean
+  open: string
+  close: string
+}
+
+export type Schedule = Record<DayKey, DayHours>
+
 export interface User {
   _id: string
   username: string
@@ -53,6 +69,7 @@ export interface User {
   template: number
   contactInfo: ContactInfo
   media: Media
+  schedule?: Schedule
   createdAt: string
   updatedAt: string
 }
