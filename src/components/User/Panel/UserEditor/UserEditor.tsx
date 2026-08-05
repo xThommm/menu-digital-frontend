@@ -17,7 +17,9 @@ interface FormState {
   instagram: string;
   facebook: string;
   googleReviewUrl: string;
+  googlePlaceId: string;
   hasDelivery: boolean;
+  reservationMessage: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -28,7 +30,9 @@ const EMPTY_FORM: FormState = {
   instagram: "",
   facebook: "",
   googleReviewUrl: "",
+  googlePlaceId: "",
   hasDelivery: false,
+  reservationMessage: "",
 };
 
 // Templates de la carta pública, ordenados por plan (free → premium) para que
@@ -126,6 +130,25 @@ export default function UserEditorPage() {
   const [isDirty, setIsDirty]   = useState(false);
   const initialFormRef = useRef<FormState>(EMPTY_FORM);
 
+  // ── Ajuste de portada (crop/zoom) ──
+  // En vez de subir el archivo tal cual se selecciona, se abre un modal
+  // donde el usuario puede arrastrar y hacer zoom sobre un recorte fijo
+  // (relación 3:1, igual que el recomendado 1200×400). Al confirmar, se
+  // renderiza ese recorte a un canvas y se sube el resultado.
+  const [cropSrc, setCropSrc]     = useState<string | null>(null);
+  const [cropZoom, setCropZoom]   = useState(1);
+  const [cropPos, setCropPos]     = useState({ x: 0, y: 0 });
+  const [cropReady, setCropReady] = useState(false);
+  const [cropSaving, setCropSaving] = useState(false);
+  const cropImgRef   = useRef<HTMLImageElement>(null);
+  const cropFrameRef = useRef<HTMLDivElement>(null);
+  const [cropNatural, setCropNatural] = useState({ w: 0, h: 0, base: 1 });
+  const cropDragRef = useRef<{ startX: number; startY: number; posX: number; posY: number } | null>(null);
+  const CROP_MIN_ZOOM = 1;
+  const CROP_MAX_ZOOM = 3;
+  const CROP_OUTPUT_W = 1600;
+  const CROP_OUTPUT_H = 900;
+
   const authHeaders = useMemo(() => ({
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
@@ -143,6 +166,12 @@ export default function UserEditorPage() {
     const t = setTimeout(() => setError(""), 6000);
     return () => clearTimeout(t);
   }, [error]);
+
+  // Libera el object URL del recorte si el componente se desmonta con el
+  // modal abierto.
+  useEffect(() => {
+    return () => { if (cropSrc) URL.revokeObjectURL(cropSrc); };
+  }, [cropSrc]);
 
   // Dirty tracking
   useEffect(() => {
@@ -171,7 +200,9 @@ export default function UserEditorPage() {
           instagram:    data.contactInfo?.social?.instagram || "",
           facebook:     data.contactInfo?.social?.facebook  || "",
           googleReviewUrl: data.contactInfo?.googleReviewUrl || "",
+          googlePlaceId: data.contactInfo?.googlePlaceId || "",
           hasDelivery:  data.hasDelivery ?? false,
+          reservationMessage: data.contactInfo?.reservationMessage || "",
         };
         setForm(loaded);
         initialFormRef.current = loaded;
@@ -221,6 +252,8 @@ export default function UserEditorPage() {
               facebook:  form.facebook.trim(),
             },
             googleReviewUrl: reviewUrl,
+            googlePlaceId: form.googlePlaceId.trim(),
+            reservationMessage: form.reservationMessage.trim(),
           },
           hasDelivery: form.hasDelivery,
         }),
@@ -366,6 +399,127 @@ export default function UserEditorPage() {
       setError("No se pudo subir la imagen de portada.");
     } finally {
       setUploading(null);
+    }
+  };
+
+  // Clampea la posición del recorte para que la imagen siempre cubra el
+  // marco (no puede quedar espacio vacío a los costados).
+  const clampCropPos = useCallback((x: number, y: number, scale: number) => {
+    const frame = cropFrameRef.current;
+    if (!frame) return { x, y };
+    const fw = frame.clientWidth, fh = frame.clientHeight;
+    const { w: nw, h: nh } = cropNatural;
+    const dispW = nw * scale, dispH = nh * scale;
+    const minX = Math.min(0, fw - dispW);
+    const minY = Math.min(0, fh - dispH);
+    return {
+      x: Math.min(0, Math.max(minX, x)),
+      y: Math.min(0, Math.max(minY, y)),
+    };
+  }, [cropNatural]);
+
+  // Se abre al elegir un archivo de portada, en vez de subirlo directo.
+  const openCropModal = (file: File) => {
+    const url = URL.createObjectURL(file);
+    setCropZoom(1);
+    setCropPos({ x: 0, y: 0 });
+    setCropReady(false);
+    setCropSrc(url);
+  };
+
+  const closeCropModal = () => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+    setCropReady(false);
+    cropDragRef.current = null;
+  };
+
+  // Al cargar la imagen dentro del modal: calcula la escala mínima que la
+  // hace cubrir el marco (equivalente a object-fit: cover) y la centra.
+  const onCropImageLoad = () => {
+    const img = cropImgRef.current;
+    const frame = cropFrameRef.current;
+    if (!img || !frame) return;
+    const nw = img.naturalWidth, nh = img.naturalHeight;
+    const fw = frame.clientWidth, fh = frame.clientHeight;
+    const base = Math.max(fw / nw, fh / nh);
+    setCropNatural({ w: nw, h: nh, base });
+    const dispW = nw * base, dispH = nh * base;
+    setCropPos({ x: (fw - dispW) / 2, y: (fh - dispH) / 2 });
+    setCropZoom(1);
+    setCropReady(true);
+  };
+
+  // Cambia el zoom manteniendo fijo el punto de la imagen que está en el
+  // centro del marco, para que el zoom "se sienta" centrado.
+  const handleCropZoomChange = (newZoom: number) => {
+    const frame = cropFrameRef.current;
+    if (!frame || !cropReady) { setCropZoom(newZoom); return; }
+    const fw = frame.clientWidth, fh = frame.clientHeight;
+    const { base } = cropNatural;
+    const oldScale = base * cropZoom;
+    const newScale = base * newZoom;
+    const centerImgX = (fw / 2 - cropPos.x) / oldScale;
+    const centerImgY = (fh / 2 - cropPos.y) / oldScale;
+    const nextX = fw / 2 - centerImgX * newScale;
+    const nextY = fh / 2 - centerImgY * newScale;
+    setCropZoom(newZoom);
+    setCropPos(clampCropPos(nextX, nextY, newScale));
+  };
+
+  const onCropPointerDown = (e: React.PointerEvent) => {
+    if (!cropReady) return;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    cropDragRef.current = { startX: e.clientX, startY: e.clientY, posX: cropPos.x, posY: cropPos.y };
+  };
+
+  const onCropPointerMove = (e: React.PointerEvent) => {
+    const drag = cropDragRef.current;
+    if (!drag) return;
+    const scale = cropNatural.base * cropZoom;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    setCropPos(clampCropPos(drag.posX + dx, drag.posY + dy, scale));
+  };
+
+  const onCropPointerUp = () => { cropDragRef.current = null; };
+
+  // Renderiza el recorte actual a un canvas del tamaño recomendado
+  // (1200×400) y sube ese resultado, en vez del archivo original.
+  const confirmCrop = async () => {
+    const frame = cropFrameRef.current;
+    const img = cropImgRef.current;
+    if (!frame || !img || !cropReady) return;
+    setCropSaving(true);
+    try {
+      const fw = frame.clientWidth;
+      const exportScale = CROP_OUTPUT_W / fw;
+      const scale = cropNatural.base * cropZoom;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = CROP_OUTPUT_W;
+      canvas.height = CROP_OUTPUT_H;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error();
+      ctx.drawImage(
+        img,
+        cropPos.x * exportScale,
+        cropPos.y * exportScale,
+        cropNatural.w * scale * exportScale,
+        cropNatural.h * scale * exportScale
+      );
+
+      const blob: Blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(b => (b ? resolve(b) : reject(new Error())), "image/jpeg", 0.92);
+      });
+      const file = new File([blob], "portada.jpg", { type: "image/jpeg" });
+      closeCropModal();
+      await uploadBackgroundImage(file);
+    } catch {
+      setError("No se pudo procesar la imagen. Probá de nuevo.");
+      setCropSaving(false);
+    } finally {
+      setCropSaving(false);
     }
   };
 
@@ -541,6 +695,21 @@ export default function UserEditorPage() {
               </div>
             </div>
 
+            <div className={styles.field}>
+              <label htmlFor="reservationMessage">Mensaje de reserva (WhatsApp)</label>
+              <textarea
+                id="reservationMessage"
+                rows={2}
+                placeholder="Hola! Quiero hacer una reserva en [nombre del negocio]."
+                value={form.reservationMessage}
+                onChange={e => setForm(f => ({ ...f, reservationMessage: e.target.value }))}
+              />
+              <p className={styles.fieldHint}>
+                Este texto se pre-carga cuando un cliente toca "Reservar por WhatsApp" en tu carta pública.
+                Si lo dejás vacío, se usa un mensaje genérico con el nombre de tu negocio.
+              </p>
+            </div>
+
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <label htmlFor="instagram">Instagram</label>
@@ -573,6 +742,28 @@ export default function UserEditorPage() {
                 value={form.googleReviewUrl}
                 onChange={e => setForm(f => ({ ...f, googleReviewUrl: e.target.value }))}
               />
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="googlePlaceId">ID de lugar de Google (Place ID)</label>
+              <input
+                id="googlePlaceId"
+                type="text"
+                placeholder="ChIJN1t_tDeuEmsRUsoyG83frY4"
+                value={form.googlePlaceId}
+                onChange={e => setForm(f => ({ ...f, googlePlaceId: e.target.value }))}
+              />
+              <p className={styles.fieldHint}>
+                Necesario para mostrar el rating y la cantidad de reseñas reales en tu
+                carta. Buscalo con el{" "}
+                <a
+                  href="https://developers.google.com/maps/documentation/places/web-service/place-id"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Place ID Finder de Google
+                </a>.
+              </p>
             </div>
 
             <div className={styles.toggleGroup}>
@@ -633,7 +824,7 @@ export default function UserEditorPage() {
                       <polyline points="21 15 16 10 5 21" />
                     </svg>
                     <span>Subir portada</span>
-                    <span className={styles.uploadHint}>Recomendado: 1200 × 400 px</span>
+                    <span className={styles.uploadHint}>Recomendado: 1600 × 900 px</span>
                   </div>
                 ) : (
                   <div className={styles.overlayEdit}>
@@ -652,7 +843,7 @@ export default function UserEditorPage() {
                 accept="image/*"
                 style={{ display: "none" }}
                 onChange={e => {
-                  if (e.target.files?.[0]) uploadBackgroundImage(e.target.files[0]);
+                  if (e.target.files?.[0]) openCropModal(e.target.files[0]);
                   e.target.value = "";
                 }}
               />
@@ -830,6 +1021,85 @@ export default function UserEditorPage() {
                 disabled={upgrading}
               >
                 {upgrading ? <><Spinner size={14} /> Redirigiendo...</> : `Mejorar a ${PLAN_LABEL[lockedTemplate.minPlan]}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: ajustar imagen de portada ── */}
+      {cropSrc && (
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="crop-modal-title">
+          <div className={styles.cropModal}>
+            <p id="crop-modal-title" className={styles.modalTitle}>Ajustar portada</p>
+
+            <div
+              ref={cropFrameRef}
+              className={styles.cropStage}
+              onPointerDown={onCropPointerDown}
+              onPointerMove={onCropPointerMove}
+              onPointerUp={onCropPointerUp}
+              onPointerCancel={onCropPointerUp}
+            >
+              <img
+                ref={cropImgRef}
+                src={cropSrc}
+                alt=""
+                className={styles.cropStageImg}
+                onLoad={onCropImageLoad}
+                style={{
+                  transform: `translate(${cropPos.x}px, ${cropPos.y}px)`,
+                  width: cropNatural.w * cropNatural.base * cropZoom,
+                  height: cropNatural.h * cropNatural.base * cropZoom,
+                  visibility: cropReady ? "visible" : "hidden",
+                }}
+                draggable={false}
+              />
+            </div>
+
+            <div className={styles.cropZoomRow}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" aria-hidden style={{ color: "var(--admin-text-muted)", flexShrink: 0 }}>
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="range"
+                min={CROP_MIN_ZOOM}
+                max={CROP_MAX_ZOOM}
+                step={0.01}
+                value={cropZoom}
+                disabled={!cropReady}
+                onChange={e => handleCropZoomChange(Number(e.target.value))}
+                aria-label="Zoom"
+              />
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" aria-hidden style={{ color: "var(--admin-text-muted)", flexShrink: 0 }}>
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                <line x1="11" y1="8" x2="11" y2="14" />
+                <line x1="8" y1="11" x2="14" y2="11" />
+              </svg>
+            </div>
+
+            <p className={styles.cropHint}>Arrastrá para posicionar y usá el control para hacer zoom.</p>
+
+            <div className={styles.modalBtns}>
+              <button
+                className={styles.modalCancel}
+                onClick={closeCropModal}
+                type="button"
+                disabled={cropSaving}
+              >
+                Cancelar
+              </button>
+              <button
+                className={styles.modalUpgrade}
+                onClick={confirmCrop}
+                type="button"
+                disabled={!cropReady || cropSaving}
+              >
+                {cropSaving ? <><Spinner size={14} /> Subiendo...</> : "Guardar portada"}
               </button>
             </div>
           </div>

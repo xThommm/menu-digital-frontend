@@ -30,6 +30,10 @@ export interface ContactInfo {
   social: Record<string, string>
   businessName: string
   googleReviewUrl: string
+  googlePlaceId?: string
+  googleRating?: number
+  googleReviewCount?: number
+  reservationMessage?: string
 }
 
 export interface Media {

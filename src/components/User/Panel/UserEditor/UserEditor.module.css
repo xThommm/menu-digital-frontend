@@ -208,6 +208,22 @@
   gap: 0.75rem;
 }
 
+.fieldHint {
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+  margin-top: 0.4rem;
+  line-height: 1.5;
+}
+
+.fieldHint a {
+  color: var(--admin-gold);
+  transition: opacity var(--admin-transition);
+}
+
+.fieldHint a:hover {
+  opacity: 0.8;
+}
+
 /* ── Toggle ── */
 .toggleGroup {
   margin: 1.25rem 0;
@@ -851,4 +867,69 @@
 .modalUpgrade:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ── Modal: ajustar portada (crop/zoom) ── */
+.cropModal {
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-warm);
+  border-radius: var(--admin-radius-2xl);
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  animation: scaleIn 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
+}
+
+.cropStage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--admin-radius-lg);
+  background: var(--admin-bg-surface);
+  border: 0.5px solid var(--admin-border-default);
+  cursor: grab;
+  touch-action: none;
+}
+
+.cropStage:active {
+  cursor: grabbing;
+}
+
+.cropStageImg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.cropZoomRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 1rem;
+}
+
+.cropZoomRow input[type="range"] {
+  flex: 1;
+  accent-color: var(--admin-gold);
+}
+
+.cropHint {
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+  margin-top: 0.6rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cropModal {
+    animation: none;
+  }
 }

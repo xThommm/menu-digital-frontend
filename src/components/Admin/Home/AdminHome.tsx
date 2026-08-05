@@ -9,7 +9,7 @@ import type { Plan } from "../../../types"
 const PLANS: Plan[] = [
   {
     id: "gratis",
-    name: "Gratis",
+    name: "Gratuito",
     price: 0,
     highlight: false,
     period: "para siempre",
@@ -22,7 +22,7 @@ const PLANS: Plan[] = [
   },
   {
     id: "starter",
-    name: "Starter",
+    name: "Mensual",
     price: 5999,
     period: "por mes",
     highlight: false,
@@ -37,7 +37,7 @@ const PLANS: Plan[] = [
   },
   {
     id: "pro",
-    name: "Pro",
+    name: "Semestral",
     price: 29999,
     period: "cada 6 meses",
     highlight: true,
@@ -53,7 +53,7 @@ const PLANS: Plan[] = [
   },
   {
     id: "premium",
-    name: "Premium",
+    name: "Anual",
     price: 49999,
     period: "por año",
     highlight: false,

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styles from "./UserHome.module.css";
 import { useReveal } from "../../../../hooks/useReveal";
@@ -288,11 +288,19 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
       )}
 
       <div className="t-body">
+        <GoogleRatingBadge
+          rating={info.googleRating}
+          reviewCount={info.googleReviewCount}
+          reviewUrl={info.googleReviewUrl}
+        />
+        <MapBadge address={info.address} placeId={info.googlePlaceId} businessName={businessName} />
         <ContactList
           info={info}
           hasDelivery={hasDelivery}
           showDeliveryRow={tokens.showDeliveryRow}
+          businessName={businessName}
         />
+
         <Gallery
   pictures={media?.pictures}
   radius={tokens.galleryRadius}
@@ -324,10 +332,120 @@ function DeliveryBadge() {
   return <span className="t-badge">Delivery disponible</span>;
 }
 
+
+// ── GoogleRatingBadge ─────────────────────────────────────────────────────────
+// `rating`/`reviewCount` los completa el backend consultando la Places API con
+// el Place ID cargado en el editor (ver UserEditor.tsx) — acá solo pintamos lo
+// que llega. Si todavía no hay rating (Place ID sin cargar, o falló la
+// consulta) pero sí hay un link de reseñas, mostramos el link solo, sin
+// inventar un rating.
+
+interface GoogleRatingBadgeProps {
+  rating?: number;
+  reviewCount?: number;
+  reviewUrl?: string;
+}
+
+function GoogleRatingBadge({ rating, reviewCount, reviewUrl }: GoogleRatingBadgeProps) {
+  if (!rating) return null;
+
+  const content = (
+    <>
+      <StarRow rating={rating} />
+      <span className="t-google-rating-value">{rating.toFixed(1)}</span>
+      {typeof reviewCount === "number" && (
+        <span className="t-google-rating-count">
+          ({reviewCount} {reviewCount === 1 ? "reseña" : "reseñas"})
+        </span>
+      )}
+      <span className="t-google-rating-source">Google</span>
+    </>
+  );
+
+  if (reviewUrl) {
+    return (
+      <a
+        className="t-google-rating"
+        href={reviewUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`${rating.toFixed(1)} de 5 en Google${typeof reviewCount === "number" ? `, ${reviewCount} reseñas` : ""}`}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <div
+      className="t-google-rating"
+      aria-label={`${rating.toFixed(1)} de 5 en Google${typeof reviewCount === "number" ? `, ${reviewCount} reseñas` : ""}`}
+    >
+      {content}
+    </div>
+  );
+}
+
+// Redondea al medio punto más cercano (4.3 → 4.5) solo para decidir cuántas
+// estrellas pintar llenas/medias/vacías; el número exacto se muestra aparte.
+function StarRow({ rating }: { rating: number }) {
+  const rounded = Math.round(rating * 2) / 2;
+
+  return (
+    <span className="t-google-stars" aria-hidden="true">
+      {Array.from({ length: 5 }, (_, i) => {
+        const position = i + 1;
+        let fill: "full" | "half" | "empty" = "empty";
+        if (rounded >= position) fill = "full";
+        else if (rounded >= position - 0.5) fill = "half";
+        return <StarIcon key={i} fill={fill} />;
+      })}
+    </span>
+  );
+}
+
+// ── MapBadge ──────────────────────────────────────────────────────────────────
+// A diferencia del rating, esto no necesita ninguna API ni key: es solo un
+// link armado a mano a Google Maps. Con Place ID el link abre directo ese
+// lugar puntual (más preciso, evita ambigüedad con nombres de calle
+// repetidos); sin Place ID pero con dirección, cae a una búsqueda por texto,
+// que Maps resuelve igual de bien para la gran mayoría de direcciones.
+
+interface MapBadgeProps {
+  address?: string;
+  placeId?: string;
+  businessName: string;
+}
+
+function MapBadge({ address, placeId, businessName }: MapBadgeProps) {
+  if (!address && !placeId) return null;
+
+  const mapsUrl = placeId
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(businessName)}&query_place_id=${encodeURIComponent(placeId)}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address!)}`;
+
+  return (
+    <a
+      className="t-google-rating t-google-map"
+      href={mapsUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Ver ubicación de ${businessName} en Google Maps`}
+    >
+      <span className="t-google-map-icon">
+        <PinIcon />
+      </span>
+      <span className="t-google-map-text">{address || "Ver ubicación"}</span>
+      <ExternalIcon />
+    </a>
+  );
+}
+
 interface ContactListProps {
   info: ContactInfo;
   hasDelivery: boolean;
   showDeliveryRow: boolean;
+  businessName: string;
 }
 
 // Los campos de redes sociales a veces se cargan con "@" adelante (el
@@ -336,14 +454,15 @@ interface ContactListProps {
 // link no quede roto sin importar cómo se haya guardado el dato.
 const stripHandle = (handle: string) => handle.trim().replace(/^@/, "");
 
-function ContactList({ info, hasDelivery, showDeliveryRow }: ContactListProps) {
+function ContactList({ info, hasDelivery, showDeliveryRow, businessName }: ContactListProps) {
   const instagram = info.social?.instagram ? stripHandle(info.social.instagram) : "";
   const facebook  = info.social?.facebook  ? stripHandle(info.social.facebook)  : "";
 
   // Si no hay ningún dato de contacto, no renderizamos un contenedor vacío
-  // (evita un hueco de espaciado sin contenido).
+  // (evita un hueco de espaciado sin contenido). La dirección NO entra acá:
+  // ya se muestra arriba como MapBadge (clickeable a Maps), así que listarla
+  // de nuevo en texto plano sería mostrar el mismo dato dos veces.
   const hasAnyInfo =
-    info.address ||
     info.number ||
     info.mail ||
     instagram ||
@@ -357,14 +476,7 @@ function ContactList({ info, hasDelivery, showDeliveryRow }: ContactListProps) {
     <div className="t-section">
       <p className="t-section-label">Contacto</p>
       <div className="t-info-list">
-        {info.address && <InfoRow icon={<PinIcon />} text={info.address} />}
-        {info.number && (
-          <InfoRow
-            icon={<PhoneIcon />}
-            text={String(info.number)}
-            href={`tel:${info.number}`}
-          />
-        )}
+        {info.number && <PhoneRow number={String(info.number)} />}
         {info.mail && (
           <InfoRow
             icon={<MailIcon />}
@@ -393,7 +505,43 @@ function ContactList({ info, hasDelivery, showDeliveryRow }: ContactListProps) {
           <InfoRow icon={<StarIcon />} text="Dejanos tu reseña en Google" href={info.googleReviewUrl} />
         )}
       </div>
+      {info.number && (
+        <ReserveButton
+          number={String(info.number)}
+          message={info.reservationMessage}
+          businessName={businessName}
+        />
+      )}
     </div>
+  );
+}
+
+// Botón de reserva: abre WhatsApp con un mensaje pre-cargado. El texto lo
+// define el dueño del negocio (campo editable en el panel); si no cargó
+// nada, se usa un mensaje genérico de respaldo con el nombre del negocio.
+function ReserveButton({
+  number,
+  message,
+  businessName,
+}: {
+  number: string;
+  message?: string;
+  businessName: string;
+}) {
+  const digits = number.replace(/\D/g, "");
+  const text = message?.trim() || `Hola! Quiero hacer una reserva en ${businessName}.`;
+  const href = `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={styles.reserveBtn}
+    >
+      <WhatsAppIcon />
+      <span>Reservar por WhatsApp</span>
+    </a>
   );
 }
 
@@ -431,6 +579,72 @@ function InfoRow({
   }
 
   return <div className="t-info-row">{content}</div>;
+}
+
+// Fila de teléfono: en vez de un link directo a "tel:", abre un menú con
+// las dos formas de contactar (llamada normal o WhatsApp), porque son
+// acciones distintas y no siempre se quiere la misma.
+function PhoneRow({ number }: { number: string }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onOutside = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const digits = number.replace(/\D/g, "");
+
+  return (
+    <div className={styles.phoneWrap} ref={wrapRef}>
+      <button
+        type="button"
+        className={`t-info-row ${styles.phoneTrigger}`}
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <span className="t-info-icon" aria-hidden>
+          <PhoneIcon />
+        </span>
+        <span>{number}</span>
+      </button>
+
+      {open && (
+        <div className={styles.phoneMenu} role="menu">
+          <a
+            className={styles.phoneMenuItem}
+            href={`tel:${number}`}
+            role="menuitem"
+            onClick={() => setOpen(false)}
+          >
+            <span className={styles.phoneMenuIcon} aria-hidden><PhoneIcon /></span>
+            <span>Llamar</span>
+          </a>
+          <a
+            className={styles.phoneMenuItem}
+            href={`https://wa.me/${digits}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+          >
+            <span className={styles.phoneMenuIcon} aria-hidden><WhatsAppIcon /></span>
+            <span>WhatsApp</span>
+          </a>
+        </div>
+      )}
+    </div>
+  );
 }
 
 interface GalleryProps {
@@ -658,6 +872,19 @@ function PhoneIcon() {
   );
 }
 
+function WhatsAppIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+    >
+      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.85 9.85 0 0 0 4.73 1.2h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm0 18.13h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.55-3.7 8.24-8.24 8.24Zm4.52-6.17c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.13-.17.24-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.12-1.04-.38-1.99-1.22-.73-.66-1.23-1.46-1.37-1.71-.14-.24-.01-.38.11-.5.11-.11.25-.29.37-.43.13-.14.17-.24.25-.4.08-.16.04-.31-.02-.43-.06-.12-.56-1.36-.77-1.86-.2-.49-.41-.42-.56-.43-.14-.01-.31-.01-.48-.01-.16 0-.43.06-.66.31-.23.24-.86.85-.86 2.06 0 1.22.88 2.4 1 2.56.13.16 1.74 2.66 4.22 3.73.59.25 1.05.4 1.41.52.59.19 1.13.16 1.55.1.47-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.23-.17-.48-.29Z" />
+    </svg>
+  );
+}
+
 function MailIcon() {
   return (
     <svg
@@ -731,11 +958,43 @@ function DeliveryIcon() {
   );
 }
 
-function StarIcon() {
+function ExternalIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+
+let starIdCounter = 0;
+
+// `fill` es "full" por defecto para no romper el uso existente en ContactList
+// (ícono decorativo junto al link "Dejanos tu reseña"). El estado "half" usa
+// un gradiente con id único por instancia — varias estrellas medias en la
+// misma página no pueden compartir id de <linearGradient>, cada una pisaría
+// el clip de la anterior.
+function StarIcon({ fill = "full" }: { fill?: "full" | "half" | "empty" }) {
+  const gradId = useState(() => `star-half-${starIdCounter++}`)[0];
+  const fillValue = fill === "half" ? `url(#${gradId})` : fill === "full" ? "currentColor" : "none";
+
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor"
       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2 9.1 8.6 2 9.3l5.5 4.8L5.8 21 12 17.3 18.2 21l-1.7-6.9L22 9.3l-7.1-.7Z" />
+      {fill === "half" && (
+        <defs>
+          <linearGradient id={gradId} x1="0" x2="1" y1="0" y2="0">
+            <stop offset="50%" stopColor="currentColor" />
+            <stop offset="50%" stopColor="transparent" />
+          </linearGradient>
+        </defs>
+      )}
+      <path
+        fill={fillValue}
+        d="M12 2 9.1 8.6 2 9.3l5.5 4.8L5.8 21 12 17.3 18.2 21l-1.7-6.9L22 9.3l-7.1-.7Z"
+      />
     </svg>
   );
 }

@@ -11,10 +11,10 @@ export const PLAN_ORDER: Subscription[] = ["free", "starter", "pro", "premium"];
 
 // Nombre visible de cada plan para la UI.
 export const PLAN_LABEL: Record<Subscription, string> = {
-  free:    "Gratis",
-  starter: "Starter",
-  pro:     "Pro",
-  premium: "Premium",
+  free:    "Gratuito",
+  starter: "Mensual",
+  pro:     "Semestral",
+  premium: "Anual",
 };
 
 // ¿El plan del usuario alcanza el mínimo requerido?

@@ -315,3 +315,101 @@
   .tViewerImg { animation: none; }
   .tViewerClose:hover { transform: none; }
 }
+
+/* ── Fila de teléfono: menú "Llamar / WhatsApp" ──
+   .t-info-row (globals.css) es un <a>; acá el trigger es un <button> pero
+   reutiliza esa misma clase para que se vea idéntico al resto de las
+   filas de contacto. El menú es un popover local, no un modal a pantalla
+   completa como el lightbox — así que usa su propia paleta discreta en
+   vez de --t-* (que varía mucho entre templates claros/oscuros). */
+.phoneWrap {
+  position: relative;
+}
+
+.phoneTrigger {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.phoneMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  min-width: 180px;
+  background: rgba(20, 18, 15, 0.92);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 6px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  animation: t-fadeIn 0.15s ease both;
+}
+
+.phoneMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.6rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #f2f0ec;
+  text-decoration: none;
+  transition: background 0.12s ease;
+}
+
+.phoneMenuItem:hover,
+.phoneMenuItem:focus-visible {
+  background: rgba(255, 255, 255, 0.10);
+  outline: none;
+}
+
+.phoneMenuIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f2f0ec;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phoneMenu { animation: none; }
+}
+
+/* ── Botón de reserva (WhatsApp) ──
+   Variante "outline" para diferenciarlo del botón principal (.t-btn,
+   sólido, "Ver menú"): incluye la acción de reservar sin competir con la
+   jerarquía visual del CTA primario. Usa los tokens --t-accent/--t-bg del
+   template activo para quedar coherente en cualquier paleta. */
+.reserveBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 0.75rem;
+  min-height: 50px;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 1.5px solid var(--t-accent);
+  background: transparent;
+  color: var(--t-accent);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.reserveBtn:hover {
+  background: color-mix(in srgb, var(--t-accent) 12%, transparent);
+}
+
+.reserveBtn:active {
+  transform: scale(0.98);
+}
