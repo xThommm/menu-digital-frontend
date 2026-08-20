@@ -7,6 +7,7 @@ import { useCart } from "../../../../context/useCart";
 import CartDrawer from "./CartDrawer";
 import ItemPreviewModal from "./ItemPreviewModal";
 import styles from "./UserMenu.module.css";
+import FreePlanAd from "../../../Common/FreePlanAd";
 
 // ── Helpers de formato ────────────────────────────────────────────────────────
 
@@ -137,6 +138,7 @@ export default function MenuPage() {
       <EmptyMenu
         name={user.contactInfo.businessName}
         template={user.template}
+        showAd={user.subscription === "free"}
         onBack={goBack}
       />
     );
@@ -519,6 +521,8 @@ function MenuSkeleton() {
           )}
         </main>
 
+        {user.subscription === "free" && <FreePlanAd />}
+
         <CartFab onClick={() => setCartOpen(true)} />
 
         {/* Dentro de .mp a propósito: el drawer usa los tokens --t-* del
@@ -626,12 +630,23 @@ function NotFound() {
   );
 }
 
-function EmptyMenu({ name, template, onBack }: { name: string; template: number; onBack: () => void }) {
+function EmptyMenu({
+  name,
+  template,
+  showAd,
+  onBack,
+}: {
+  name: string;
+  template: number;
+  showAd: boolean;
+  onBack: () => void;
+}) {
   return (
     <div className={styles.emptyMenu} data-template={template}>
       <p className={styles.emptyMenuTitle}>{name}</p>
       <p className={styles.emptyMenuSub}>El menú todavía no tiene productos cargados.</p>
       <button onClick={onBack} className={styles.emptyMenuBtn}>Volver</button>
+      {showAd && <FreePlanAd />}
     </div>
   );
 }

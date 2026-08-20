@@ -12,7 +12,7 @@ const NAV_ITEMS = [
 ];
 
 export default function DashboardLayout() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -81,6 +81,17 @@ export default function DashboardLayout() {
 
       {/* ── Contenido de la página activa ────────────────────────────────── */}
       <div className={s.content}>
+        {user?.subscription === "free" && (
+          <aside className={s.freeBanner} aria-label="Publicidad de MenuDigital">
+            <div className={s.freeBannerCopy}>
+              <span className={s.freeBannerBrand}>Menú Digital</span>
+              <span className={s.freeBannerBadge}>Plan Free</span>
+              <span className={s.freeBannerText}>
+                Tu carta online, siempre lista para vender.
+              </span>
+            </div>
+          </aside>
+        )}
         <Outlet />
       </div>
 

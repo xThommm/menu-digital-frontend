@@ -962,6 +962,158 @@ a:hover { opacity: 0.75; }
   font-size: var(--text-base);
 }
 
+/* ── Publicidad de Menú Digital para cartas del plan gratuito ──
+   Compartida por UserHome y UserMenu. Mantiene la identidad de marca de
+   Menú Digital para distinguirse claramente del contenido del local. */
+.t-free-plan-ad {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: min(100% - 2rem, 680px);
+  margin: var(--space-8) auto;
+  padding: var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  border: 1px solid color-mix(in srgb, var(--gold) 48%, transparent);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at 10% 10%, color-mix(in srgb, var(--gold) 22%, transparent), transparent 38%),
+    linear-gradient(135deg, var(--espresso), color-mix(in srgb, var(--espresso) 82%, var(--gold)));
+  color: var(--cream);
+  box-shadow: 0 14px 36px color-mix(in srgb, var(--espresso) 38%, transparent), var(--shadow-gold);
+  font-family: var(--font-sans);
+}
+
+.t-free-plan-ad::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  right: -46px;
+  bottom: -74px;
+  width: 170px;
+  height: 170px;
+  border: 1px solid color-mix(in srgb, var(--gold-light) 18%, transparent);
+  border-radius: var(--radius-full);
+}
+
+.t-free-plan-ad-content {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.t-free-plan-ad-logo {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--gold-light) 55%, transparent);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+  color: var(--gold-light);
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--gold) 14%, transparent);
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  font-style: italic;
+}
+
+.t-free-plan-ad-copy {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.t-free-plan-ad-brand {
+  color: var(--gold-light);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.t-free-plan-ad-title {
+  color: var(--cream);
+  font-family: var(--font-serif);
+  font-size: var(--text-md);
+  line-height: 1.25;
+}
+
+.t-free-plan-ad-text {
+  color: color-mix(in srgb, var(--cream) 64%, transparent);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.t-free-plan-ad-link {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid var(--gold-light);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  color: var(--espresso);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--gold) 28%, transparent);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform var(--transition-spring), box-shadow var(--transition);
+}
+
+.t-free-plan-ad-link:hover {
+  opacity: 1;
+  transform: translateY(-2px);
+  box-shadow: 0 11px 26px color-mix(in srgb, var(--gold) 38%, transparent);
+}
+
+.t-free-plan-ad-link:active {
+  transform: translateY(0);
+}
+
+.t-free-plan-ad-link:focus-visible {
+  outline: 2px solid var(--cream);
+  outline-offset: 3px;
+}
+
+.t-free-plan-ad-arrow {
+  font-size: var(--text-md);
+  line-height: 1;
+  transition: transform var(--transition);
+}
+
+.t-free-plan-ad-link:hover .t-free-plan-ad-arrow {
+  transform: translateX(3px);
+}
+
+@media (max-width: 599px) {
+  .t-free-plan-ad {
+    align-items: stretch;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+
+  .t-free-plan-ad-logo {
+    width: 42px;
+    height: 42px;
+  }
+
+  .t-free-plan-ad-link {
+    width: 100%;
+  }
+}
+
 /* ── Estado "no encontrado" — antes duplicado casi idéntico en
    UserHome.module.css y UserMenu.module.css. Colores fijos (no --t-*)
    a propósito: este estado se muestra cuando el negocio/slug no existe,

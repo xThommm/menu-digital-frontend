@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import styles from "./UserHome.module.css";
 import { useReveal } from "../../../../hooks/useReveal";
 import type { User, ContactInfo, DayKey, Schedule } from "../../../../types/index";
+import FreePlanAd from "../../../Common/FreePlanAd";
 
 // ── Tokens por template ───────────────────────────────────────────────────────
 
@@ -371,6 +372,7 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
           {tokens.btnLabel}
         </button>
       </div>
+      {user.subscription === "free" && <FreePlanAd />}
       {viewerOpen && (
   <ImageViewer
     images={galleryImages}
