@@ -373,6 +373,10 @@ export default function MenuEditorPage() {
   const upgradePlan = upgradeReason === "items" && limits?.itemLimit === 50 ? "pro" : "basic";
   const upgradePlanLabel = upgradePlan === "pro" ? "Pro" : "Básico";
   const upgradePrice = upgradePlan === "pro" ? "$59.999" : "$39.999";
+  // Compatibilidad durante despliegues escalonados: versiones anteriores del
+  // backend no enviaban `canExportPdf`. PDF y Excel requieren el mismo plan
+  // Basic, así que el permiso existente es un fallback seguro.
+  const canExportPdf = limits?.canExportPdf ?? limits?.canImportExcel ?? false;
 
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [dragOverCat, setDragOverCat] = useState<string | null>(null);
@@ -790,7 +794,7 @@ export default function MenuEditorPage() {
   }, [token, limits]);
 
   const exportMenuPdf = async () => {
-    if (!limits?.canExportPdf) { setUpgradeReason("pdf"); return; }
+    if (!canExportPdf) { setUpgradeReason("pdf"); return; }
     if (!user?.slug) { setError("No se encontró el enlace público de tu menú."); return; }
     setExportingPdf(true); setError("");
     try {
@@ -1055,7 +1059,7 @@ export default function MenuEditorPage() {
                   </button>
 
                   <button
-                    className={`${styles.sheetOption} ${!limits?.canExportPdf ? styles.sheetOptionLocked : ""}`}
+                    className={`${styles.sheetOption} ${!canExportPdf ? styles.sheetOptionLocked : ""}`}
                     type="button"
                     disabled={exportingPdf}
                     onClick={() => {
@@ -1064,12 +1068,12 @@ export default function MenuEditorPage() {
                     }}
                   >
                     <span className={styles.sheetOptionIcon}>
-                      {!limits?.canExportPdf ? icons.lock : exportingPdf ? <Spinner size={16} /> : icons.download}
+                      {!canExportPdf ? icons.lock : exportingPdf ? <Spinner size={16} /> : icons.download}
                     </span>
                     <span className={styles.sheetOptionText}>
                       <span className={styles.sheetOptionTitle}>
                         Exportar menú a PDF
-                        {!limits?.canExportPdf && <span className={styles.sheetOptionPro}>BÁSICO</span>}
+                        {!canExportPdf && <span className={styles.sheetOptionPro}>BÁSICO</span>}
                       </span>
                       <span className={styles.sheetOptionDesc}>Descargá una versión lista para imprimir</span>
                     </span>
