@@ -90,13 +90,18 @@ function readPaymentError(): string {
   return "";
 }
 
+function readSelectedPlan(): PlanId {
+  const plan = new URLSearchParams(window.location.search).get("plan");
+  return plan === "free" || plan === "basic" || plan === "pro" ? plan : "basic";
+}
+
 export default function RegisterPlansPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
   // Inicialización lazy: sin setState dentro de useEffect
   const [pending] = useState<PendingRegister | null>(readPending);
-  const [selectedPlan, setSelectedPlan] = useState<PlanId>("basic");
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>(readSelectedPlan);
   const [months, setMonths] = useState(1);
   const [error, setError] = useState(readPaymentError);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,9 +109,9 @@ export default function RegisterPlansPage() {
   // Solo navegación si no hay datos de registro
   useEffect(() => {
     if (!pending) {
-      navigate("/register", { replace: true });
+      navigate(`/register?plan=${selectedPlan}`, { replace: true });
     }
-  }, [pending, navigate]);
+  }, [pending, navigate, selectedPlan]);
 
   const selected = PLANS.find((p) => p.id === selectedPlan)!;
   const multiplier =
@@ -276,7 +281,7 @@ export default function RegisterPlansPage() {
         </button>
 
         <div className={styles.back}>
-          <Link to="/register">← Volver al formulario</Link>
+          <Link to={`/register?plan=${selectedPlan}`}>← Volver al formulario</Link>
         </div>
       </div>
     </div>

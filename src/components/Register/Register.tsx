@@ -3,9 +3,17 @@ import { useNavigate, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import styles from "./Register.module.css";
 
+const PLAN_IDS = ["free", "basic", "pro"] as const;
+
+function readRequestedPlan() {
+  const plan = new URLSearchParams(window.location.search).get("plan");
+  return PLAN_IDS.includes(plan as (typeof PLAN_IDS)[number]) ? plan : null;
+}
+
 export default function RegisterPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const requestedPlan = readRequestedPlan();
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [username, setUsername] = useState("");
@@ -59,7 +67,7 @@ export default function RegisterPage() {
       })
     );
 
-    navigate("/register/plans");
+    navigate(requestedPlan ? `/register/plans?plan=${requestedPlan}` : "/register/plans");
   };
 
   return (

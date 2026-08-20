@@ -339,12 +339,8 @@ function QRFrame() {
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────
 export default function HomePage() {
-  const [billingOpen, setBillingOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(
-  PLANS.find((p) => p.id === "pro") ?? null
-);
   const [visible, setVisible] = useState(false);
 
   // Stat counters
@@ -398,15 +394,6 @@ export default function HomePage() {
   };
 }, [menuOpen]);
 
-  // Toda cuenta arranca gratis. El cobro real (MercadoPago) solo se dispara
-  // desde adentro del panel, ya logueado, cuando el usuario quiere mejorar
-  // su plan — ahí el backend sabe a quién asociarle el pago
-  // (crear-preferencia requiere auth, ver paymentRoutes.js). Por eso, sin
-  // importar el plan que elija acá, primero se registra.
-  const goRegister = () => {
-    window.location.href = "/register";
-  };
-
   // Detectar si viene de un pago fallido/cancelado en MP
 useEffect(() => {
   const params = new URLSearchParams(window.location.search);
@@ -415,11 +402,6 @@ useEffect(() => {
     window.history.replaceState({}, "", window.location.pathname);
   }
 }, []);
-
-  const openBilling = () => {
-  setSelectedPlan(PLANS.find((p) => p.id === "pro") ?? null);
-  setBillingOpen(true);
-};
 
   return (
     <>
@@ -443,7 +425,6 @@ useEffect(() => {
   <div className={styles.navActions}>
     <Link to="/login" className={styles.navLogin}>Iniciar sesión</Link>
     <Link to="/register" className={styles.navRegister}>Crear cuenta</Link>
-    <button className={styles.navCta} onClick={() => openBilling()}>Ver precios</button>
   </div>
  
   {/* Hamburger — SOLO visible en mobile (≤900px) */}
@@ -486,12 +467,6 @@ useEffect(() => {
     >
       Crear cuenta
     </Link>
-    <button
-      className={styles.mobileLinkCta}
-      onClick={() => { setMenuOpen(false); openBilling(); }}
-    >
-      Ver precios →
-    </button>
   </div>
 </nav>
 
@@ -514,7 +489,10 @@ useEffect(() => {
                 Creá tu menú digital en minutos. Actualizá precios, ocultá platos agotados y dejá que tus clientes lo vean desde cualquier dispositivo — sin descargar nada.
               </p>
               <div className={`${styles.heroBtns} ${visible ? styles.vis : ""}`}>
-                <button className={styles.btnPrimary} onClick={() => openBilling()}>
+                <button
+                  className={styles.btnPrimary}
+                  onClick={() => document.getElementById("plans")?.scrollIntoView({ behavior: "smooth" })}
+                >
                   Empezar ahora →
                 </button>
                 <button
@@ -617,6 +595,44 @@ useEffect(() => {
           </div>
         </section>
 
+        {/* ── PLANS ── */}
+        <section className={styles.pricing} id="plans">
+          <div className={styles.pricingInner}>
+            <div className={`${styles.pricingHeader} ${styles.reveal}`}>
+              <div className={styles.eyebrow}>Planes y precios</div>
+              <h2 className={styles.sectionH2}>
+                Elegí cómo empezar.<br /><em>Sin sorpresas.</em>
+              </h2>
+              <p className={styles.pricingSub}>
+                Todos incluyen tu menú digital. Podés cambiar de plan cuando quieras.
+              </p>
+            </div>
+
+            <div className={styles.plansGrid}>
+              {PLANS.map((plan) => (
+                <article
+                  key={plan.id}
+                  className={`${styles.planCard} ${plan.highlight ? styles.highlightCard : ""} ${styles.reveal}`}
+                  data-hover
+                >
+                  {plan.badge && <div className={styles.planBadge}>{plan.badge}</div>}
+                  <div className={styles.planName}>{plan.name}</div>
+                  <div className={styles.planPrice}>
+                    <span>$</span>{plan.price.toLocaleString("es-AR")}
+                  </div>
+                  <div className={styles.planPeriod}>{plan.period}</div>
+                  <ul className={styles.planFeat}>
+                    {plan.features.map((feature) => <li key={feature}>{feature}</li>)}
+                  </ul>
+                  <Link className={styles.planCta} to={`/register?plan=${plan.id}`}>
+                    {plan.id === "free" ? "Crear cuenta" : "Pagar y crear cuenta"} →
+                  </Link>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* ── QR DEMO ── */}
         <section className={styles.qrSection}>
           <div className={styles.qrInner}>
@@ -637,9 +653,9 @@ useEffect(() => {
                 <li>Un QR para todas las mesas o uno por mesa</li>
                 <li>Descargable en PDF listo para imprimir</li>
               </ul>
-              <button className={styles.btnPrimary} onClick={() => openBilling()}>
+              <Link className={styles.btnPrimary} to="/register?plan=free">
                 Quiero mi QR gratis →
-              </button>
+              </Link>
             </div>
           </div>
         </section>
@@ -721,7 +737,7 @@ useEffect(() => {
             <button
               className={styles.btnPrimary}
               style={{ fontSize: 18, padding: "18px 48px" }}
-              onClick={() => openBilling()}
+              onClick={() => document.getElementById("plans")?.scrollIntoView({ behavior: "smooth" })}
             >
               Ver planes y precios →
             </button>
@@ -743,75 +759,6 @@ useEffect(() => {
         </footer>
 
       </div>
-
-      {/* ── BILLING POPUP ── */}
-      {billingOpen && (
-        <div
-          className={styles.overlay}
-          onClick={(e) => e.target === e.currentTarget && setBillingOpen(false)}
-        >
-          <div className={styles.billing}>
-            <div className={styles.billingHeader}>
-              <div>
-                <div className={styles.billingTitle}>Elegí tu plan</div>
-                <div className={styles.billingSub}>
-                  Todos incluyen menú digital completo. Cancelás cuando quieras.
-                </div>
-              </div>
-              <button className={styles.closeBtn} onClick={() => setBillingOpen(false)}>✕</button>
-            </div>
-
-            <div className={styles.plansGrid}>
-              {PLANS.map((plan) => (
-                <div
-                  key={plan.id}
-                  className={[
-                    styles.planCard,
-                    plan.highlight ? styles.highlightCard : "",
-                    selectedPlan?.id === plan.id ? styles.selected : "",
-                  ].join(" ")}
-                  onClick={() => setSelectedPlan(plan)}
-                >
-                  {plan.badge && <div className={styles.planBadge}>{plan.badge}</div>}
-                  <div className={styles.planName}>{plan.name}</div>
-                  <div className={styles.planPrice}>
-                    <span>$</span>{plan.price.toLocaleString("es-AR")}
-                  </div>
-                  <div className={styles.planPeriod}>{plan.period}</div>
-                  <ul className={styles.planFeat}>
-                    {plan.features.map((f, i) => <li key={i}>{f}</li>)}
-                  </ul>
-                </div>
-              ))}
-            </div>
-
-            <div className={styles.billingFooter}>
-              <div className={styles.billingSummary}>
-                <div>
-                  <div className={styles.billingTotal}>Total a pagar</div>
-                  <div className={styles.billingPlanName}>
-                    Plan {selectedPlan?.name} · {selectedPlan?.period}
-                  </div>
-                </div>
-                <div className={styles.billingAmount}>
-                  ${selectedPlan?.price.toLocaleString("es-AR")}
-                </div>
-              </div>
-              <button
-  className={styles.payBtn}
-  onClick={goRegister}
->
-  {selectedPlan?.id === "gratis" ? (
-    <>Continuar con plan gratuito →</>
-  ) : (
-    <>Crear cuenta y elegir plan →</>
-  )}
-</button>
-              <div className={styles.paySafe}>🔒 Pago seguro · Tus datos están protegidos</div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
