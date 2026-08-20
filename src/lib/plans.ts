@@ -7,14 +7,13 @@ import type { Subscription } from "../types";
 
 // Orden de menor a mayor (igual que PLAN_ORDER del backend). El índice ES la
 // jerarquía: planMeetsMin() compara posiciones.
-export const PLAN_ORDER: Subscription[] = ["free", "starter", "pro", "premium"];
+export const PLAN_ORDER: Subscription[] = ["free", "basic", "pro"];
 
 // Nombre visible de cada plan para la UI.
 export const PLAN_LABEL: Record<Subscription, string> = {
   free:    "Gratuito",
-  starter: "Mensual",
-  pro:     "Semestral",
-  premium: "Anual",
+  basic:   "Básico",
+  pro:     "Pro",
 };
 
 // ¿El plan del usuario alcanza el mínimo requerido?
@@ -27,7 +26,7 @@ export function planMeetsMin(userPlan: Subscription, minPlan: Subscription): boo
 // qué candado/etiqueta mostrar en el editor.
 export const TEMPLATE_MIN_PLAN: Record<number, Subscription> = {
   1: "free",    3: "free",    5: "free",
-  2: "starter", 4: "starter", 8: "starter", 9: "starter",
+  2: "basic", 4: "basic", 8: "basic", 9: "basic",
   10: "pro",    11: "pro",    12: "pro",
   6: "premium", 7: "premium", 13: "premium",
 };

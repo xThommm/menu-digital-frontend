@@ -1,0 +1,204 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: var(--auth-bg, #0f0f0f);
+}
+
+.card {
+  width: 100%;
+  max-width: 920px;
+  background: var(--auth-card, #1a1a1a);
+  border-radius: 16px;
+  padding: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.header h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+  color: #fff;
+}
+
+.header p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.95rem;
+}
+
+.plansGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 720px) {
+  .plansGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.planCard {
+  position: relative;
+  text-align: left;
+  padding: 1.25rem;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.planCard:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.planSelected {
+  border-color: #f5a623;
+  background: rgba(245, 166, 35, 0.08);
+}
+
+.planHighlight {
+  /* se nota más con el badge */
+}
+
+.badge {
+  position: absolute;
+  top: -10px;
+  right: 12px;
+  background: #f5a623;
+  color: #000;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+
+.planName {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.planPrice {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.planPrice span {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.planDesc {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.features {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.55;
+}
+
+.monthsSection {
+  margin-bottom: 1.5rem;
+}
+
+.monthsLabel {
+  display: block;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.6rem;
+}
+
+.monthsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.monthBtn {
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.monthSelected {
+  border-color: #f5a623;
+  background: rgba(245, 166, 35, 0.12);
+}
+
+.total {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.savings {
+  color: #6ddb8c;
+  font-size: 0.85rem;
+}
+
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  background: rgba(220, 50, 50, 0.15);
+  color: #ff8a8a;
+  font-size: 0.9rem;
+}
+
+.submitBtn {
+  width: 100%;
+  padding: 0.9rem 1.25rem;
+  border: none;
+  border-radius: 10px;
+  background: #f5a623;
+  color: #000;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.back {
+  text-align: center;
+  margin-top: 1.25rem;
+}
+
+.back a {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.back a:hover {
+  color: #fff;
+}

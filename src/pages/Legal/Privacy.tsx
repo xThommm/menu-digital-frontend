@@ -42,8 +42,8 @@ export default function Privacy() {
               <strong>MenuDigitalApp</strong>, con domicilio en la Ciudad Autónoma de Buenos Aires,
               República Argentina, es responsable del tratamiento de los datos personales que recopilamos
               a través de la Plataforma. Podés contactarnos en{" "}
-              <a href="mailto:menudigitalapp@gmail.com" className={styles.link}>
-                menudigitalapp@gmail.com
+              <a href="mailto:menudigitalappsoporte@gmail.com" className={styles.link}>
+                menudigitalappsoporte@gmail.com
               </a>
             </p>
           </section>
@@ -169,8 +169,8 @@ export default function Privacy() {
             </ul>
             <p>
               Para ejercer cualquiera de estos derechos, escribinos a{" "}
-              <a href="mailto:menudigitalapp@gmail.com" className={styles.link}>
-                menudigitalapp@gmail.com
+              <a href="mailto:menudigitalappsoporte@gmail.com" className={styles.link}>
+                menudigitalappsoporte@gmail.com
               </a>{" "}
               indicando tu solicitud. Responderemos en un plazo máximo de 5 días hábiles.
             </p>

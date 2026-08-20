@@ -6,7 +6,7 @@
 
 // Niveles de plan. Espejo de PLAN_ORDER en el backend (config/plans.js).
 // "free" es el piso (sin pagar); starter/pro/premium son los pagos.
-export type Subscription = "free" | "starter" | "pro" | "premium"
+export type Subscription = "free" | "basic" | "pro"
 
 // ✅ Movido desde apiClient.ts — toda la app importa desde acá
 export type ApiErrorType =

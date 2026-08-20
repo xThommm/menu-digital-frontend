@@ -622,7 +622,7 @@
   flex-shrink: 0; transition: background .2s, color .2s;
 }
 .closeBtn:hover { background: color-mix(in srgb, var(--auth-amber) 18%, transparent); color: var(--auth-amber); }
-.plansGrid { display: grid; grid-template-columns: repeat(4,1fr); gap: 2px; margin-bottom: 32px; }
+.plansGrid { display: grid; grid-template-columns: repeat(3,1fr); gap: 2px; margin-bottom: 32px; }
 .planCard {
   border: 1px solid color-mix(in srgb, var(--auth-amber) 10%, transparent);
   padding: 2rem 1.5rem; cursor: pointer; position: relative;

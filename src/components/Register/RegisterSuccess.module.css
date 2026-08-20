@@ -1,0 +1,52 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: var(--auth-bg, #0f0f0f);
+}
+
+.card {
+  max-width: 420px;
+  text-align: center;
+  padding: 2.5rem 2rem;
+  border-radius: 16px;
+  background: var(--auth-card, #1a1a1a);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background: rgba(109, 219, 140, 0.15);
+  color: #6ddb8c;
+  font-size: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.4rem;
+}
+
+.card p {
+  margin: 0 0 1.5rem;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  background: #f5a623;
+  color: #000;
+  font-weight: 700;
+  text-decoration: none;
+}

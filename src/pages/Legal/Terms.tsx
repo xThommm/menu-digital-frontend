@@ -255,8 +255,8 @@ export default function Terms() {
             <h2 className={styles.sectionTitle}>10. Contacto</h2>
             <p>
               Para consultas sobre estos Términos y Condiciones, podés escribirnos a{" "}
-              <a href="mailto:menudigitalapp@gmail.com" className={styles.link}>
-                menudigitalapp@gmail.com
+              <a href="mailto:menudigitalappsoporte@gmail.com" className={styles.link}>
+                menudigitalappsoporte@gmail.com
               </a>
             </p>
           </section>

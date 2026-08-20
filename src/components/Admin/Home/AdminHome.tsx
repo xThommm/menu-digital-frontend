@@ -8,23 +8,24 @@ import type { Plan } from "../../../types"
 // ─────────────────────────────────────────────
 const PLANS: Plan[] = [
   {
-    id: "gratis",
-    name: "Gratuito",
+    id: "free",
+    name: "Free",
     price: 0,
     highlight: false,
     period: "para siempre",
     features: [
       "Hasta 15 productos",
       "QR descargable",
+      "Mensaje personalizable para reservas/consultas",
       "Menú en menudigitalapp.com.ar/tu-local/menu",
       "Incluye publicidad de Menú Digital",
     ],
   },
   {
-    id: "starter",
-    name: "Mensual",
+    id: "basic",
+    name: "Basic",
     price: 5999,
-    period: "por mes",
+    period: "elegí período",
     highlight: false,
     monthlyEquiv: "$5.999/mes",
     features: [
@@ -37,35 +38,19 @@ const PLANS: Plan[] = [
   },
   {
     id: "pro",
-    name: "Semestral",
+    name: "Pro",
     price: 29999,
-    period: "cada 6 meses",
+    period: "elegí período",
     highlight: true,
     badge: "Más elegido",
     features: [
-      "Todo lo del Starter",
+      "Todo lo del Basic",
       "2 meses gratis (= $5.000/mes)",
       "Estadísticas de visitas",
       "Reservas online (próximamente)",
       "Prioridad en soporte",
     ],
     monthlyEquiv: "$5.000/mes",
-  },
-  {
-    id: "premium",
-    name: "Anual",
-    price: 49999,
-    period: "por año",
-    highlight: false,
-    badge: "Ahorrás $21.989",
-    features: [
-      "Dominio propio incluido (.com.ar)",
-      "Todo lo del Pro",
-      "4 meses gratis (= $4.167/mes)",
-      "Integración con delivery (próximamente)",
-      "Onboarding por videollamada",
-    ],
-    monthlyEquiv: "$4.167/mes",
   },
 ];
 
