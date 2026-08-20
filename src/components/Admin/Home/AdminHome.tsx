@@ -343,7 +343,7 @@ export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(
-  PLANS.find((p) => p.id === "premium") ?? null
+  PLANS.find((p) => p.id === "pro") ?? null
 );
   const [visible, setVisible] = useState(false);
 

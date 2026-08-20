@@ -7,17 +7,15 @@ import type { User, Subscription, AdminStats } from "../../../types"
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const SUBSCRIPTION_LABEL: Record<Subscription, string> = {
-  free:    "Gratis",
-  starter: "Starter",
-  pro:     "Pro",
-  premium: "Premium",
+  free:  "Gratis",
+  basic: "Básico",
+  pro:   "Pro",
 };
 
 const SUBSCRIPTION_COLOR: Record<Subscription, string> = {
-  free:    "#3d3a33",
-  starter: "#4c7a2e",
-  pro:     "#2e5c7a",
-  premium: "#7a4c2e",
+  free:  "#3d3a33",
+  basic: "#4c7a2e",
+  pro:   "#2e5c7a",
 };
 
 function timeAgo(dateStr: string) {
@@ -162,7 +160,7 @@ export default function CEODashboard() {
         {/* ── Suscripciones breakdown ── */}
         <div className={s.sectionTitle}>Suscripciones</div>
         <div className={s.subGrid}>
-          {(["free", "starter", "pro", "premium"] as const).map(key => (
+          {(["free", "basic", "pro"] as const).map(key => (
             <div key={key} className={s.subCard}>
               <div className={s.subDot} style={{ background: SUBSCRIPTION_COLOR[key] }} />
               <div className={s.subInfo}>

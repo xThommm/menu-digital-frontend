@@ -74,7 +74,7 @@ function normalizeSchedule(raw: unknown): Schedule {
   }, {} as Schedule);
 }
 
-// Templates de la carta pública, ordenados por plan (free → premium) para que
+// Templates de la carta pública, ordenados por plan (free → basic → pro) para que
 // la grilla del editor se lea como una progresión. `minPlan` es el plan mínimo
 // que desbloquea cada uno; espeja TEMPLATE_MIN_PLAN del backend (que es la
 // barrera real). `color`/`accent` son solo para el mini-preview de la tarjeta
@@ -92,19 +92,18 @@ const TEMPLATES: TemplateOption[] = [
   { id: 1,  name: "Clásico",    color: "#0b0a08", accent: "#c9a84c", minPlan: "free" },
   { id: 3,  name: "Natural",    color: "#f2f6ef", accent: "#2e7d32", minPlan: "free" },
   { id: 5,  name: "Minimal",    color: "#ffffff", accent: "#111111", minPlan: "free" },
-  // starter
-  { id: 2,  name: "Moderno",    color: "#0d1117", accent: "#58a6ff", minPlan: "starter" },
-  { id: 4,  name: "Rojo",       color: "#110606", accent: "#e05555", minPlan: "starter" },
-  { id: 8,  name: "Coastal",    color: "#f4f8fb", accent: "#2a91c4", minPlan: "starter" },
-  { id: 9,  name: "Charcoal",   color: "#1a1a1c", accent: "#ff6b5c", minPlan: "starter" },
+  // basic
+  { id: 2,  name: "Moderno",    color: "#0d1117", accent: "#58a6ff", minPlan: "basic" },
+  { id: 4,  name: "Rojo",       color: "#110606", accent: "#e05555", minPlan: "basic" },
+  { id: 8,  name: "Coastal",    color: "#f4f8fb", accent: "#2a91c4", minPlan: "basic" },
+  { id: 9,  name: "Charcoal",   color: "#1a1a1c", accent: "#ff6b5c", minPlan: "basic" },
   // pro
   { id: 10, name: "Terracotta", color: "#f7ede3", accent: "#c2571f", minPlan: "pro" },
   { id: 11, name: "Lavender",   color: "#f6f3fa", accent: "#8256c4", minPlan: "pro" },
   { id: 12, name: "Forest",     color: "#0c1410", accent: "#86c397", minPlan: "pro" },
-  // premium
-  { id: 6,  name: "Aurora",     color: "#efddc9", accent: "#a8703f", minPlan: "premium" },
-  { id: 7,  name: "Noir Gold",  color: "#08070a", accent: "#d4af37", minPlan: "premium" },
-  { id: 13, name: "Platinum",   color: "#0a0b0d", accent: "#b8c2cf", minPlan: "premium" },
+  { id: 6,  name: "Aurora",     color: "#efddc9", accent: "#a8703f", minPlan: "pro" },
+  { id: 7,  name: "Noir Gold",  color: "#08070a", accent: "#d4af37", minPlan: "pro" },
+  { id: 13, name: "Platinum",   color: "#0a0b0d", accent: "#b8c2cf", minPlan: "pro" },
 ];
 
 // ── Sub-components ────────────────────────────────────────────────────────────

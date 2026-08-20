@@ -10,6 +10,7 @@ interface PendingRegister {
   password: string;
   acceptedTerms: boolean;
   contactInfo: { mail: string; businessName: string };
+  registrationToken?: string;
 }
 
 const PLANS: {
@@ -159,7 +160,15 @@ export default function RegisterPlansPage() {
         throw new Error(data.error || data.message || "Error al iniciar el pago");
       }
 
+      if (!data.registrationToken) {
+        throw new Error("No se pudo preparar la activación de la cuenta");
+      }
+
       // No borramos sessionStorage: si falla el pago y vuelve, puede reintentar
+      sessionStorage.setItem(
+        "pendingRegister",
+        JSON.stringify({ ...pending, registrationToken: data.registrationToken })
+      );
       window.location.href = data.init_point;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Ocurrió un error");

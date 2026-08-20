@@ -12,7 +12,7 @@ keyframes y utilidades — ver [styles/](#styles)).
 
 Modelo de negocio: cada dueño de local se registra (plan `free`), carga su menú y
 obtiene una carta pública en `menudigitalapp.com.ar/<slug>/menu`. Los planes pagos
-(`starter` → `pro` → `premium`) desbloquean features de forma escalonada.
+(`basic` → `pro`) desbloquean features de forma escalonada.
 
 ---
 
@@ -81,13 +81,13 @@ Arma la app Express y arranca el servidor.
 ### `config/plans.js`
 Fuente de verdad del sistema de planes. Exporta:
 - **`PLAN_MAP`** — mapea el `plan_id` que viaja en el pago de MercadoPago
-  (`starter/pro/premium`) al valor interno de `User.subscription`. Hoy 1:1; se
+  (`basic/pro`) al valor interno de `User.subscription`. Hoy 1:1; se
   mantiene como capa de validación (el webhook rechaza plan_ids desconocidos).
-- **`PLAN_ORDER`** = `["free","starter","pro","premium"]`. El índice ES la jerarquía.
+- **`PLAN_ORDER`** = `["free","basic","pro"]`. El índice ES la jerarquía.
 - **`PLAN_FEATURES`** — features que desbloquea cada nivel (acumulativo).
 - **`FREE_ITEM_LIMIT`** = 15 (tope de productos del plan gratuito).
 - **`TEMPLATE_MIN_PLAN`** — mapa `templateId → plan mínimo` (gating escalonado de
-  templates). free: 1,3,5 · starter: 2,4,8,9 · pro: 10,11,12 · premium: 6,7,13.
+  templates). free: 1,3,5 · basic: 2,4,8,9 · pro: 6,7,10,11,12,13.
 - **`getFeaturesForPlan(plan)`** — devuelve todas las features de un plan y los
   inferiores.
 - **`hasMinPlan(userPlan, requiredPlan)`** — `true` si el plan del user alcanza el
@@ -116,7 +116,8 @@ Storage engine de Multer propio que sube directo a Cloudinary vía `upload_strea
 ### `models/User.js`
 Schema del dueño de local. Campos: `username` (único), `password` (hasheado,
 `select:false`, min 8), `slug` (URL pública), `active`, `admin`, `subscription`
-(enum `free/starter/pro/premium`, default `free`), `menu` (bool, si ya creó menú),
+(enum `free/basic/pro`, default `free`), `subscriptionExpiresAt` (fin de vigencia
+paga; null para free y cuentas legacy), `menu` (bool, si ya creó menú),
 `hasDelivery`, `template` (nº, default 1), `contactInfo` (objeto: businessName, mail,
 number, address, social, `googleReviewUrl` — link "Dejanos tu reseña" de Google Maps),
 `media` (pictures[], backgroundPicture), `acceptedTerms*`. `timestamps`. Incluye hook
@@ -158,13 +159,20 @@ distingue notas manuales (`"note"`) de **eventos automáticos del sistema** (`"e
 cambio de plan, activar/desactivar cuenta, cambio de template — ver `utils/crmEvents.js`).
 Exporta también `STAGES`.
 
+### `models/PendingRegistration.js`
+Alta paga todavía no convertida en `User`. Guarda temporalmente los datos de
+registro, plan y período, junto con el hash de un token opaco de activación.
+`status` recorre `pending/completed/failed`; al completar elimina la contraseña,
+enlaza `userID` y un índice TTL limpia el documento vencido.
+
 ## middleware/
 
 ### `middleware/auth.js`
 - **`protect(req,res,next)`** — exige `Authorization: Bearer <jwt>`. Verifica el token
   (`jwt.verify` con `algorithms:["HS256"]` fijado como defensa contra confusión de
   algoritmo), carga el user en `req.user` (sin password), rechaza si no existe o si la
-  cuenta está desactivada (salvo admins).
+  cuenta está desactivada (salvo admins), y expone `free` como plan efectivo si la
+  suscripción paga ya venció.
 - **`isAdmin(req,res,next)`** — 403 si `req.user.admin` no es true. Se usa después de
   `protect`.
 - **`requirePlan(minPlan)`** — factory: devuelve un middleware que corta con 403 si
@@ -262,7 +270,7 @@ Endpoints:
   activos/inactivos/con menú, totales de menús/secciones/categorías/items, 5 usuarios
   recientes), todo en queries paralelas.
 
-### `controllers/massiveController.js` (importar/exportar Excel — plan starter+)
+### `controllers/massiveController.js` (importar/exportar Excel — plan basic+)
 - **`parseBool(val)`** — normaliza `"SI"/"NO"` a boolean.
 - **`styleHeader(row)`** — estiliza la fila de encabezado del Excel generado.
 - **`getTemplate`** `GET /api/massive/template` — genera y descarga el `.xlsx` con los
@@ -297,12 +305,14 @@ más `STAGE_LABEL`/`PLAN_LABEL` (etiquetas legibles para el Excel exportado).
 - **`verifyMpSignature(req)`** — valida la firma HMAC-SHA256 del header `x-signature`
   contra `MP_WEBHOOK_SECRET` (con `timingSafeEqual`). Si el secret no está configurado,
   no bloquea pero avisa por consola.
+- **`getRegistrationStatus`** `POST /api/payments/registro/estado` — consulta con el
+  token opaco si el alta paga sigue pendiente, se completó o falló.
 - **`mpWebhook`** `POST /api/payments/webhook` — endpoint que llama MercadoPago. Verifica
   firma, consulta el estado **real** del pago contra la API de MP (nunca confía en el
-  query string), y si está `approved` actualiza `User.subscription` según el
-  `external_reference` (userId) y `metadata.plan_id`. Es la **única** vía legítima para
-  cambiar de plan. Si el plan realmente cambió, loguea el evento en el CRM
-  ("Cambió de plan X → Y").
+  query string), y si está `approved` crea el `User` de un alta pendiente o actualiza
+  una cuenta existente. En altas fija `subscriptionExpiresAt`, elimina la contraseña
+  temporal y habilita el login automático. Es la **única** vía legítima para cambiar
+  de plan y registra el evento correspondiente en el CRM.
 
 ## routes/
 
@@ -317,15 +327,16 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
 - **`routes/itemRoutes.js`** — CRUD de items (todas `protect`).
 - **`routes/adminRoutes.js`** — rutas admin (todas `protect + isAdmin`).
 - **`routes/massiveRoutes.js`** — `template/preview/confirm`, todas gateadas con
-  `requirePlan("starter")`; multer en memoria con límite de 5MB.
+  `requirePlan("basic")`; multer en memoria con límite de 5MB.
 - **`routes/crmRoutes.js`** — CRM interno bajo `/api/admin/crm` (montado en app.js
   ANTES de `/api/admin` para que su prefijo matchee primero). Todas `protect + isAdmin`:
   `GET /overdue-count` y `GET /export` (de nombre fijo, van antes del param),
   `GET /clients`, `GET /clients/:userID`, `PATCH /clients/:userID`,
   `POST /clients/:userID/notes`, `DELETE /clients/:userID/notes/:noteID`.
-- **`routes/paymentRoutes.js`** — define `PLANES` (title/price/description de starter,
-  pro, premium para MercadoPago), `POST /crear-preferencia` (protegido: crea la
-  preferencia de pago y devuelve `init_point`), y `POST /webhook` → `mpWebhook`.
+- **`routes/paymentRoutes.js`** — define `PLANES` (Basic/Pro) y períodos de
+  1/3/6/12 meses. `POST /crear-preferencia-registro` crea el alta pendiente y
+  devuelve `init_point` + token opaco; `POST /registro/estado` permite esperar al
+  webhook; `POST /webhook` crea la cuenta, fija su vencimiento y habilita el login.
 
 ## utils/
 
@@ -335,7 +346,10 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
 - **`utils/dates.js`** — **`buenosAiresDateStr(date=now)`**: devuelve la fecha
   `"YYYY-MM-DD"` del instante leída en `America/Argentina/Buenos_Aires` (vía `Intl`, sin
   dependencias). Evita que las visitas después de las 21:00 se cuenten al día siguiente.
-  También exporta `TIMEZONE_BA`.
+  **`addCalendarMonths(date, months)`** calcula vencimientos respetando el último día
+  de meses cortos. También exporta `TIMEZONE_BA`.
+- **`utils/slug.js`** — **`generateSlug(name)`** centraliza la normalización usada por
+  el registro gratuito y el alta paga.
 - **`utils/crmEvents.js`** — **`logCrmEvent(userID, text)`**: inserta un evento
   automático (`kind:"event"`, sin autor) al principio del historial de CRM del cliente
   (upsert). Lo llaman `mpWebhook` (cambio de plan), `setActiveUser` (activar/desactivar)
@@ -539,7 +553,7 @@ sistema —, `CrmProfile`, `CrmClient`, `CrmClientDetail`). `ContactInfo` incluy
 
 ### `components/Admin/Home/AdminHome.tsx`
 Landing comercial pública (la home de `/`). Presenta la propuesta, precios y CTA a
-registrarse. Datos locales: `PLANS` (grilla Gratis/Starter/Pro/Premium con
+registrarse. Datos locales: `PLANS` (grilla Gratis/Básico/Pro con
 precio/features/badge) y `REVIEWS`. Componente principal **`HomePage`** con varios
 hooks de animación (`useParallax`, `useReveal`, `useCounterOnView`, steam rings), un
 modal de billing, `CustomCursor`, y navegación mobile. `goRegister()` manda a
@@ -556,7 +570,7 @@ y `/admin/crm`), mismo patrón que el `DashboardLayout` del dueño.
 ### `components/Admin/Panel/CEODashboard.tsx`
 Panel interno del CEO (`/admin`). Helpers: `SUBSCRIPTION_LABEL`, `SUBSCRIPTION_COLOR`,
 `timeAgo(date)`. Componente **`CEODashboard`**: trae `/admin/stats` y `/admin/allUsers`,
-muestra KPIs, breakdown de suscripciones (free/starter/pro/premium), buscador de
+muestra KPIs, breakdown de suscripciones (free/basic/pro), buscador de
 clientes y toggle activar/desactivar. Sub-componente **`KpiCard`** (acentos vía CSS
 vars, theme-aware) y varios íconos SVG. La navegación/logout viven en `AdminLayout`; el
 `.module.css` define sus tokens locales (`--c-*`, glass, sombras) con un bloque
@@ -684,7 +698,7 @@ Editor del menú (`/menu/editor`). El componente más grande.
 - **`MenuEditorPage`** — estado del editor (menú, límites, vistas item/categoría/sección/
   massive-import, modales de borrado y de upgrade). Fetch a `/users/me/menu`, `refetch`,
   handlers CRUD de items/categorías/secciones, drag & drop, subida de imágenes directo a
-  Cloudinary, **exportar/importar Excel** (gateado a plan Pro con modal de upsell).
+  Cloudinary, **exportar/importar Excel** (gateado a plan Basic con modal de upsell).
 
 ### `components/User/Panel/UserEditor/UserEditor.tsx`
 "Mi negocio" (`/user/editor`). Tabs info / media / template.
@@ -764,8 +778,11 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
 
 # Flujos clave
 
-- **Registro y sesión**: `Register/Login` → `POST /users/register|login` → JWT en
-  localStorage (`AuthProvider`). Los guards `UserRoute`/`AdminRoute` protegen las rutas.
+- **Registro y sesión**: Free usa `POST /users/register` y entra directo. En un alta
+  paga, `RegisterPlans` crea la preferencia y conserva el token opaco; al volver de MP,
+  `RegisterSuccess` espera `/payments/registro/estado`, ejecuta un único login cuando el
+  webhook completa la cuenta y redirige a `/dashboard`. El JWT queda en localStorage
+  (`AuthProvider`). Los guards `UserRoute`/`AdminRoute` protegen las rutas.
 - **Carga del menú**: el dueño usa `MenuEditor` → `/menus` y `/items` (CRUD). Las
   imágenes van directo a Cloudinary. Los ocultos se ven en el editor pero no en la carta
   pública.
@@ -789,7 +806,7 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   producto incrementa `ItemView` (mismo esquema, a nivel plato). Los planes pro+ ven en
   `UserStats` la serie de 30 días con auto-refresh en tiempo real más el ranking de
   "Productos más vistos" (top 10 de la misma ventana).
-- **Import/export Excel** (plan starter+): `getTemplate` genera el `.xlsx`;
+- **Import/export Excel** (plan basic+): `getTemplate` genera el `.xlsx`;
   `previewMassive`/`confirmMassive` procesan la reimportación fila por fila.
 - **CRM interno** (solo CEO/admin): desde `/admin/crm` se gestiona a los locales
   suscriptos como clientes (etapa del pipeline — en vista lista o Kanban con drag &

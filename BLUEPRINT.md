@@ -41,9 +41,9 @@ mobile-first con importación/exportación por Excel.
 
 - **Estado**: producto en producción (`menudigitalapp.com.ar`), stack React 19 +
   Express + MongoDB Atlas, deploy en Vercel + Koyeb, cobro por MercadoPago.
-- **Modelo**: freemium por suscripción. Free ($0, hasta 15 productos, con publicidad
-  de la plataforma) → Starter ($5.999/mes) → Pro ($29.999/semestre ≈ $5.000/mes) →
-  Premium ($49.999/año ≈ $4.167/mes). Sin comisiones por venta.
+- **Modelo**: freemium por suscripción. Free ($0, hasta 15 productos) → Basic
+  ($5.999/mes base) → Pro ($29.999/mes base), con descuentos por prepagar
+  3/6/12 meses. Sin comisiones por venta.
 - **Mercado**: ~67.000 establecimientos gastronómicos en Argentina (FEHGRA). Sector
   golpeado por la caída del consumo (−13% de actividad feb-2025 vs feb-2023), lo que
   paradójicamente **acelera** la demanda de herramientas baratas que ayuden a vender
@@ -204,13 +204,13 @@ educa el mercado a costo cero.
 | M1 | **Auth y cuentas** | Registro/login JWT, política de contraseñas, términos versionados | — |
 | M2 | **Editor de menú** | Secciones → categorías → productos; variantes (options), ofertas con % y vigencia, recomendado, oculto, no disponible; drag & drop; imágenes a Cloudinary | Free: 15 productos |
 | M3 | **Carta pública** (`/:slug/menu`) | Tabs por sección, tarjetas con foto/precio/badges, skeleton, scroll-reveal, grilla 2 columnas en desktop, sticky header+tabs | — |
-| M4 | **Landing del local** (`/:slug`) | Hero o avatar según template, galería bento, chips de contacto, lightbox | Starter+ |
-| M5 | **Templates** | 13 estilos visuales vía design tokens `--t-*` | Escalonado (3 free / 4 starter / 3 pro / 3 premium) |
+| M4 | **Landing del local** (`/:slug`) | Hero o avatar según template, galería bento, chips de contacto, lightbox | Basic+ |
+| M5 | **Templates** | 13 estilos visuales vía design tokens `--t-*` | Escalonado (3 free / 4 basic / 6 pro) |
 | M6 | **Carrito + pedido WhatsApp** | Carrito por local (localStorage), steppers, drawer con total, mensaje `wa.me` prearmado, confirmación al vaciar | Todos los planes |
 | M7 | **Reseñas Google** | CTA "Dejanos tu reseña" en landing y carta si el dueño cargó el link | Todos los planes |
 | M8 | **QR descargable** | PDF con el QR de la carta (client-side) | Todos los planes |
 | M9 | **Estadísticas** | Visitas diarias (30 días, tiempo real con polling), ranking top-10 de productos más vistos | Pro+ |
-| M10 | **Import/Export Excel** | Plantilla generada con datos actuales, preview de cambios, confirmación fila a fila | Starter+ |
+| M10 | **Import/Export Excel** | Plantilla generada con datos actuales, preview de cambios, confirmación fila a fila | Basic+ |
 | M11 | **Suscripciones** | Checkout MercadoPago, webhook firmado que activa el plan | — |
 | M12 | **Panel CEO + CRM interno** | KPIs de la plataforma, gestión de clientes (pipeline kanban, notas, eventos automáticos, seguimientos vencidos, export Excel) | Solo admin |
 
@@ -218,7 +218,7 @@ educa el mercado a costo cero.
 
 M13 Cobro de pedidos (MP Connect) · M14 Panel de pedidos en tiempo real · M15 Roles
 de staff · M16 IA (contenido + insights) · M17 Reservas · M18 Fidelización/campañas ·
-M19 Multi-sucursal · M20 Dominio propio (prometido en Premium — deuda de producto).
+M19 Multi-sucursal · M20 Dominio propio (prometido en Pro — deuda de producto).
 
 ### 4.4 Historias de usuario y criterios de aceptación
 
@@ -281,10 +281,13 @@ Como dueño con menú grande, quiero actualizar todo en Excel.
 
 **HU-08 · Cobrar suscripciones (M11)** ✅
 Como plataforma, quiero cobrar sin intervención manual.
-- El checkout crea una preferencia MP con `external_reference` = userId.
+- Un alta paga crea un `PendingRegistration`; el checkout usa su id como
+  `external_reference` y conserva un token opaco para consultar la activación.
 - Solo el webhook (firma HMAC verificada + consulta del pago real a la API de MP)
-  cambia `User.subscription`. Un plan_id desconocido se descarta.
-- El cambio de plan queda logueado como evento en el CRM.
+  crea la cuenta o cambia `User.subscription`. Un plan_id desconocido se descarta.
+- El período elegido fija `subscriptionExpiresAt`; al completarse, el frontend hace
+  un único login y redirige automáticamente al dashboard.
+- El alta o cambio de plan queda logueado como evento en el CRM.
 
 **HU-09 · Gestionar clientes (M12)** ✅
 Como CEO, quiero operar la cartera desde un solo lugar.
@@ -446,7 +449,7 @@ Membership { userId, organizationId, role: "owner"|"staff", invitedBy, createdAt
 - **Backups**: Atlas snapshots diarios, retención 7/30 días + restore ensayado
   trimestralmente 🔜 (hoy: snapshots del plan de Atlas sin runbook formal).
 - **Migraciones**: scripts one-shot versionados (patrón ya usado en el rename de
-  planes free/starter/pro/premium).
+  planes free/basic/pro).
 - **Retención**: `pageviews`/`itemviews` se conservan (son livianas y valen para
   tendencias anuales); `AuditLog` con TTL.
 - **PII**: hoy casi nula (datos del local, no de comensales). Con Orders entra
@@ -476,8 +479,8 @@ Membership { userId, organizationId, role: "owner"|"staff", invitedBy, createdAt
 | Menú (gestión) | `GET /users/me/menu` · CRUD `/menus` y `/items` (+move/hide/available/upload) |
 | Carta pública | `GET /users/:slug` · `GET /users/:slug/menu` · `POST /users/:slug/menu/items/:itemID/view` |
 | Analítica dueño | `GET /users/me/stats` · `GET /users/me/item-stats` (ambas pro+) |
-| Excel | `GET /massive/template` · `POST /massive/preview` · `POST /massive/confirm` (starter+) |
-| Pagos | `POST /payments/crear-preferencia` · `POST /payments/webhook` |
+| Excel | `GET /massive/template` · `POST /massive/preview` · `POST /massive/confirm` (basic+) |
+| Pagos | `POST /payments/crear-preferencia` · `POST /payments/crear-preferencia-registro` · `POST /payments/registro/estado` · `POST /payments/webhook` |
 | Admin/CRM | `GET /admin/stats` · `GET /admin/allUsers` · `PATCH /admin/users/:id/active` · `/admin/crm/*` (clients, notes, overdue-count, export) |
 
 ### 7.3 APIs del roadmap 🔜
@@ -506,7 +509,7 @@ ahí sí `/api/v1` congelada + API keys por local.
 |---|---|
 | Transporte/headers | HTTPS extremo a extremo; `helmet` (CSP-friendly, CORP cross-origin para servir a Vercel); CORS con allowlist explícita |
 | Autenticación | JWT HS256 con algoritmo **fijado** en la verificación (anti alg-confusion); bcrypt; política de contraseñas (≥8 + blocklist de comunes); expiración 7 días |
-| Autorización | `protect`/`isAdmin`/`requirePlan` + ownership check por recurso en cada controller (anti-IDOR); el gating de plan se valida SIEMPRE server-side (bypass de suscripción y de template premium cerrados y verificados con exploits de regresión) |
+| Autorización | `protect`/`isAdmin`/`requirePlan` + ownership check por recurso en cada controller (anti-IDOR); el gating de plan se valida SIEMPRE server-side (bypass de suscripción y de templates pagos cerrados y verificados con exploits de regresión) |
 | Inyección | `express-mongo-sanitize` (scoped, excluye el webhook MP a propósito) + validación de tipos en login/registro (rechaza payloads no-string) |
 | Abuso | `authLimiter` 10/15 min (anti fuerza bruta) + `apiLimiter` 300/15 min; límites de upload (imágenes 8 MB, Excel 5 MB en memoria) |
 | Pagos | Firma HMAC-SHA256 del webhook verificada con `timingSafeEqual`; el estado del pago se consulta a la API de MP (nunca se confía en el query string); `PLAN_MAP` valida plan_ids |
@@ -572,9 +575,9 @@ ahí sí `/api/v1` congelada + API keys por local.
 (display de auth/landing), DM Mono (datos/precios del panel CEO).
 
 **Los 13 templates** (producto, no solo estética — son el eje del gating):
-free: Clásico, Natural, Minimal · starter: Moderno, Rojo, Coastal, Charcoal ·
-pro: Terracotta, Lavender, Forest · premium: Aurora, Noir Gold, Platinum (con
-degradés y botones metálicos).
+free: Clásico, Natural, Minimal · basic: Moderno, Rojo, Coastal, Charcoal ·
+pro: Terracotta, Lavender, Forest, Aurora, Noir Gold, Platinum (los últimos
+con degradés y botones metálicos).
 
 **Patrones canónicos ya construidos**: cards con hover spotlight, drawers
 (carrito, detalle CRM), bottom-sheet de acciones, kanban drag & drop, steppers de
@@ -604,12 +607,11 @@ utilidades.
 | Plan | Precio | Equivalente mensual | Desbloquea |
 |---|---|---|---|
 | **Gratis** | $0 | $0 | 15 productos, carta QR, publicidad de MenuDigital en la carta |
-| **Starter** | $5.999/mes | $5.999 | Sin publicidad, productos ilimitados, landing del local, Excel, soporte WhatsApp, +4 templates |
-| **Pro** ("más elegido") | $29.999/semestre | $5.000 | Todo Starter + estadísticas (visitas y top platos), +3 templates, prioridad de soporte |
-| **Premium** | $49.999/año | $4.167 | Todo Pro + dominio propio 🔜 + onboarding por videollamada, +3 templates top |
+| **Basic** | $5.999/mes base | Según período | Productos ilimitados, landing del local, Excel, +4 templates |
+| **Pro** | $29.999/mes base | Según período | Todo Basic + estadísticas, dominio propio 🔜 y +6 templates |
 
-Mecánica de monetización: el **prepago largo se premia** (Pro semestral y Premium
-anual bajan el equivalente mensual y adelantan caja); el plan Free hace marketing
+Mecánica de monetización: el **prepago largo se premia** (3 meses ≈10% off,
+6 meses ≈17% y 12 meses 25%); el plan Free hace marketing
 (publicidad de la plataforma en cartas gratuitas) y alimenta el pipeline del CRM.
 
 **Nota operativa**: con inflación ARS, los precios se revisan trimestralmente; los
@@ -618,7 +620,7 @@ que el ajuste sea un cambio chico.
 
 ### 10.2 Unit economics (supuestos explícitos, base 2026)
 
-- **ARPU pago** ≈ $5.000/mes (mezcla Starter/Pro/Premium).
+- **ARPU pago**: recalcular con la mezcla real Basic/Pro y los períodos elegidos.
 - **Costo marginal por local ≈ $0** (infra compartida: Vercel/Koyeb/Atlas/Cloudinary
   en tiers bajos; margen bruto >90% hasta miles de locales).
 - **CAC objetivo por canal**: orgánico/viral ≈ $0; partnerships ≈ 1 mes de ARPU;
@@ -639,7 +641,7 @@ que el ajuste sea un cambio chico.
 1. **Fee por pedido online (M13)**: `marketplace_fee` de 1–3% sobre pedidos cobrados
    vía MP Connect — opt-in, transparente, alineado con "te ayudo a vender". Es el
    camino de expansión de revenue que no depende de subir la suscripción.
-2. **Add-ons**: dominio propio fuera de Premium, IA de contenido por paquete de
+2. **Add-ons**: dominio propio fuera de Pro, IA de contenido por paquete de
    usos, sucursal adicional.
 3. **Partnerships con revenue share**: distribuidores gastronómicos e imprentas de
    QR que revenden el alta.
@@ -664,7 +666,7 @@ producción** ✅.
 ### Q4 2026 — "Operar el pedido" (M14 completo + M20)
 - Panel de pedidos en tiempo real (SSE), número de pedido cantable, aviso sonoro.
 - Estados de pedido con notificación al comensal por WhatsApp (link de estado).
-- Dominio propio para Premium (saldar la promesa de la landing).
+- Dominio propio para Pro (saldar la promesa de la landing).
 - Prerender de `/:slug` y `/:slug/menu` + sitemap (SEO local como canal).
 - **Criterio de salida**: mediana de "pedido nuevo → visto por el local" <60 s;
   primeros 20 dominios propios activos.
@@ -757,7 +759,7 @@ Score = (Reach × Impact × Confidence) / Effort. Reach: locales afectados/trime
 | 3 | Eventos client-side (embudo carrito→WA) | 9 | 1 | 0,9 | 1,5 | 5,4 | Q3-26 |
 | 4 | Panel de pedidos tiempo real (SSE) | 7 | 3 | 0,8 | 4 | 4,2 | Q4-26 |
 | 5 | Prerender público + sitemap (SEO) | 9 | 2 | 0,7 | 3 | 4,2 | Q4-26 |
-| 6 | Dominio propio Premium | 3 | 2 | 0,9 | 2 | 2,7 | Q4-26 |
+| 6 | Dominio propio Pro | 3 | 2 | 0,9 | 2 | 2,7 | Q4-26 |
 | 7 | Notificación de estado de pedido por WA | 6 | 2 | 0,7 | 2 | 4,2 | Q4-26 |
 | 8 | IA: descripciones de platos | 7 | 1 | 0,8 | 2 | 2,8 | Q1-27 |
 | 9 | Resumen mensual automático (insights) | 8 | 1 | 0,8 | 2 | 3,2 | Q1-27 |
