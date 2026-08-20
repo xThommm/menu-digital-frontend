@@ -430,7 +430,7 @@
 /* Relleno claro (--t-bg) + texto/borde --t-accent: siempre coordina con la
    paleta del template activo Y siempre contrasta contra el botón (que usa
    --t-accent de fondo), sin depender de que un color fijo "le pegue" a los
-   13 templates — antes era un rojo (#e2543d) que desentonaba con acentos
+   15 templates — antes era un rojo (#e2543d) que desentonaba con acentos
    fríos o quedaba casi invisible contra templates con acento rojo similar. */
 .cartFabBadge {
   position: absolute;

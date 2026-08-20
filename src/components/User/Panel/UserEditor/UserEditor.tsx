@@ -90,20 +90,22 @@ interface TemplateOption {
 const TEMPLATES: TemplateOption[] = [
   // free
   { id: 1,  name: "Clásico",    color: "#0b0a08", accent: "#c9a84c", minPlan: "free" },
-  { id: 3,  name: "Natural",    color: "#f2f6ef", accent: "#2e7d32", minPlan: "free" },
-  { id: 5,  name: "Minimal",    color: "#ffffff", accent: "#111111", minPlan: "free" },
   // basic
   { id: 2,  name: "Moderno",    color: "#0d1117", accent: "#58a6ff", minPlan: "basic" },
+  { id: 3,  name: "Natural",    color: "#f2f6ef", accent: "#2e7d32", minPlan: "basic" },
   { id: 4,  name: "Rojo",       color: "#110606", accent: "#e05555", minPlan: "basic" },
-  { id: 8,  name: "Coastal",    color: "#f4f8fb", accent: "#2a91c4", minPlan: "basic" },
-  { id: 9,  name: "Charcoal",   color: "#1a1a1c", accent: "#ff6b5c", minPlan: "basic" },
+  { id: 5,  name: "Minimal",    color: "#ffffff", accent: "#111111", minPlan: "basic" },
   // pro
+  { id: 6,  name: "Aurora",     color: "#efddc9", accent: "#a8703f", minPlan: "pro" },
+  { id: 7,  name: "Noir Gold",  color: "#08070a", accent: "#d4af37", minPlan: "pro" },
+  { id: 8,  name: "Coastal",    color: "#f4f8fb", accent: "#2a91c4", minPlan: "pro" },
+  { id: 9,  name: "Charcoal",   color: "#1a1a1c", accent: "#ff6b5c", minPlan: "pro" },
   { id: 10, name: "Terracotta", color: "#f7ede3", accent: "#c2571f", minPlan: "pro" },
   { id: 11, name: "Lavender",   color: "#f6f3fa", accent: "#8256c4", minPlan: "pro" },
   { id: 12, name: "Forest",     color: "#0c1410", accent: "#86c397", minPlan: "pro" },
-  { id: 6,  name: "Aurora",     color: "#efddc9", accent: "#a8703f", minPlan: "pro" },
-  { id: 7,  name: "Noir Gold",  color: "#08070a", accent: "#d4af37", minPlan: "pro" },
   { id: 13, name: "Platinum",   color: "#0a0b0d", accent: "#b8c2cf", minPlan: "pro" },
+  { id: 14, name: "Ocean",      color: "#071b26", accent: "#36c2b4", minPlan: "pro" },
+  { id: 15, name: "Rosé",       color: "#fff6f3", accent: "#b64f68", minPlan: "pro" },
 ];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -166,6 +168,7 @@ export default function UserEditorPage() {
   const [subscription,      setSubscription] = useState<Subscription>("free");
   const [lockedTemplate,    setLockedTemplate] = useState<typeof TEMPLATES[number] | null>(null);
   const [upgrading,         setUpgrading]      = useState(false);
+  const canUseReviews = planMeetsMin(subscription, "pro");
 
   const [isDirty, setIsDirty]   = useState(false);
   const initialFormRef = useRef<FormState>(EMPTY_FORM);
@@ -305,8 +308,10 @@ export default function UserEditorPage() {
               instagram: form.instagram.trim(),
               facebook:  form.facebook.trim(),
             },
-            googleReviewUrl: reviewUrl,
-            googlePlaceId: form.googlePlaceId.trim(),
+            ...(canUseReviews && {
+              googleReviewUrl: reviewUrl,
+              googlePlaceId: form.googlePlaceId.trim(),
+            }),
             reservationMessage: form.reservationMessage.trim(),
           },
           hasDelivery: form.hasDelivery,
@@ -348,7 +353,7 @@ export default function UserEditorPage() {
     }
   };
 
-  // Si el template es premium y el usuario no tiene un plan pago, no lo
+  // Si el template requiere un plan superior y el usuario no lo tiene, no lo
   // aplicamos — mostramos el modal de upsell en su lugar. El backend
   // también lo valida (useTemplate en userController.js): esto es UX,
   // no la única barrera.
@@ -361,7 +366,7 @@ export default function UserEditorPage() {
   };
 
   // Dispara el pago real desde el modal de upsell, apuntando al plan que el
-  // template bloqueado requiere (starter/pro/premium). crear-preferencia
+  // template bloqueado requiere (Basic o Pro). crear-preferencia
   // requiere estar logueado — ya lo estamos acá — y usa el propio usuario
   // como external_reference para acreditarle el plan cuando MP confirme.
   const handleUpgrade = async () => {
@@ -816,7 +821,11 @@ export default function UserEditorPage() {
                 placeholder="https://g.page/r/tu-negocio/review"
                 value={form.googleReviewUrl}
                 onChange={e => setForm(f => ({ ...f, googleReviewUrl: e.target.value }))}
+                disabled={!canUseReviews}
               />
+              {!canUseReviews && (
+                <p className={styles.fieldHint}>Disponible con el plan Pro.</p>
+              )}
             </div>
 
             <div className={styles.field}>
@@ -827,6 +836,7 @@ export default function UserEditorPage() {
                 placeholder="ChIJN1t_tDeuEmsRUsoyG83frY4"
                 value={form.googlePlaceId}
                 onChange={e => setForm(f => ({ ...f, googlePlaceId: e.target.value }))}
+                disabled={!canUseReviews}
               />
               <p className={styles.fieldHint}>
                 Necesario para mostrar el rating y la cantidad de reseñas reales en tu

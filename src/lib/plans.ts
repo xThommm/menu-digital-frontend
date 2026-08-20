@@ -25,8 +25,8 @@ export function planMeetsMin(userPlan: Subscription, minPlan: Subscription): boo
 // backend (config/plans.js) — ese es el que realmente bloquea; esto decide
 // qué candado/etiqueta mostrar en el editor.
 export const TEMPLATE_MIN_PLAN: Record<number, Subscription> = {
-  1: "free",    3: "free",    5: "free",
-  2: "basic", 4: "basic", 8: "basic", 9: "basic",
-  10: "pro",    11: "pro",    12: "pro",
-  6: "pro", 7: "pro", 13: "pro",
+  1: "free",
+  2: "basic", 3: "basic", 4: "basic", 5: "basic",
+  6: "pro", 7: "pro", 8: "pro", 9: "pro", 10: "pro",
+  11: "pro", 12: "pro", 13: "pro", 14: "pro", 15: "pro",
 };

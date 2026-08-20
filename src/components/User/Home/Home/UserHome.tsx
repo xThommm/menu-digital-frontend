@@ -7,7 +7,7 @@ import FreePlanAd from "../../../Common/FreePlanAd";
 
 // ── Tokens por template ───────────────────────────────────────────────────────
 
-type TemplateId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
+type TemplateId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
 
 interface TemplateTokens {
   heroClass: string;
@@ -123,7 +123,7 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
     btnLabel: "Ver menú",
     useAvatar: false,
   },
-  // ── Templates nuevos (8-13) ──
+  // ── Templates 8-15 ──
   // 8 Coastal — claro y aireado, título sans para un look fresco de costa.
   8: {
     showDeliveryRow: false,
@@ -173,7 +173,7 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
     btnLabel: "Ver menú",
     useAvatar: false,
   },
-  // 13 Platinum — premium, esquinas ajustadas para un look afilado.
+  // 13 Platinum — esquinas ajustadas para un look afilado.
   13: {
     showDeliveryRow: false,
     heroClass: styles.heroT13,
@@ -182,6 +182,24 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
     galleryRadius: "6px",
     btnLabel: "Ver menú",
     useAvatar: false,
+  },
+  // 14 Ocean — oscuro marino con acento turquesa.
+  14: {
+    showDeliveryRow: true,
+    heroClass: "",
+    titleClass: "t-title-sans",
+    galleryRadius: "10px",
+    btnLabel: "Ver menú →",
+    useAvatar: true,
+  },
+  // 15 Rosé — claro editorial con acento rosa profundo.
+  15: {
+    showDeliveryRow: true,
+    heroClass: "",
+    titleClass: "t-title",
+    galleryRadius: "14px",
+    btnLabel: "Ver menú",
+    useAvatar: true,
   },
 };
 
@@ -215,6 +233,10 @@ export default function BusinessLandingPage() {
         const res = await fetch(`/api/users/${slug}`, {
           signal: controller.signal,
         });
+        if (res.status === 403) {
+          navigate(`/${slug}/menu`, { replace: true });
+          return;
+        }
         if (!res.ok) {
           setNotFound(true);
           return;
@@ -230,7 +252,7 @@ export default function BusinessLandingPage() {
 
     fetchUser();
     return () => controller.abort();
-  }, [slug, slugIsValid]);
+  }, [slug, slugIsValid, navigate]);
 
   // ── Returns después de todos los hooks ──
   // Un slug inválido nunca dispara el fetch, así que nunca debería mostrar el
@@ -393,7 +415,7 @@ function DeliveryBadge() {
 
 // Mismo componente base que DeliveryBadge (.t-badge — tipografía, padding y
 // fondo ya resueltos por template en globals.css) para que quede "acorde a
-// la página" en cualquiera de los 13 estilos; el único agregado es el punto
+// la página" en cualquiera de los 15 estilos; el único agregado es el punto
 // de color. Verde para "abierto" es un código universal que conviene no
 // adaptar por template; para "cerrado" se usa currentColor (el mismo color
 // de texto que ya trae .t-badge en ese template) para no introducir un rojo

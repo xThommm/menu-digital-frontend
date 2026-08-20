@@ -56,12 +56,12 @@ export default function Terms() {
               Los servicios incluyen, pero no se limitan a:
             </p>
             <ul className={styles.list}>
-              <li>Creación y gestión de menús digitales ilimitados</li>
+              <li>Creación y gestión de menús digitales, con límites según el plan contratado</li>
               <li>Generación de códigos QR personalizados</li>
               <li>Carga masiva de productos mediante archivos Excel</li>
               <li>Landing page personalizada del local</li>
-              <li>Estadísticas de visitas (planes Semestral y Anual)</li>
-              <li>Dominio personalizado (plan Anual)</li>
+              <li>Estadísticas de visitas y productos (plan Pro)</li>
+              <li>Dominio personalizado (plan Pro)</li>
             </ul>
           </section>
 
@@ -96,8 +96,9 @@ export default function Terms() {
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>4. Planes y pagos</h2>
             <p>
-              La Plataforma ofrece tres planes de suscripción: Mensual, Semestral y Anual. Los precios
-              están expresados en pesos argentinos (ARS) e incluyen IVA cuando corresponda.
+              La Plataforma ofrece tres niveles de suscripción: Gratis, Basic y Pro. Los planes pagos
+              pueden contratarse por períodos de 1, 3, 6 o 12 meses. Los precios están expresados en
+              pesos argentinos (ARS) e incluyen IVA cuando corresponda.
             </p>
             <p>
               Los pagos se procesan a través de <strong>MercadoPago</strong>. Al completar el pago,

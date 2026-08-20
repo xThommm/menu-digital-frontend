@@ -87,9 +87,10 @@ Fuente de verdad del sistema de planes. Exporta:
   mantiene como capa de validación (el webhook rechaza plan_ids desconocidos).
 - **`PLAN_ORDER`** = `["free","basic","pro"]`. El índice ES la jerarquía.
 - **`PLAN_FEATURES`** — features que desbloquea cada nivel (acumulativo).
-- **`FREE_ITEM_LIMIT`** = 15 (tope de productos del plan gratuito).
+- **`ITEM_LIMITS`**, **`FREE_ITEM_LIMIT`** y **`BASIC_ITEM_LIMIT`** — topes: Free 15,
+  Basic 50 y Pro sin límite; `getItemLimit(plan)` resuelve el valor efectivo.
 - **`TEMPLATE_MIN_PLAN`** — mapa `templateId → plan mínimo` (gating escalonado de
-  templates). free: 1,3,5 · basic: 2,4,8,9 · pro: 6,7,10,11,12,13.
+  templates). Free: 1 diseño · Basic: 5 diseños totales · Pro: 15 diseños totales.
 - **`getFeaturesForPlan(plan)`** — devuelve todas las features de un plan y los
   inferiores.
 - **`hasMinPlan(userPlan, requiredPlan)`** — `true` si el plan del user alcanza el
@@ -210,10 +211,10 @@ Endpoints:
   `categoryCount` (para el dashboard).
 - **`fetchUserWithMenu`** `GET /api/users/:slug/menu` — carta **pública** por slug:
   arma el menú agrupado (secciones→categorías→items), filtra ocultos, y dispara
-  `trackView`. Es lo que renderiza la landing pública.
+  `trackView`. Es lo que renderiza la carta pública.
 - **`fetchOwnMenu`** `GET /api/users/me/menu` — menú del dueño autenticado, **sin**
   filtrar ocultos (para gestionarlos en el editor) + objeto `limits`
-  (`itemCount`, `itemLimit`, `canImportExcel`) para la UI de gating.
+  (`itemCount`, `itemLimit`, `canImportExcel`, `canExportPdf`) para la UI de gating.
 - **`fetchStats`** `GET /api/users/me/stats` (plan pro+) — devuelve `totalViews` y la
   serie `last30Days` (30 puntos, rellenando días sin visitas con 0), con las fechas
   calculadas en horario de Buenos Aires.
@@ -224,11 +225,13 @@ Endpoints:
 - **`fetchItemStats`** `GET /api/users/me/item-stats` (plan pro+) — top 10 de productos
   más vistos en los últimos 30 días (agregación sobre `ItemView` + join contra `Item`
   para título/imagen; un producto borrado se muestra como "(producto eliminado)").
-- **`fetchUser`** `GET /api/users/:slug` — datos públicos de un local (landing por slug).
+- **`fetchUser`** `GET /api/users/:slug` — datos públicos de un local (landing por
+  slug), disponible desde Basic; Free recibe 403 y el frontend deriva a la carta.
+- **`downloadMenuPdf`** `GET /api/users/:slug/menu/pdf` — genera el menú imprimible,
+  disponible desde Basic aunque la URL sea pública.
 - **`editUser`** `PUT /api/users/me` — edita `contactInfo/hasDelivery/media` (whitelist;
   `template` queda afuera a propósito, va por `useTemplate`). `googleReviewUrl` es el
-  único campo de contactInfo con validación propia (debe empezar con `http(s)://`,
-  porque se renderiza como link real en la carta pública).
+  link/Place ID de reseñas requieren Pro y el link debe empezar con `http(s)://`.
 - **`uploadImage`** / **`uploadBackground`** — suben foto a la galería / de fondo del
   local (a Cloudinary).
 - **`removeImage`** / **`deleteBackground`** — sacan una foto de la galería / el fondo.
@@ -253,9 +256,9 @@ Endpoints:
 
 ### `controllers/itemController.js`
 - **`verifyMenuOwnership(menuID, userID)`** — igual patrón que arriba.
-- **`newItem`** `POST /api/items` — crea producto; aplica el tope del plan free
-  (`FREE_ITEM_LIMIT` sobre todos los menús del user) y unicidad de `code` **por
-  usuario** (no global).
+- **`newItem`** `POST /api/items` — crea producto; aplica el tope escalonado (Free 15,
+  Basic 50, Pro ilimitado), protege la programación por fechas desde Basic y valida
+  unicidad de `code` **por usuario** (no global).
 - **`editItem`** `PUT /api/items/:itemID` — edita campos de contenido (whitelist);
   unicidad de code por usuario solo si cambia.
 - **`moveItem`** `PATCH /api/items/:itemID/move` — mueve el item a otra categoría
@@ -625,7 +628,7 @@ vars, theme-aware) y varios íconos SVG. La navegación/logout viven en `AdminLa
 **Landing pública por slug** (`/:slug`). Núcleo del sistema de templates.
 - **`TemplateId`** / **`TemplateTokens`** (types), **`SLUG_REGEX`**, y
   **`TEMPLATE_TOKENS`** — mapa de config por template (heroClass, overlayClass,
-  titleClass, showDeliveryRow, galleryRadius, btnLabel, useAvatar) para los 13 templates.
+  titleClass, showDeliveryRow, galleryRadius, btnLabel, useAvatar) para los 15 templates.
 - **`BusinessLandingPage`** — componente de ruta: valida el slug, hace fetch de
   `/users/:slug`, maneja loading/notFound, y renderiza `<Template>` con los tokens del
   template elegido.
@@ -718,14 +721,15 @@ Editor del menú (`/menu/editor`). El componente más grande.
 - **`MenuEditorPage`** — estado del editor (menú, límites, vistas item/categoría/sección/
   massive-import, modales de borrado y de upgrade). Fetch a `/users/me/menu`, `refetch`,
   handlers CRUD de items/categorías/secciones, drag & drop, subida de imágenes directo a
-  Cloudinary, **exportar/importar Excel** (gateado a plan Basic con modal de upsell).
+  Cloudinary, **exportar/importar Excel** y **exportar PDF** (gateados a Basic con
+  modal de upsell). El modal dirige a Basic o Pro según el límite alcanzado.
 
 ### `components/User/Panel/UserEditor/UserEditor.tsx`
 "Mi negocio" (`/user/editor`). Tabs info / media / template.
-- `TEMPLATES` (los 13 con `minPlan`), `EMPTY_FORM`. Sub-componentes `Toggle` y
+- `TEMPLATES` (los 15 con `minPlan`), `EMPTY_FORM`. Sub-componentes `Toggle` y
   `LockIcon`; el spinner inline viene de `Common/Spinner`.
 - **`UserEditorPage`** — edita datos de contacto (incluido el **link de reseñas de
-  Google Maps**, con validación de que empiece con `http(s)://`), delivery, galería
+  Google Maps**, disponible en Pro y validado como `http(s)://`), delivery, galería
   (subida múltiple a Cloudinary con progreso, drag & drop) y **selección de template**
   con gating por plan (`planMeetsMin`): candado + badge del plan requerido + modal de
   upsell que dispara el pago del plan exacto (`handleUpgrade`).
@@ -774,7 +778,7 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
     oscuro default + bloque `:root[data-theme="light"]` que redefine solo las bases
     (los derivados se recalculan solos vía `color-mix()`).
   - **`--auth-*`** — Login/Register/AdminHome (tema oscuro/ámbar).
-  - **`--t-*`** — tokens **por template** de la carta pública: 13 bloques
+  - **`--t-*`** — tokens **por template** de la carta pública: 15 bloques
     `[data-template="N"]` (bg, surface, borders, text, accent, gradientes de hero;
     los premium suman `--t-bg-image` y `--t-btn-bg` metálico). Solo existen dentro
     del contenedor con `data-template`.
@@ -815,28 +819,25 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   desde el panel usa `POST /payments/crear-preferencia` sobre una cuenta autenticada.
   En ambos casos el **webhook** (`mpWebhook`) verifica el pago real antes de crear la
   cuenta o actualizar `User.subscription`. El gating de features (límite de items,
-  Excel, stats, templates) se valida en el backend (`requirePlan` /
+  Excel, PDF, landing, reseñas, ofertas programadas, stats y templates) se valida en el backend (`requirePlan` /
   `TEMPLATE_MIN_PLAN`) y se refleja en la UI (`lib/plans.ts`).
 
-  **Incidente abierto (2026-08-20):** el alta paga llega correctamente al endpoint
-  productivo, pero `crear-preferencia-registro` responde 500 con el mensaje genérico
-  "No se pudo crear la preferencia de pago". Falta revisar el log interno de Koyeb
-  para distinguir si falla `PendingRegistration.save()` o la API de MercadoPago.
 - **Pedido por WhatsApp**: en la carta pública el cliente arma un carrito
   (`CartProvider`, persistido en localStorage por slug) tocando "+" en cada producto
   (con selección de variante si tiene opciones). El `CartDrawer` muestra el pedido y
   el botón "Pedir por WhatsApp" abre `wa.me` con el mensaje prearmado
   (`lib/whatsapp.ts`) al número del local. 100% client-side, sin backend, sin gating
   por plan (el teléfono ya es público vía el link `tel:` existente).
-- **Reseñas de Google**: el dueño carga `contactInfo.googleReviewUrl` en "Mi negocio";
+- **Reseñas de Google** (Pro): el dueño carga `contactInfo.googleReviewUrl` en "Mi negocio";
   la landing pública (`ContactList`) y la carta (banner al final del menú) muestran el
-  CTA "Dejanos tu reseña" solo si el campo está cargado. Gratis para todos los planes.
+  CTA "Dejanos tu reseña" solo si el campo está cargado y el plan vigente es Pro.
 - **Estadísticas**: cada visita incrementa `PageView` del día (BA), y cada tap sobre un
   producto incrementa `ItemView` (mismo esquema, a nivel plato). Los planes pro+ ven en
   `UserStats` la serie de 30 días con auto-refresh en tiempo real más el ranking de
   "Productos más vistos" (top 10 de la misma ventana).
 - **Import/export Excel** (plan basic+): `getTemplate` genera el `.xlsx`;
-  `previewMassive`/`confirmMassive` procesan la reimportación fila por fila.
+  `previewMassive`/`confirmMassive` procesan la reimportación fila por fila y rechazan
+  el archivo completo antes de mutar si supera el tope del plan.
 - **CRM interno** (solo CEO/admin): desde `/admin/crm` se gestiona a los locales
   suscriptos como clientes (etapa del pipeline — en vista lista o Kanban con drag &
   drop —, tags, seguimiento, notas). El historial mezcla notas manuales con eventos

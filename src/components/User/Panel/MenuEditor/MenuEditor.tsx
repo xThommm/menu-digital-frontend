@@ -345,10 +345,15 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
 // ── Componente principal ───────────────────────────────────────────────────────
 
 export default function MenuEditorPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
   const [menuData,    setMenuData]    = useState<MenuData | null>(null);
-  const [limits,      setLimits]      = useState<{ itemCount: number; itemLimit: number | null; canImportExcel: boolean } | null>(null);
+  const [limits,      setLimits]      = useState<{
+    itemCount: number;
+    itemLimit: number | null;
+    canImportExcel: boolean;
+    canExportPdf: boolean;
+  } | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState("");
@@ -356,13 +361,18 @@ export default function MenuEditorPage() {
   // Modal de upgrade compartido: se abre por el límite de productos
   // del plan free o por intentar usar el importador de Excel sin plan
   // pago. "reason" solo cambia el texto que se muestra.
-  const [upgradeReason, setUpgradeReason] = useState<"items" | "excel" | null>(null);
+  const [upgradeReason, setUpgradeReason] = useState<"items" | "excel" | "pdf" | null>(null);
   const [upgrading,     setUpgrading]     = useState(false);
 
   const [imageUploading, setImageUploading] = useState(false);
   const itemImageInputRef = useRef<HTMLInputElement>(null);
 
   const [exporting, setExporting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  const upgradePlan = upgradeReason === "items" && limits?.itemLimit === 50 ? "pro" : "basic";
+  const upgradePlanLabel = upgradePlan === "pro" ? "Pro" : "Básico";
+  const upgradePrice = upgradePlan === "pro" ? "$59.999" : "$39.999";
 
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [dragOverCat, setDragOverCat] = useState<string | null>(null);
@@ -566,7 +576,7 @@ export default function MenuEditorPage() {
     }
   };
 
-  // Dispara el pago real del plan Basic desde el modal de upgrade
+  // Dispara el pago real del plan mínimo que resuelve el bloqueo actual.
   // (mismo patrón que UserEditor.tsx). Al volver, refetch trae el
   // menú actualizado con los límites del plan nuevo.
   const handleUpgrade = async () => {
@@ -576,7 +586,7 @@ export default function MenuEditorPage() {
       const res = await fetch("/api/payments/crear-preferencia", {
         method: "POST",
         headers: authHeaders,
-        body: JSON.stringify({ planId: "basic" }),
+        body: JSON.stringify({ planId: upgradePlan }),
       });
       if (!res.ok) throw new Error();
       const { init_point } = await res.json();
@@ -778,6 +788,27 @@ export default function MenuEditorPage() {
       setExporting(false);
     }
   }, [token, limits]);
+
+  const exportMenuPdf = async () => {
+    if (!limits?.canExportPdf) { setUpgradeReason("pdf"); return; }
+    if (!user?.slug) { setError("No se encontró el enlace público de tu menú."); return; }
+    setExportingPdf(true); setError("");
+    try {
+      const res = await fetch(`/api/users/${user.slug}/menu/pdf`);
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${user.slug}-menu.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("No se pudo exportar el menú a PDF. Intentá de nuevo.");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   // ── Conteo total de productos ─────────────────────────────────────────────
 
@@ -996,7 +1027,7 @@ export default function MenuEditorPage() {
                     <span className={styles.sheetOptionText}>
                       <span className={styles.sheetOptionTitle}>
                         Importar desde Excel
-                        {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>PRO</span>}
+                        {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>BÁSICO</span>}
                       </span>
                       <span className={styles.sheetOptionDesc}>Carga o actualiza en lote</span>
                     </span>
@@ -1017,9 +1048,30 @@ export default function MenuEditorPage() {
                     <span className={styles.sheetOptionText}>
                       <span className={styles.sheetOptionTitle}>
                         Exportar a Excel
-                        {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>PRO</span>}
+                        {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>BÁSICO</span>}
                       </span>
                       <span className={styles.sheetOptionDesc}>Descargá tus categorías y productos actuales</span>
+                    </span>
+                  </button>
+
+                  <button
+                    className={`${styles.sheetOption} ${!limits?.canExportPdf ? styles.sheetOptionLocked : ""}`}
+                    type="button"
+                    disabled={exportingPdf}
+                    onClick={() => {
+                      setMenuSheetOpen(false);
+                      exportMenuPdf();
+                    }}
+                  >
+                    <span className={styles.sheetOptionIcon}>
+                      {!limits?.canExportPdf ? icons.lock : exportingPdf ? <Spinner size={16} /> : icons.download}
+                    </span>
+                    <span className={styles.sheetOptionText}>
+                      <span className={styles.sheetOptionTitle}>
+                        Exportar menú a PDF
+                        {!limits?.canExportPdf && <span className={styles.sheetOptionPro}>BÁSICO</span>}
+                      </span>
+                      <span className={styles.sheetOptionDesc}>Descargá una versión lista para imprimir</span>
                     </span>
                   </button>
 
@@ -1419,13 +1471,19 @@ export default function MenuEditorPage() {
               <div className={styles.modalIcon}>{icons.lock}</div>
               <p id="upgrade-modal-title" className={styles.modalTitle}>
                 {upgradeReason === "items"
-                  ? "Llegaste al límite del plan gratuito"
-                  : "Importar y exportar en Excel es una función PRO"}
+                  ? `Llegaste al límite de ${limits?.itemLimit ?? 15} productos`
+                  : upgradeReason === "excel"
+                    ? "Importar y exportar en Excel es una función del plan Básico"
+                    : "Exportar el menú a PDF es una función del plan Básico"}
               </p>
               <p className={styles.modalDesc}>
                 {upgradeReason === "items"
-                  ? `Tu plan gratuito permite hasta ${limits?.itemLimit ?? 15} productos. Con el plan Basic ($39.999) tenés productos ilimitados.`
-                  : "Con el plan Basic ($39.999) podés cargar, actualizar y exportar tu menú completo desde una planilla de Excel."}
+                  ? limits?.itemLimit === 50
+                    ? "Con el plan Pro ($59.999) tenés productos ilimitados."
+                    : "Con el plan Básico ($39.999) podés cargar hasta 50 productos."
+                  : upgradeReason === "excel"
+                    ? "Con el plan Básico ($39.999) podés cargar, actualizar y exportar tu menú completo desde una planilla de Excel."
+                    : "Con el plan Básico ($39.999) podés descargar una versión imprimible de tu menú."}
               </p>
               <div className={styles.modalBtns}>
                 <button
@@ -1442,7 +1500,7 @@ export default function MenuEditorPage() {
                   type="button"
                   disabled={upgrading}
                 >
-                  {upgrading ? <><Spinner size={14} /> Redirigiendo...</> : "Mejorar a Basic"}
+                  {upgrading ? <><Spinner size={14} /> Redirigiendo...</> : `Mejorar a ${upgradePlanLabel} · ${upgradePrice}`}
                 </button>
               </div>
             </div>

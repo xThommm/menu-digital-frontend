@@ -878,17 +878,16 @@ a:hover { opacity: 0.75; }
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   TEMPLATES NUEVOS (8-13) — reparto escalonado por plan.
+   TEMPLATES 8-15 — todos disponibles en Pro.
    Mismo sistema .t-* que el resto: solo cambian los tokens de color,
    ningún componente nuevo. El gating (qué plan desbloquea cada uno)
    vive en TEMPLATE_MIN_PLAN, tanto en el backend (config/plans.js)
    como en el front (src/lib/plans.ts).
-     starter: 8 Coastal · 9 Charcoal
-     pro:     10 Terracotta · 11 Lavender · 12 Forest
-     premium: 13 Platinum
+     8 Coastal · 9 Charcoal · 10 Terracotta · 11 Lavender
+     12 Forest · 13 Platinum · 14 Ocean · 15 Rosé
    ───────────────────────────────────────────────────────────────── */
 
-/* Template 8 — Coastal (claro, celeste/arena mediterráneo) · starter */
+/* Template 8 — Coastal (claro, celeste/arena mediterráneo) */
 [data-template="8"] {
   --t-bg:          #f4f8fb;
   --t-surface:     #e8f1f7;
@@ -905,7 +904,7 @@ a:hover { opacity: 0.75; }
   --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #f4f8fb 100%);
 }
 
-/* Template 9 — Charcoal (oscuro neutro + acento coral) · starter */
+/* Template 9 — Charcoal (oscuro neutro + acento coral) */
 [data-template="9"] {
   --t-bg:          #1a1a1c;
   --t-surface:     #232326;
@@ -998,6 +997,44 @@ a:hover { opacity: 0.75; }
 [data-template="13"] .t-title {
   letter-spacing: 0.005em;
   text-shadow: 0 2px 24px color-mix(in srgb, var(--t-accent) 30%, transparent);
+}
+
+/* Template 14 — Ocean (azul profundo + turquesa, barra con avatar) */
+[data-template="14"] {
+  --t-bg:          #071b26;
+  --t-bg-image:    linear-gradient(155deg, #0b2837 0%, #071b26 58%, #09232d 100%);
+  --t-surface:     #0d2733;
+  --t-surface-2:   #123441;
+  --t-border:      #17404c;
+  --t-border-md:   #245866;
+  --t-text:        #c4dde0;
+  --t-title:       #ecfbfa;
+  --t-muted:       #6f9da3;
+  --t-accent:      #36c2b4;
+  --t-accent-soft: rgba(54, 194, 180, 0.09);
+  --t-accent-glow: rgba(54, 194, 180, 0.20);
+  --t-btn-text:    #071b26;
+  --t-btn-bg:      linear-gradient(135deg, #62d8cc 0%, #36c2b4 55%, #84e1d7 100%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #071b26 100%);
+}
+
+/* Template 15 — Rosé (marfil rosado + acento frambuesa, barra con avatar) */
+[data-template="15"] {
+  --t-bg:          #fff6f3;
+  --t-bg-image:    linear-gradient(160deg, #fffaf8 0%, #fff2ee 55%, #fae8e6 100%);
+  --t-surface:     #fffaf8;
+  --t-surface-2:   #f8e8e7;
+  --t-border:      #efd7d8;
+  --t-border-md:   #deb9bd;
+  --t-text:        #5b3b42;
+  --t-title:       #3b2229;
+  --t-muted:       #9a747c;
+  --t-accent:      #b64f68;
+  --t-accent-soft: rgba(182, 79, 104, 0.09);
+  --t-accent-glow: rgba(182, 79, 104, 0.18);
+  --t-btn-text:    #fffaf8;
+  --t-btn-bg:      linear-gradient(135deg, #cf7187 0%, #b64f68 55%, #dc91a2 100%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #fff6f3 100%);
 }
 
 /* ═══════════════════════════════════════════════════════════════

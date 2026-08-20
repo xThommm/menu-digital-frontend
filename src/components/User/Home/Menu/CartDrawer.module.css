@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    CARRITO — reusa los tokens --t-* del template activo, así se ve
-   consistente con cualquiera de los 13 estilos de la carta pública.
+   consistente con cualquiera de los 15 estilos de la carta pública.
    ═══════════════════════════════════════════════════════════════ */
 
 @keyframes cartFadeIn { from { opacity: 0; } to { opacity: 1; } }

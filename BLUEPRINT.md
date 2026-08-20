@@ -34,7 +34,7 @@
 ## 1. Resumen ejecutivo
 
 **MenuDigital** es un SaaS argentino para bares, cafés y restaurantes que convierte
-la carta del local en una presencia digital completa: menú QR con 13 templates de
+la carta del local en una presencia digital completa: menú QR con 15 templates de
 diseño, landing page propia, pedidos por WhatsApp con carrito, embudo de reseñas de
 Google, estadísticas de visitas y de productos más vistos, y un panel de gestión
 mobile-first con importación/exportación por Excel.
@@ -51,7 +51,7 @@ mobile-first con importación/exportación por Excel.
 - **Diferenciación**: mientras la competencia local compite por "carta QR gratis",
   MenuDigital compite por **hacer vender más al local**: pedidos por WhatsApp sin
   fricción, reseñas de Google que mejoran el ranking local, analítica por plato para
-  decidir el menú con datos, y una calidad visual (13 templates con design system
+  decidir el menú con datos, y una calidad visual (15 templates con design system
   propio) que las soluciones gratuitas no alcanzan.
 - **Próximo salto** (roadmap): cobro de pedidos online con **MercadoPago Connect**
   (cada local cobra en su propia cuenta; la plataforma puede tomar un fee por
@@ -140,7 +140,7 @@ blueprint.
    carta, con link directo al perfil de Google Maps.
 4. **"No sé qué funciona de mi menú"** → estadísticas de visitas + ranking de
    productos más vistos (ventana 30 días).
-5. **"Las soluciones lindas son caras; las gratis son feas"** → 13 templates con
+5. **"Las soluciones lindas son caras; las gratis son feas"** → 15 templates con
    calidad de diseño real, escalonados por plan.
 
 ### 3.4 Competencia
@@ -202,16 +202,17 @@ educa el mercado a costo cero.
 | # | Módulo | Qué hace | Gating |
 |---|---|---|---|
 | M1 | **Auth y cuentas** | Registro/login JWT, política de contraseñas, términos versionados | — |
-| M2 | **Editor de menú** | Secciones → categorías → productos; variantes (options), ofertas con % y vigencia, recomendado, oculto, no disponible; drag & drop; imágenes a Cloudinary | Free: 15 productos |
+| M2 | **Editor de menú** | Secciones → categorías → productos; variantes (options), ofertas con % y vigencia, recomendado, oculto, no disponible; drag & drop; imágenes a Cloudinary | Free: 15 · Basic: 50 · Pro: ilimitados; programación Basic+ |
 | M3 | **Carta pública** (`/:slug/menu`) | Tabs por sección, tarjetas con foto/precio/badges, skeleton, scroll-reveal, grilla 2 columnas en desktop, sticky header+tabs | — |
 | M4 | **Landing del local** (`/:slug`) | Hero o avatar según template, galería bento, chips de contacto, lightbox | Basic+ |
-| M5 | **Templates** | 13 estilos visuales vía design tokens `--t-*` | Escalonado (3 free / 4 basic / 6 pro) |
+| M5 | **Templates** | 15 estilos visuales vía design tokens `--t-*` | Escalonado (1 Free / 5 totales Basic / 15 totales Pro) |
 | M6 | **Carrito + pedido WhatsApp** | Carrito por local (localStorage), steppers, drawer con total, mensaje `wa.me` prearmado, confirmación al vaciar | Todos los planes |
-| M7 | **Reseñas Google** | CTA "Dejanos tu reseña" en landing y carta si el dueño cargó el link | Todos los planes |
+| M7 | **Reseñas Google** | CTA "Dejanos tu reseña" en landing y carta si el dueño cargó el link | Pro |
 | M8 | **QR descargable** | PDF con el QR de la carta (client-side) | Todos los planes |
 | M9 | **Estadísticas** | Visitas diarias (30 días, tiempo real con polling), ranking top-10 de productos más vistos | Pro+ |
 | M10 | **Import/Export Excel** | Plantilla generada con datos actuales, preview de cambios, confirmación fila a fila | Basic+ |
-| M11 | **Suscripciones** ⚠️ | Checkout MercadoPago, webhook firmado y alta automática implementados; incidente productivo abierto en la creación de preferencias para altas pagas | — |
+| M10b | **Exportación PDF** | Menú imprimible generado desde la carta vigente | Basic+ |
+| M11 | **Suscripciones** ✅ | Checkout MercadoPago, webhook firmado, alta automática y recuperación del intento de pago | — |
 | M12 | **Panel CEO + CRM interno** | KPIs de la plataforma, gestión de clientes (pipeline kanban, notas, eventos automáticos, seguimientos vencidos, export Excel) | Solo admin |
 
 #### Módulos del roadmap 🔜 (ver §11)
@@ -261,11 +262,13 @@ Como dueño, quiero ofrecer tamaños y ofertas con descuento visible.
   de variantes con precio y agregado individual.
 - Una oferta muestra precio nuevo + precio anterior tachado + badge "−N%"; el
   producto en oferta se agrega al precio de oferta como ítem simple.
+- Desde Basic, el rango de fechas activa y desactiva la oferta automáticamente.
 
 **HU-05 · Reseñas (M7)** ✅
 Como dueño, quiero capturar reseñas de clientes contentos.
 - Si cargo el link de reseñas (validado `http(s)://` en cliente **y** servidor), la
   landing y el final de la carta muestran el CTA; si lo borro, desaparece.
+- La carga y exposición de estos datos está protegida para usuarios Pro.
 
 **HU-06 · Decidir con datos (M9)** ✅
 Como dueño Pro, quiero saber cuánto se mira mi carta y qué productos rinden.
@@ -280,8 +283,10 @@ Como dueño con menú grande, quiero actualizar todo en Excel.
 - Descargo la plantilla **con mis datos actuales**, la edito y al subirla veo un
   preview (crear/actualizar/errores por fila) antes de confirmar.
 - Errores por fila no abortan el resto (reporte fila a fila).
+- Basic no puede confirmar una importación que deje más de 50 productos; Pro no
+  tiene límite.
 
-**HU-08 · Cobrar suscripciones (M11)** ⚠️
+**HU-08 · Cobrar suscripciones (M11)** ✅
 Como plataforma, quiero cobrar sin intervención manual.
 - Un alta paga crea un `PendingRegistration`; el checkout usa su id como
   `external_reference` y conserva un token opaco para consultar la activación.
@@ -579,15 +584,15 @@ ahí sí `/api/v1` congelada + API keys por local.
 | Base (`--gold`, `--cream`, `--surface-*`, `--text-*`, radios/sombras/espaciado/escala tipográfica/easings/z-index) | Storefront claro + primitivas compartidas | Cálido, editorial |
 | `--admin-*` | Panel del dueño + CEO + CRM | Oscuro default con **tema claro** vía `data-theme="light"`; derivados calculados con `color-mix()` para que el theming sea cambiar ~30 bases |
 | `--auth-*` | Login/Registro/landing comercial | Oscuro/ámbar, alta energía de conversión |
-| `--t-*` (×13) | Carta pública y landing del local | Un bloque `[data-template]` por template; los premium suman `--t-bg-image` y `--t-btn-bg` metálico |
+| `--t-*` (×15) | Carta pública y landing del local | Un bloque `[data-template]` por template; los premium suman `--t-bg-image` y `--t-btn-bg` metálico |
 
 **Tipografías**: DM Sans (UI), Playfair Display (títulos de carta), Fraunces
 (display de auth/landing), DM Mono (datos/precios del panel CEO).
 
-**Los 13 templates** (producto, no solo estética — son el eje del gating):
-free: Clásico, Natural, Minimal · basic: Moderno, Rojo, Coastal, Charcoal ·
-pro: Terracotta, Lavender, Forest, Aurora, Noir Gold, Platinum (los últimos
-con degradés y botones metálicos).
+**Los 15 templates** (producto, no solo estética — son el eje del gating):
+Free: Clásico · Basic agrega Moderno, Natural, Rojo y Minimal (5 totales) ·
+Pro agrega Aurora, Noir Gold, Coastal, Charcoal, Terracotta, Lavender, Forest,
+Platinum, Ocean y Rosé (15 totales; varios usan degradés y botones metálicos).
 
 **Patrones canónicos ya construidos**: cards con hover spotlight, drawers
 (carrito, detalle CRM), bottom-sheet de acciones, kanban drag & drop, steppers de
@@ -617,9 +622,9 @@ utilidades.
 
 | Plan | Precio | Equivalente mensual | Desbloquea |
 |---|---|---|---|
-| **Gratis** | $0 | $0 | 15 productos, carta QR, publicidad de MenuDigital en la carta |
-| **Basic** | $39.999/mes base | Según período | Productos ilimitados, landing del local, Excel, +4 templates |
-| **Pro** | $59.999/mes base | Según período | Todo Basic + estadísticas, dominio propio 🔜 y +6 templates |
+| **Gratis** | $0 | $0 | Menú/editor, QR, pedido por WhatsApp, hasta 15 productos y publicidad |
+| **Basic** | $39.999/mes base | Según período | Hasta 50 productos, landing, Excel, programación, PDF y 5 diseños |
+| **Pro** | $59.999/mes base | Según período | Todo Basic + ilimitados, métricas, reseñas, 15 diseños y dominio propio 🔜 |
 
 Mecánica de monetización: el **prepago largo se premia** (3 meses ≈10% off,
 6 meses ≈17% y 12 meses 25%); el plan Free hace marketing
@@ -831,7 +836,7 @@ grandes: se intercalan como trabajo continuo.
   (modelos, endpoints, componentes, design system).
 - Código fuente de pricing: `src/components/Admin/Home/AdminHome.tsx` (`PLANS`) y
   `menu-digital-backend/src/config/plans.js` (`PLAN_FEATURES`, `TEMPLATE_MIN_PLAN`,
-  `FREE_ITEM_LIMIT`).
+  `ITEM_LIMITS`).
 
 ---
 

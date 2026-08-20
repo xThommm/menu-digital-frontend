@@ -8,6 +8,7 @@ import CartDrawer from "./CartDrawer";
 import ItemPreviewModal from "./ItemPreviewModal";
 import styles from "./UserMenu.module.css";
 import FreePlanAd from "../../../Common/FreePlanAd";
+import { isOfferActive } from "../../../../lib/offers";
 
 // ── Helpers de formato ────────────────────────────────────────────────────────
 
@@ -199,7 +200,7 @@ function ItemCard({
   const hasOptions  = Object.keys(item.options ?? {}).length > 0;
   const minPrice    = hasOptions ? minOption(item.options) : null;
   const basePrice   = item.price ?? minPrice;
-  const isOnOffer   = item.offerPrice != null && item.price != null;
+  const isOnOffer   = isOfferActive(item);
   const activePrice = isOnOffer ? item.offerPrice! : basePrice;
   const pct         = isOnOffer ? offerPct(item.price!, item.offerPrice!) : null;
 

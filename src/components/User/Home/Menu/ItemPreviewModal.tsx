@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Item } from "../../../../types/index";
 import { useCart } from "../../../../context/useCart";
 import styles from "./ItemPreviewModal.module.css";
+import { isOfferActive } from "../../../../lib/offers";
 
 // ── Helpers de formato (mismos criterios que en UserMenu.tsx) ──────────────────
 
@@ -95,7 +96,7 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
   const hasOptions  = Object.keys(item.options ?? {}).length > 0;
   const minPrice    = hasOptions ? minOption(item.options) : null;
   const basePrice   = item.price ?? minPrice;
-  const isOnOffer   = item.offerPrice != null && item.price != null;
+  const isOnOffer   = isOfferActive(item);
   const activePrice = isOnOffer ? item.offerPrice! : basePrice;
   const pct         = isOnOffer ? offerPct(item.price!, item.offerPrice!) : null;
   const canPickVariant = hasOptions && !isOnOffer;
@@ -331,7 +332,7 @@ function PeekCard({ item, edge, dragY }: { item: Item; edge: "top" | "bottom"; d
   const hasOptions = Object.keys(item.options ?? {}).length > 0;
   const minPrice    = hasOptions ? minOption(item.options) : null;
   const basePrice   = item.price ?? minPrice;
-  const isOnOffer   = item.offerPrice != null && item.price != null;
+  const isOnOffer   = isOfferActive(item);
   const activePrice = isOnOffer ? item.offerPrice! : basePrice;
 
   // calc() mezcla % (tamaño del contenedor) con el px del arrastre en curso,
