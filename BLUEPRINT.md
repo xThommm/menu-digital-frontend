@@ -42,7 +42,7 @@ mobile-first con importación/exportación por Excel.
 - **Estado**: producto en producción (`menudigitalapp.com.ar`), stack React 19 +
   Express + MongoDB Atlas, deploy en Vercel + Koyeb, cobro por MercadoPago.
 - **Modelo**: freemium por suscripción. Free ($0, hasta 15 productos) → Basic
-  ($5.999/mes base) → Pro ($29.999/mes base), con descuentos por prepagar
+  ($39.999/mes base) → Pro ($59.999/mes base), con descuentos por prepagar
   3/6/12 meses. Sin comisiones por venta.
 - **Mercado**: ~67.000 establecimientos gastronómicos en Argentina (FEHGRA). Sector
   golpeado por la caída del consumo (−13% de actividad feb-2025 vs feb-2023), lo que
@@ -285,6 +285,9 @@ Como dueño con menú grande, quiero actualizar todo en Excel.
 Como plataforma, quiero cobrar sin intervención manual.
 - Un alta paga crea un `PendingRegistration`; el checkout usa su id como
   `external_reference` y conserva un token opaco para consultar la activación.
+- Volver atrás, cerrar la pestaña o reintentar recupera el alta pendiente y
+  reutiliza la misma preferencia de MercadoPago. Cambiar plan/período actualiza
+  esa preferencia, evitando acumular links de pago cobrables.
 - Solo el webhook (firma HMAC verificada + consulta del pago real a la API de MP)
   crea la cuenta o cambia `User.subscription`. Un plan_id desconocido se descarta.
 - El período elegido fija `subscriptionExpiresAt`; al completarse, el frontend hace
@@ -610,13 +613,13 @@ utilidades.
 
 ## 10. Modelo de negocio
 
-### 10.1 Pricing vigente ✅ (ARS, julio 2026)
+### 10.1 Pricing vigente ✅ (ARS, agosto 2026)
 
 | Plan | Precio | Equivalente mensual | Desbloquea |
 |---|---|---|---|
 | **Gratis** | $0 | $0 | 15 productos, carta QR, publicidad de MenuDigital en la carta |
-| **Basic** | $5.999/mes base | Según período | Productos ilimitados, landing del local, Excel, +4 templates |
-| **Pro** | $29.999/mes base | Según período | Todo Basic + estadísticas, dominio propio 🔜 y +6 templates |
+| **Basic** | $39.999/mes base | Según período | Productos ilimitados, landing del local, Excel, +4 templates |
+| **Pro** | $59.999/mes base | Según período | Todo Basic + estadísticas, dominio propio 🔜 y +6 templates |
 
 Mecánica de monetización: el **prepago largo se premia** (3 meses ≈10% off,
 6 meses ≈17% y 12 meses 25%); el plan Free hace marketing

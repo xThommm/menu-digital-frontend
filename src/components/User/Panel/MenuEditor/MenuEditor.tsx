@@ -566,7 +566,7 @@ export default function MenuEditorPage() {
     }
   };
 
-  // Dispara el pago real del plan Pro desde el modal de upgrade
+  // Dispara el pago real del plan Basic desde el modal de upgrade
   // (mismo patrón que UserEditor.tsx). Al volver, refetch trae el
   // menú actualizado con los límites del plan nuevo.
   const handleUpgrade = async () => {
@@ -576,7 +576,7 @@ export default function MenuEditorPage() {
       const res = await fetch("/api/payments/crear-preferencia", {
         method: "POST",
         headers: authHeaders,
-        body: JSON.stringify({ planId: "pro" }),
+        body: JSON.stringify({ planId: "basic" }),
       });
       if (!res.ok) throw new Error();
       const { init_point } = await res.json();
@@ -1424,8 +1424,8 @@ export default function MenuEditorPage() {
               </p>
               <p className={styles.modalDesc}>
                 {upgradeReason === "items"
-                  ? `Tu plan gratuito permite hasta ${limits?.itemLimit ?? 15} productos. Con el plan Pro ($29.999) tenés productos ilimitados.`
-                  : "Con el plan Pro ($29.999) podés cargar, actualizar y exportar tu menú completo desde una planilla de Excel."}
+                  ? `Tu plan gratuito permite hasta ${limits?.itemLimit ?? 15} productos. Con el plan Basic ($39.999) tenés productos ilimitados.`
+                  : "Con el plan Basic ($39.999) podés cargar, actualizar y exportar tu menú completo desde una planilla de Excel."}
               </p>
               <div className={styles.modalBtns}>
                 <button
@@ -1442,7 +1442,7 @@ export default function MenuEditorPage() {
                   type="button"
                   disabled={upgrading}
                 >
-                  {upgrading ? <><Spinner size={14} /> Redirigiendo...</> : "Mejorar a Pro"}
+                  {upgrading ? <><Spinner size={14} /> Redirigiendo...</> : "Mejorar a Basic"}
                 </button>
               </div>
             </div>

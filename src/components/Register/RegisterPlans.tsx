@@ -31,7 +31,7 @@ const PLANS: {
   {
     id: "basic",
     name: "Básico",
-    price: 29999,
+    price: 39999,
     description: "Para locales en crecimiento",
     features: [
       "Productos ilimitados",

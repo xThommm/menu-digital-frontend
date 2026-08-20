@@ -163,7 +163,9 @@ Exporta también `STAGES`.
 
 ### `models/PendingRegistration.js`
 Alta paga todavía no convertida en `User`. Guarda temporalmente los datos de
-registro, plan y período, junto con el hash de un token opaco de activación.
+registro, plan y período, junto con el hash de un token opaco de activación y
+el `preferenceId/initPoint` de MercadoPago. Un retry recupera este documento y
+actualiza la misma preferencia en vez de crear otro checkout cobrable.
 `status` recorre `pending/completed/failed`; al completar elimina la contraseña,
 enlaza `userID` y un índice TTL limpia el documento vencido.
 
@@ -336,9 +338,10 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   `GET /clients`, `GET /clients/:userID`, `PATCH /clients/:userID`,
   `POST /clients/:userID/notes`, `DELETE /clients/:userID/notes/:noteID`.
 - **`routes/paymentRoutes.js`** — define `PLANES` (Basic/Pro) y períodos de
-  1/3/6/12 meses. `POST /crear-preferencia-registro` crea el alta pendiente y
-  devuelve `init_point` + token opaco; `POST /registro/estado` permite esperar al
-  webhook; `POST /webhook` crea la cuenta, fija su vencimiento y habilita el login.
+  1/3/6/12 meses. `POST /crear-preferencia-registro` crea o recupera el alta
+  pendiente, crea/actualiza una única preferencia idempotente y devuelve
+  `init_point` + token opaco; `POST /registro/estado` permite esperar al webhook;
+  `POST /webhook` crea la cuenta, fija su vencimiento y habilita el login.
 
 ## utils/
 
