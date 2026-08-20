@@ -4,3 +4,4 @@ dist/
 .env.production
 test.md
 ARCHITECTURE.md
+README.md

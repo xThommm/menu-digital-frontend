@@ -211,7 +211,7 @@ educa el mercado a costo cero.
 | M8 | **QR descargable** | PDF con el QR de la carta (client-side) | Todos los planes |
 | M9 | **Estadísticas** | Visitas diarias (30 días, tiempo real con polling), ranking top-10 de productos más vistos | Pro+ |
 | M10 | **Import/Export Excel** | Plantilla generada con datos actuales, preview de cambios, confirmación fila a fila | Basic+ |
-| M11 | **Suscripciones** | Checkout MercadoPago, webhook firmado que activa el plan | — |
+| M11 | **Suscripciones** ⚠️ | Checkout MercadoPago, webhook firmado y alta automática implementados; incidente productivo abierto en la creación de preferencias para altas pagas | — |
 | M12 | **Panel CEO + CRM interno** | KPIs de la plataforma, gestión de clientes (pipeline kanban, notas, eventos automáticos, seguimientos vencidos, export Excel) | Solo admin |
 
 #### Módulos del roadmap 🔜 (ver §11)
@@ -228,6 +228,8 @@ próximo.
 
 **HU-01 · Alta y primer menú (M1, M2)** ✅
 Como dueño, quiero registrarme y publicar mi primera carta en menos de 30 minutos.
+- La landing muestra Free/Basic/Pro con precio y features sin abrir un modal; el CTA
+  conserva el plan elegido al entrar al formulario.
 - Dado un username libre y contraseña válida (≥8, no común), al registrarme entro
   directo al panel con sesión iniciada (JWT 7 días).
 - Si no acepto términos, el backend rechaza el alta (400).
@@ -279,7 +281,7 @@ Como dueño con menú grande, quiero actualizar todo en Excel.
   preview (crear/actualizar/errores por fila) antes de confirmar.
 - Errores por fila no abortan el resto (reporte fila a fila).
 
-**HU-08 · Cobrar suscripciones (M11)** ✅
+**HU-08 · Cobrar suscripciones (M11)** ⚠️
 Como plataforma, quiero cobrar sin intervención manual.
 - Un alta paga crea un `PendingRegistration`; el checkout usa su id como
   `external_reference` y conserva un token opaco para consultar la activación.
@@ -288,6 +290,10 @@ Como plataforma, quiero cobrar sin intervención manual.
 - El período elegido fija `subscriptionExpiresAt`; al completarse, el frontend hace
   un único login y redirige automáticamente al dashboard.
 - El alta o cambio de plan queda logueado como evento en el CRM.
+- **Incidente abierto 2026-08-20:** en producción, el alta paga alcanza
+  `POST /payments/crear-preferencia-registro` pero recibe 500 antes de redirigir a
+  MercadoPago. La causa exacta requiere revisar los logs internos de Koyeb; hasta
+  resolverla, este criterio no se considera validado end-to-end.
 
 **HU-09 · Gestionar clientes (M12)** ✅
 Como CEO, quiero operar la cartera desde un solo lugar.
@@ -407,6 +413,7 @@ Dueño/CEO ──────────▶  ▼
 | `pageviews` | Visitas diarias agregadas por local | único `{userID, date}` |
 | `itemviews` | Vistas diarias agregadas por producto | único `{userID, itemID, date}` + `{userID, date}` |
 | `crmprofiles` | CRM interno (etapa, tags, seguimiento, notas/eventos) — **aislado de `users` a propósito** | `userID` único |
+| `pendingregistrations` | Altas pagas todavía no convertidas en User; conserva plan/período, token opaco hasheado y estado | `activationTokenHash` único sparse; TTL por `expiresAt` |
 
 Convenciones vigentes: fechas de métricas como string `YYYY-MM-DD` en huso BA
 (upserts atómicos sin líos de timezone); `userID` denormalizado en `itemviews` para
@@ -583,7 +590,8 @@ con degradés y botones metálicos).
 (carrito, detalle CRM), bottom-sheet de acciones, kanban drag & drop, steppers de
 cantidad, toggles con spring, badges semánticos, spinners centralizados (página
 completa / inline / botón), skeletons por vista, estados vacíos y not-found
-compartidos (`.t-notfound*`).
+compartidos (`.t-notfound*`). La landing comercial expone las tarjetas de planes
+inline y usa un CTA propio por plan, evitando un modal adicional en el embudo.
 
 **Regla de oro del CSS** (vigente y auditada): lo que se repite en 2+ módulos se
 centraliza en `globals.css`; los módulos no redeclaran keyframes ni spinners ni
@@ -613,10 +621,12 @@ utilidades.
 Mecánica de monetización: el **prepago largo se premia** (3 meses ≈10% off,
 6 meses ≈17% y 12 meses 25%); el plan Free hace marketing
 (publicidad de la plataforma en cartas gratuitas) y alimenta el pipeline del CRM.
+La selección nace en la landing y viaja por query string al registro; Free crea la
+cuenta sin checkout, mientras Basic/Pro confirman período antes de abrir MercadoPago.
 
-**Nota operativa**: con inflación ARS, los precios se revisan trimestralmente; los
-valores viven en un solo lugar (`PLANES` en backend + `PLANS` en la landing) para
-que el ajuste sea un cambio chico.
+**Nota operativa**: con inflación ARS, los precios se revisan trimestralmente. Hoy
+los valores están duplicados entre `PLANES` en backend y `PLANS` en la landing/
+registro, por lo que cada ajuste debe sincronizar ambos repositorios.
 
 ### 10.2 Unit economics (supuestos explícitos, base 2026)
 
@@ -822,5 +832,5 @@ grandes: se intercalan como trabajo continuo.
 
 ---
 
-*Versión 2 — julio 2026. Reemplaza al esqueleto v1. Documento vivo: se actualiza al
-cierre de cada trimestre junto con el roadmap.*
+*Versión 2 — actualizada el 20 de agosto de 2026. Reemplaza al esqueleto v1.
+Documento vivo: se actualiza al cierre de cada trimestre junto con el roadmap.*

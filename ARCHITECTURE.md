@@ -10,9 +10,11 @@ keyframes y utilidades — ver [styles/](#styles)).
 - **Backend** (`menu-digital-backend`): Node + Express 4 + Mongoose 7 (MongoDB Atlas). Deploy en Koyeb.
 - **Servicios externos**: Cloudinary (imágenes), MercadoPago (pagos).
 
-Modelo de negocio: cada dueño de local se registra (plan `free`), carga su menú y
-obtiene una carta pública en `menudigitalapp.com.ar/<slug>/menu`. Los planes pagos
-(`basic` → `pro`) desbloquean features de forma escalonada.
+Modelo de negocio: el dueño elige `free`, `basic` o `pro` antes de completar el alta.
+Free crea la cuenta sin checkout; Basic/Pro crean un registro pendiente y pasan por
+MercadoPago antes de crear el `User`. Luego carga su menú y obtiene una carta pública
+en `menudigitalapp.com.ar/<slug>/menu`. Los planes pagos desbloquean features de forma
+escalonada.
 
 ---
 
@@ -381,8 +383,8 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
 
 ### `routes/AppRoutes.tsx`
 - **`AppRoutes`** — declara todas las rutas con `lazy()`:
-  - Públicas: `/` (AdminHome = landing comercial), `/login`, `/register`, `/terminos`,
-    `/privacidad`, `/contacto`.
+  - Públicas: `/` (AdminHome = landing comercial), `/login`, `/register`,
+    `/register/plans`, `/register/success`, `/terminos`, `/privacidad`, `/contacto`.
   - Admin (protegidas por `AdminRoute` + `AdminLayout`, el shell con sidebar/bottomnav):
     `/admin` (CEODashboard), `/admin/crm` (CrmClients).
   - Dueño (protegidas por `UserRoute` + `DashboardLayout`): `/dashboard`,
@@ -553,11 +555,12 @@ sistema —, `CrmProfile`, `CrmClient`, `CrmClientDetail`). `ContactInfo` incluy
 
 ### `components/Admin/Home/AdminHome.tsx`
 Landing comercial pública (la home de `/`). Presenta la propuesta, precios y CTA a
-registrarse. Datos locales: `PLANS` (grilla Gratis/Básico/Pro con
-precio/features/badge) y `REVIEWS`. Componente principal **`HomePage`** con varios
-hooks de animación (`useParallax`, `useReveal`, `useCounterOnView`, steam rings), un
-modal de billing, `CustomCursor`, y navegación mobile. `goRegister()` manda a
-`/register` (el cobro real se dispara ya logueado desde el panel).
+registrarse. Datos locales: `PLANS` (grilla Free/Basic/Pro con precio, features y
+badge) y `REVIEWS`. Las tarjetas viven en una sección inline de la landing —no hay
+modal de precios— y enlazan a `/register?plan=<id>`: Free muestra "Crear cuenta" y
+Basic/Pro, "Pagar y crear cuenta". Los CTA generales desplazan hasta esa sección.
+Componente principal **`HomePage`** con hooks de animación (`useParallax`,
+`useReveal`, `useCounterOnView`, steam rings), `CustomCursor` y navegación mobile.
 
 ### `components/Admin/Panel/AdminLayout.tsx`
 Shell del **panel CEO** (sidebar desktop + bottom nav mobile + `<Outlet/>` para `/admin`
@@ -598,8 +601,22 @@ vars, theme-aware) y varios íconos SVG. La navegación/logout viven en `AdminLa
   según rol al entrar. Toggle de ver/ocultar contraseña, "recordarme".
 
 ### `components/Register/Register.tsx`
-- **`Register`** — formulario de registro. Valida username/password (min 8 chars,
-  coincidencia) y aceptación de términos; llama al registro y entra.
+- **`Register`** — formulario común para altas gratuitas y pagas. Valida
+  username/password (min 8 chars, coincidencia) y aceptación de términos; guarda los
+  datos temporalmente en `sessionStorage` como `pendingRegister` y navega a
+  `/register/plans`. Si recibe `?plan=free|basic|pro`, conserva esa elección en la URL.
+
+### `components/Register/RegisterPlans.tsx`
+- **`RegisterPlans`** — confirma el plan elegido (Basic por defecto si no vino uno
+  válido) y ofrece períodos de 1/3/6/12 meses para planes pagos. Free llama a
+  `POST /users/register`, inicia sesión y redirige al dashboard. Basic/Pro llaman a
+  `POST /payments/crear-preferencia-registro`, guardan el token opaco y redirigen al
+  checkout de MercadoPago.
+
+### `components/Register/RegisterSuccess.tsx`
+- **`RegisterSuccess`** — pantalla de retorno del alta paga. Consulta
+  `POST /payments/registro/estado` hasta que el webhook complete la cuenta; luego hace
+  un único login, limpia `pendingRegister` y redirige a `/dashboard`.
 
 ### `components/User/Home/Home/UserHome.tsx`
 **Landing pública por slug** (`/:slug`). Núcleo del sistema de templates.
@@ -778,21 +795,30 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
 
 # Flujos clave
 
-- **Registro y sesión**: Free usa `POST /users/register` y entra directo. En un alta
-  paga, `RegisterPlans` crea la preferencia y conserva el token opaco; al volver de MP,
-  `RegisterSuccess` espera `/payments/registro/estado`, ejecuta un único login cuando el
-  webhook completa la cuenta y redirige a `/dashboard`. El JWT queda en localStorage
-  (`AuthProvider`). Los guards `UserRoute`/`AdminRoute` protegen las rutas.
+- **Registro y sesión**: la landing enlaza a `/register?plan=<id>` y la selección se
+  mantiene al pasar a `RegisterPlans`. Free usa `POST /users/register`, inicia sesión
+  y entra directo al dashboard. En un alta paga, `RegisterPlans` crea la preferencia
+  y conserva el token opaco; al volver de MP, `RegisterSuccess` espera
+  `/payments/registro/estado`, ejecuta un único login cuando el webhook completa la
+  cuenta y redirige a `/dashboard`. El JWT queda en localStorage (`AuthProvider`). Los
+  guards `UserRoute`/`AdminRoute` protegen las rutas.
 - **Carga del menú**: el dueño usa `MenuEditor` → `/menus` y `/items` (CRUD). Las
   imágenes van directo a Cloudinary. Los ocultos se ven en el editor pero no en la carta
   pública.
 - **Carta pública**: visitante entra a `/:slug/menu` → `fetchUserWithMenu` arma el menú
   agrupado, filtra ocultos y registra la visita (`trackView`, horario BA).
-- **Planes y pagos**: desde el panel, el upsell dispara `POST /payments/crear-preferencia`
-  → MercadoPago → al aprobarse, el **webhook** (`mpWebhook`) verifica el pago real y
-  actualiza `User.subscription`. El gating de features (límite de items, Excel, stats,
-  templates) se valida en el backend (`requirePlan` / `TEMPLATE_MIN_PLAN`) y se refleja
-  en la UI (`lib/plans.ts`).
+- **Planes y pagos**: hay dos entradas. El alta paga usa
+  `POST /payments/crear-preferencia-registro` antes de que exista el usuario; el upsell
+  desde el panel usa `POST /payments/crear-preferencia` sobre una cuenta autenticada.
+  En ambos casos el **webhook** (`mpWebhook`) verifica el pago real antes de crear la
+  cuenta o actualizar `User.subscription`. El gating de features (límite de items,
+  Excel, stats, templates) se valida en el backend (`requirePlan` /
+  `TEMPLATE_MIN_PLAN`) y se refleja en la UI (`lib/plans.ts`).
+
+  **Incidente abierto (2026-08-20):** el alta paga llega correctamente al endpoint
+  productivo, pero `crear-preferencia-registro` responde 500 con el mensaje genérico
+  "No se pudo crear la preferencia de pago". Falta revisar el log interno de Koyeb
+  para distinguir si falla `PendingRegistration.save()` o la API de MercadoPago.
 - **Pedido por WhatsApp**: en la carta pública el cliente arma un carrito
   (`CartProvider`, persistido en localStorage por slug) tocando "+" en cada producto
   (con selección de variante si tiene opciones). El `CartDrawer` muestra el pedido y
