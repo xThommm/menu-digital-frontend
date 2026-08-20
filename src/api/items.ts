@@ -10,7 +10,7 @@ export const createItem = async (data: {
   description?: string
   price?: number | null
   offerPrice?: number | null
-  offerDate?: string | null
+  offerRange?: { from: string | null; to: string | null }
   options?: Record<string, number>
   isExtra?: boolean
   recommended?: boolean

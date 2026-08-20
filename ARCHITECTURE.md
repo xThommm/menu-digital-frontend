@@ -135,8 +135,9 @@ null si no tiene), `code`, `title` (requerido), `description`, `image`, `section
 ### `models/Item.js`
 Un **producto** del menú. Campos: `menuID` (ref Menu), `code`, `title` (requerido),
 `description`, `price` (null = sin precio), `offerPrice`, `offerRange` (`{from,to}`
-fechas de vigencia de la oferta), `options` (Map string→number, ej variantes de
-tamaño), `image`, `available`, `isExtra`, `recommended`, `hidden`, `apt` (objeto
+con fecha y hora de vigencia de la oferta), `options` (Map string→number, ej variantes de
+tamaño), `image`, `available`, `availabilitySchedule` (programación semanal
+`enabled` + hasta 4 rangos `{from,to}` por día), `isExtra`, `recommended`, `hidden`, `apt` (objeto
 libre: alérgenos, calorías...). `timestamps`.
 
 ### `models/PageView.js`
@@ -211,10 +212,13 @@ Endpoints:
   `categoryCount` (para el dashboard).
 - **`fetchUserWithMenu`** `GET /api/users/:slug/menu` — carta **pública** por slug:
   arma el menú agrupado (secciones→categorías→items), filtra ocultos, y dispara
-  `trackView`. Es lo que renderiza la carta pública.
+  `trackView`. Para Basic+ combina el interruptor manual `available` con la programación
+  semanal del producto en horario de Buenos Aires; fuera de horario el item permanece
+  visible como no disponible. Es lo que renderiza la carta pública.
 - **`fetchOwnMenu`** `GET /api/users/me/menu` — menú del dueño autenticado, **sin**
   filtrar ocultos (para gestionarlos en el editor) + objeto `limits`
-  (`itemCount`, `itemLimit`, `canImportExcel`, `canExportPdf`) para la UI de gating.
+  (`itemCount`, `itemLimit`, `canImportExcel`, `canExportPdf`, `canScheduleItems`) para
+  la UI de gating.
 - **`fetchStats`** `GET /api/users/me/stats` (plan pro+) — devuelve `totalViews` y la
   serie `last30Days` (30 puntos, rellenando días sin visitas con 0), con las fechas
   calculadas en horario de Buenos Aires.
@@ -228,7 +232,8 @@ Endpoints:
 - **`fetchUser`** `GET /api/users/:slug` — datos públicos de un local (landing por
   slug), disponible desde Basic; Free recibe 403 y el frontend deriva a la carta.
 - **`downloadMenuPdf`** `GET /api/users/:slug/menu/pdf` — genera el menú imprimible,
-  disponible desde Basic aunque la URL sea pública.
+  disponible desde Basic aunque la URL sea pública; excluye productos manualmente
+  pausados o fuera de su horario programado.
 - **`editUser`** `PUT /api/users/me` — edita `contactInfo/hasDelivery/media` (whitelist;
   `template` queda afuera a propósito, va por `useTemplate`). `googleReviewUrl` es el
   link/Place ID de reseñas requieren Pro y el link debe empezar con `http(s)://`.
@@ -257,8 +262,8 @@ Endpoints:
 ### `controllers/itemController.js`
 - **`verifyMenuOwnership(menuID, userID)`** — igual patrón que arriba.
 - **`newItem`** `POST /api/items` — crea producto; aplica el tope escalonado (Free 15,
-  Basic 50, Pro ilimitado), protege la programación por fechas desde Basic y valida
-  unicidad de `code` **por usuario** (no global).
+  Basic 50, Pro ilimitado), protege la programación de ofertas y disponibilidad desde
+  Basic, valida horarios/solapamientos y la unicidad de `code` **por usuario** (no global).
 - **`editItem`** `PUT /api/items/:itemID` — edita campos de contenido (whitelist);
   unicidad de code por usuario solo si cambia.
 - **`moveItem`** `PATCH /api/items/:itemID/move` — mueve el item a otra categoría
@@ -356,6 +361,11 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   dependencias). Evita que las visitas después de las 21:00 se cuenten al día siguiente.
   **`addCalendarMonths(date, months)`** calcula vencimientos respetando el último día
   de meses cortos. También exporta `TIMEZONE_BA`.
+- **`utils/offers.js`** — normaliza y valida precio/período de una oferta, y resuelve
+  si está activa en el instante actual. Una oferta sin período es manual/permanente;
+  una programada requiere inicio y fin y solo se expone públicamente dentro del rango.
+- **`utils/itemAvailability.js`** — valida las franjas semanales de disponibilidad,
+  detecta solapamientos y calcula el estado actual en horario de Buenos Aires.
 - **`utils/slug.js`** — **`generateSlug(name)`** centraliza la normalización usada por
   el registro gratuito y el alta paga.
 - **`utils/crmEvents.js`** — **`logCrmEvent(userID, text)`**: inserta un evento
@@ -722,7 +732,9 @@ Editor del menú (`/menu/editor`). El componente más grande.
   massive-import, modales de borrado y de upgrade). Fetch a `/users/me/menu`, `refetch`,
   handlers CRUD de items/categorías/secciones, drag & drop, subida de imágenes directo a
   Cloudinary, **exportar/importar Excel** y **exportar PDF** (gateados a Basic con
-  modal de upsell). El modal dirige a Basic o Pro según el límite alcanzado.
+  modal de upsell). El formulario del producto permite activar una programación semanal
+  Basic+ con varios rangos por día, incluso cruzando medianoche, y programar el inicio y
+  fin de una oferta con fecha y hora. El modal dirige a Basic o Pro según el límite alcanzado.
 
 ### `components/User/Panel/UserEditor/UserEditor.tsx`
 "Mi negocio" (`/user/editor`). Tabs info / media / template.
@@ -813,13 +825,14 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   imágenes van directo a Cloudinary. Los ocultos se ven en el editor pero no en la carta
   pública.
 - **Carta pública**: visitante entra a `/:slug/menu` → `fetchUserWithMenu` arma el menú
-  agrupado, filtra ocultos y registra la visita (`trackView`, horario BA).
+  agrupado, filtra ocultos, calcula la disponibilidad semanal de cada producto en
+  horario BA y registra la visita (`trackView`).
 - **Planes y pagos**: hay dos entradas. El alta paga usa
   `POST /payments/crear-preferencia-registro` antes de que exista el usuario; el upsell
   desde el panel usa `POST /payments/crear-preferencia` sobre una cuenta autenticada.
   En ambos casos el **webhook** (`mpWebhook`) verifica el pago real antes de crear la
   cuenta o actualizar `User.subscription`. El gating de features (límite de items,
-  Excel, PDF, landing, reseñas, ofertas programadas, stats y templates) se valida en el backend (`requirePlan` /
+  Excel, PDF, landing, reseñas, ofertas y disponibilidad programadas, stats y templates) se valida en el backend (`requirePlan` /
   `TEMPLATE_MIN_PLAN`) y se refleja en la UI (`lib/plans.ts`).
 
 - **Pedido por WhatsApp**: en la carta pública el cliente arma un carrito

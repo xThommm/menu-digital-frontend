@@ -6,6 +6,8 @@ import type {
   AdminCategoria as Categoria,
   AdminSeccion as Seccion,
   AdminMenuData as MenuData,
+  DayKey,
+  ItemAvailabilitySchedule,
 } from "../../../../types";
 import Spinner from "../../../Common/Spinner";
 import styles from "./MenuEditor.module.css";
@@ -22,25 +24,61 @@ interface ItemFormState {
   description: string;
   price: string;
   offerPrice: string;
+  offerScheduled: boolean;
+  offerRange: { from: string; to: string };
   code: string;
   image: string;
   available: boolean;
   hidden: boolean;
   recommended: boolean;
   options: OptionRow[];
+  availabilitySchedule: ItemAvailabilitySchedule;
 }
+
+const DAYS: { key: DayKey; label: string }[] = [
+  { key: "mon", label: "Lunes" },
+  { key: "tue", label: "Martes" },
+  { key: "wed", label: "Miércoles" },
+  { key: "thu", label: "Jueves" },
+  { key: "fri", label: "Viernes" },
+  { key: "sat", label: "Sábado" },
+  { key: "sun", label: "Domingo" },
+];
+
+const emptyAvailabilitySchedule = (): ItemAvailabilitySchedule => ({
+  enabled: false,
+  mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [],
+});
+
+const toBuenosAiresDateTimeInput = (value?: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value: partValue }) => [type, partValue]));
+  return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}`;
+};
+
+const toBuenosAiresISOString = (value: string) => value ? `${value}:00-03:00` : null;
 
 const EMPTY_ITEM: ItemFormState = {
   title: "",
   description: "",
   price: "",
   offerPrice: "",
+  offerScheduled: false,
+  offerRange: { from: "", to: "" },
   code: "",
   image: "",
   available: true,
   hidden: false,
   recommended: false,
   options: [],
+  availabilitySchedule: emptyAvailabilitySchedule(),
 };
 
 // ── Subida de imagen de producto (directo a Cloudinary, sin passar por el backend) ──
@@ -353,6 +391,8 @@ export default function MenuEditorPage() {
     itemLimit: number | null;
     canImportExcel: boolean;
     canExportPdf: boolean;
+    canScheduleItems?: boolean;
+    canScheduleOffers?: boolean;
   } | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState(false);
@@ -361,7 +401,7 @@ export default function MenuEditorPage() {
   // Modal de upgrade compartido: se abre por el límite de productos
   // del plan free o por intentar usar el importador de Excel sin plan
   // pago. "reason" solo cambia el texto que se muestra.
-  const [upgradeReason, setUpgradeReason] = useState<"items" | "excel" | "pdf" | null>(null);
+  const [upgradeReason, setUpgradeReason] = useState<"items" | "excel" | "pdf" | "schedule" | "offer" | null>(null);
   const [upgrading,     setUpgrading]     = useState(false);
 
   const [imageUploading, setImageUploading] = useState(false);
@@ -377,6 +417,8 @@ export default function MenuEditorPage() {
   // backend no enviaban `canExportPdf`. PDF y Excel requieren el mismo plan
   // Basic, así que el permiso existente es un fallback seguro.
   const canExportPdf = limits?.canExportPdf ?? limits?.canImportExcel ?? false;
+  const canScheduleItems = limits?.canScheduleItems ?? limits?.canImportExcel ?? false;
+  const canScheduleOffers = limits?.canScheduleOffers ?? limits?.canImportExcel ?? false;
 
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [dragOverCat, setDragOverCat] = useState<string | null>(null);
@@ -477,7 +519,7 @@ export default function MenuEditorPage() {
     }
     setActiveCategoria(cat);
     setActiveItem(null);
-    setItemForm(EMPTY_ITEM);
+    setItemForm({ ...EMPTY_ITEM, availabilitySchedule: emptyAvailabilitySchedule() });
     setError("");
     setView("item-form");
   }, [limits]);
@@ -490,12 +532,29 @@ export default function MenuEditorPage() {
       description: item.description || "",
       price:       item.price?.toString()      || "",
       offerPrice:  item.offerPrice?.toString() || "",
+      offerScheduled: Boolean(item.offerRange?.from || item.offerRange?.to),
+      offerRange: {
+        from: toBuenosAiresDateTimeInput(item.offerRange?.from),
+        to: toBuenosAiresDateTimeInput(item.offerRange?.to),
+      },
       code:        item.code || "",
       available:   item.available,
       hidden:      item.hidden,
       recommended: item.recommended,
       image: item.image || "",
       options:     Object.entries(item.options || {}).map(([key, value]) => ({ key, value: value.toString() })),
+      availabilitySchedule: item.availabilitySchedule
+        ? {
+            enabled: item.availabilitySchedule.enabled,
+            mon: [...item.availabilitySchedule.mon],
+            tue: [...item.availabilitySchedule.tue],
+            wed: [...item.availabilitySchedule.wed],
+            thu: [...item.availabilitySchedule.thu],
+            fri: [...item.availabilitySchedule.fri],
+            sat: [...item.availabilitySchedule.sat],
+            sun: [...item.availabilitySchedule.sun],
+          }
+        : emptyAvailabilitySchedule(),
     });
     setError("");
     setView("item-form");
@@ -533,13 +592,37 @@ export default function MenuEditorPage() {
   }, []);
 
   const saveItem = async () => {
+    const preservesLockedOffer = !canScheduleOffers && Boolean(activeItem) && itemForm.offerScheduled;
     if (!itemForm.title.trim()) { setError("El nombre es obligatorio."); return; }
     if (!itemForm.code.trim()) { setError("El código es obligatorio."); return; }
     if (!itemForm.price.trim()) { setError("El precio es obligatorio."); return; }
     if (itemForm.price !== "" && isNaN(Number(itemForm.price))) { setError("El precio debe ser un número."); return; }
     if (itemForm.price !== "" && (!Number(itemForm.price) || Number(itemForm.price) <= 0)) { setError("El precio debe ser un número positivo."); return; }
-    if (itemForm.offerPrice !== "" && isNaN(Number(itemForm.offerPrice))) { setError("El precio de oferta debe ser un número."); return; }
-    if (itemForm.offerPrice !== "" && (!Number(itemForm.offerPrice) || Number(itemForm.offerPrice) <= 0)) { setError("El precio de oferta debe ser un número positivo."); return; }
+    if (!preservesLockedOffer && itemForm.offerPrice !== "" && isNaN(Number(itemForm.offerPrice))) { setError("El precio de oferta debe ser un número."); return; }
+    if (!preservesLockedOffer && itemForm.offerPrice !== "" && (!Number(itemForm.offerPrice) || Number(itemForm.offerPrice) <= 0)) { setError("El precio de oferta debe ser un número positivo."); return; }
+    if (!preservesLockedOffer && itemForm.offerPrice !== "" && Number(itemForm.offerPrice) >= Number(itemForm.price)) {
+      setError("El precio de oferta debe ser menor al precio original.");
+      return;
+    }
+    if (itemForm.offerScheduled && !preservesLockedOffer) {
+      if (!itemForm.offerPrice) { setError("Ingresá un precio de oferta antes de programarla."); return; }
+      if (!itemForm.offerRange.from || !itemForm.offerRange.to) {
+        setError("Indicá el inicio y el fin de la oferta.");
+        return;
+      }
+      if (itemForm.offerRange.from >= itemForm.offerRange.to) {
+        setError("El fin de la oferta debe ser posterior al inicio.");
+        return;
+      }
+    }
+    if (itemForm.availabilitySchedule.enabled) {
+      const ranges = DAYS.flatMap(({ key }) => itemForm.availabilitySchedule[key]);
+      if (ranges.length === 0) { setError("Agregá al menos un horario antes de activar la programación."); return; }
+      if (ranges.some(({ from, to }) => !from || !to || from === to)) {
+        setError("Revisá los horarios: cada rango necesita un inicio y un fin diferentes.");
+        return;
+      }
+    }
     setSaving(true); setError("");
 
     try {
@@ -553,28 +636,51 @@ export default function MenuEditorPage() {
         description: itemForm.description,
         image: itemForm.image,
         price: itemForm.price !== "" ? Number(itemForm.price) : null,
-        offerPrice: itemForm.offerPrice !== "" ? Number(itemForm.offerPrice) : null,
+        // Al vencer un plan pago, una programación guardada queda intacta e
+        // inactiva mientras se editan otros datos del producto.
+        ...(preservesLockedOffer
+          ? {}
+          : {
+              offerPrice: itemForm.offerPrice !== "" ? Number(itemForm.offerPrice) : null,
+              offerRange: itemForm.offerScheduled
+                ? {
+                    from: toBuenosAiresISOString(itemForm.offerRange.from),
+                    to: toBuenosAiresISOString(itemForm.offerRange.to),
+                  }
+                : { from: null, to: null },
+            }),
         code: itemForm.code,
         available: itemForm.available,
         hidden: itemForm.hidden,
         recommended: itemForm.recommended,
         options: optionsObj,
+        // Si un plan pago venció, el horario guardado queda intacto e inactivo:
+        // editar otro campo no debe borrarlo ni intentar volver a habilitarlo.
+        ...(canScheduleItems || !itemForm.availabilitySchedule.enabled
+          ? { availabilitySchedule: itemForm.availabilitySchedule }
+          : {}),
       };
       const url    = activeItem ? `/api/items/${activeItem._id}` : "/api/items";
       const method = activeItem ? "PUT" : "POST";
       const res    = await fetch(url, { method, headers: authHeaders, body: JSON.stringify(body) });
+      const data = await res.json().catch(() => ({}));
       if (res.status === 403) {
         // Puede pasar aunque el front ya bloqueó el botón: otra pestaña/
         // dispositivo pudo haber usado el último lugar mientras tanto.
         setView("menu");
-        setUpgradeReason("items");
+        const message = String(data.message || "");
+        setUpgradeReason(
+          message.includes("disponibilidad") ? "schedule"
+            : message.includes("oferta") ? "offer"
+              : "items"
+        );
         return;
       }
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(data.message || "No se pudo guardar el producto.");
       await refetch();
       setView("menu");
-    } catch {
-      setError("No se pudo guardar el producto.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar el producto.");
     } finally {
       setSaving(false);
     }
@@ -1198,10 +1304,71 @@ export default function MenuEditorPage() {
                     placeholder="0"
                     min="0"
                     value={itemForm.offerPrice}
+                    disabled={!canScheduleOffers && itemForm.offerScheduled}
                     onChange={e => setItemForm(f => ({ ...f, offerPrice: e.target.value }))}
                   />
                 </div>
               </div>
+
+              <section className={styles.scheduleCard} aria-labelledby="offer-schedule-title">
+                <div className={styles.scheduleHeader}>
+                  <div>
+                    <div className={styles.scheduleTitleRow}>
+                      <p id="offer-schedule-title" className={styles.toggleLabel}>Programar oferta</p>
+                      {!canScheduleOffers && <span className={styles.schedulePlan}>BÁSICO</span>}
+                    </div>
+                    <p className={styles.toggleDesc}>Activá y desactivá el precio de oferta automáticamente.</p>
+                  </div>
+                  <Toggle
+                    checked={itemForm.offerScheduled}
+                    onChange={() => {
+                      if (!canScheduleOffers && !itemForm.offerScheduled) {
+                        setUpgradeReason("offer");
+                        return;
+                      }
+                      setItemForm(f => ({ ...f, offerScheduled: !f.offerScheduled }));
+                    }}
+                    label="Programar oferta"
+                  />
+                </div>
+
+                {itemForm.offerScheduled && !canScheduleOffers && (
+                  <p className={styles.scheduleInactive}>
+                    La programación guardada está inactiva con el plan Free. Podés desactivarla o mejorar el plan para recuperarla.
+                  </p>
+                )}
+
+                {itemForm.offerScheduled && canScheduleOffers && (
+                  <div className={styles.offerScheduleFields}>
+                    <div className={styles.field}>
+                      <label htmlFor="offer-from">Comienza</label>
+                      <input
+                        id="offer-from"
+                        type="datetime-local"
+                        value={itemForm.offerRange.from}
+                        onChange={e => setItemForm(f => ({
+                          ...f,
+                          offerRange: { ...f.offerRange, from: e.target.value },
+                        }))}
+                      />
+                    </div>
+                    <div className={styles.field}>
+                      <label htmlFor="offer-to">Finaliza</label>
+                      <input
+                        id="offer-to"
+                        type="datetime-local"
+                        value={itemForm.offerRange.to}
+                        min={itemForm.offerRange.from || undefined}
+                        onChange={e => setItemForm(f => ({
+                          ...f,
+                          offerRange: { ...f.offerRange, to: e.target.value },
+                        }))}
+                      />
+                    </div>
+                    <p className={styles.scheduleHint}>Horario de Argentina. Fuera de este período se muestra el precio original.</p>
+                  </div>
+                )}
+              </section>
 
               <div className={styles.field}>
                 <label htmlFor="item-code">Código interno</label>
@@ -1265,6 +1432,123 @@ export default function MenuEditorPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Programación semanal de disponibilidad */}
+              <section className={styles.scheduleCard} aria-labelledby="item-schedule-title">
+                <div className={styles.scheduleHeader}>
+                  <div>
+                    <div className={styles.scheduleTitleRow}>
+                      <p id="item-schedule-title" className={styles.toggleLabel}>Programar disponibilidad</p>
+                      {!canScheduleItems && <span className={styles.schedulePlan}>BÁSICO</span>}
+                    </div>
+                    <p className={styles.toggleDesc}>Mostrá el plato solo en días y horarios determinados.</p>
+                  </div>
+                  <Toggle
+                    checked={itemForm.availabilitySchedule.enabled}
+                    onChange={() => {
+                      if (!canScheduleItems && !itemForm.availabilitySchedule.enabled) {
+                        setUpgradeReason("schedule");
+                        return;
+                      }
+                      setItemForm(f => ({
+                        ...f,
+                        availabilitySchedule: {
+                          ...f.availabilitySchedule,
+                          enabled: !f.availabilitySchedule.enabled,
+                        },
+                      }));
+                    }}
+                    label="Programar disponibilidad"
+                  />
+                </div>
+
+                {itemForm.availabilitySchedule.enabled && !canScheduleItems && (
+                  <p className={styles.scheduleInactive}>
+                    El horario guardado está inactivo con el plan Free. Podés desactivarlo o mejorar el plan para volver a usarlo.
+                  </p>
+                )}
+
+                {itemForm.availabilitySchedule.enabled && canScheduleItems && (
+                  <div className={styles.scheduleDays}>
+                    {DAYS.map(({ key, label }) => {
+                      const ranges = itemForm.availabilitySchedule[key];
+                      return (
+                        <div key={key} className={styles.scheduleDay}>
+                          <div className={styles.scheduleDayHeader}>
+                            <span>{label}</span>
+                            {ranges.length < 4 && (
+                              <button
+                                type="button"
+                                className={styles.textBtn}
+                                onClick={() => setItemForm(f => ({
+                                  ...f,
+                                  availabilitySchedule: {
+                                    ...f.availabilitySchedule,
+                                    [key]: [...f.availabilitySchedule[key], { from: "12:00", to: "15:00" }],
+                                  },
+                                }))}
+                              >
+                                + Horario
+                              </button>
+                            )}
+                          </div>
+                          {ranges.length === 0 && (
+                            <p className={styles.scheduleClosed}>No disponible este día</p>
+                          )}
+                          {ranges.map((range, index) => (
+                            <div key={`${key}-${index}`} className={styles.scheduleRange}>
+                              <input
+                                type="time"
+                                value={range.from}
+                                aria-label={`${label}, hora de inicio ${index + 1}`}
+                                onChange={e => setItemForm(f => {
+                                  const nextRanges = [...f.availabilitySchedule[key]];
+                                  nextRanges[index] = { ...nextRanges[index], from: e.target.value };
+                                  return {
+                                    ...f,
+                                    availabilitySchedule: { ...f.availabilitySchedule, [key]: nextRanges },
+                                  };
+                                })}
+                              />
+                              <span>a</span>
+                              <input
+                                type="time"
+                                value={range.to}
+                                aria-label={`${label}, hora de fin ${index + 1}`}
+                                onChange={e => setItemForm(f => {
+                                  const nextRanges = [...f.availabilitySchedule[key]];
+                                  nextRanges[index] = { ...nextRanges[index], to: e.target.value };
+                                  return {
+                                    ...f,
+                                    availabilitySchedule: { ...f.availabilitySchedule, [key]: nextRanges },
+                                  };
+                                })}
+                              />
+                              <button
+                                type="button"
+                                className={styles.removeBtn}
+                                aria-label={`Eliminar horario ${index + 1} del ${label}`}
+                                onClick={() => setItemForm(f => ({
+                                  ...f,
+                                  availabilitySchedule: {
+                                    ...f.availabilitySchedule,
+                                    [key]: f.availabilitySchedule[key].filter((_, rangeIndex) => rangeIndex !== index),
+                                  },
+                                }))}
+                              >
+                                {icons.close}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                    <p className={styles.scheduleHint}>
+                      Horario de Argentina. Podés usar rangos que terminen al día siguiente, por ejemplo 20:00 a 02:00.
+                    </p>
+                  </div>
+                )}
+              </section>
 
               {/* Toggles */}
               <div className={styles.toggleGroup}>
@@ -1478,7 +1762,11 @@ export default function MenuEditorPage() {
                   ? `Llegaste al límite de ${limits?.itemLimit ?? 15} productos`
                   : upgradeReason === "excel"
                     ? "Importar y exportar en Excel es una función del plan Básico"
-                    : "Exportar el menú a PDF es una función del plan Básico"}
+                    : upgradeReason === "pdf"
+                      ? "Exportar el menú a PDF es una función del plan Básico"
+                      : upgradeReason === "schedule"
+                        ? "Programar la disponibilidad es una función del plan Básico"
+                        : "Programar ofertas es una función del plan Básico"}
               </p>
               <p className={styles.modalDesc}>
                 {upgradeReason === "items"
@@ -1487,7 +1775,11 @@ export default function MenuEditorPage() {
                     : "Con el plan Básico ($39.999) podés cargar hasta 50 productos."
                   : upgradeReason === "excel"
                     ? "Con el plan Básico ($39.999) podés cargar, actualizar y exportar tu menú completo desde una planilla de Excel."
-                    : "Con el plan Básico ($39.999) podés descargar una versión imprimible de tu menú."}
+                    : upgradeReason === "pdf"
+                      ? "Con el plan Básico ($39.999) podés descargar una versión imprimible de tu menú."
+                      : upgradeReason === "schedule"
+                        ? "Con el plan Básico ($39.999) podés definir varios horarios por día para cada producto."
+                        : "Con el plan Básico ($39.999) el precio de oferta se activa y finaliza automáticamente."}
               </p>
               <div className={styles.modalBtns}>
                 <button

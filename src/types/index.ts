@@ -55,6 +55,22 @@ export interface DayHours {
   close: string
 }
 
+export interface TimeRange {
+  from: string
+  to: string
+}
+
+export interface ItemAvailabilitySchedule {
+  enabled: boolean
+  mon: TimeRange[]
+  tue: TimeRange[]
+  wed: TimeRange[]
+  thu: TimeRange[]
+  fri: TimeRange[]
+  sat: TimeRange[]
+  sun: TimeRange[]
+}
+
 export type Schedule = Record<DayKey, DayHours>
 
 export interface User {
@@ -113,6 +129,7 @@ export interface Item {
   options: Record<string, number>
   image: string
   available: boolean
+  availabilitySchedule?: ItemAvailabilitySchedule
   isExtra: boolean
   recommended: boolean
   hidden: boolean
@@ -191,9 +208,11 @@ export interface AdminItem {
   description: string
   price: number | null
   offerPrice: number | null
+  offerRange?: { from: string | null; to: string | null }
   options: Record<string, number>
   image: string
   available: boolean
+  availabilitySchedule?: ItemAvailabilitySchedule
   hidden: boolean
   recommended: boolean
   code: string

@@ -645,6 +645,120 @@
   background: var(--admin-green);
 }
 
+/* ── Programación semanal del producto ── */
+.scheduleCard {
+  margin: 1.25rem 0;
+  border: 0.5px solid var(--admin-border-subtle);
+  border-radius: var(--admin-radius-lg);
+  background: var(--admin-bg-surface);
+  overflow: hidden;
+}
+
+.scheduleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+}
+
+.scheduleTitleRow,
+.scheduleDayHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.schedulePlan {
+  border: 0.5px solid var(--admin-gold-border);
+  border-radius: var(--admin-radius-sm);
+  padding: 0.15rem 0.35rem;
+  color: var(--admin-gold);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.scheduleDays {
+  border-top: 0.5px solid var(--admin-border-subtle);
+}
+
+.scheduleDay {
+  padding: 0.8rem 1rem;
+  border-bottom: 0.5px solid var(--admin-border-subtle);
+}
+
+.scheduleDayHeader > span {
+  color: var(--admin-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.scheduleRange {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+  color: var(--admin-text-muted);
+  font-size: 0.76rem;
+}
+
+.scheduleRange input {
+  width: 100%;
+  min-width: 0;
+  background: var(--admin-bg-raised);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  padding: 0.55rem 0.65rem;
+  color: var(--admin-text-secondary);
+  font: inherit;
+  color-scheme: dark;
+}
+
+.scheduleRange input:focus {
+  outline: none;
+  border-color: var(--admin-gold);
+  box-shadow: 0 0 0 3px var(--admin-gold-glow);
+}
+
+.scheduleClosed,
+.scheduleHint {
+  color: var(--admin-text-faint);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.scheduleClosed {
+  margin-top: 0.45rem;
+}
+
+.scheduleHint {
+  padding: 0.8rem 1rem;
+}
+
+.scheduleInactive {
+  border-top: 0.5px solid var(--admin-border-subtle);
+  padding: 0.8rem 1rem;
+  color: var(--admin-text-muted);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.offerScheduleFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 0.75rem;
+  padding: 0.9rem 1rem 0;
+  border-top: 0.5px solid var(--admin-border-subtle);
+}
+
+.offerScheduleFields .scheduleHint {
+  grid-column: 1 / -1;
+  padding: 0 0 0.8rem;
+}
+
 /* ── Botones del form ── */
 .formBtns {
   display: flex;
@@ -1102,6 +1216,10 @@
 /* ── Responsive pequeño ── */
 @media (max-width: 400px) {
   .fieldRow {
+    grid-template-columns: 1fr;
+  }
+
+  .offerScheduleFields {
     grid-template-columns: 1fr;
   }
 

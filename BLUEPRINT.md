@@ -202,7 +202,7 @@ educa el mercado a costo cero.
 | # | Módulo | Qué hace | Gating |
 |---|---|---|---|
 | M1 | **Auth y cuentas** | Registro/login JWT, política de contraseñas, términos versionados | — |
-| M2 | **Editor de menú** | Secciones → categorías → productos; variantes (options), ofertas con % y vigencia, recomendado, oculto, no disponible; drag & drop; imágenes a Cloudinary | Free: 15 · Basic: 50 · Pro: ilimitados; programación Basic+ |
+| M2 | **Editor de menú** | Secciones → categorías → productos; variantes (options), ofertas manuales o programadas con fecha/hora, disponibilidad semanal por plato con múltiples franjas, recomendado, oculto/no disponible; drag & drop; imágenes a Cloudinary | Free: 15 · Basic: 50 · Pro: ilimitados; programación Basic+ |
 | M3 | **Carta pública** (`/:slug/menu`) | Tabs por sección, tarjetas con foto/precio/badges, skeleton, scroll-reveal, grilla 2 columnas en desktop, sticky header+tabs | — |
 | M4 | **Landing del local** (`/:slug`) | Hero o avatar según template, galería bento, chips de contacto, lightbox | Basic+ |
 | M5 | **Templates** | 15 estilos visuales vía design tokens `--t-*` | Escalonado (1 Free / 5 totales Basic / 15 totales Pro) |
@@ -262,7 +262,8 @@ Como dueño, quiero ofrecer tamaños y ofertas con descuento visible.
   de variantes con precio y agregado individual.
 - Una oferta muestra precio nuevo + precio anterior tachado + badge "−N%"; el
   producto en oferta se agrega al precio de oferta como ítem simple.
-- Desde Basic, el rango de fechas activa y desactiva la oferta automáticamente.
+- Desde Basic, un rango con fecha y hora activa y desactiva la oferta automáticamente;
+  sin rango, el precio promocional permanece activo de forma manual.
 
 **HU-05 · Reseñas (M7)** ✅
 Como dueño, quiero capturar reseñas de clientes contentos.
