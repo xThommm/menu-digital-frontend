@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600;700&family=Fraunces:ital,wght@0,700;0,900;1,700;1,900&display=swap');
+
 /* ═══════════════════════════════════════════════════════════════
    RESET & BASE
    ═══════════════════════════════════════════════════════════════ */
@@ -355,6 +357,9 @@
   --auth-error-text:      #ff7a5a;
   --auth-error-field-border: rgba(255, 80, 40, 0.6);
 
+  /* Éxito / activación */
+  --auth-success-text:    #6ddb8c;
+
   /* Tipografías (además de --font-sans ya definido arriba) */
   --font-auth-display: 'Fraunces', serif;
   --font-auth-mono:    'DM Mono', monospace;
@@ -377,6 +382,57 @@
   /* Transición */
   --auth-transition:   0.2s ease;
   --auth-transition-spring: var(--transition-spring);
+}
+
+/* ── Shell compartido de los pasos de autenticación ──
+   RegisterPlans y RegisterSuccess cambian de tamaño y contenido, pero
+   comparten fondo, trama y superficie. */
+.auth-page-shell {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  padding: var(--space-8) var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--auth-bg);
+  color: var(--auth-cream);
+  font-family: var(--font-sans);
+}
+
+.auth-page-shell::before,
+.auth-page-shell::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.auth-page-shell::before {
+  background:
+    radial-gradient(ellipse 58% 52% at 62% 35%, color-mix(in srgb, var(--auth-amber) 11%, transparent), transparent 58%),
+    radial-gradient(ellipse 34% 28% at 8% 84%, rgba(255, 58, 110, 0.05), transparent 55%);
+}
+
+.auth-page-shell::after {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--auth-amber) 4%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--auth-amber) 4%, transparent) 1px, transparent 1px);
+  background-size: 70px 70px;
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 90%);
+  mask-image: linear-gradient(to bottom, black, transparent 90%);
+}
+
+.auth-surface {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  border: 1px solid var(--auth-border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--auth-bg-card) 96%, transparent);
+  box-shadow: var(--auth-shadow-card);
 }
 
 /* ═══════════════════════════════════════════════════════════════

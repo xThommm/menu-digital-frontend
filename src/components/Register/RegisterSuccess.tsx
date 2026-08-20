@@ -94,9 +94,12 @@ export default function RegisterSuccessPage() {
   }, [navigate, pending]);
 
   return (
-    <div className={styles.page}>
-      <div className={styles.card}>
-        <div className={styles.icon}>{error ? "!" : "✓"}</div>
+    <div className="auth-page-shell">
+      <div className={`auth-surface ${styles.card}`} aria-live="polite">
+        <span className={styles.eyebrow}>Menú Digital · Activación</span>
+        <div className={`${styles.icon} ${error ? styles.iconError : styles.iconPending}`}>
+          {error ? "!" : "✓"}
+        </div>
         <h1>{error ? "Estamos verificando tu cuenta" : "¡Pago recibido!"}</h1>
         <p>
           {error || "Estamos activando tu cuenta. Al terminar vas a ingresar automáticamente al panel."}

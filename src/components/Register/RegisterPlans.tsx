@@ -31,7 +31,7 @@ const PLANS: {
   {
     id: "basic",
     name: "Básico",
-    price: 5999,
+    price: 29999,
     description: "Para locales en crecimiento",
     features: [
       "Productos ilimitados",
@@ -43,7 +43,7 @@ const PLANS: {
   {
     id: "pro",
     name: "Pro",
-    price: 29999,
+    price: 59999,
     description: "Máximo control",
     features: [
       "Todo del plan Basic",
@@ -186,9 +186,10 @@ export default function RegisterPlansPage() {
   }
 
   return (
-    <div className={styles.page}>
-      <div className={styles.card}>
+    <div className="auth-page-shell">
+      <div className={`auth-surface ${styles.card}`}>
         <div className={styles.header}>
+          <span className={styles.eyebrow}>Menú Digital · Alta de cuenta</span>
           <h1>Elegí tu plan</h1>
           <p>
             Hola <strong>{pending.contactInfo.businessName}</strong>, elegí con
@@ -206,9 +207,13 @@ export default function RegisterPlansPage() {
               } ${plan.highlight ? styles.planHighlight : ""}`}
               onClick={() => setSelectedPlan(plan.id)}
               disabled={isSubmitting}
+              aria-pressed={selectedPlan === plan.id}
             >
               {plan.highlight && (
                 <span className={styles.badge}>Recomendado</span>
+              )}
+              {selectedPlan === plan.id && (
+                <span className={styles.selectionMark} aria-hidden>✓</span>
               )}
               <div className={styles.planName}>{plan.name}</div>
               <div className={styles.planPrice}>
@@ -224,7 +229,7 @@ export default function RegisterPlansPage() {
               <p className={styles.planDesc}>{plan.description}</p>
               <ul className={styles.features}>
                 {plan.features.map((f) => (
-                  <li key={f}>{f}</li>
+                  <li key={f}><span aria-hidden>→</span>{f}</li>
                 ))}
               </ul>
             </button>
@@ -244,20 +249,21 @@ export default function RegisterPlansPage() {
                   }`}
                   onClick={() => setMonths(opt.value)}
                   disabled={isSubmitting}
+                  aria-pressed={months === opt.value}
                 >
                   {opt.label}
                 </button>
               ))}
             </div>
-            <p className={styles.total}>
-              Total a pagar: <strong>{formatPrice(totalPrice)}</strong>
+            <div className={styles.total}>
+              <span className={styles.totalLabel}>Total a pagar</span>
+              <strong>{formatPrice(totalPrice)}</strong>
               {months > 1 && (
                 <span className={styles.savings}>
-                  {" "}
-                  (ahorrás {formatPrice(selected.price * months - totalPrice)})
+                  Ahorrás {formatPrice(selected.price * months - totalPrice)}
                 </span>
               )}
-            </p>
+            </div>
           </div>
         )}
 
@@ -279,6 +285,10 @@ export default function RegisterPlansPage() {
             ? "Crear cuenta gratis"
             : `Pagar ${formatPrice(totalPrice)} y crear cuenta`}
         </button>
+
+        {selectedPlan !== "free" && (
+          <p className={styles.secure}>Pago seguro · Tus datos están protegidos</p>
+        )}
 
         <div className={styles.back}>
           <Link to={`/register?plan=${selectedPlan}`}>← Volver al formulario</Link>
