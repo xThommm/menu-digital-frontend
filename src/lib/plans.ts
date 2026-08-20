@@ -28,5 +28,5 @@ export const TEMPLATE_MIN_PLAN: Record<number, Subscription> = {
   1: "free",    3: "free",    5: "free",
   2: "basic", 4: "basic", 8: "basic", 9: "basic",
   10: "pro",    11: "pro",    12: "pro",
-  6: "premium", 7: "premium", 13: "premium",
+  6: "pro", 7: "pro", 13: "pro",
 };
