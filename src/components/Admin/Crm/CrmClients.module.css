@@ -174,8 +174,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--control-min-size);
+  height: var(--control-min-size);
   border: none;
   border-radius: var(--admin-radius-sm);
   background: none;
@@ -189,6 +189,7 @@
   color: var(--admin-gold);
 }
 .exportBtn {
+  min-height: var(--control-min-size);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -281,9 +282,9 @@
   padding: 3px 10px;
   border: 0.5px solid transparent;
 }
-.plan_free    { color: #9e968a; background: color-mix(in srgb, #9e968a 14%, var(--admin-bg-base)); border-color: color-mix(in srgb, #9e968a 26%, var(--admin-bg-base)); }
-.plan_basic   { color: #6fae4e; background: color-mix(in srgb, #4c7a2e 20%, var(--admin-bg-base)); border-color: color-mix(in srgb, #4c7a2e 40%, var(--admin-bg-base)); }
-.plan_pro     { color: #5a9cc4; background: color-mix(in srgb, #2e5c7a 20%, var(--admin-bg-base)); border-color: color-mix(in srgb, #2e5c7a 40%, var(--admin-bg-base)); }
+.plan_free    { color: var(--admin-plan-free); background: color-mix(in srgb, var(--admin-plan-free) 14%, var(--admin-bg-base)); border-color: color-mix(in srgb, var(--admin-plan-free) 26%, var(--admin-bg-base)); }
+.plan_basic   { color: var(--admin-plan-basic); background: color-mix(in srgb, var(--admin-plan-basic) 14%, var(--admin-bg-base)); border-color: color-mix(in srgb, var(--admin-plan-basic) 30%, var(--admin-bg-base)); }
+.plan_pro     { color: var(--admin-plan-pro); background: color-mix(in srgb, var(--admin-plan-pro) 14%, var(--admin-bg-base)); border-color: color-mix(in srgb, var(--admin-plan-pro) 30%, var(--admin-bg-base)); }
 
 /* ═══════════════════════════════════════════════════════════════
    Vista Kanban — 5 columnas (una por etapa), tarjetas arrastrables
@@ -378,8 +379,8 @@
 .drawerOverlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
-  background: rgba(0, 0, 0, 0.5);
+  z-index: var(--z-overlay);
+  background: var(--admin-overlay-backdrop);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   display: flex;
@@ -388,7 +389,7 @@
 }
 .drawer {
   width: min(460px, 100%);
-  height: 100%;
+  height: 100dvh;
   background: var(--admin-bg-surface);
   border-left: 0.5px solid var(--admin-border-subtle);
   display: flex;
@@ -419,8 +420,8 @@
 }
 .drawerSub { font-size: var(--text-xs); color: var(--admin-text-muted); margin: 2px 0 0; }
 .drawerClose {
-  width: 34px;
-  height: 34px;
+  width: var(--control-min-size);
+  height: var(--control-min-size);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -469,6 +470,7 @@
 /* Etapa */
 .stagePicker { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .stageOption {
+  min-height: var(--control-min-size);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -491,6 +493,7 @@
 /* Seguimiento */
 .followRow { display: flex; align-items: center; gap: var(--space-2); }
 .dateInput {
+  min-height: var(--control-min-size);
   padding: 0.5rem 0.7rem;
   border-radius: var(--admin-radius-md);
   border: 0.5px solid var(--admin-border-default);
@@ -500,8 +503,9 @@
   font-size: var(--text-sm);
   color-scheme: dark;
 }
-.dateInput:focus { outline: none; border-color: var(--admin-gold); }
+.dateInput:focus { outline: none; border-color: var(--admin-gold); box-shadow: 0 0 0 3px var(--admin-gold-glow); }
 .clearBtn {
+  min-height: var(--control-min-size);
   font-size: var(--text-xs);
   color: var(--admin-text-muted);
   background: none;
@@ -528,6 +532,8 @@
   padding: 3px 6px 3px 10px;
 }
 .tagRemove {
+  min-width: var(--control-min-size);
+  min-height: var(--control-min-size);
   background: none;
   border: none;
   color: var(--admin-text-muted);
@@ -546,7 +552,7 @@
   padding: 4px;
   min-width: 90px;
 }
-.tagInput:focus { outline: none; }
+.tagInput:focus { outline: none; box-shadow: 0 2px 0 var(--admin-gold); }
 .tagInput::placeholder { color: var(--admin-text-faint); }
 
 /* Notas */
@@ -612,6 +618,7 @@
 .noteFooter { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .noteMeta { font-size: var(--text-xs); color: var(--admin-text-muted); }
 .noteDelete {
+  min-height: var(--control-min-size);
   font-size: var(--text-xs);
   color: var(--admin-text-muted);
   background: none;
@@ -627,7 +634,10 @@
 /* ── Mobile ── */
 @media (max-width: 599px) {
   .drawer { width: 100%; border-left: none; }
-  .metaGrid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 420px) {
+  .metaGrid { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

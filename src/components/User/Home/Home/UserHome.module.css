@@ -197,7 +197,7 @@
 .tViewer {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: var(--z-modal);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -210,9 +210,9 @@
 
 .tViewerImg {
   max-width: min(95vw, 1100px);
-  max-height: 88vh;
+  max-height: 88dvh;
   object-fit: contain;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
   /* Entra con un scale sutil — se siente "abierto" en vez de solo aparecido. */
   animation: t-viewer-zoom 0.28s var(--ease-out) both;
@@ -276,8 +276,8 @@
 .tViewerClose {
   top: clamp(0.75rem, 3vw, 1.5rem);
   right: clamp(0.75rem, 3vw, 1.5rem);
-  width: 42px;
-  height: 42px;
+  width: var(--control-min-size);
+  height: var(--control-min-size);
   border-radius: 999px;
   transition: background 0.15s ease, transform 0.2s var(--ease-out);
 }
@@ -297,7 +297,7 @@
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   color: #fff;
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.8rem;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
@@ -306,7 +306,7 @@
 /* Mobile: controles un toque más chicos, pero manteniendo tap targets cómodos. */
 @media (max-width: 599px) {
   .tViewerPrev,
-  .tViewerNext { width: 42px; height: 42px; font-size: 24px; }
+  .tViewerNext { width: var(--control-min-size); height: var(--control-min-size); font-size: 24px; }
 }
 
 /* Respeta reduce-motion: sin zoom de entrada ni fade. */
@@ -347,8 +347,8 @@
    template (rojo/dorado/lo que sea), con un halo sutil para que no se
    pierda sobre fondos oscuros o fotos. */
 .scheduleBadgeDotOpen {
-  background: #3fbf5f;
-  box-shadow: 0 0 0 3px rgba(63, 191, 95, 0.25);
+  background: var(--t-status-open);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--t-status-open) 25%, transparent);
 }
 
 /* Para "cerrado" no se fuerza un color nuevo: hereda el color de texto que
@@ -412,9 +412,9 @@
   left: 0;
   z-index: 20;
   min-width: 180px;
-  background: rgba(20, 18, 15, 0.92);
-  border: 0.5px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
+  background: color-mix(in srgb, var(--t-surface) 94%, transparent);
+  border: 0.5px solid var(--t-border-md);
+  border-radius: var(--radius-lg);
   padding: 6px;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -423,20 +423,21 @@
 }
 
 .phoneMenuItem {
+  min-height: var(--control-min-size);
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 0.6rem 0.7rem;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 0.85rem;
-  color: #f2f0ec;
+  color: var(--t-title);
   text-decoration: none;
   transition: background 0.12s ease;
 }
 
 .phoneMenuItem:hover,
 .phoneMenuItem:focus-visible {
-  background: rgba(255, 255, 255, 0.10);
+  background: color-mix(in srgb, var(--t-accent) 10%, transparent);
   outline: none;
 }
 
@@ -444,7 +445,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #f2f0ec;
+  color: var(--t-title);
   opacity: 0.85;
   flex-shrink: 0;
 }
@@ -471,7 +472,7 @@
   border: 1.5px solid var(--t-accent);
   background: transparent;
   color: var(--t-accent);
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.88rem;
   font-weight: 500;
   text-decoration: none;

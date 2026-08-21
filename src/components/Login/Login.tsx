@@ -77,8 +77,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className={styles.lp}>
-      <div className={styles.card}>
+    <div className={`${styles.lp} auth-page-shell`}>
+      <div className={`${styles.card} auth-surface`}>
 
         {/* Brand */}
         <div className={styles.brand}>
@@ -149,7 +149,6 @@ export default function LoginPage() {
                 className={styles.togglePw}
                 onClick={() => setShowPassword(!showPassword)}
                 aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                tabIndex={-1}
               >
                 {showPassword ? (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

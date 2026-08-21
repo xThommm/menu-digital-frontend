@@ -1,48 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,700;0,900;1,300;1,700&family=DM+Sans:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
-
 /* ── PAGE ─────────────────────────────────────────────── */
 .lp {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--auth-bg);
-  padding: 2rem;
-  font-family: var(--font-sans);
-  position: relative;
-  overflow: hidden;
-}
-
-.lp::before {
-  content: '';
-  position: fixed; inset: -12%; z-index: 0;
-  background:
-    radial-gradient(ellipse 60% 55% at 60% 40%, rgba(255,149,0,.1) 0%, transparent 55%),
-    radial-gradient(ellipse 35% 30% at 10% 80%, rgba(255,58,110,.06) 0%, transparent 50%),
-    var(--auth-bg);
-  pointer-events: none;
-}
-
-.lp::after {
-  content: '';
-  position: fixed; inset: -10%; z-index: 0;
-  background-image:
-    linear-gradient(rgba(255,149,0,.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,149,0,.04) 1px, transparent 1px);
-  background-size: 70px 70px;
-  pointer-events: none;
+  padding: var(--space-8);
 }
 
 /* ── CARD ─────────────────────────────────────────────── */
 .card {
-  position: relative; z-index: 10;
-  background: var(--auth-bg-card);
-  border: 1px solid var(--auth-border);
-  border-radius: var(--radius-sm);
   padding: 2.8rem 2.4rem;
-  width: 100%;
   max-width: 400px;
-  box-shadow: var(--auth-shadow-card);
 }
 
 /* ── BRAND ────────────────────────────────────────────── */
@@ -89,7 +53,7 @@
 /* ── DIVIDER ──────────────────────────────────────────── */
 .divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,149,0,.2), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--auth-amber) 20%, transparent), transparent);
   margin: 0 0 var(--space-6);
 }
 
@@ -117,7 +81,7 @@
   left: 13px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255,149,0,.3);
+  color: color-mix(in srgb, var(--auth-amber) 30%, transparent);
   pointer-events: none;
 }
 
@@ -151,13 +115,15 @@
 /* ── TOGGLE PASSWORD ──────────────────────────────────── */
 .togglePw {
   position: absolute;
-  right: 12px; top: 50%;
+  right: 0; top: 50%;
   transform: translateY(-50%);
   background: none; border: none;
   cursor: pointer;
-  color: rgba(255,149,0,.3);
+  color: color-mix(in srgb, var(--auth-amber) 30%, transparent);
+  width: var(--control-min-size);
+  height: var(--control-min-size);
   padding: 0;
-  display: flex; align-items: center;
+  display: flex; align-items: center; justify-content: center;
   transition: color var(--auth-transition);
 }
 .togglePw:hover { color: var(--auth-amber); }
@@ -188,12 +154,15 @@
 }
 
 .termsLabel input {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
 }
 
 .customCheckbox {
   width: 22px; height: 22px;
-  border: 1px solid rgba(255,149,0,.4);
+  border: 1px solid color-mix(in srgb, var(--auth-amber) 40%, transparent);
   border-radius: var(--radius-md);
   background: var(--auth-input-bg);
   display: flex; align-items: center; justify-content: center;
@@ -217,6 +186,11 @@
   box-shadow: var(--auth-shadow-checkbox);
 }
 
+.termsLabel input:focus-visible + .customCheckbox {
+  outline: 2px solid var(--auth-amber);
+  outline-offset: 3px;
+}
+
 .termsLabel input:checked + .customCheckbox svg {
   opacity: 1;
   transform: scale(1);
@@ -238,6 +212,7 @@
 /* ── SUBMIT ───────────────────────────────────────────── */
 .submitBtn {
   width: 100%;
+  min-height: 48px;
   background: var(--auth-amber);
   border: none;
   border-radius: var(--radius-xs);
@@ -270,7 +245,7 @@
 .loginLink a {
   color: var(--auth-amber);
   text-decoration: none;
-  border-bottom: 1px solid rgba(255,149,0,.3);
+  border-bottom: 1px solid color-mix(in srgb, var(--auth-amber) 30%, transparent);
   transition: border-color var(--auth-transition);
 }
 .loginLink a:hover { border-color: var(--auth-amber); }
@@ -299,13 +274,14 @@
   text-align: center;
   margin-top: var(--space-4);
   font-family: var(--font-auth-mono);
-  font-size: 0.58rem;
-  color: rgba(245,237,224,.1);
+  font-size: var(--text-xs);
+  color: color-mix(in srgb, var(--auth-cream) 32%, transparent);
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
 /* ── RESPONSIVE ───────────────────────────────────────── */
 @media (max-width: 480px) {
+  .lp { padding: var(--space-4); }
   .card { padding: 2rem 1.5rem; }
 }

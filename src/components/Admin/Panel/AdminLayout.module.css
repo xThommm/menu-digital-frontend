@@ -1,4 +1,5 @@
 .layoutRoot {
+  --focus-color: var(--admin-gold);
   display: flex;
   min-height: 100vh;
   background: var(--admin-bg-base);
@@ -54,8 +55,8 @@
 }
 
 .sideBtn {
-  width: 40px;
-  height: 40px;
+  width: var(--control-min-size);
+  height: var(--control-min-size);
   border-radius: var(--admin-radius-md);
   border: none;
   background: none;
@@ -92,9 +93,9 @@
   min-width: 15px;
   height: 15px;
   padding: 0 3px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--admin-danger-core);
-  color: #fff;
+  color: var(--text-inv);
   font-size: 9px;
   font-weight: 700;
   line-height: 15px;
@@ -157,7 +158,7 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 64px;
+    height: calc(64px + env(safe-area-inset-bottom));
     background: var(--admin-bg-surface);
     border-top: 0.5px solid var(--admin-border-subtle);
     z-index: 20;

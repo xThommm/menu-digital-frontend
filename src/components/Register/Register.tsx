@@ -71,8 +71,8 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className={styles.lp}>
-      <div className={styles.card}>
+    <div className={`${styles.lp} auth-page-shell`}>
+      <div className={`${styles.card} auth-surface`}>
         {/* Brand */}
         <div className={styles.brand}>
           <div className={styles.logoMark}>

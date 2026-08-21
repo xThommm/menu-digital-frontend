@@ -1,4 +1,5 @@
 .layoutRoot {
+  --focus-color: var(--admin-gold);
   display: flex;
   min-height: 100vh;
   background: var(--admin-bg-base);
@@ -54,8 +55,8 @@
 }
 
 .sideBtn {
-  width: 40px;
-  height: 40px;
+  width: var(--control-min-size);
+  height: var(--control-min-size);
   border-radius: var(--admin-radius-md);
   border: none;
   background: none;
@@ -154,7 +155,7 @@
   border: 0.5px solid var(--admin-border-gold-mid);
   border-radius: var(--radius-full);
   color: var(--admin-gold);
-  font-family: var(--font-mono);
+  font-family: var(--font-auth-mono);
   font-size: var(--text-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -206,7 +207,7 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 64px;
+    height: calc(64px + env(safe-area-inset-bottom));
     background: var(--admin-bg-surface);
     border-top: 0.5px solid var(--admin-border-subtle);
     z-index: 20;
@@ -239,6 +240,7 @@
   }
 
   .bottomNavIcon {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;

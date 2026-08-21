@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   max-width: 600px;
-  margin-left: var(--space-auto);
+  margin: 0 auto;
 }
 
 /* En mobile/tablet, .leftCol y .rightCol son wrappers transparentes: no
@@ -73,7 +73,7 @@
 
 .planUpgradeBtn {
   flex: 0 0 auto;
-  min-height: 40px;
+  min-height: var(--control-min-size);
   padding: 0 var(--space-4);
   border: 0;
   border-radius: var(--admin-radius-md);
@@ -181,6 +181,7 @@
 }
 
 .actionBtn {
+  min-height: var(--control-min-size);
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -245,7 +246,7 @@
 }
 
 .qrMenu {
-  z-index: 30;
+  z-index: var(--z-overlay);
   min-width: 180px;
   background: var(--admin-bg-elevated);
   border: 0.5px solid var(--admin-border-default);
@@ -256,6 +257,7 @@
 }
 
 .qrMenuItem {
+  min-height: var(--control-min-size);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -545,6 +547,7 @@
 }
 
 .previewToggleBtn {
+  min-height: var(--control-min-size);
   border: none;
   background: transparent;
   color: var(--admin-text-muted);
@@ -570,8 +573,8 @@
 .previewRefreshBtn {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: var(--control-min-size);
+  height: var(--control-min-size);
   border-radius: var(--radius-full);
   border: 0.5px solid var(--admin-border-default);
   background: none;
@@ -645,7 +648,7 @@
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 599px) {
   .main {
-    margin-left: var(--space-auto);
+    margin: 0 auto;
     padding: var(--space-5) var(--space-4) var(--space-10);
     max-width: 100%;
   }

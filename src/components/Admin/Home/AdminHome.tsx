@@ -214,11 +214,11 @@ function CustomCursor() {
 
     const expand = () => {
       if (dotRef.current) { dotRef.current.style.width = "12px"; dotRef.current.style.height = "12px"; }
-      if (ringRef.current) { ringRef.current.style.width = "52px"; ringRef.current.style.height = "52px"; ringRef.current.style.borderColor = "rgba(255,149,0,.75)"; }
+      if (ringRef.current) { ringRef.current.style.width = "52px"; ringRef.current.style.height = "52px"; ringRef.current.style.borderColor = "color-mix(in srgb, var(--auth-amber) 75%, transparent)"; }
     };
     const contract = () => {
       if (dotRef.current) { dotRef.current.style.width = "7px"; dotRef.current.style.height = "7px"; }
-      if (ringRef.current) { ringRef.current.style.width = "32px"; ringRef.current.style.height = "32px"; ringRef.current.style.borderColor = "rgba(255,149,0,.45)"; }
+      if (ringRef.current) { ringRef.current.style.width = "32px"; ringRef.current.style.height = "32px"; ringRef.current.style.borderColor = "color-mix(in srgb, var(--auth-amber) 45%, transparent)"; }
     };
     const interactiveEls = document.querySelectorAll("a,button,[data-hover]");
     interactiveEls.forEach((el) => { el.addEventListener("mouseenter", expand); el.addEventListener("mouseleave", contract); });

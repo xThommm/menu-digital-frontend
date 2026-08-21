@@ -249,6 +249,7 @@
 }
 
 .lockBtn {
+  min-height: var(--control-min-size);
   padding: 0.7rem var(--space-6);
   border-radius: var(--admin-radius-md);
   font-family: var(--font-sans);
@@ -281,6 +282,19 @@
     margin: 0;
     padding: var(--space-5) var(--space-4) var(--space-10);
     max-width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .summaryRow {
+    grid-template-columns: 1fr;
+  }
+
+  .summaryCard {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
   }
 }
 

@@ -13,7 +13,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 110; /* por encima del CartDrawer (100) */
+  z-index: var(--z-modal); /* por encima del CartDrawer */
   background: rgba(0, 0, 0, 0.72);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -43,9 +43,9 @@
   position: relative;
   z-index: 2;
   width: 100%;
-  max-height: min(88vh, 720px);
+  max-height: min(88dvh, 720px);
   background: var(--t-surface);
-  border-radius: 18px;
+  border-radius: var(--t-radius-modal);
   overflow: hidden;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
   display: flex;
@@ -62,7 +62,7 @@
   inset: 0;
   z-index: 1;
   background: var(--t-surface);
-  border-radius: 18px;
+  border-radius: var(--t-radius-modal);
   overflow: hidden;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
   display: flex;
@@ -79,7 +79,7 @@
 }
 
 .peekTitle {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 1rem;
   font-weight: 500;
   color: var(--t-title);
@@ -93,8 +93,8 @@
   top: 0.75rem;
   right: 0.75rem;
   z-index: 5;
-  width: 32px;
-  height: 32px;
+  width: var(--control-min-size);
+  height: var(--control-min-size);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -117,7 +117,7 @@
   position: fixed;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 111;
+  z-index: calc(var(--z-modal) + 1);
   width: 44px;
   height: 44px;
   align-items: center;
@@ -187,7 +187,7 @@
 }
 
 .name {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 1.25rem;
   font-weight: 500;
   color: var(--t-title);
@@ -262,7 +262,7 @@
   font-size: 0.68rem;
   font-weight: 600;
   padding: 0.2rem 0.5rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   white-space: nowrap;
 }
 
@@ -272,17 +272,18 @@
 }
 
 .badgeOffer {
-  background: #e2543d;
+  background: var(--t-offer);
   color: #fff;
 }
 
 .unavail {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #e2543d;
+  color: var(--t-offer);
 }
 
 .addBtn {
+  min-height: var(--control-min-size);
   align-self: flex-start;
   display: flex;
   align-items: center;
@@ -293,7 +294,7 @@
   font-size: 0.85rem;
   font-weight: 600;
   padding: 0.6rem 1rem;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   cursor: pointer;
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
@@ -302,19 +303,20 @@
 .addBtn:active { transform: scale(0.96); }
 
 .qtyStepper {
+  min-height: var(--control-min-size);
   align-self: flex-start;
   display: flex;
   align-items: center;
   gap: 0.75rem;
   background: color-mix(in srgb, var(--t-accent) 10%, transparent);
   border: 0.5px solid color-mix(in srgb, var(--t-accent) 30%, transparent);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 0.4rem 0.9rem;
 }
 
 .qtyStepper button {
-  width: 22px;
-  height: 22px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;

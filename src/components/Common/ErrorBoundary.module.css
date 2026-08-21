@@ -1,8 +1,3 @@
-/* ErrorBoundary.module.css
-   Usa los mismos tokens que UserEditor.module.css / MenuEditor_module.css
-   (con fallback inline por si este componente se monta en un árbol donde
-   esas variables :root todavía no se cargaron). */
-
 .boundary {
   min-height: 60vh;
   display: flex;
@@ -10,42 +5,43 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 0.5rem;
-  padding: 2rem 1.5rem;
-  color: var(--red-text, #b86040);
-  font-family: 'DM Sans', system-ui, sans-serif;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-6);
+  color: var(--admin-danger-core);
+  font-family: var(--font-sans);
 }
 
 .title {
-  font-size: 0.95rem;
+  font-size: var(--text-base);
   font-weight: 500;
-  color: var(--text-primary, #ede4d0);
-  margin-top: 0.5rem;
+  color: var(--admin-text-primary);
+  margin-top: var(--space-2);
 }
 
 .subtitle {
-  font-size: 0.82rem;
-  color: var(--text-muted, #5c5649);
+  font-size: var(--text-sm);
+  color: var(--admin-text-muted);
   max-width: 320px;
   line-height: 1.5;
 }
 
 .reloadBtn {
-  margin-top: 1rem;
-  background: var(--gold, #c9a84c);
+  min-height: var(--control-min-size);
+  margin-top: var(--space-4);
+  background: var(--admin-gold);
   border: none;
-  border-radius: var(--radius-lg, 12px);
-  padding: 0.7rem 1.5rem;
+  border-radius: var(--admin-radius-lg);
+  padding: var(--space-3) var(--space-6);
   font-family: inherit;
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   font-weight: 500;
-  color: var(--bg-base, #0c0b09);
+  color: var(--admin-gold-ink);
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  transition: background var(--admin-transition), transform var(--admin-transition);
 }
 
 .reloadBtn:hover {
-  background: var(--gold-hover, #dabb62);
+  background: var(--admin-gold-hover);
 }
 
 .reloadBtn:active {
@@ -53,6 +49,6 @@
 }
 
 .reloadBtn:focus-visible {
-  outline: 2px solid var(--gold, #c9a84c);
+  outline: 2px solid var(--admin-gold);
   outline-offset: 2px;
 }

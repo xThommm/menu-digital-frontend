@@ -1,12 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
-
 /* ═══════════════════════════════════════════════════════════════
    CONTENEDOR PRINCIPAL
    ═══════════════════════════════════════════════════════════════ */
 .mp {
+  --cart-fab-size: 52px;
+  --floating-edge: var(--space-5);
   min-height: 100vh;
   background: var(--t-bg);
-  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.9375rem;
   color: var(--t-text);
   width: 100%;
@@ -97,12 +97,12 @@
 }
 
 .mpBack {
-  width: 36px;
-  height: 36px;
+  width: var(--control-min-size);
+  height: var(--control-min-size);
   flex-shrink: 0;
   background: var(--t-bg);
   border: 0.5px solid var(--t-border-md);
-  border-radius: 10px;
+  border-radius: var(--t-radius-control);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -133,7 +133,7 @@
 }
 
 .mpName {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--font-serif);
   font-size: clamp(1rem, 3vw, 1.1875rem);
   font-weight: 400;
   letter-spacing: -0.01em;
@@ -193,7 +193,7 @@
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.8125rem;
   font-weight: 400;
   color: var(--t-muted);
@@ -269,7 +269,7 @@
 .itemCard {
   background: var(--t-surface);
   border: 0.5px solid var(--t-border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 0.875rem;
   display: flex;
   gap: 0.875rem;
@@ -353,8 +353,8 @@
    flotante y badge de reseñas de Google.
    ═══════════════════════════════════════════════════════════════ */
 .addBtn {
-  width: 26px;
-  height: 26px;
+  width: var(--control-min-size);
+  height: var(--control-min-size);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -374,18 +374,19 @@
 .addBtn:active { transform: scale(0.9); }
 
 .qtyStepper {
+  min-height: var(--control-min-size);
   display: flex;
   align-items: center;
   gap: 6px;
   background: color-mix(in srgb, var(--t-accent) 10%, transparent);
   border: 0.5px solid color-mix(in srgb, var(--t-accent) 30%, transparent);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 2px 6px;
 }
 
 .qtyStepper button {
-  width: 18px;
-  height: 18px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -407,11 +408,11 @@
 
 .cartFab {
   position: fixed;
-  bottom: 1.25rem;
-  right: 1.25rem;
-  z-index: 30;
-  width: 52px;
-  height: 52px;
+  bottom: var(--floating-edge);
+  right: var(--floating-edge);
+  z-index: calc(var(--z-raised) + 20);
+  width: var(--cart-fab-size);
+  height: var(--cart-fab-size);
   border-radius: 50%;
   border: none;
   background: var(--t-accent);
@@ -426,6 +427,13 @@
 
 .cartFab:hover { transform: translateY(-2px); }
 .cartFab:active { transform: scale(0.94); }
+
+/* En cartas Gratis, el banner cierra la página y el carrito permanece fijo.
+   Reservamos debajo del banner la altura del FAB más una separación para que,
+   al llegar al final del menú, no tape su llamada a la acción. */
+.mp > :global(.t-free-plan-ad) {
+  margin-bottom: calc(var(--floating-edge) + var(--cart-fab-size) + var(--space-4));
+}
 
 /* Relleno claro (--t-bg) + texto/borde --t-accent: siempre coordina con la
    paleta del template activo Y siempre contrasta contra el botón (que usa
@@ -454,7 +462,7 @@
 .reviewBanner {
   margin-top: 1rem;
   padding: 1rem;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--t-accent) 8%, var(--t-surface));
   border: 0.5px solid color-mix(in srgb, var(--t-accent) 22%, transparent);
   display: flex;
@@ -478,6 +486,7 @@
 }
 
 .reviewBannerBtn {
+  min-height: var(--control-min-size);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -486,7 +495,7 @@
   font-weight: 600;
   color: var(--t-accent);
   border: 0.5px solid color-mix(in srgb, var(--t-accent) 35%, transparent);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 0.45rem 0.9rem;
   text-decoration: none;
   transition: background 0.15s ease;
@@ -649,9 +658,9 @@
 /* Oferta: usa un acento propio (rojo/coral) en vez del dorado de marca,
    para que el ahorro se distinga a simple vista del resto de los badges. */
 .badgeOffer {
-  background: color-mix(in srgb, #e2543d 14%, transparent);
-  color: #e2543d;
-  border: 0.5px solid color-mix(in srgb, #e2543d 30%, transparent);
+  background: color-mix(in srgb, var(--t-offer) 14%, transparent);
+  color: var(--t-offer);
+  border: 0.5px solid color-mix(in srgb, var(--t-offer) 30%, transparent);
   font-weight: 600;
 }
 
@@ -670,7 +679,7 @@
   gap: 0.875rem;
   background: var(--t-bg);
   color: var(--t-muted);
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   padding: 2rem;
   text-align: center;

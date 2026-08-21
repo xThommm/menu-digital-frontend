@@ -9,7 +9,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: var(--z-overlay);
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
@@ -26,9 +26,9 @@
 .drawer {
   width: 100%;
   max-width: 480px;
-  max-height: 85vh;
+  max-height: 85dvh;
   background: var(--t-surface);
-  border-radius: 16px 16px 0 0;
+  border-radius: var(--t-radius-sheet) var(--t-radius-sheet) 0 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -37,7 +37,7 @@
 }
 
 @media (min-width: 768px) {
-  .drawer { border-radius: 16px; max-height: 80vh; }
+  .drawer { border-radius: var(--t-radius-sheet); max-height: 80dvh; }
 }
 
 .header {
@@ -50,7 +50,7 @@
 }
 
 .title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 1.125rem;
   font-weight: 500;
   color: var(--t-title);
@@ -58,8 +58,8 @@
 }
 
 .close {
-  width: 32px;
-  height: 32px;
+  width: var(--control-min-size);
+  height: var(--control-min-size);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -120,18 +120,19 @@
 .lineVariant { font-size: 0.7rem; color: var(--t-muted); }
 
 .lineQty {
+  min-height: var(--control-min-size);
   display: flex;
   align-items: center;
   gap: 0.5rem;
   background: var(--t-bg);
   border: 0.5px solid var(--t-border-md);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 0.2rem 0.5rem;
 }
 
 .lineQty button {
-  width: 20px;
-  height: 20px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -153,8 +154,8 @@
 }
 
 .lineRemove {
-  width: 26px;
-  height: 26px;
+  width: var(--control-min-size);
+  height: var(--control-min-size);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -165,7 +166,7 @@
   transition: color 0.15s ease;
 }
 
-.lineRemove:hover { color: #e2543d; }
+.lineRemove:hover { color: var(--t-offer); }
 
 .total {
   display: flex;
@@ -216,6 +217,7 @@
 }
 
 .clearBtn {
+  min-height: var(--control-min-size);
   background: none;
   border: none;
   color: var(--t-muted);
