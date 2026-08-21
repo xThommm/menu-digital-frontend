@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../context/useAuth";
 import { useTheme } from "../../../../hooks/useTheme";
@@ -16,8 +16,28 @@ export default function DashboardLayout() {
   const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const mobileMoreButtonRef = useRef<HTMLButtonElement>(null);
+  const firstMobileMoreActionRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!mobileMoreOpen) return;
+
+    firstMobileMoreActionRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileMoreOpen(false);
+        mobileMoreButtonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [mobileMoreOpen]);
 
   const handleLogout = useCallback(() => {
+    setMobileMoreOpen(false);
     logout();
     navigate("/login");
   }, [logout, navigate]);
@@ -80,7 +100,7 @@ export default function DashboardLayout() {
       </aside>
 
       {/* ── Contenido de la página activa ────────────────────────────────── */}
-      <div className={s.content}>
+      <div className={`${s.content} admin-layout-content`}>
         {user?.subscription === "free" && (
           <aside className={s.freeBanner} aria-label="Publicidad de MenuDigital">
             <div className={s.freeBannerCopy}>
@@ -96,31 +116,77 @@ export default function DashboardLayout() {
       </div>
 
       {/* ── Bottom nav (mobile) ───────────────────────────────────────────── */}
-      <nav className={s.bottomNav} aria-label="Navegación principal">
+      <nav className="admin-mobile-dock" aria-label="Navegación principal">
         {NAV_ITEMS.map(item => {
           const active = location.pathname === item.path;
           return (
             <button
+              type="button"
               key={item.path}
-              className={`${s.bottomNavBtn} ${active ? s.bottomNavBtnActive : ""}`}
-              onClick={() => navigate(item.path)}
+              className={`admin-mobile-dock__button ${active ? "admin-mobile-dock__button--active" : ""}`}
+              onClick={() => {
+                setMobileMoreOpen(false);
+                navigate(item.path);
+              }}
               aria-label={item.label}
               aria-current={active ? "page" : undefined}
             >
-              <span className={s.bottomNavIcon}>{item.icon}</span>
+              <span className="admin-mobile-dock__icon">{item.icon}</span>
               {item.short}
             </button>
           );
         })}
-        <button className={s.bottomNavBtn} onClick={toggleTheme} aria-label={themeLabel}>
-          <span className={s.bottomNavIcon}>{theme === "dark" ? <SunIcon /> : <MoonIcon />}</span>
-          Tema
-        </button>
-        <button className={s.bottomNavBtn} onClick={handleLogout} aria-label="Cerrar sesión">
-          <span className={s.bottomNavIcon}><LogoutIcon /></span>
-          Salir
+        <button
+          ref={mobileMoreButtonRef}
+          type="button"
+          className={`admin-mobile-dock__button ${mobileMoreOpen ? "admin-mobile-dock__button--active" : ""}`}
+          onClick={() => setMobileMoreOpen(open => !open)}
+          aria-label="Más opciones"
+          aria-expanded={mobileMoreOpen}
+          aria-controls="user-mobile-more-menu"
+        >
+          <span className="admin-mobile-dock__icon"><MoreIcon /></span>
+          Más
         </button>
       </nav>
+
+      {mobileMoreOpen && (
+        <>
+          <button
+            type="button"
+            className="admin-mobile-more-scrim"
+            onClick={() => {
+              setMobileMoreOpen(false);
+              mobileMoreButtonRef.current?.focus();
+            }}
+            tabIndex={-1}
+            aria-label="Cerrar menú de opciones"
+          />
+          <div id="user-mobile-more-menu" className="admin-mobile-more" role="group" aria-label="Más opciones">
+            <button
+              ref={firstMobileMoreActionRef}
+              type="button"
+              className="admin-mobile-more__item"
+              onClick={() => {
+                toggleTheme();
+                setMobileMoreOpen(false);
+                mobileMoreButtonRef.current?.focus();
+              }}
+            >
+              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+              {theme === "dark" ? "Usar tema claro" : "Usar tema oscuro"}
+            </button>
+            <button
+              type="button"
+              className="admin-mobile-more__item admin-mobile-more__item--danger"
+              onClick={handleLogout}
+            >
+              <LogoutIcon />
+              Cerrar sesión
+            </button>
+          </div>
+        </>
+      )}
 
     </div>
   );
@@ -200,6 +266,16 @@ function MoonIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
+function MoreIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <circle cx="5" cy="12" r="1.5" />
+      <circle cx="12" cy="12" r="1.5" />
+      <circle cx="19" cy="12" r="1.5" />
     </svg>
   );
 }
