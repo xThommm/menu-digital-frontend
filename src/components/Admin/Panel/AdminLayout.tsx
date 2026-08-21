@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/useAuth";
 import { useTheme } from "../../../hooks/useTheme";
@@ -15,6 +15,9 @@ export default function AdminLayout() {
   const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const mobileMoreButtonRef = useRef<HTMLButtonElement>(null);
+  const firstMobileMoreActionRef = useRef<HTMLButtonElement>(null);
 
   // Badge de alerta en el ítem "CRM": cuántos clientes tienen un seguimiento
   // vencido. Se pide una vez al montar el layout (vive todo el panel admin,
@@ -30,7 +33,24 @@ export default function AdminLayout() {
     return () => { cancelled = true; };
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (!mobileMoreOpen) return;
+
+    firstMobileMoreActionRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileMoreOpen(false);
+        mobileMoreButtonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [mobileMoreOpen]);
+
   const handleLogout = useCallback(() => {
+    setMobileMoreOpen(false);
     logout();
     navigate("/login");
   }, [logout, navigate]);
@@ -95,24 +115,28 @@ export default function AdminLayout() {
       </aside>
 
       {/* ── Contenido de la página activa ────────────────────────────────── */}
-      <div className={s.content}>
+      <div className={`${s.content} admin-layout-content`}>
         <Outlet />
       </div>
 
       {/* ── Bottom nav (mobile) ───────────────────────────────────────────── */}
-      <nav className={s.bottomNav} aria-label="Navegación del panel CEO">
+      <nav className="admin-mobile-dock" aria-label="Navegación del panel CEO">
         {NAV_ITEMS.map(item => {
           const active = location.pathname === item.path;
           const showBadge = item.path === "/admin/crm" && overdueCount > 0;
           return (
             <button
+              type="button"
               key={item.path}
-              className={`${s.bottomNavBtn} ${active ? s.bottomNavBtnActive : ""}`}
-              onClick={() => navigate(item.path)}
+              className={`admin-mobile-dock__button ${active ? "admin-mobile-dock__button--active" : ""}`}
+              onClick={() => {
+                setMobileMoreOpen(false);
+                navigate(item.path);
+              }}
               aria-label={showBadge ? `${item.label} (${overdueCount} seguimientos vencidos)` : item.label}
               aria-current={active ? "page" : undefined}
             >
-              <span className={s.bottomNavIcon}>
+              <span className="admin-mobile-dock__icon">
                 {item.icon}
                 {showBadge && <span className={s.navBadge}>{overdueCount > 9 ? "9+" : overdueCount}</span>}
               </span>
@@ -120,15 +144,57 @@ export default function AdminLayout() {
             </button>
           );
         })}
-        <button className={s.bottomNavBtn} onClick={toggleTheme} aria-label={themeLabel}>
-          <span className={s.bottomNavIcon}>{theme === "dark" ? <SunIcon /> : <MoonIcon />}</span>
-          Tema
-        </button>
-        <button className={s.bottomNavBtn} onClick={handleLogout} aria-label="Cerrar sesión">
-          <span className={s.bottomNavIcon}><LogoutIcon /></span>
-          Salir
+        <button
+          ref={mobileMoreButtonRef}
+          type="button"
+          className={`admin-mobile-dock__button ${mobileMoreOpen ? "admin-mobile-dock__button--active" : ""}`}
+          onClick={() => setMobileMoreOpen(open => !open)}
+          aria-label="Más opciones"
+          aria-expanded={mobileMoreOpen}
+          aria-controls="admin-mobile-more-menu"
+        >
+          <span className="admin-mobile-dock__icon"><MoreIcon /></span>
+          Más
         </button>
       </nav>
+
+      {mobileMoreOpen && (
+        <>
+          <button
+            type="button"
+            className="admin-mobile-more-scrim"
+            onClick={() => {
+              setMobileMoreOpen(false);
+              mobileMoreButtonRef.current?.focus();
+            }}
+            tabIndex={-1}
+            aria-label="Cerrar menú de opciones"
+          />
+          <div id="admin-mobile-more-menu" className="admin-mobile-more" role="group" aria-label="Más opciones">
+            <button
+              ref={firstMobileMoreActionRef}
+              type="button"
+              className="admin-mobile-more__item"
+              onClick={() => {
+                toggleTheme();
+                setMobileMoreOpen(false);
+                mobileMoreButtonRef.current?.focus();
+              }}
+            >
+              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+              {theme === "dark" ? "Usar tema claro" : "Usar tema oscuro"}
+            </button>
+            <button
+              type="button"
+              className="admin-mobile-more__item admin-mobile-more__item--danger"
+              onClick={handleLogout}
+            >
+              <LogoutIcon />
+              Cerrar sesión
+            </button>
+          </div>
+        </>
+      )}
 
     </div>
   );
@@ -164,6 +230,16 @@ function LogoutIcon() {
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <polyline points="16 17 21 12 16 7" />
       <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
+function MoreIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <circle cx="5" cy="12" r="1.5" />
+      <circle cx="12" cy="12" r="1.5" />
+      <circle cx="19" cy="12" r="1.5" />
     </svg>
   );
 }

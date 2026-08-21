@@ -234,6 +234,8 @@
   --admin-shadow-fab:     0 4px 24px rgba(201,168,76,0.18), 0 1px 8px rgba(0,0,0,0.7);
   --admin-overlay-backdrop: rgba(5, 5, 5, 0.72);
   --admin-shadow-modal: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
+  --admin-shadow-dock: 0 12px 36px rgba(0,0,0,0.42), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
+  --admin-shadow-popover: 0 16px 40px rgba(0,0,0,0.48), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
 
   /* Sombras específicas del Dashboard — glow dorado en el logo
      y en cards al hacer hover, y la sombra ambiental de la
@@ -314,6 +316,8 @@
   --admin-shadow-card:    0 1px 3px rgba(44, 24, 16, 0.10), 0 0 0 0.5px rgba(44, 24, 16, 0.04) inset;
   --admin-shadow-fab:     0 4px 24px rgba(184, 145, 47, 0.22), 0 1px 8px rgba(44, 24, 16, 0.14);
   --admin-shadow-modal: 0 20px 52px rgba(44,24,16,0.18), 0 0 0 0.5px rgba(44,24,16,0.05) inset;
+  --admin-shadow-dock: 0 12px 32px rgba(44,24,16,0.16), 0 0 0 0.5px rgba(44,24,16,0.04) inset;
+  --admin-shadow-popover: 0 16px 36px rgba(44,24,16,0.18), 0 0 0 0.5px rgba(44,24,16,0.04) inset;
   --admin-shadow-logo:          0 2px 10px rgba(184, 145, 47, 0.30);
   --admin-shadow-logo-hover:    0 4px 18px rgba(184, 145, 47, 0.44);
   --admin-shadow-card-rest:     0 0 0 0.5px rgba(184, 145, 47, 0.12) inset, 0 4px 24px rgba(44, 24, 16, 0.08);
@@ -322,6 +326,183 @@
   --admin-shadow-navcard-primary-hover: 0 4px 24px rgba(184, 145, 47, 0.16);
   --admin-shadow-action-btn-hover:         0 2px 14px rgba(184, 145, 47, 0.32);
   --admin-shadow-action-btn-success-hover: 0 2px 14px color-mix(in srgb, var(--admin-success-core) 55%, transparent);
+}
+
+/* ── Dock móvil compartido (panel de usuario + panel CEO) ── */
+.admin-mobile-dock,
+.admin-mobile-more,
+.admin-mobile-more-scrim {
+  display: none;
+}
+
+@keyframes admin-mobile-more-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2)) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 599px) {
+  .admin-layout-content {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+
+  .admin-mobile-dock {
+    position: fixed;
+    left: calc(var(--space-3) + env(safe-area-inset-left));
+    right: calc(var(--space-3) + env(safe-area-inset-right));
+    bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+    z-index: calc(var(--z-raised) + 11);
+    max-width: 420px;
+    height: 72px;
+    margin-inline: auto;
+    padding: var(--space-2);
+    display: flex;
+    align-items: stretch;
+    gap: var(--space-1);
+    border: 0.5px solid var(--admin-border-default);
+    border-radius: var(--admin-radius-2xl);
+    background: color-mix(in srgb, var(--admin-bg-surface) 88%, transparent);
+    box-shadow: var(--admin-shadow-dock);
+    backdrop-filter: blur(18px) saturate(135%);
+    -webkit-backdrop-filter: blur(18px) saturate(135%);
+  }
+
+  .admin-mobile-dock__button {
+    flex: 1;
+    min-width: 0;
+    min-height: 56px;
+    padding: var(--space-1) 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border: 0;
+    border-radius: var(--admin-radius-lg);
+    background: transparent;
+    color: var(--admin-text-muted);
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.025em;
+    cursor: pointer;
+    transition:
+      color var(--admin-transition),
+      background var(--admin-transition),
+      transform var(--admin-transition-spring);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .admin-mobile-dock__button:hover {
+    color: var(--admin-text-secondary);
+    background: var(--admin-bg-raised);
+  }
+
+  .admin-mobile-dock__button:active {
+    transform: scale(0.94);
+  }
+
+  .admin-mobile-dock__button:focus-visible,
+  .admin-mobile-more__item:focus-visible {
+    outline: 2px solid var(--admin-gold);
+    outline-offset: 1px;
+  }
+
+  .admin-mobile-dock__button--active,
+  .admin-mobile-dock__button--active:hover {
+    color: var(--admin-gold);
+    background: var(--admin-gold-glow);
+  }
+
+  .admin-mobile-dock__icon {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .admin-mobile-dock__icon svg {
+    width: 22px;
+    height: 22px;
+    stroke-width: 1.8;
+  }
+
+  .admin-mobile-more-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-raised) + 10);
+    display: block;
+    border: 0;
+    background: color-mix(in srgb, var(--admin-bg-base) 16%, transparent);
+  }
+
+  .admin-mobile-more {
+    position: fixed;
+    right: calc(var(--space-3) + env(safe-area-inset-right));
+    bottom: calc(96px + env(safe-area-inset-bottom));
+    z-index: calc(var(--z-raised) + 12);
+    width: min(228px, calc(100vw - (var(--space-3) * 2)));
+    padding: var(--space-2);
+    display: grid;
+    gap: var(--space-1);
+    border: 0.5px solid var(--admin-border-default);
+    border-radius: var(--admin-radius-xl);
+    background: color-mix(in srgb, var(--admin-bg-surface) 94%, transparent);
+    box-shadow: var(--admin-shadow-popover);
+    backdrop-filter: blur(18px) saturate(135%);
+    -webkit-backdrop-filter: blur(18px) saturate(135%);
+    transform-origin: bottom right;
+    animation: admin-mobile-more-in var(--admin-transition-spring) both;
+  }
+
+  .admin-mobile-more__item {
+    min-height: 48px;
+    padding: 0 var(--space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    border: 0;
+    border-radius: var(--admin-radius-md);
+    background: transparent;
+    color: var(--admin-text-secondary);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: color var(--admin-transition), background var(--admin-transition);
+  }
+
+  .admin-mobile-more__item:hover {
+    color: var(--admin-text-primary);
+    background: var(--admin-bg-raised);
+  }
+
+  .admin-mobile-more__item--danger {
+    color: var(--admin-red-text);
+  }
+
+  .admin-mobile-more__item svg {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-mobile-dock__button,
+  .admin-mobile-more {
+    transition: none;
+    animation: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════

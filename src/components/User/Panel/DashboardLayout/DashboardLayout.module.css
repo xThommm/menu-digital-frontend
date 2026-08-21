@@ -167,18 +167,11 @@
   font-size: var(--text-sm);
 }
 
-/* ── Bottom nav (mobile) ── */
-.bottomNav {
-  display: none;
-  
-}
-
 @media (max-width: 599px) {
   .sidebar { display: none; }
 
   .content {
     margin-left: 0;
-    padding-bottom: calc(64px + env(safe-area-inset-bottom));
   }
 
   .freeBanner {
@@ -201,56 +194,4 @@
     line-height: 1.3;
   }
 
-  .bottomNav {
-    display: flex;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: calc(64px + env(safe-area-inset-bottom));
-    background: var(--admin-bg-surface);
-    border-top: 0.5px solid var(--admin-border-subtle);
-    z-index: 20;
-    align-items: stretch;
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  .bottomNavBtn {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1.75px;
-    background: none;
-    border: none;
-    color: var(--admin-text-muted);
-    font-family: var(--font-sans);
-    font-size: 10px;
-    letter-spacing: 0.03em;
-    cursor: pointer;
-    transition: color var(--admin-transition), background var(--admin-transition);
-    padding: 0;
-  }
-
-  .bottomNavBtn:hover { background: var(--admin-bg-raised); }
-
-  .bottomNavBtnActive {
-    color: var(--admin-gold);
-  }
-
-  .bottomNavIcon {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: var(--admin-radius-sm);
-    transition: background var(--admin-transition);
-  }
-
-  .bottomNavBtnActive .bottomNavIcon {
-    background: var(--admin-gold-glow);
-  }
 }
