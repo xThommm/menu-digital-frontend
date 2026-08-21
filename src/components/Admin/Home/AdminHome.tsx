@@ -25,10 +25,10 @@ const PLANS: Plan[] = [
   {
     id: "basic",
     name: "Basic",
-    price: 39999,
+    price: 2000,
     period: "elegí período",
     highlight: false,
-    monthlyEquiv: "$39.999/mes",
+    monthlyEquiv: "$2.000/mes",
     features: [
       "Sin publicidad",
       "Hasta 50 productos",
@@ -41,7 +41,7 @@ const PLANS: Plan[] = [
   {
     id: "pro",
     name: "Pro",
-    price: 59999,
+    price: 5000,
     period: "elegí período",
     highlight: true,
     badge: "Más elegido",
@@ -53,7 +53,7 @@ const PLANS: Plan[] = [
       "15 diseños disponibles",
       "Reseñas integradas",
     ],
-    monthlyEquiv: "$59.999/mes",
+    monthlyEquiv: "$5.000/mes",
   },
 ];
 

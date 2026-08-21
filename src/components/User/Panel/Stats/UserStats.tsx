@@ -139,7 +139,7 @@ export default function UserStats() {
             <p className={s.lockTitle}>Disponible desde el plan Pro</p>
             <p className={s.lockDesc}>
               Mirá cuántas veces escanearon el QR de tu carta y seguí la tendencia día a día.
-              Con el plan Pro ($59.999) desbloqueás estadísticas de visitas.
+              Con el plan Pro ($5.000) desbloqueás estadísticas de visitas.
             </p>
             <button className={s.lockBtn} onClick={() => setUpgradeOpen(true)} type="button">
               Mejorar a Pro

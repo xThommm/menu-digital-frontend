@@ -28,7 +28,7 @@ export default function Terms() {
             <em>Condiciones</em>
           </h1>
           <p className={styles.subtitle}>
-            Última actualización: junio de 2026
+            Última actualización: agosto de 2026
           </p>
         </div>
       </div>
@@ -56,12 +56,11 @@ export default function Terms() {
               Los servicios incluyen, pero no se limitan a:
             </p>
             <ul className={styles.list}>
-              <li>Creación y gestión de menús digitales, con límites según el plan contratado</li>
+              <li>Creación y gestión de menús digitales, con límites según el plan elegido</li>
               <li>Generación de códigos QR personalizados</li>
-              <li>Carga masiva de productos mediante archivos Excel</li>
               <li>Landing page personalizada del local</li>
-              <li>Estadísticas de visitas y productos (plan Pro)</li>
-              <li>Dominio personalizado (plan Pro)</li>
+              <li>Pedidos por WhatsApp, sin procesamiento del pedido dentro de la Plataforma</li>
+              <li>Herramientas adicionales según las funciones informadas para cada plan en el flujo de contratación</li>
             </ul>
           </section>
 
@@ -96,18 +95,29 @@ export default function Terms() {
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>4. Planes y pagos</h2>
             <p>
-              La Plataforma ofrece tres niveles de suscripción: Gratis, Basic y Pro. Los planes pagos
-              pueden contratarse por períodos de 1, 3, 6 o 12 meses. Los precios están expresados en
-              pesos argentinos (ARS) e incluyen IVA cuando corresponda.
+              La Plataforma ofrece tres planes: <strong>Gratis, Básico y Pro</strong>. El plan Gratis no
+              requiere pago y permite crear una cuenta con las funciones y límites informados en el flujo
+              de registro. Los planes Básico y Pro se adquieren mediante un pago anticipado por un período
+              de 1, 3, 6 o 12 meses.
+            </p>
+            <p>
+              Antes de pagar, la Plataforma muestra el plan seleccionado, la duración, el precio mensual
+              de referencia, el total a pagar y, cuando corresponda, el ahorro aplicado por elegir un
+              período de varios meses. Los precios se expresan en pesos argentinos (ARS). Las funciones,
+              límites, precios y descuentos aplicables son los que se muestran en ese flujo al momento de
+              confirmar la compra.
             </p>
             <p>
               Los pagos se procesan a través de <strong>MercadoPago</strong>. Al completar el pago,
               aceptás también los términos y condiciones de dicho procesador. MenuDigitalApp no almacena
-              datos de tarjetas de crédito ni información financiera sensible.
+              datos de tarjetas de crédito ni información financiera sensible. La vigencia del plan
+              comienza cuando MercadoPago aprueba el pago. En una renovación del mismo plan, los meses
+              adquiridos se suman a la vigencia existente.
             </p>
             <p>
-              Podés cancelar tu suscripción en cualquier momento. La cancelación tendrá efecto al
-              finalizar el período pago vigente, sin reembolso proporcional por el tiempo no utilizado.
+              La compra de un período no implica renovación automática. Al finalizar la vigencia del plan
+              pago, la cuenta pasa al plan Gratis salvo que el Usuario realice una nueva compra. La mera
+              falta de uso de la Plataforma no cancela ni extiende el período adquirido.
             </p>
             <p>
               Algunos servicios de la Plataforma dependen de proveedores externos,
