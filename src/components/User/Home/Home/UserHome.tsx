@@ -233,10 +233,6 @@ export default function BusinessLandingPage() {
         const res = await fetch(`/api/users/${slug}`, {
           signal: controller.signal,
         });
-        if (res.status === 403) {
-          navigate(`/${slug}/menu`, { replace: true });
-          return;
-        }
         if (!res.ok) {
           setNotFound(true);
           return;
@@ -252,7 +248,7 @@ export default function BusinessLandingPage() {
 
     fetchUser();
     return () => controller.abort();
-  }, [slug, slugIsValid, navigate]);
+  }, [slug, slugIsValid]);
 
   // ── Returns después de todos los hooks ──
   // Un slug inválido nunca dispara el fetch, así que nunca debería mostrar el

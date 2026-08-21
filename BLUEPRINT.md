@@ -8,6 +8,11 @@
 > archivo-por-archivo del código vive en [ARCHITECTURE.md](ARCHITECTURE.md) — acá no
 > se repite, se referencia.
 
+> **CONTINUACIÓN OBLIGATORIA — 22-08-2026:** antes de cualquier otro desarrollo,
+> desplegar los cambios actuales y ejecutar la prueba end-to-end de MercadoPago con
+> importes bajos (§10.1). Upgrade, renovación, vencimiento, sincronización de auth y
+> tests están implementados localmente, pero todavía no validados con un pago real.
+
 ---
 
 ## Índice
@@ -204,7 +209,7 @@ educa el mercado a costo cero.
 | M1 | **Auth y cuentas** | Registro/login JWT, política de contraseñas, términos versionados | — |
 | M2 | **Editor de menú** | Secciones → categorías → productos; variantes (options), ofertas manuales o programadas con fecha/hora, disponibilidad semanal por plato con múltiples franjas, recomendado, oculto/no disponible; drag & drop; imágenes a Cloudinary | Free: 15 · Basic: 50 · Pro: ilimitados; programación Basic+ |
 | M3 | **Carta pública** (`/:slug/menu`) | Tabs por sección, tarjetas con foto/precio/badges, skeleton, scroll-reveal, grilla 2 columnas en desktop, sticky header+tabs | — |
-| M4 | **Landing del local** (`/:slug`) | Hero o avatar según template, galería bento, chips de contacto, lightbox | Basic+ |
+| M4 | **Landing del local** (`/:slug`) | Hero o avatar según template, galería bento, chips de contacto, lightbox; en Free muestra publicidad de MenuDigital | Free+ |
 | M5 | **Templates** | 15 estilos visuales vía design tokens `--t-*` | Escalonado (1 Free / 5 totales Basic / 15 totales Pro) |
 | M6 | **Carrito + pedido WhatsApp** | Carrito por local (localStorage), steppers, drawer con total, mensaje `wa.me` prearmado, confirmación al vaciar | Todos los planes |
 | M7 | **Reseñas Google** | CTA "Dejanos tu reseña" en landing y carta si el dueño cargó el link | Pro |
@@ -212,7 +217,7 @@ educa el mercado a costo cero.
 | M9 | **Estadísticas** | Visitas diarias (30 días, tiempo real con polling), ranking top-10 de productos más vistos | Pro+ |
 | M10 | **Import/Export Excel** | Plantilla generada con datos actuales, preview de cambios, confirmación fila a fila | Basic+ |
 | M10b | **Exportación PDF** | Menú imprimible generado desde la carta vigente | Basic+ |
-| M11 | **Suscripciones** ✅ | Checkout MercadoPago, webhook firmado, alta automática y recuperación del intento de pago | — |
+| M11 | **Suscripciones** ✅ | Checkout MercadoPago, alta automática, upgrades/renovaciones 1/3/6/12 meses, vencimiento visible, webhook firmado e idempotente | — |
 | M12 | **Panel CEO + CRM interno** | KPIs de la plataforma, gestión de clientes (pipeline kanban, notas, eventos automáticos, seguimientos vencidos, export Excel) | Solo admin |
 
 #### Módulos del roadmap 🔜 (ver §11)
@@ -298,11 +303,16 @@ Como plataforma, quiero cobrar sin intervención manual.
   crea la cuenta o cambia `User.subscription`. Un plan_id desconocido se descarta.
 - El período elegido fija `subscriptionExpiresAt`; al completarse, el frontend hace
   un único login y redirige automáticamente al dashboard.
+- Un usuario existente ve plan y vencimiento en el dashboard. Free puede elegir
+  Basic/Pro; Basic puede renovar o subir a Pro; Pro puede renovar. La renovación
+  vigente suma meses desde el vencimiento y la vencida desde la aprobación.
+- Al volver del checkout, `AuthContext` reintenta `/users/me` para absorber la posible
+  carrera con el webhook y persiste el plan/vencimiento actualizado.
 - El alta o cambio de plan queda logueado como evento en el CRM.
-- **Incidente abierto 2026-08-20:** en producción, el alta paga alcanza
-  `POST /payments/crear-preferencia-registro` pero recibe 500 antes de redirigir a
-  MercadoPago. La causa exacta requiere revisar los logs internos de Koyeb; hasta
-  resolverla, este criterio no se considera validado end-to-end.
+- `test/paymentWebhook.test.js` agrega 10 casos del webhook; la suite backend completa
+  tiene 18 tests aprobados.
+- **Pendiente obligatorio:** el circuito todavía debe validarse end-to-end con un
+  pago real de importe bajo antes de dar este módulo por cerrado en producción.
 
 **HU-09 · Gestionar clientes (M12)** ✅
 Como CEO, quiero operar la cartera desde un solo lugar.
@@ -623,8 +633,8 @@ utilidades.
 
 | Plan | Precio | Equivalente mensual | Desbloquea |
 |---|---|---|---|
-| **Gratis** | $0 | $0 | Menú/editor, QR, pedido por WhatsApp, hasta 15 productos y publicidad |
-| **Basic** | $39.999/mes base | Según período | Hasta 50 productos, landing, Excel, programación, PDF y 5 diseños |
+| **Gratis** | $0 | $0 | Menú/editor, landing, QR, pedido por WhatsApp, hasta 15 productos y publicidad |
+| **Basic** | $39.999/mes base | Según período | Hasta 50 productos, sin publicidad, Excel, programación, PDF y 5 diseños |
 | **Pro** | $59.999/mes base | Según período | Todo Basic + ilimitados, métricas, reseñas, 15 diseños y dominio propio 🔜 |
 
 Mecánica de monetización: el **prepago largo se premia** (3 meses ≈10% off,
@@ -632,6 +642,16 @@ Mecánica de monetización: el **prepago largo se premia** (3 meses ≈10% off,
 (publicidad de la plataforma en cartas gratuitas) y alimenta el pipeline del CRM.
 La selección nace en la landing y viaja por query string al registro; Free crea la
 cuenta sin checkout, mientras Basic/Pro confirman período antes de abrir MercadoPago.
+
+**PRÓXIMO PASO OBLIGATORIO — hacer antes de cualquier otro desarrollo:** validar el
+checkout completo con un pago real de importe bajo. Para la prueba se pueden
+bajar temporalmente los precios de Basic/Pro a importes mínimos en `PLANES`
+(backend) y `PAID_PLANS` (selector de upgrade), desplegar ambos servicios y pagar
+con una cuenta distinta a la vendedora. Revertir los importes antes de dejar el
+entorno disponible para clientes. Verificar preferencia, monto, metadata, webhook,
+plan y `subscriptionExpiresAt` en MongoDB, evento CRM, redirección y sincronización
+del dashboard. MercadoPago puede rechazar $20/$50 por monto mínimo; si ocurre, probar
+con $100/$200.
 
 **Nota operativa**: con inflación ARS, los precios se revisan trimestralmente. Hoy
 los valores están duplicados entre `PLANES` en backend y `PLANS` en la landing/

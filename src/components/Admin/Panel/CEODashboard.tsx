@@ -1,16 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../../context/useAuth";
+import { PLAN_LABEL, PLAN_ORDER } from "../../../lib/plans";
 import s from "./CEODashboard.module.css";
 import type { User, Subscription, AdminStats } from "../../../types"
 
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-const SUBSCRIPTION_LABEL: Record<Subscription, string> = {
-  free:  "Gratis",
-  basic: "Básico",
-  pro:   "Pro",
-};
 
 const SUBSCRIPTION_COLOR: Record<Subscription, string> = {
   free:  "#3d3a33",
@@ -160,11 +155,11 @@ export default function CEODashboard() {
         {/* ── Suscripciones breakdown ── */}
         <div className={s.sectionTitle}>Suscripciones</div>
         <div className={s.subGrid}>
-          {(["free", "basic", "pro"] as const).map(key => (
+          {PLAN_ORDER.map(key => (
             <div key={key} className={s.subCard}>
               <div className={s.subDot} style={{ background: SUBSCRIPTION_COLOR[key] }} />
               <div className={s.subInfo}>
-                <span className={s.subLabel}>{SUBSCRIPTION_LABEL[key]}</span>
+                <span className={s.subLabel}>{PLAN_LABEL[key]}</span>
                 <span className={s.subCount}>{subBreakdown[key] ?? 0}</span>
               </div>
             </div>
@@ -239,7 +234,7 @@ export default function CEODashboard() {
               </div>
               <span className={s.clientSlug}>{c.slug ?? "—"}</span>
               <span className={s.clientSub} style={{ color: SUBSCRIPTION_COLOR[c.subscription] }}>
-                {SUBSCRIPTION_LABEL[c.subscription]}
+                {PLAN_LABEL[c.subscription]}
               </span>
               <span className={`${s.statusPill} ${c.active ? s.pillOn : s.pillOff}`}>
                 {c.active ? "Activo" : "Inactivo"}

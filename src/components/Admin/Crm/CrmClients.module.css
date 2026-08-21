@@ -282,9 +282,8 @@
   border: 0.5px solid transparent;
 }
 .plan_free    { color: #9e968a; background: color-mix(in srgb, #9e968a 14%, var(--admin-bg-base)); border-color: color-mix(in srgb, #9e968a 26%, var(--admin-bg-base)); }
-.plan_starter { color: #6fae4e; background: color-mix(in srgb, #4c7a2e 20%, var(--admin-bg-base)); border-color: color-mix(in srgb, #4c7a2e 40%, var(--admin-bg-base)); }
+.plan_basic   { color: #6fae4e; background: color-mix(in srgb, #4c7a2e 20%, var(--admin-bg-base)); border-color: color-mix(in srgb, #4c7a2e 40%, var(--admin-bg-base)); }
 .plan_pro     { color: #5a9cc4; background: color-mix(in srgb, #2e5c7a 20%, var(--admin-bg-base)); border-color: color-mix(in srgb, #2e5c7a 40%, var(--admin-bg-base)); }
-.plan_premium { color: #c99a5a; background: color-mix(in srgb, #7a4c2e 22%, var(--admin-bg-base)); border-color: color-mix(in srgb, #7a4c2e 42%, var(--admin-bg-base)); }
 
 /* ═══════════════════════════════════════════════════════════════
    Vista Kanban — 5 columnas (una por etapa), tarjetas arrastrables

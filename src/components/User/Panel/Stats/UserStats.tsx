@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../../../../context/useAuth";
 import type { StatsData, ItemStatsData } from "../../../../types";
+import UpgradeModal from "../../../Common/UpgradeModal";
 import s from "./UserStats.module.css";
 
 // Pega a /me/stats y devuelve el resultado ya interpretado. Es pura (no toca
@@ -38,13 +39,13 @@ async function requestItemStats(token: string): Promise<ItemStatsResult> {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function UserStats() {
-  const { token, isLoading: authLoading } = useAuth();
+  const { token, user, isLoading: authLoading } = useAuth();
 
   const [stats, setStats]         = useState<StatsData | null>(null);
   const [itemStats, setItemStats] = useState<ItemStatsData | null>(null);
   const [locked, setLocked]   = useState(false);
   const [loading, setLoading] = useState(true);
-  const [upgrading, setUpgrading] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   // Carga inicial: el spinner arranca en true (useState) y se apaga cuando la
   // primera request termina. El setState ocurre después del await (no synchrono
@@ -116,26 +117,6 @@ export default function UserStats() {
     };
   }, [authLoading, token, locked]);
 
-  // Dispara el pago del plan Pro (mismo patrón que MenuEditor/UserEditor).
-  // Al volver de MercadoPago, el webhook ya actualizó la suscripción y esta
-  // página vuelve a pedir /me/stats, que esta vez responderá 200.
-  const handleUpgrade = useCallback(async () => {
-    if (!token || upgrading) return;
-    setUpgrading(true);
-    try {
-      const res = await fetch("/api/payments/crear-preferencia", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: "pro" }),
-      });
-      if (!res.ok) throw new Error();
-      const { init_point } = await res.json();
-      window.location.href = init_point;
-    } catch {
-      setUpgrading(false);
-    }
-  }, [token, upgrading]);
-
   if (loading) {
     return (
       <div className="pageLoaderScreen">
@@ -160,10 +141,19 @@ export default function UserStats() {
               Mirá cuántas veces escanearon el QR de tu carta y seguí la tendencia día a día.
               Con el plan Pro ($59.999) desbloqueás estadísticas de visitas.
             </p>
-            <button className={s.lockBtn} onClick={handleUpgrade} disabled={upgrading} type="button">
-              {upgrading ? "Redirigiendo..." : "Mejorar a Pro"}
+            <button className={s.lockBtn} onClick={() => setUpgradeOpen(true)} type="button">
+              Mejorar a Pro
             </button>
           </div>
+          {upgradeOpen && (
+            <UpgradeModal
+              currentPlan={user?.subscription ?? "free"}
+              minPlan="pro"
+              title="Desbloqueá las estadísticas"
+              description="Con el plan Pro accedés a las visitas de tu carta y a los productos más vistos."
+              onClose={() => setUpgradeOpen(false)}
+            />
+          )}
         </main>
       </div>
     );

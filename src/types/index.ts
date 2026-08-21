@@ -101,6 +101,7 @@ export interface AuthUser {
   role: "admin" | "user"
   slug: string
   subscription: Subscription
+  subscriptionExpiresAt?: string | null
 }
 
 export interface Menu {
@@ -153,6 +154,7 @@ export interface AuthResponse {
   admin: boolean
   slug: string
   subscription: Subscription
+  subscriptionExpiresAt?: string | null
   token: string
 }
 

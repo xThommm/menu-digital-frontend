@@ -16,6 +16,10 @@ MercadoPago antes de crear el `User`. Luego carga su menú y obtiene una carta p
 en `menudigitalapp.com.ar/<slug>/menu`. Los planes pagos desbloquean features de forma
 escalonada.
 
+> **Continuación obligatoria (22-08-2026):** antes de cualquier otro cambio, ejecutar
+> la prueba end-to-end de MercadoPago con importes bajos documentada en `BLUEPRINT.md`
+> §10.1. Los tests automatizados pasan; falta validar el circuito desplegado real.
+
 ---
 
 ## Índice
@@ -87,6 +91,8 @@ Fuente de verdad del sistema de planes. Exporta:
   mantiene como capa de validación (el webhook rechaza plan_ids desconocidos).
 - **`PLAN_ORDER`** = `["free","basic","pro"]`. El índice ES la jerarquía.
 - **`PLAN_FEATURES`** — features que desbloquea cada nivel (acumulativo).
+  La landing pública pertenece a Free; Basic elimina publicidad y suma Excel,
+  programación y PDF; Pro suma estadísticas, ilimitados y reseñas.
 - **`ITEM_LIMITS`**, **`FREE_ITEM_LIMIT`** y **`BASIC_ITEM_LIMIT`** — topes: Free 15,
   Basic 50 y Pro sin límite; `getItemLimit(plan)` resuelve el valor efectivo.
 - **`TEMPLATE_MIN_PLAN`** — mapa `templateId → plan mínimo` (gating escalonado de
@@ -323,8 +329,11 @@ más `STAGE_LABEL`/`PLAN_LABEL` (etiquetas legibles para el Excel exportado).
   firma, consulta el estado **real** del pago contra la API de MP (nunca confía en el
   query string), y si está `approved` crea el `User` de un alta pendiente o actualiza
   una cuenta existente. En altas fija `subscriptionExpiresAt`, elimina la contraseña
-  temporal y habilita el login automático. Es la **única** vía legítima para cambiar
-  de plan y registra el evento correspondiente en el CRM.
+  temporal y habilita el login automático. En upgrades fija la vigencia desde la
+  aprobación; en renovaciones anticipadas suma meses desde el vencimiento vigente (o
+  desde la aprobación si ya venció). La fecha base viaja en metadata y produce un
+  vencimiento absoluto idempotente ante reintentos del mismo webhook. Es la **única**
+  vía legítima para cambiar/renovar un plan y registra el evento en el CRM.
 
 ## routes/
 
@@ -349,7 +358,9 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   1/3/6/12 meses. `POST /crear-preferencia-registro` crea o recupera el alta
   pendiente, crea/actualiza una única preferencia idempotente y devuelve
   `init_point` + token opaco; `POST /registro/estado` permite esperar al webhook;
-  `POST /webhook` crea la cuenta, fija su vencimiento y habilita el login.
+  `POST /crear-preferencia` (autenticado) valida plan/período, impide downgrades,
+  calcula el precio server-side y crea upgrades o renovaciones; `POST /webhook` crea
+  la cuenta o acredita el cambio/renovación con vencimiento.
 
 ## utils/
 
@@ -419,7 +430,7 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
 
 ### `context/AuthContext.tsx`
 - **`AuthContextType`** (interface) y **`AuthContext`** — el contexto de auth (user,
-  token, isLoading, login, logout, isAuthenticated). El tipo del user es `AuthUser`
+  token, isLoading, login, `refreshUser`, logout, isAuthenticated). El tipo del user es `AuthUser`
   (definido en `types`).
 
 ### `context/AuthProvider.tsx`
@@ -428,8 +439,10 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
 - **`AuthProvider`** — provee el contexto. Estado combinado (una sola lectura de
   localStorage). Funciones:
   - **`login(username, password)`** — hace fetch a `/users/login`, adapta la
-    `AuthResponse` a `AuthUser` (id/name/role/slug/subscription), guarda en state +
+    `AuthResponse` a `AuthUser` (id/name/role/slug/subscription/vencimiento), guarda en state +
     localStorage (expiry 7 días).
+  - **`refreshUser()`** — relee `/users/me` y sincroniza plan/vencimiento en state y
+    localStorage. Se usa al volver de MercadoPago para no conservar el plan anterior.
   - **`logout()`** — limpia state y localStorage.
 
 ### `context/useAuth.ts`
@@ -568,6 +581,10 @@ sistema —, `CrmProfile`, `CrmClient`, `CrmClientDetail`). `ContactInfo` incluy
 - **`Spinner.tsx`** — **`Spinner({size})`**: spinner SVG inline para botones y overlays
   ("Guardando...", subiendo imagen, etc). Hereda color vía `currentColor` y gira con la
   clase global `.iconSpinner`. Antes estaba copiado idéntico en UserEditor y MenuEditor.
+- **`UpgradeModal.tsx`** — selector compartido de suscripción para dashboard y
+  paywalls. Filtra upgrades/renovaciones válidos según plan actual, ofrece Basic/Pro y
+  períodos 1/3/6/12, calcula el total/ahorro informativo y envía sólo `planId/months`;
+  el backend vuelve a validar y calcular el precio real. CSS en su módulo homónimo.
 
 ### `components/Admin/Home/AdminHome.tsx`
 Landing comercial pública (la home de `/`). Presenta la propuesta, precios y CTA a
@@ -713,8 +730,10 @@ Shell del panel del dueño (sidebar desktop + bottom nav mobile + `<Outlet/>`).
 Home del panel (`/dashboard`). Layout de dos columnas en desktop.
 - **`useSpotlight(ref)`** — hook: luz que sigue al cursor en las cards.
 - **`UserDashboard`** — trae `/users/me`, muestra bienvenida, tarjeta "storefront" (URL
-  pública, copiar link, ver página, descargar QR con `qrcode`+`jsPDF`), cards de
-  navegación y la vista previa en vivo. QR menu con portal.
+  pública, copiar link, ver página, descargar QR con `qrcode`+`jsPDF`), tarjeta **“Tu
+  plan”** (plan efectivo, vencimiento y CTA de upgrade/renovación), cards de navegación
+  y la vista previa en vivo. Al volver con `?payment=success` reintenta `refreshUser`
+  unos segundos por la posible carrera con el webhook. QR menu con portal.
 - **`SpotlightCard`** — card de navegación con el efecto spotlight.
 - **`PreviewCard`** — vista previa en vivo de la carta pública en un iframe escalado
   (toggle Móvil/Escritorio). Usa un `ResizeObserver` para calcular el `scale`: por ancho
@@ -734,7 +753,8 @@ Editor del menú (`/menu/editor`). El componente más grande.
   Cloudinary, **exportar/importar Excel** y **exportar PDF** (gateados a Basic con
   modal de upsell). El formulario del producto permite activar una programación semanal
   Basic+ con varios rangos por día, incluso cruzando medianoche, y programar el inicio y
-  fin de una oferta con fecha y hora. El modal dirige a Basic o Pro según el límite alcanzado.
+  fin de una oferta con fecha y hora. Los paywalls abren `Common/UpgradeModal` con el
+  plan mínimo correspondiente.
 
 ### `components/User/Panel/UserEditor/UserEditor.tsx`
 "Mi negocio" (`/user/editor`). Tabs info / media / template.
@@ -743,8 +763,8 @@ Editor del menú (`/menu/editor`). El componente más grande.
 - **`UserEditorPage`** — edita datos de contacto (incluido el **link de reseñas de
   Google Maps**, disponible en Pro y validado como `http(s)://`), delivery, galería
   (subida múltiple a Cloudinary con progreso, drag & drop) y **selección de template**
-  con gating por plan (`planMeetsMin`): candado + badge del plan requerido + modal de
-  upsell que dispara el pago del plan exacto (`handleUpgrade`).
+  con gating por plan (`planMeetsMin`): candado + badge del plan requerido y
+  `Common/UpgradeModal` configurado con el nivel mínimo del template.
 
 ### `components/User/Panel/Stats/UserStats.tsx`
 Estadísticas de visitas (`/estadisticas`, plan pro+).
@@ -756,7 +776,7 @@ Estadísticas de visitas (`/estadisticas`, plan pro+).
   (polling cada 45s solo con la pestaña visible + refresco al volver el foco). Muestra
   total y gráfico de los últimos 30 días, más la sección **"Productos más vistos"**
   (ranking top 10 con barra proporcional al más visto, solo si hay datos). Si el plan
-  no incluye stats (403), muestra paywall con `handleUpgrade` (pago del plan Pro).
+  no incluye stats (403), muestra paywall que abre `Common/UpgradeModal` para Pro.
 
 ## pages/
 
@@ -831,9 +851,17 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   `POST /payments/crear-preferencia-registro` antes de que exista el usuario; el upsell
   desde el panel usa `POST /payments/crear-preferencia` sobre una cuenta autenticada.
   En ambos casos el **webhook** (`mpWebhook`) verifica el pago real antes de crear la
-  cuenta o actualizar `User.subscription`. El gating de features (límite de items,
-  Excel, PDF, landing, reseñas, ofertas y disponibilidad programadas, stats y templates) se valida en el backend (`requirePlan` /
-  `TEMPLATE_MIN_PLAN`) y se refleja en la UI (`lib/plans.ts`).
+  cuenta o actualizar `User.subscription`/`subscriptionExpiresAt`. El panel abre el
+  `Common/UpgradeModal` compartido (plan + 1/3/6/12 meses) desde la tarjeta “Tu plan”
+  y desde cada paywall. El gating de features (límite de items, Excel, PDF, reseñas,
+  ofertas y disponibilidad programadas, stats y templates) se valida en el backend
+  (`requirePlan` / `TEMPLATE_MIN_PLAN`) y se refleja en la UI (`lib/plans.ts`). La
+  landing del local está incluida en Free y muestra publicidad en ese nivel.
+
+- **Validación de pagos**: `test/paymentWebhook.test.js` simula MercadoPago/Mongoose y
+  cubre upgrades, renovaciones vigentes/vencidas, reintentos idempotentes, pagos
+  pendientes, metadata inválida, preferencias legacy, firma inválida, usuario
+  inexistente y alta paga. No reemplaza la prueba real end-to-end pendiente.
 
 - **Pedido por WhatsApp**: en la carta pública el cliente arma un carrito
   (`CartProvider`, persistido en localStorage por slug) tocando "+" en cada producto

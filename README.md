@@ -32,10 +32,21 @@ el plan elegido mediante `?plan=<id>`:
 El gating de límites y funcionalidades se valida siempre en el backend. El frontend
 solo refleja el plan efectivo.
 
-> Estado al 20-08-2026: el circuito gratuito está listo. El alta paga tiene un
-> incidente productivo abierto: `crear-preferencia-registro` responde 500 en Koyeb.
-> Falta revisar el log interno del servicio para identificar si falla la persistencia
-> del registro pendiente o la creación de la preferencia en MercadoPago.
+> **PRÓXIMO PASO OBLIGATORIO — antes de cualquier otro desarrollo:** validar el
+> circuito completo con un pago real de importe bajo y una cuenta compradora distinta
+> de la vendedora: preferencia → Checkout Pro → webhook → plan/vencimiento en MongoDB
+> → regreso al dashboard. Los tests automatizados del webhook pasan, pero esta prueba
+> end-to-end todavía no fue realizada.
+
+Los cambios de suscripciones descriptos abajo están implementados en el workspace;
+quedan pendientes de deploy y validación real antes de considerarlos cerrados en
+producción.
+
+Los usuarios existentes administran su suscripción desde la tarjeta **“Tu plan”** del
+dashboard. Free puede subir a Basic/Pro; Basic puede renovar o subir a Pro; Pro puede
+renovar. El selector compartido ofrece 1/3/6/12 meses, muestra total/ahorro y el
+backend recalcula el importe. El vencimiento se muestra en el dashboard y se
+sincroniza en `AuthContext` al volver de MercadoPago.
 
 ## Desarrollo local
 

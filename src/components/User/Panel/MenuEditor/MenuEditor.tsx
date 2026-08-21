@@ -10,6 +10,7 @@ import type {
   ItemAvailabilitySchedule,
 } from "../../../../types";
 import Spinner from "../../../Common/Spinner";
+import UpgradeModal from "../../../Common/UpgradeModal";
 import styles from "./MenuEditor.module.css";
 
 // ── Estado vacío para formulario de item ───────────────────────────────────────
@@ -402,7 +403,6 @@ export default function MenuEditorPage() {
   // del plan free o por intentar usar el importador de Excel sin plan
   // pago. "reason" solo cambia el texto que se muestra.
   const [upgradeReason, setUpgradeReason] = useState<"items" | "excel" | "pdf" | "schedule" | "offer" | null>(null);
-  const [upgrading,     setUpgrading]     = useState(false);
 
   const [imageUploading, setImageUploading] = useState(false);
   const itemImageInputRef = useRef<HTMLInputElement>(null);
@@ -411,8 +411,6 @@ export default function MenuEditorPage() {
   const [exportingPdf, setExportingPdf] = useState(false);
 
   const upgradePlan = upgradeReason === "items" && limits?.itemLimit === 50 ? "pro" : "basic";
-  const upgradePlanLabel = upgradePlan === "pro" ? "Pro" : "Básico";
-  const upgradePrice = upgradePlan === "pro" ? "$59.999" : "$39.999";
   // Compatibilidad durante despliegues escalonados: versiones anteriores del
   // backend no enviaban `canExportPdf`. PDF y Excel requieren el mismo plan
   // Basic, así que el permiso existente es un fallback seguro.
@@ -683,27 +681,6 @@ export default function MenuEditorPage() {
       setError(err instanceof Error ? err.message : "No se pudo guardar el producto.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  // Dispara el pago real del plan mínimo que resuelve el bloqueo actual.
-  // (mismo patrón que UserEditor.tsx). Al volver, refetch trae el
-  // menú actualizado con los límites del plan nuevo.
-  const handleUpgrade = async () => {
-    setUpgrading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/payments/crear-preferencia", {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({ planId: upgradePlan }),
-      });
-      if (!res.ok) throw new Error();
-      const { init_point } = await res.json();
-      window.location.href = init_point;
-    } catch {
-      setError("No se pudo iniciar el pago. Intentá de nuevo.");
-      setUpgrading(false);
     }
   };
 
@@ -1748,17 +1725,10 @@ export default function MenuEditorPage() {
 
         {/* ══ MODAL DE UPGRADE (límite de productos / importador Excel) ══ */}
         {upgradeReason && (
-          <div
-            className={styles.modalOverlay}
-            onClick={() => !upgrading && setUpgradeReason(null)}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="upgrade-modal-title"
-          >
-            <div className={styles.modal} onClick={e => e.stopPropagation()}>
-              <div className={styles.modalIcon}>{icons.lock}</div>
-              <p id="upgrade-modal-title" className={styles.modalTitle}>
-                {upgradeReason === "items"
+          <UpgradeModal
+            currentPlan={user?.subscription ?? "free"}
+            minPlan={upgradePlan}
+            title={upgradeReason === "items"
                   ? `Llegaste al límite de ${limits?.itemLimit ?? 15} productos`
                   : upgradeReason === "excel"
                     ? "Importar y exportar en Excel es una función del plan Básico"
@@ -1767,40 +1737,19 @@ export default function MenuEditorPage() {
                       : upgradeReason === "schedule"
                         ? "Programar la disponibilidad es una función del plan Básico"
                         : "Programar ofertas es una función del plan Básico"}
-              </p>
-              <p className={styles.modalDesc}>
-                {upgradeReason === "items"
+            description={upgradeReason === "items"
                   ? limits?.itemLimit === 50
-                    ? "Con el plan Pro ($59.999) tenés productos ilimitados."
-                    : "Con el plan Básico ($39.999) podés cargar hasta 50 productos."
+                    ? "Con el plan Pro tenés productos ilimitados."
+                    : "Con el plan Básico podés cargar hasta 50 productos."
                   : upgradeReason === "excel"
-                    ? "Con el plan Básico ($39.999) podés cargar, actualizar y exportar tu menú completo desde una planilla de Excel."
+                    ? "Con el plan Básico podés cargar, actualizar y exportar tu menú completo desde una planilla de Excel."
                     : upgradeReason === "pdf"
-                      ? "Con el plan Básico ($39.999) podés descargar una versión imprimible de tu menú."
+                      ? "Con el plan Básico podés descargar una versión imprimible de tu menú."
                       : upgradeReason === "schedule"
-                        ? "Con el plan Básico ($39.999) podés definir varios horarios por día para cada producto."
-                        : "Con el plan Básico ($39.999) el precio de oferta se activa y finaliza automáticamente."}
-              </p>
-              <div className={styles.modalBtns}>
-                <button
-                  className={styles.modalCancel}
-                  onClick={() => setUpgradeReason(null)}
-                  type="button"
-                  disabled={upgrading}
-                >
-                  Cerrar
-                </button>
-                <button
-                  className={styles.modalUpgrade}
-                  onClick={handleUpgrade}
-                  type="button"
-                  disabled={upgrading}
-                >
-                  {upgrading ? <><Spinner size={14} /> Redirigiendo...</> : `Mejorar a ${upgradePlanLabel} · ${upgradePrice}`}
-                </button>
-              </div>
-            </div>
-          </div>
+                        ? "Con el plan Básico podés definir varios horarios por día para cada producto."
+                        : "Con el plan Básico el precio de oferta se activa y finaliza automáticamente."}
+            onClose={() => setUpgradeReason(null)}
+          />
         )}
 
       </div>

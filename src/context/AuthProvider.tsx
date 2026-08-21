@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { AuthContext } from "./AuthContext";
 import type { AuthResponse, AuthUser } from '../types';
 
@@ -35,6 +35,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setUser  = (u: AuthUser | null) => setAuth(prev => ({ ...prev, user: u }));
   const setToken = (t: string | null)   => setAuth(prev => ({ ...prev, token: t }));
 
+  const refreshUser = useCallback(async (): Promise<AuthUser | null> => {
+    if (!token) return null;
+
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/users/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const refreshedUser: AuthUser = {
+      id: data._id,
+      name: data.username,
+      role: data.admin ? "admin" : "user",
+      slug: data.slug,
+      subscription: data.subscription ?? "free",
+      subscriptionExpiresAt: data.subscriptionExpiresAt ?? null,
+    };
+
+    setAuth(prev => ({ ...prev, user: refreshedUser }));
+    localStorage.setItem("user", JSON.stringify(refreshedUser));
+    return refreshedUser;
+  }, [token]);
+
   // ✅ Parámetro `username` no choca con ningún estado
   const login = async (username: string, password: string): Promise<AuthUser> => {
     setIsLoading(true);
@@ -64,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: data.admin ? "admin" : "user",
         slug: data.slug,
         subscription: data.subscription ?? "free",
+        subscriptionExpiresAt: data.subscriptionExpiresAt ?? null,
       };
 
       setToken(data.token);
@@ -90,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, refreshUser, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

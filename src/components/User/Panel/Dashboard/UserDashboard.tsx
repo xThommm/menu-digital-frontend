@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import { jsPDF } from "jspdf";
 import { useAuth } from "../../../../context/useAuth";
+import { PLAN_LABEL } from "../../../../lib/plans";
 import type { DashData } from "../../../../types";
+import UpgradeModal from "../../../Common/UpgradeModal";
 import s from "./UserDashboard.module.css";
 
 // ── Hook: luz que sigue al cursor en las cards ────────────────────────────────
@@ -26,16 +28,49 @@ function useSpotlight(ref: React.RefObject<HTMLElement>) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function UserDashboard() {
-  const { token, isLoading } = useAuth();
+  const { token, user, isLoading, refreshUser } = useAuth();
   const navigate = useNavigate();
 
   const [data, setData]     = useState<DashData | null>(null);
   const [copied, setCopied] = useState(false);
   const [generatingQr, setGeneratingQr] = useState(false);
   const [qrMenuOpen, setQrMenuOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [qrMenuPos, setQrMenuPos] = useState<{ top: number; left: number } | null>(null);
   const qrMenuWrapRef = useRef<HTMLDivElement>(null);
   const qrMenuPortalRef = useRef<HTMLDivElement>(null);
+
+  // MercadoPago puede redirigir antes de que llegue su webhook. Al volver de
+  // un pago aprobado refrescamos el usuario y reintentamos unos segundos si
+  // el plan todavía no cambió; cuando llega el webhook se actualizan juntos
+  // AuthContext y localStorage, evitando que el banner Free quede obsoleto.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get("payment");
+    if (!paymentStatus || !token) return;
+
+    window.history.replaceState({}, "", window.location.pathname);
+    let cancelled = false;
+    const previousPlan = user?.subscription;
+    const previousExpiry = user?.subscriptionExpiresAt;
+
+    const syncPayment = async () => {
+      const attempts = paymentStatus === "success" ? 6 : 1;
+      for (let attempt = 0; attempt < attempts && !cancelled; attempt += 1) {
+        const refreshed = await refreshUser();
+        if (refreshed && (
+          refreshed.subscription !== previousPlan
+          || refreshed.subscriptionExpiresAt !== previousExpiry
+        )) return;
+        if (attempt < attempts - 1) {
+          await new Promise(resolve => window.setTimeout(resolve, 1000));
+        }
+      }
+    };
+
+    syncPayment();
+    return () => { cancelled = true; };
+  }, [refreshUser, token, user?.subscription, user?.subscriptionExpiresAt]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -179,6 +214,52 @@ export default function UserDashboard() {
           <p className={s.welcomeEyebrow}>Bienvenido!</p>
           <h1 className={s.welcomeTitle}>{displayName}</h1>
         </div>
+
+        {/* Plan actual + acceso explícito al flujo de upgrade. */}
+        {user && (
+          <div className={`${s.planCard} ${user.subscription === "pro" ? s.planCardPro : ""}`}>
+            <div className={s.planInfo}>
+              <span className={s.planLabel}>Tu plan</span>
+              <strong className={s.planName}>{PLAN_LABEL[user.subscription]}</strong>
+              <span className={s.planDescription}>
+                {user.subscription === "free"
+                  ? "Hasta 15 productos y publicidad de Menú Digital."
+                  : user.subscription === "basic"
+                    ? "Hasta 50 productos, sin publicidad y herramientas avanzadas."
+                    : "Productos ilimitados y todas las funciones disponibles."}
+              </span>
+              {user.subscription !== "free" && (
+                <span className={s.planExpiry}>
+                  {user.subscriptionExpiresAt
+                    ? `Vigente hasta el ${new Date(user.subscriptionExpiresAt).toLocaleDateString("es-AR")}`
+                    : "Sin vencimiento registrado"}
+                </span>
+              )}
+            </div>
+            <button className={s.planUpgradeBtn} type="button" onClick={() => setUpgradeOpen(true)}>
+              {user.subscription === "free"
+                ? "Mejorar plan"
+                : user.subscription === "basic"
+                  ? "Renovar o pasar a Pro"
+                  : "Renovar plan"}
+            </button>
+          </div>
+        )}
+
+        {upgradeOpen && user && (
+          <UpgradeModal
+            currentPlan={user.subscription}
+            minPlan={user.subscription === "free" ? "basic" : user.subscription}
+            allowCurrentPlan={user.subscription !== "free"}
+            title={user.subscription === "free" ? "Elegí el plan para tu negocio" : "Renová o mejorá tu plan"}
+            description={user.subscription === "free"
+              ? "Pasá a Básico o Pro, elegí la duración y aprovechá el descuento por prepago."
+              : user.subscription === "basic"
+                ? "Sumá meses a tu plan Básico o pasá a Pro para desbloquear todas las funciones."
+                : "Elegí cuántos meses querés sumar a la vigencia de tu plan Pro."}
+            onClose={() => setUpgradeOpen(false)}
+          />
+        )}
 
         {/* Tarjeta storefront */}
         <div className={s.storefrontCard}>

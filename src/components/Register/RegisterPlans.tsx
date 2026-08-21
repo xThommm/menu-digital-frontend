@@ -29,6 +29,7 @@ const PLANS: {
     features: [
       "Menú digital + editor",
       "QR descargable",
+      "Landing page del local",
       "Mensaje para delivery/take away por WhatsApp",
       "Hasta 15 productos",
       "Incluye publicidad de Menú Digital",
@@ -41,7 +42,6 @@ const PLANS: {
     description: "Para locales en crecimiento",
     features: [
       "Hasta 50 productos",
-      "Landing page del local",
       "Modificación masiva por Excel",
       "Programación de productos",
       "Exportar menú a PDF",

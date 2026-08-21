@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "../../../../context/useAuth";
 import type { Subscription, DayKey, DayHours, Schedule } from "../../../../types/index";
-import { planMeetsMin, PLAN_LABEL } from "../../../../lib/plans";
+import { planMeetsMin, PLAN_LABEL, TEMPLATE_MIN_PLAN } from "../../../../lib/plans";
 import Spinner from "../../../Common/Spinner";
+import UpgradeModal from "../../../Common/UpgradeModal";
 import styles from "./UserEditor.module.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -89,23 +90,23 @@ interface TemplateOption {
 
 const TEMPLATES: TemplateOption[] = [
   // free
-  { id: 1,  name: "Clásico",    color: "#0b0a08", accent: "#c9a84c", minPlan: "free" },
+  { id: 1,  name: "Clásico",    color: "#0b0a08", accent: "#c9a84c", minPlan: TEMPLATE_MIN_PLAN[1] },
   // basic
-  { id: 2,  name: "Moderno",    color: "#0d1117", accent: "#58a6ff", minPlan: "basic" },
-  { id: 3,  name: "Natural",    color: "#f2f6ef", accent: "#2e7d32", minPlan: "basic" },
-  { id: 4,  name: "Rojo",       color: "#110606", accent: "#e05555", minPlan: "basic" },
-  { id: 5,  name: "Minimal",    color: "#ffffff", accent: "#111111", minPlan: "basic" },
+  { id: 2,  name: "Moderno",    color: "#0d1117", accent: "#58a6ff", minPlan: TEMPLATE_MIN_PLAN[2] },
+  { id: 3,  name: "Natural",    color: "#f2f6ef", accent: "#2e7d32", minPlan: TEMPLATE_MIN_PLAN[3] },
+  { id: 4,  name: "Rojo",       color: "#110606", accent: "#e05555", minPlan: TEMPLATE_MIN_PLAN[4] },
+  { id: 5,  name: "Minimal",    color: "#ffffff", accent: "#111111", minPlan: TEMPLATE_MIN_PLAN[5] },
   // pro
-  { id: 6,  name: "Aurora",     color: "#efddc9", accent: "#a8703f", minPlan: "pro" },
-  { id: 7,  name: "Noir Gold",  color: "#08070a", accent: "#d4af37", minPlan: "pro" },
-  { id: 8,  name: "Coastal",    color: "#f4f8fb", accent: "#2a91c4", minPlan: "pro" },
-  { id: 9,  name: "Charcoal",   color: "#1a1a1c", accent: "#ff6b5c", minPlan: "pro" },
-  { id: 10, name: "Terracotta", color: "#f7ede3", accent: "#c2571f", minPlan: "pro" },
-  { id: 11, name: "Lavender",   color: "#f6f3fa", accent: "#8256c4", minPlan: "pro" },
-  { id: 12, name: "Forest",     color: "#0c1410", accent: "#86c397", minPlan: "pro" },
-  { id: 13, name: "Platinum",   color: "#0a0b0d", accent: "#b8c2cf", minPlan: "pro" },
-  { id: 14, name: "Ocean",      color: "#071b26", accent: "#36c2b4", minPlan: "pro" },
-  { id: 15, name: "Rosé",       color: "#fff6f3", accent: "#b64f68", minPlan: "pro" },
+  { id: 6,  name: "Aurora",     color: "#efddc9", accent: "#a8703f", minPlan: TEMPLATE_MIN_PLAN[6] },
+  { id: 7,  name: "Noir Gold",  color: "#08070a", accent: "#d4af37", minPlan: TEMPLATE_MIN_PLAN[7] },
+  { id: 8,  name: "Coastal",    color: "#f4f8fb", accent: "#2a91c4", minPlan: TEMPLATE_MIN_PLAN[8] },
+  { id: 9,  name: "Charcoal",   color: "#1a1a1c", accent: "#ff6b5c", minPlan: TEMPLATE_MIN_PLAN[9] },
+  { id: 10, name: "Terracotta", color: "#f7ede3", accent: "#c2571f", minPlan: TEMPLATE_MIN_PLAN[10] },
+  { id: 11, name: "Lavender",   color: "#f6f3fa", accent: "#8256c4", minPlan: TEMPLATE_MIN_PLAN[11] },
+  { id: 12, name: "Forest",     color: "#0c1410", accent: "#86c397", minPlan: TEMPLATE_MIN_PLAN[12] },
+  { id: 13, name: "Platinum",   color: "#0a0b0d", accent: "#b8c2cf", minPlan: TEMPLATE_MIN_PLAN[13] },
+  { id: 14, name: "Ocean",      color: "#071b26", accent: "#36c2b4", minPlan: TEMPLATE_MIN_PLAN[14] },
+  { id: 15, name: "Rosé",       color: "#fff6f3", accent: "#b64f68", minPlan: TEMPLATE_MIN_PLAN[15] },
 ];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -167,7 +168,6 @@ export default function UserEditorPage() {
   const [template,          setTemplate]   = useState(1);
   const [subscription,      setSubscription] = useState<Subscription>("free");
   const [lockedTemplate,    setLockedTemplate] = useState<typeof TEMPLATES[number] | null>(null);
-  const [upgrading,         setUpgrading]      = useState(false);
   const canUseReviews = planMeetsMin(subscription, "pro");
 
   const [isDirty, setIsDirty]   = useState(false);
@@ -363,29 +363,6 @@ export default function UserEditorPage() {
       return;
     }
     saveTemplate(t.id);
-  };
-
-  // Dispara el pago real desde el modal de upsell, apuntando al plan que el
-  // template bloqueado requiere (Basic o Pro). crear-preferencia
-  // requiere estar logueado — ya lo estamos acá — y usa el propio usuario
-  // como external_reference para acreditarle el plan cuando MP confirme.
-  const handleUpgrade = async () => {
-    const planId = lockedTemplate?.minPlan ?? "pro";
-    setUpgrading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/payments/crear-preferencia", {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({ planId }),
-      });
-      if (!res.ok) throw new Error();
-      const { init_point } = await res.json();
-      window.location.href = init_point;
-    } catch {
-      setError("No se pudo iniciar el pago. Intentá de nuevo.");
-      setUpgrading(false);
-    }
   };
 
   // Upload gallery image(s) — soporta subir varias a la vez (selección
@@ -1115,8 +1092,7 @@ export default function UserEditorPage() {
                       {template === t.id ? (
                         <span className={styles.templateActive}>Activo</span>
                       ) : t.minPlan !== "free" ? (
-                        // Muestra el plan que desbloquea el template (Starter/Pro/
-                        // Premium) en vez de un "PRO" genérico.
+                        // Muestra el plan mínimo que desbloquea el template.
                         <span className={styles.templatePro}>{PLAN_LABEL[t.minPlan]}</span>
                       ) : null}
                     </div>
@@ -1129,44 +1105,15 @@ export default function UserEditorPage() {
 
       </div>
 
-      {/* ── Modal: template premium bloqueado ── */}
+      {/* ── Modal: template bloqueado por plan ── */}
       {lockedTemplate && (
-        <div
-          className={styles.modalOverlay}
-          onClick={() => setLockedTemplate(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="premium-modal-title"
-        >
-          <div className={styles.modal} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalIcon}><LockIcon size={20} /></div>
-            <p id="premium-modal-title" className={styles.modalTitle}>
-              {lockedTemplate.name} es un template {PLAN_LABEL[lockedTemplate.minPlan]}
-            </p>
-            <p className={styles.modalDesc}>
-              Con el plan {PLAN_LABEL[lockedTemplate.minPlan]} desbloqueás este
-              estilo y todos los templates de ese nivel.
-            </p>
-            <div className={styles.modalBtns}>
-              <button
-                className={styles.modalCancel}
-                onClick={() => setLockedTemplate(null)}
-                type="button"
-                disabled={upgrading}
-              >
-                Cerrar
-              </button>
-              <button
-                className={styles.modalUpgrade}
-                onClick={handleUpgrade}
-                type="button"
-                disabled={upgrading}
-              >
-                {upgrading ? <><Spinner size={14} /> Redirigiendo...</> : `Mejorar a ${PLAN_LABEL[lockedTemplate.minPlan]}`}
-              </button>
-            </div>
-          </div>
-        </div>
+        <UpgradeModal
+          currentPlan={subscription}
+          minPlan={lockedTemplate.minPlan === "pro" ? "pro" : "basic"}
+          title={`${lockedTemplate.name} es un template ${PLAN_LABEL[lockedTemplate.minPlan]}`}
+          description={`Con el plan ${PLAN_LABEL[lockedTemplate.minPlan]} desbloqueás este estilo y todos los templates de ese nivel.`}
+          onClose={() => setLockedTemplate(null)}
+        />
       )}
 
       {/* ── Modal: ajustar imagen de portada ── */}
