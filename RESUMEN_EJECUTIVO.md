@@ -37,8 +37,8 @@ El modelo actual es **freemium por suscripción**, sin comisión sobre las venta
 | Plan | Precio base | Características principales |
 |---|---:|---|
 | Gratis | $0 | Hasta 15 productos, menú, landing, QR y WhatsApp. Incluye publicidad de MenuDigital. |
-| Basic | $39.999/mes | Hasta 50 productos, sin publicidad, Excel, PDF, ofertas programadas y 5 diseños. |
-| Pro | $59.999/mes | Productos ilimitados, estadísticas, reseñas, 15 diseños y todo Basic. |
+| Basic | $2.000/mes | Hasta 50 productos, sin publicidad, Excel, PDF, ofertas programadas y 5 diseños. |
+| Pro | $5.000/mes | Productos ilimitados, estadísticas, reseñas, 15 diseños y todo Basic. |
 
 Descuentos aproximados por pago anticipado:
 
@@ -55,22 +55,22 @@ Los precios están en pesos argentinos y se revisan trimestralmente por inflaci�
 ### Supuestos de referencia
 
 - Mezcla estimada: 70% de clientes Basic y 30% Pro.
-- Ingreso promedio de lista: **$45.999 mensuales por cliente pago**.
+- Ingreso promedio de lista: **$2.900 mensuales por cliente pago**.
 - Previsión promedio por descuentos de prepago: 10%.
-- Ingreso promedio efectivo estimado: **$41.399 mensuales**.
+- Ingreso promedio efectivo estimado: **$2.610 mensuales**.
 - Valores expresados en pesos constantes de agosto de 2026.
 - No incluyen comisiones, impuestos, devoluciones ni inflación futura.
 
 | Escenario a 24 meses | Clientes pagos | Ingreso mensual | Ingreso anualizado |
 |---|---:|---:|---:|
-| Piso | 300 | $12,42 millones | $149,04 millones |
-| Base | 600 | $24,84 millones | $298,07 millones |
-| Techo | 900 | $37,26 millones | $447,11 millones |
+| Piso | 300 | $783.000 | $9,396 millones |
+| Base | 600 | $1,566 millones | $18,792 millones |
+| Techo | 900 | $2,349 millones | $28,188 millones |
 
 Referencias adicionales:
 
 - Con una baja mensual del 3%, la permanencia media estimada es de aproximadamente 33 meses.
-- El ingreso bruto acumulado estimado por cliente sería cercano a **$1,38 millones**.
+- El ingreso bruto acumulado estimado por cliente sería cercano a **$87.000**.
 - Costo máximo orientativo de adquisición: un mes de ingreso promedio para canales asociados y hasta tres meses para publicidad paga.
 - El resultado neto debe recalcularse con comisiones de MercadoPago, impuestos, devoluciones, soporte, infraestructura y tipo de cambio reales.
 - Los costos tecnológicos estimados en USD deben convertirse mensualmente y compararse contra el margen de contribución, no contra la facturación bruta.
@@ -80,12 +80,20 @@ Referencias adicionales:
 - Gratis crea la cuenta inmediatamente.
 - Basic y Pro envían al cliente al checkout de MercadoPago.
 - La cuenta paga se crea o actualiza únicamente cuando MercadoPago confirma el pago.
-- Se registran plan, período, aprobación y vencimiento.
+- Cada preferencia nueva conserva un snapshot durable de asociación, plan, período,
+  importe y moneda; cada pago conserva además su estado financiero y el resultado de
+  la acreditación.
 - Se admiten períodos de 1, 3, 6 y 12 meses, renovaciones y mejoras de plan.
 - Si la confirmación demora, el registro permanece pendiente y puede completarse más tarde.
 - Las contraseñas temporales quedan cifradas y se eliminan al finalizar el alta.
+- Un reintento del mismo pago no vuelve a sumar meses; dos pagos distintos sí
+  extienden la vigencia una vez cada uno. Un checkout viejo no degrada el plan ni
+  acorta un vencimiento posterior.
 
-El circuito cuenta con pruebas automatizadas. Para cerrarlo falta validar en producción el recorrido completo: pago, confirmación, usuario, plan, vencimiento, acceso al panel y registro en el CRM.
+Los cambios están publicados en `master` (`frontend 05cd9db`, `backend 0a6e662`) y
+el cierre local reporta 53/53 tests backend más typecheck, lint y build frontend.
+Para cerrarlo falta confirmar los despliegues y validar en producción el recorrido
+completo: pago, confirmación, usuario, plan, vencimiento, acceso al panel y CRM.
 
 ## 6. Operación, datos y seguridad
 

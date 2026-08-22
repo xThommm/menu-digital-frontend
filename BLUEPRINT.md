@@ -8,10 +8,11 @@
 > archivo-por-archivo del código vive en [ARCHITECTURE.md](ARCHITECTURE.md) — acá no
 > se repite, se referencia.
 
-> **CONTINUACIÓN OBLIGATORIA — 22-08-2026:** antes de cualquier otro desarrollo,
-> desplegar los cambios actuales y ejecutar la prueba end-to-end de MercadoPago con
-> importes bajos (§10.1). Upgrade, renovación, vencimiento, sincronización de auth y
-> tests están implementados localmente, pero todavía no validados con un pago real.
+> **CONTINUACIÓN OBLIGATORIA — 22-08-2026:** los cambios de frontend (`05cd9db`) y
+> backend (`0a6e662`) ya fueron publicados en `master`. Antes de otro desarrollo hay
+> que confirmar los deploys de Vercel/Koyeb y ejecutar la prueba end-to-end de
+> MercadoPago (§10.1). El flujo está implementado y validado localmente, pero todavía
+> no fue confirmado con un pago real sobre el despliegue nuevo.
 
 ---
 
@@ -47,7 +48,7 @@ mobile-first con importación/exportación por Excel.
 - **Estado**: producto en producción (`menudigitalapp.com.ar`), stack React 19 +
   Express + MongoDB Atlas, deploy en Vercel + Koyeb, cobro por MercadoPago.
 - **Modelo**: freemium por suscripción. Free ($0, hasta 15 productos) → Basic
-  ($39.999/mes base) → Pro ($59.999/mes base), con descuentos por prepagar
+  ($2.000/mes base) → Pro ($5.000/mes base), con descuentos por prepagar
   3/6/12 meses. Sin comisiones por venta.
 - **Mercado**: ~67.000 establecimientos gastronómicos en Argentina (FEHGRA). Sector
   golpeado por la caída del consumo (−13% de actividad feb-2025 vs feb-2023), lo que
@@ -123,15 +124,15 @@ La tesis, en tres partes:
 ### 3.2 TAM / SAM / SOM
 
 Supuestos explícitos (revisables): con precios de agosto 2026, una mezcla de 70%
-Basic y 30% Pro da un ARPU de lista de $45.999. Aplicando una previsión promedio
-de 10% por descuentos de prepago, el **ARPU efectivo de referencia es $41.399/mes**
-(≈ $496.789/año), antes de comisiones, impuestos, devoluciones e inflación.
+Basic y 30% Pro da un ARPU de lista de $2.900. Aplicando una previsión promedio
+de 10% por descuentos de prepago, el **ARPU efectivo de referencia es $2.610/mes**
+(≈ $31.320/año), antes de comisiones, impuestos, devoluciones e inflación.
 
 | Capa | Definición | Tamaño | Valor anual potencial |
 |---|---|---|---|
-| **TAM** | Establecimientos gastronómicos de Argentina | ~67.000 locales | ~$33.285M ARS/año |
-| **SAM** | Locales independientes con dueño operativo digital-friendly (excluye cadenas con POS enterprise y locales sin ninguna operación digital), est. 45% | ~30.000 locales | ~$14.904M ARS/año |
-| **SOM** (24 meses) | Cuota alcanzable con distribución orgánica + partnerships, 1–3% del SAM | 300–900 locales pagos | $149M–$447M ARS/año |
+| **TAM** | Establecimientos gastronómicos de Argentina | ~67.000 locales | ~$2.098M ARS/año |
+| **SAM** | Locales independientes con dueño operativo digital-friendly (excluye cadenas con POS enterprise y locales sin ninguna operación digital), est. 45% | ~30.000 locales | ~$939,6M ARS/año |
+| **SOM** (24 meses) | Cuota alcanzable con distribución orgánica + partnerships, 1–3% del SAM | 300–900 locales pagos | $9,4M–$28,2M ARS/año |
 
 La expansión natural post-Argentina es LATAM hispanohablante (mismo idioma, mismos
 rails: WhatsApp + MercadoPago en AR/UY/CL/MX), pero no entra en el horizonte de este
@@ -219,7 +220,7 @@ educa el mercado a costo cero.
 | M9 | **Estadísticas** | Visitas diarias (30 días, tiempo real con polling), ranking top-10 de productos más vistos | Pro+ |
 | M10 | **Import/Export Excel** | Plantilla generada con datos actuales, preview de cambios, confirmación fila a fila | Basic+ |
 | M10b | **Exportación PDF** | Menú imprimible generado desde la carta vigente | Basic+ |
-| M11 | **Suscripciones** ✅ | Checkout MercadoPago, alta automática, upgrades/renovaciones 1/3/6/12 meses, vencimiento visible, webhook firmado e idempotente | — |
+| M11 | **Suscripciones** ✅ | Checkout MercadoPago, alta automática, upgrades/renovaciones 1/3/6/12 meses, vencimiento visible, historial durable, validación del checkout original y webhook firmado/idempotente | — |
 | M12 | **Panel CEO + CRM interno** | KPIs de la plataforma, gestión de clientes (pipeline kanban, notas, eventos automáticos, seguimientos vencidos, export Excel) | Solo admin |
 
 #### Módulos del roadmap 🔜 (ver §11)
@@ -300,21 +301,28 @@ Como plataforma, quiero cobrar sin intervención manual.
   `external_reference` y conserva un token opaco para consultar la activación. La
   contraseña temporal queda cifrada con AES-256-GCM hasta que el webhook crea el User.
 - Volver atrás, cerrar la pestaña o reintentar recupera el alta pendiente y
-  reutiliza la misma preferencia de MercadoPago. Cambiar plan/período actualiza
-  esa preferencia, evitando acumular links de pago cobrables.
+  reutiliza la misma preferencia de MercadoPago si conserva plan/período. Cambiar
+  la selección crea otro `PaymentCheckout` y otra preferencia sin mutar el snapshot
+  anterior; el checkout reemplazado queda marcado `superseded`.
 - Solo el webhook (firma HMAC verificada + consulta del pago real a la API de MP)
-  crea la cuenta o cambia `User.subscription`. Un plan_id desconocido se descarta.
+  crea la cuenta o cambia `User.subscription`. Cada pago queda primero en
+  `PaymentTransaction`; los checkouts nuevos deben coincidir en asociación,
+  operación, plan, período, importe y moneda. Una diferencia queda `not_applied`.
 - El período elegido fija `subscriptionExpiresAt`; al completarse, el frontend hace
   un único login y redirige automáticamente al dashboard.
 - Un usuario existente ve plan y vencimiento en el dashboard. Free puede elegir
   Basic/Pro; Basic puede renovar o subir a Pro; Pro puede renovar. La renovación
   vigente suma meses desde el vencimiento y la vencida desde la aprobación.
+- Cada `paymentID` distinto extiende exactamente una vez dentro de una transacción
+  MongoDB; un reintento del mismo pago no vuelve a sumar. Un checkout antiguo nunca
+  baja el plan ni acorta una vigencia posterior y queda auditado para conciliación.
 - Al volver del checkout, `AuthContext` reintenta `/users/me` para absorber la posible
   carrera con el webhook y persiste el plan/vencimiento actualizado.
 - El alta o cambio de plan queda logueado como evento en el CRM.
 - Las altas gratuitas y pagas generan slugs únicos legibles; las colisiones reciben
   sufijos incrementales y el backend reintenta las carreras contra el índice `unique`.
 - La suite backend cubre el webhook, el cifrado temporal y las colisiones de slug.
+- El cierre local reporta 53/53 tests backend y typecheck/lint/build frontend.
 - **Pendiente obligatorio:** el circuito todavía debe validarse end-to-end con un
   pago real de importe bajo antes de dar este módulo por cerrado en producción.
 
@@ -437,6 +445,8 @@ Dueño/CEO ──────────▶  ▼
 | `itemviews` | Vistas diarias agregadas por producto | único `{userID, itemID, date}` + `{userID, date}` |
 | `crmprofiles` | CRM interno (etapa, tags, seguimiento, notas/eventos) — **aislado de `users` a propósito** | `userID` único |
 | `pendingregistrations` | Altas pagas todavía no convertidas en User; conserva plan/período, token opaco hasheado y estado | `activationTokenHash` único sparse; TTL por `expiresAt` |
+| `paymentcheckouts` | Snapshot durable e inmutable de asociación, plan, período, importe y moneda antes de abrir MercadoPago | `preferenceId` único sparse; `{userID, createdAt}`; `{pendingRegistrationID, createdAt}`; sin TTL |
+| `paymenttransactions` | Historial financiero y resultado interno de cada pago/webhook, incluidos vencimientos antes/después y validación del checkout | `paymentID` único; `{userID, createdAt}`; `{pendingRegistrationID, createdAt}`; sin TTL |
 
 Convenciones vigentes: fechas de métricas como string `YYYY-MM-DD` en huso BA
 (upserts atómicos sin líos de timezone); `userID` denormalizado en `itemviews` para
@@ -638,8 +648,8 @@ utilidades.
 | Plan | Precio | Equivalente mensual | Desbloquea |
 |---|---|---|---|
 | **Gratis** | $0 | $0 | Menú/editor, landing, QR, pedido por WhatsApp, hasta 15 productos y publicidad |
-| **Basic** | $39.999/mes base | Según período | Hasta 50 productos, sin publicidad, Excel, programación, PDF y 5 diseños |
-| **Pro** | $59.999/mes base | Según período | Todo Basic + ilimitados, métricas, reseñas, 15 diseños y dominio propio 🔜 |
+| **Basic** | $2.000/mes base | Según período | Hasta 50 productos, sin publicidad, Excel, programación, PDF y 5 diseños |
+| **Pro** | $5.000/mes base | Según período | Todo Basic + ilimitados, métricas, reseñas, 15 diseños y dominio propio 🔜 |
 
 Mecánica de monetización: el **prepago largo se premia** (3 meses ≈10% off,
 6 meses ≈17% y 12 meses 25%); el plan Free hace marketing
@@ -648,30 +658,29 @@ La selección nace en la landing y viaja por query string al registro; Free crea
 cuenta sin checkout, mientras Basic/Pro confirman período antes de abrir MercadoPago.
 
 **PRÓXIMO PASO OBLIGATORIO — hacer antes de cualquier otro desarrollo:** validar el
-checkout completo con un pago real de importe bajo. Para la prueba se pueden
-bajar temporalmente los precios de Basic/Pro a importes mínimos en `PLANES`
-(backend) y `PAID_PLANS` (selector de upgrade), desplegar ambos servicios y pagar
-con una cuenta distinta a la vendedora. Revertir los importes antes de dejar el
-entorno disponible para clientes. Verificar preferencia, monto, metadata, webhook,
-plan y `subscriptionExpiresAt` en MongoDB, evento CRM, redirección y sincronización
-del dashboard. MercadoPago puede rechazar $20/$50 por monto mínimo; si ocurre, probar
-con $100/$200.
+checkout completo con un pago real usando una cuenta compradora distinta de la
+vendedora. Confirmar primero que Vercel y Koyeb desplegaron `05cd9db`/`0a6e662`.
+Verificar preferencia, monto, moneda, `checkout_id`, webhook, `PaymentCheckout`,
+`PaymentTransaction`, plan y `subscriptionExpiresAt`, estado `completed` del alta,
+evento CRM, redirección y sincronización del dashboard. Los precios vigentes ya son
+importes bajos suficientes para esta prueba; no deben editarse solo para el E2E.
 
 **Nota operativa**: con inflación ARS, los precios se revisan trimestralmente. Hoy
-los valores están duplicados entre `PLANES` en backend y `PLANS` en la landing/
-registro, por lo que cada ajuste debe sincronizar ambos repositorios.
+el backend los centraliza en `config/paymentPlans.js`; el frontend todavía los
+espeja en `AdminHome`, `RegisterPlans` y `UpgradeModal`. Cada ajuste debe sincronizar
+ambos repositorios y actualizar este blueprint.
 
 ### 10.2 Unit economics (supuestos explícitos, base 2026)
 
-- **ARPU de lista**: 70% Basic + 30% Pro = **$45.999/mes**.
-- **ARPU efectivo de referencia**: **$41.399/mes**, aplicando una previsión promedio
+- **ARPU de lista**: 70% Basic + 30% Pro = **$2.900/mes**.
+- **ARPU efectivo de referencia**: **$2.610/mes**, aplicando una previsión promedio
   de 10% por descuentos de prepago. Debe reemplazarse por la mezcla real cuando haya
   suficiente volumen.
-- **CAC objetivo por canal**: partnerships ≤1 mes de ARPU efectivo (~$41.399);
-  paid, si se activa, ≤3 meses (~$124.197). Ambos límites deben revisarse sobre margen
+- **CAC objetivo por canal**: partnerships ≤1 mes de ARPU efectivo (~$2.610);
+  paid, si se activa, ≤3 meses (~$7.830). Ambos límites deben revisarse sobre margen
   de contribución, no solo facturación.
 - **LTV bruto de ingresos** con churn de 3%/mes: vida media ~33 meses y
-  **~$1,38M por cliente**. El LTV financiero debe descontar MercadoPago, impuestos,
+  **~$87.000 por cliente**. El LTV financiero debe descontar MercadoPago, impuestos,
   devoluciones, soporte e infraestructura.
 - **Infra/tooling**: se mantiene la hipótesis de USD 50–100/mes, pero el punto de
   cobertura se calcula cada mes como `costos fijos ARS / margen de contribución por
@@ -682,9 +691,9 @@ registro, por lo que cada ajuste debe sincronizar ambos repositorios.
 
 | Escenario (24 meses) | Locales pagos | MRR | ARR |
 |---|---|---|---|
-| Piso | 300 | $12,42M ARS | $149,04M ARS |
-| Base | 600 | $24,84M ARS | $298,07M ARS |
-| Techo | 900 | $37,26M ARS | $447,11M ARS |
+| Piso | 300 | $783.000 ARS | $9,396M ARS |
+| Base | 600 | $1,566M ARS | $18,792M ARS |
+| Techo | 900 | $2,349M ARS | $28,188M ARS |
 
 ### 10.3 Líneas de ingreso futuras 🔜
 

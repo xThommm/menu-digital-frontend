@@ -16,9 +16,11 @@ MercadoPago antes de crear el `User`. Luego carga su menú y obtiene una carta p
 en `menudigitalapp.com.ar/<slug>/menu`. Los planes pagos desbloquean features de forma
 escalonada.
 
-> **Continuación obligatoria (22-08-2026):** antes de cualquier otro cambio, ejecutar
-> la prueba end-to-end de MercadoPago con importes bajos documentada en `BLUEPRINT.md`
-> §10.1. Los tests automatizados pasan; falta validar el circuito desplegado real.
+> **Estado del cierre (22-08-2026):** los cambios fueron publicados en `master`
+> (`frontend 05cd9db`, `backend 0a6e662`). La suite backend pasa 53/53 y el frontend
+> pasa typecheck, lint y build. Falta confirmar ambos despliegues y ejecutar la prueba
+> end-to-end de MercadoPago documentada en `BLUEPRINT.md` §10.1 antes de continuar
+> con otro desarrollo.
 
 ---
 
@@ -107,7 +109,9 @@ Fuente única backend de las condiciones comerciales que se envían a MercadoPag
 `PAYMENT_PLANS`, moneda ARS, períodos válidos, multiplicadores y
 `getCheckoutAmount(planId, months)`. Crear una preferencia toma el importe de acá;
 el webhook de pagos nuevos valida contra el snapshot de `PaymentCheckout`, no contra
-el precio vigente al momento de recibir la notificación.
+el precio vigente al momento de recibir la notificación. Los precios base actuales
+son Basic `$2.000` y Pro `$5.000`; el frontend espeja estos valores en la landing,
+el registro y el modal de upgrade.
 
 ### `config/cloudinary.js`
 - Configura el SDK `cloudinary.v2` con las credenciales del `.env`.
@@ -997,3 +1001,21 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   (`/overdue-count`), y el listado se puede exportar a Excel (`/export`). Los datos
   viven en `CrmProfile`, aislados del modelo User para no filtrarse por ningún endpoint
   público; solo se acceden vía `/api/admin/crm` (protect + isAdmin).
+
+### Estado operativo del flujo de suscripciones — 22-08-2026
+
+- **Publicado en Git**: recuperación del alta paga y login final en frontend;
+  `PendingRegistration`, `PaymentCheckout`, `PaymentTransaction`, validación estricta
+  y aplicación transaccional en backend.
+- **Validado localmente**: 53 tests backend; frontend typecheck, lint y build; sin
+  errores de `git diff --check`.
+- **Compatibilidad**: preferencias anteriores a `PaymentCheckout` se auditan como
+  `legacy`; no pueden degradar plan o vigencia, aunque no permiten demostrar el
+  importe original porque ese snapshot todavía no existía.
+- **Pendiente obligatorio**: confirmar deploy Vercel/Koyeb y completar un pago real
+  con comprador distinto del vendedor, verificando preferencia, metadata,
+  `PaymentCheckout`, `PaymentTransaction`, webhook, cuenta/plan/vencimiento, CRM,
+  redirección y sincronización del dashboard.
+- **Pendiente operativo posterior**: definir el procedimiento o pantalla de
+  conciliación/reembolso para transacciones `not_applied` y la política automática
+  frente a reembolsos o contracargos.

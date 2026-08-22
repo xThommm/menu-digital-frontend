@@ -33,13 +33,15 @@ El gating de límites y funcionalidades se valida siempre en el backend. El fron
 solo refleja el plan efectivo.
 
 > **PRÓXIMO PASO OBLIGATORIO — antes de cualquier otro desarrollo:** validar el
-> circuito completo con un pago real de importe bajo y una cuenta compradora distinta
-> de la vendedora: preferencia → Checkout Pro → webhook → plan/vencimiento en MongoDB
-> → regreso al dashboard. Los tests automatizados del webhook pasan, pero esta prueba
-> end-to-end todavía no fue realizada.
+> circuito completo con un pago real y una cuenta compradora distinta de la
+> vendedora: preferencia → Checkout Pro → webhook → `PaymentCheckout` /
+> `PaymentTransaction` → plan/vencimiento en MongoDB → regreso al dashboard. Los
+> cambios están publicados en `master`, pero falta confirmar los deploys y esta
+> prueba end-to-end todavía no fue realizada.
 
-Los cambios de suscripciones descriptos abajo están implementados en el workspace;
-quedan pendientes de deploy y validación real antes de considerarlos cerrados en
+El flujo durable de suscripciones está publicado en `master` (`frontend 05cd9db`,
+`backend 0a6e662`) y validado localmente con 53 tests backend más typecheck, lint y
+build frontend. Falta su validación real desplegada antes de considerarlo cerrado en
 producción.
 
 Los usuarios existentes administran su suscripción desde la tarjeta **“Tu plan”** del
