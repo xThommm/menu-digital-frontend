@@ -295,7 +295,8 @@ Como dueño con menú grande, quiero actualizar todo en Excel.
 **HU-08 · Cobrar suscripciones (M11)** ✅
 Como plataforma, quiero cobrar sin intervención manual.
 - Un alta paga crea un `PendingRegistration`; el checkout usa su id como
-  `external_reference` y conserva un token opaco para consultar la activación.
+  `external_reference` y conserva un token opaco para consultar la activación. La
+  contraseña temporal queda cifrada con AES-256-GCM hasta que el webhook crea el User.
 - Volver atrás, cerrar la pestaña o reintentar recupera el alta pendiente y
   reutiliza la misma preferencia de MercadoPago. Cambiar plan/período actualiza
   esa preferencia, evitando acumular links de pago cobrables.
@@ -309,8 +310,9 @@ Como plataforma, quiero cobrar sin intervención manual.
 - Al volver del checkout, `AuthContext` reintenta `/users/me` para absorber la posible
   carrera con el webhook y persiste el plan/vencimiento actualizado.
 - El alta o cambio de plan queda logueado como evento en el CRM.
-- `test/paymentWebhook.test.js` agrega 10 casos del webhook; la suite backend completa
-  tiene 18 tests aprobados.
+- Las altas gratuitas y pagas generan slugs únicos legibles; las colisiones reciben
+  sufijos incrementales y el backend reintenta las carreras contra el índice `unique`.
+- La suite backend cubre el webhook, el cifrado temporal y las colisiones de slug.
 - **Pendiente obligatorio:** el circuito todavía debe validarse end-to-end con un
   pago real de importe bajo antes de dar este módulo por cerrado en producción.
 

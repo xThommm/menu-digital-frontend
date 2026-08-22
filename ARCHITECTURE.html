@@ -1,0 +1,1700 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#08111f">
+  <title>MenuDigital · Arquitectura</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #08111f;
+      --page-soft: #0d192b;
+      --surface: #111f34;
+      --surface-strong: #172942;
+      --surface-hover: #1d3351;
+      --text: #edf4ff;
+      --muted: #99abc3;
+      --border: #263c59;
+      --primary: #5bd6c0;
+      --primary-soft: rgba(91, 214, 192, .14);
+      --blue: #6ca8ff;
+      --blue-soft: rgba(108, 168, 255, .14);
+      --orange: #ffb86b;
+      --orange-soft: rgba(255, 184, 107, .14);
+      --violet: #bd93f9;
+      --violet-soft: rgba(189, 147, 249, .14);
+      --danger: #ff7b86;
+      --shadow: 0 18px 60px rgba(0, 0, 0, .28);
+      --radius: 18px;
+      --header-h: 64px;
+    }
+
+    html[data-theme="light"] {
+      color-scheme: light;
+      --page: #f3f7fb;
+      --page-soft: #e8f0f8;
+      --surface: #ffffff;
+      --surface-strong: #f7faff;
+      --surface-hover: #edf4fb;
+      --text: #17243a;
+      --muted: #5d6e84;
+      --border: #cfdbe8;
+      --primary: #087f73;
+      --primary-soft: rgba(8, 127, 115, .10);
+      --blue: #286bc2;
+      --blue-soft: rgba(40, 107, 194, .10);
+      --orange: #a95a00;
+      --orange-soft: rgba(169, 90, 0, .10);
+      --violet: #7048b2;
+      --violet-soft: rgba(112, 72, 178, .10);
+      --danger: #bb3040;
+      --shadow: 0 18px 48px rgba(41, 65, 92, .14);
+    }
+
+    * { box-sizing: border-box; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(circle at 12% -10%, var(--primary-soft), transparent 32rem),
+        radial-gradient(circle at 92% 12%, var(--blue-soft), transparent 28rem),
+        var(--page);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input { font: inherit; }
+    button { color: inherit; }
+    a { color: var(--blue); text-underline-offset: 3px; }
+    a:hover { color: var(--primary); }
+
+    .read-progress {
+      position: fixed;
+      z-index: 100;
+      inset: 0 auto auto 0;
+      width: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--blue), var(--violet));
+      transition: width .08s linear;
+    }
+
+    .topbar {
+      position: sticky;
+      z-index: 50;
+      top: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: var(--header-h);
+      padding: 10px max(14px, env(safe-area-inset-left));
+      border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+      background: color-mix(in srgb, var(--page) 88%, transparent);
+      -webkit-backdrop-filter: blur(18px);
+      backdrop-filter: blur(18px);
+    }
+
+    .icon-button {
+      display: inline-grid;
+      flex: 0 0 42px;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: var(--surface);
+      cursor: pointer;
+    }
+    .icon-button:hover { background: var(--surface-hover); }
+    .icon-button:focus-visible, .filter-button:focus-visible, .flow-node:focus-visible, .search:focus-within {
+      outline: 3px solid color-mix(in srgb, var(--primary) 52%, transparent);
+      outline-offset: 2px;
+    }
+
+    .brand {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-mark {
+      display: grid;
+      flex: 0 0 34px;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 11px;
+      background: linear-gradient(135deg, var(--primary), var(--blue));
+      color: #07131f;
+      font-weight: 800;
+    }
+    .brand-copy { min-width: 0; }
+    .brand-copy strong, .brand-copy span { display: block; }
+    .brand-copy strong { font-size: .93rem; line-height: 1.15; }
+    .brand-copy span {
+      overflow: hidden;
+      color: var(--muted);
+      font-size: .72rem;
+      line-height: 1.3;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .topbar-spacer { flex: 1; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      width: min(1440px, 100%);
+      margin: 0 auto;
+    }
+
+    .sidebar {
+      position: fixed;
+      z-index: 70;
+      inset: 0 auto 0 0;
+      width: min(88vw, 330px);
+      padding: max(20px, env(safe-area-inset-top)) 18px 30px;
+      border-right: 1px solid var(--border);
+      background: var(--page-soft);
+      box-shadow: var(--shadow);
+      transform: translateX(-105%);
+      transition: transform .24s ease;
+      overflow-y: auto;
+    }
+    .sidebar.is-open { transform: translateX(0); }
+    .sidebar-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .sidebar-head strong { font-size: 1.05rem; }
+    .sidebar nav ul { margin: 0; padding: 0; list-style: none; }
+    .sidebar nav li { margin: 2px 0; }
+    .sidebar nav a {
+      display: block;
+      padding: 9px 11px;
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: .86rem;
+      text-decoration: none;
+    }
+    .sidebar nav a[data-level="1"] { margin-top: 10px; color: var(--text); font-weight: 700; }
+    .sidebar nav a[data-level="2"] { padding-left: 18px; }
+    .sidebar nav a[data-level="3"] { padding-left: 28px; font-size: .79rem; }
+    .sidebar nav a.is-active { background: var(--primary-soft); color: var(--primary); }
+
+    .scrim {
+      position: fixed;
+      z-index: 60;
+      inset: 0;
+      border: 0;
+      background: rgba(1, 7, 15, .64);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .24s ease;
+    }
+    .scrim.is-open { opacity: 1; pointer-events: auto; }
+
+    main {
+      width: min(100%, 920px);
+      margin-inline: auto;
+      padding: 20px 15px 80px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 26px 22px;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background:
+        linear-gradient(145deg, var(--primary-soft), transparent 46%),
+        linear-gradient(325deg, var(--blue-soft), transparent 52%),
+        var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .eyebrow {
+      margin: 0 0 7px;
+      color: var(--primary);
+      font-size: .74rem;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .hero h1 {
+      max-width: 740px;
+      margin: 0;
+      font-size: clamp(2rem, 8vw, 4.3rem);
+      line-height: 1.02;
+      letter-spacing: -.055em;
+    }
+    .hero-copy {
+      max-width: 680px;
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: clamp(.96rem, 2.5vw, 1.08rem);
+    }
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+      margin-top: 22px;
+    }
+    .hero-stat {
+      padding: 12px;
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--surface-strong) 80%, transparent);
+    }
+    .hero-stat strong, .hero-stat span { display: block; }
+    .hero-stat strong { font-size: 1.2rem; line-height: 1.2; }
+    .hero-stat span { margin-top: 3px; color: var(--muted); font-size: .72rem; }
+
+    .toolbar {
+      position: sticky;
+      z-index: 35;
+      top: calc(var(--header-h) + 8px);
+      display: grid;
+      gap: 10px;
+      margin: 18px 0;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: color-mix(in srgb, var(--page) 90%, transparent);
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+    }
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+    }
+    .search span { color: var(--muted); }
+    .search input {
+      min-width: 0;
+      width: 100%;
+      height: 42px;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+    }
+    .search input::placeholder { color: var(--muted); }
+    .filters {
+      display: flex;
+      gap: 7px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .filters::-webkit-scrollbar { display: none; }
+    .filter-button {
+      flex: 0 0 auto;
+      padding: 9px 13px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: transparent;
+      cursor: pointer;
+      font-size: .82rem;
+    }
+    .filter-button[aria-pressed="true"] {
+      border-color: transparent;
+      background: var(--primary);
+      color: var(--page);
+      font-weight: 700;
+    }
+
+    .architecture-map {
+      margin: 20px 0 28px;
+      padding: 18px;
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: inset 0 0 0 1px var(--border);
+    }
+    .map-head { margin-bottom: 16px; }
+    .map-head h2 { margin: 0; font-size: 1.15rem; }
+    .map-head p { margin: 4px 0 0; color: var(--muted); font-size: .84rem; }
+    .flow {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      align-items: center;
+      gap: 10px;
+    }
+    .flow-node {
+      min-height: 90px;
+      padding: 14px;
+      border: 0;
+      border-radius: 15px;
+      background: var(--surface-strong);
+      text-align: left;
+      cursor: pointer;
+    }
+    .flow-node:hover { background: var(--surface-hover); transform: translateY(-2px); }
+    .flow-node b, .flow-node small { display: block; }
+    .flow-node b { margin-bottom: 4px; }
+    .flow-node small { color: var(--muted); }
+    .flow-node[data-tone="frontend"] { box-shadow: inset 3px 0 0 var(--blue); }
+    .flow-node[data-tone="backend"] { box-shadow: inset 3px 0 0 var(--primary); }
+    .flow-node[data-tone="services"] { box-shadow: inset 3px 0 0 var(--orange); }
+    .flow-arrow { color: var(--muted); font-size: 1.35rem; text-align: center; }
+    .service-grid { display: grid; gap: 6px; }
+    .service-grid span {
+      display: block;
+      padding: 4px 7px;
+      border-radius: 7px;
+      background: var(--orange-soft);
+      color: var(--orange);
+      font-size: .72rem;
+    }
+
+    .result-line {
+      min-height: 24px;
+      margin: -4px 3px 10px;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+
+    .doc-content { min-width: 0; }
+    .doc-content > h1:first-child,
+    .doc-content > h1:first-child + p,
+    .doc-content > h1:first-child + p + ul,
+    .doc-content > h1:first-child + p + ul + p { display: none; }
+    .doc-content h1:not(:first-child) {
+      scroll-margin-top: 150px;
+      margin: 54px 0 16px;
+      padding: 18px 0 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: clamp(1.8rem, 7vw, 2.7rem);
+      line-height: 1.1;
+      letter-spacing: -.04em;
+    }
+    .doc-content h1:not(:first-child)::before {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--primary);
+      font-size: .7rem;
+      font-weight: 800;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+      content: "Sistema";
+    }
+    .doc-content h1#frontend::before { color: var(--blue); content: "Aplicación cliente"; }
+    .doc-content h1#flujos-clave::before { color: var(--violet); content: "Recorridos"; }
+    .doc-content h2 {
+      scroll-margin-top: 150px;
+      margin: 38px 0 12px;
+      color: var(--text);
+      font-size: clamp(1.28rem, 5vw, 1.65rem);
+      line-height: 1.2;
+      letter-spacing: -.025em;
+    }
+    .doc-content h3 {
+      scroll-margin-top: 150px;
+      margin: 28px 0 8px;
+      color: var(--primary);
+      font-size: 1.03rem;
+      line-height: 1.35;
+    }
+    .doc-content p { margin: 9px 0 14px; }
+    .doc-content ul, .doc-content ol { padding-left: 1.25rem; }
+    .doc-content li { margin: 6px 0; }
+    .doc-content code {
+      padding: .15em .42em;
+      border-radius: 6px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: .84em;
+      overflow-wrap: anywhere;
+    }
+    .doc-content pre {
+      max-width: 100%;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      overflow-x: auto;
+    }
+    .doc-content pre code { padding: 0; background: transparent; color: var(--text); }
+    .doc-content blockquote {
+      margin: 18px 0;
+      padding: 13px 16px;
+      border-left: 4px solid var(--orange);
+      border-radius: 0 12px 12px 0;
+      background: var(--orange-soft);
+      color: var(--text);
+    }
+    .doc-content blockquote p { margin: 0; }
+    .doc-content hr { height: 1px; margin: 34px 0; border: 0; background: var(--border); }
+    .doc-content table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+    .doc-content th, .doc-content td { padding: 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+    .doc-content th { color: var(--primary); }
+    .table-shell { max-width: 100%; margin: 18px 0; overflow-x: auto; }
+    mark { border-radius: 3px; background: var(--orange); color: var(--page); }
+    .is-hidden { display: none !important; }
+
+    .back-top {
+      position: fixed;
+      z-index: 45;
+      right: max(16px, env(safe-area-inset-right));
+      bottom: max(18px, env(safe-area-inset-bottom));
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(8px);
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .back-top.is-visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+    @media (min-width: 720px) {
+      .toolbar { grid-template-columns: minmax(240px, 1fr) auto; align-items: center; }
+      main { padding-inline: 28px; }
+      .hero { padding: 40px; }
+      .hero-stats { width: min(440px, 100%); }
+    }
+
+    @media (min-width: 1120px) {
+      .topbar .menu-toggle { display: none; }
+      .layout { grid-template-columns: 290px minmax(0, 1fr); }
+      .sidebar {
+        position: sticky;
+        z-index: 10;
+        top: var(--header-h);
+        width: auto;
+        height: calc(100vh - var(--header-h));
+        padding: 24px 18px 40px;
+        box-shadow: none;
+        transform: none;
+      }
+      .sidebar .sidebar-head .icon-button { display: none; }
+      .scrim { display: none; }
+      main { width: min(100%, 980px); padding-top: 34px; }
+    }
+
+    @media (max-width: 620px) {
+      .brand-copy span { display: none; }
+      .hero-stats { grid-template-columns: 1fr; }
+      .hero-stat { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+      .hero-stat span { margin: 0; text-align: right; }
+      .flow { grid-template-columns: 1fr; }
+      .flow-arrow { transform: rotate(90deg); }
+      .flow-node { min-height: 76px; }
+      .architecture-map { padding: 15px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="read-progress" id="readProgress" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <button class="icon-button menu-toggle" id="menuToggle" type="button" aria-label="Abrir navegación" aria-expanded="false">
+      <span aria-hidden="true">☰</span>
+    </button>
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">M</span>
+      <span class="brand-copy">
+        <strong>MenuDigital</strong>
+        <span>Arquitectura técnica</span>
+      </span>
+    </div>
+    <span class="topbar-spacer"></span>
+    <button class="icon-button" id="themeToggle" type="button" aria-label="Cambiar tema">
+      <span id="themeIcon" aria-hidden="true">☀</span>
+    </button>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar" aria-label="Navegación del documento">
+      <div class="sidebar-head">
+        <strong>Contenido</strong>
+        <button class="icon-button" id="menuClose" type="button" aria-label="Cerrar navegación">×</button>
+      </div>
+      <nav id="generatedToc"></nav>
+    </aside>
+    <button class="scrim" id="scrim" type="button" aria-label="Cerrar navegación"></button>
+
+    <main>
+      <section class="hero" aria-labelledby="pageTitle">
+        <p class="eyebrow">Mapa técnico vivo</p>
+        <h1 id="pageTitle">Arquitectura de MenuDigital</h1>
+        <p class="hero-copy">Frontend, backend, datos, pagos y flujos clave en una lectura navegable pensada para pantallas chicas.</p>
+        <div class="hero-stats" aria-label="Resumen del documento">
+          <div class="hero-stat"><strong id="fileCount">—</strong><span>archivos y módulos</span></div>
+          <div class="hero-stat"><strong id="sectionCount">—</strong><span>secciones navegables</span></div>
+          <div class="hero-stat"><strong>3</strong><span>planes: Free → Basic → Pro</span></div>
+        </div>
+      </section>
+
+      <section class="architecture-map" aria-labelledby="mapTitle">
+        <div class="map-head">
+          <h2 id="mapTitle">Vista general del sistema</h2>
+          <p>Tocá un bloque para saltar a su documentación.</p>
+        </div>
+        <div class="flow" role="group" aria-label="Flujo principal de la arquitectura">
+          <button class="flow-node" data-tone="frontend" data-target="frontend" type="button">
+            <b>React 19 + Vite</b>
+            <small>UI, dashboard y carta pública · Vercel</small>
+          </button>
+          <span class="flow-arrow" aria-hidden="true">→</span>
+          <button class="flow-node" data-tone="backend" data-target="backend" type="button">
+            <b>Express + Mongoose</b>
+            <small>API, reglas de plan y webhooks · Koyeb</small>
+          </button>
+          <span class="flow-arrow" aria-hidden="true">→</span>
+          <button class="flow-node" data-tone="services" data-target="flujos-clave" type="button">
+            <b>Datos y servicios</b>
+            <span class="service-grid" aria-label="MongoDB Atlas, Cloudinary y MercadoPago">
+              <span>MongoDB Atlas</span><span>Cloudinary</span><span>MercadoPago</span>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      <section class="toolbar" aria-label="Herramientas de lectura">
+        <label class="search">
+          <span aria-hidden="true">⌕</span>
+          <span class="sr-only">Buscar en la arquitectura</span>
+          <input id="searchInput" type="search" placeholder="Buscar archivo, flujo o función…" autocomplete="off">
+        </label>
+        <div class="filters" aria-label="Filtrar contenido">
+          <button class="filter-button" type="button" data-filter="all" aria-pressed="true">Todo</button>
+          <button class="filter-button" type="button" data-filter="backend" aria-pressed="false">Backend</button>
+          <button class="filter-button" type="button" data-filter="frontend" aria-pressed="false">Frontend</button>
+          <button class="filter-button" type="button" data-filter="flujos-clave" aria-pressed="false">Flujos</button>
+        </div>
+      </section>
+
+      <p class="result-line" id="resultLine" aria-live="polite"></p>
+
+      <article class="doc-content" id="docContent">
+        <h1 id="menudigital-arquitectura-de-la-aplicacion">MenuDigital — Arquitectura de la aplicación</h1>
+<p>Documentación técnica de los dos repositorios que componen <strong>MenuDigital</strong>, un
+SaaS de menús/cartas digitales para bares y restaurantes de Argentina. Describe
+cada archivo de código y cada función (los <code>.module.css</code> por componente no se
+documentan; <code>styles/globals.css</code> sí, por ser la fuente compartida de tokens,
+keyframes y utilidades — ver <a href="#styles">styles/</a>).</p>
+<ul>
+<li><strong>Frontend</strong> (<code>menu-digital-frontend</code>): React 19 + TypeScript + Vite. Deploy en Vercel.</li>
+<li><strong>Backend</strong> (<code>menu-digital-backend</code>): Node + Express 4 + Mongoose 7 (MongoDB Atlas). Deploy en Koyeb.</li>
+<li><strong>Servicios externos</strong>: Cloudinary (imágenes), MercadoPago (pagos).</li>
+</ul>
+<p>Modelo de negocio: el dueño elige <code>free</code>, <code>basic</code> o <code>pro</code> antes de completar el alta.
+Free crea la cuenta sin checkout; Basic/Pro crean un registro pendiente y pasan por
+MercadoPago antes de crear el <code>User</code>. Luego carga su menú y obtiene una carta pública
+en <code>menudigitalapp.com.ar/&lt;slug&gt;/menu</code>. Los planes pagos desbloquean features de forma
+escalonada.</p>
+<blockquote>
+<p><strong>Continuación obligatoria (22-08-2026):</strong> antes de cualquier otro cambio, ejecutar
+la prueba end-to-end de MercadoPago con importes bajos documentada en <code>BLUEPRINT.md</code>
+§10.1. Los tests automatizados pasan; falta validar el circuito desplegado real.</p>
+</blockquote>
+<hr />
+<h2 id="indice">Índice</h2>
+<ul>
+<li><a href="#backend">Backend</a>
+<ul>
+<li><a href="#entry-point-srcappjs">Entry point</a></li>
+<li><a href="#config">config/</a></li>
+<li><a href="#models">models/</a></li>
+<li><a href="#middleware">middleware/</a></li>
+<li><a href="#controllers">controllers/</a></li>
+<li><a href="#routes">routes/</a></li>
+<li><a href="#utils">utils/</a></li>
+</ul>
+</li>
+<li><a href="#frontend">Frontend</a>
+<ul>
+<li><a href="#entry--bootstrap">Entry / bootstrap</a></li>
+<li><a href="#frontend-routes">routes/</a></li>
+<li><a href="#context">context/</a></li>
+<li><a href="#hooks">hooks/</a></li>
+<li><a href="#lib">lib/</a></li>
+<li><a href="#api">api/</a></li>
+<li><a href="#types">types/</a></li>
+<li><a href="#components">components/</a></li>
+<li><a href="#pages">pages/</a></li>
+<li><a href="#utils-frontend">Utils/</a></li>
+<li><a href="#styles">styles/</a></li>
+</ul>
+</li>
+<li><a href="#flujos-clave">Flujos clave</a></li>
+</ul>
+<hr />
+<h1 id="backend">Backend</h1>
+<p>Estructura: <code>src/{app.js, config, models, middleware, controllers, routes, utils}</code>.
+Todos los controllers capturan errores con <code>handleError</code> (nunca filtran stack
+traces al cliente).</p>
+<h2 id="entry-point-srcapp.js">Entry point — <code>src/app.js</code></h2>
+<p>Arma la app Express y arranca el servidor.</p>
+<ul>
+<li>Conecta a la base (<code>connectDB()</code>).</li>
+<li><code>app.set(&quot;trust proxy&quot;, 1)</code> — necesario detrás del balanceador de Koyeb para que
+<code>req.ip</code> sea la IP real del cliente (lo usa el rate limiter).</li>
+<li>Middlewares globales, en orden:
+<ul>
+<li><code>helmet(...)</code> con <code>crossOriginResourcePolicy: &quot;cross-origin&quot;</code> (la API se consume
+desde otro origen: el frontend en Vercel).</li>
+<li><code>cors(...)</code> con allowlist explícita (Vercel prod + <code>localhost:5173/3000</code>).</li>
+<li><code>express.json()</code> + <code>express.urlencoded()</code>.</li>
+<li><code>express-mongo-sanitize</code> — <strong>solo</strong> en <code>/api/users|menus|items|admin|massive</code>
+(excluye <code>/api/payments</code> a propósito: el webhook de MercadoPago manda un query
+param <code>data.id</code> con punto, que el sanitizer eliminaría).</li>
+<li><code>apiLimiter</code> en <code>/api</code>.</li>
+</ul>
+</li>
+<li>Monta los routers: <code>/api/admin</code>, <code>/api/users</code>, <code>/api/menus</code>, <code>/api/items</code>,
+<code>/api/massive</code>, <code>/api/payments</code>.</li>
+<li>Rutas sueltas: <code>GET /ping</code> (health check con log), <code>GET /:businessName/menu</code>
+(redirect legacy), <code>GET /</code> (status JSON).</li>
+<li>Handler 404 y, al final, el <strong>error middleware</strong> <code>(err, req, res, next)</code> que
+centraliza en <code>handleError</code> cualquier error no atrapado (ej: JSON malformado).</li>
+</ul>
+<h2 id="config">config/</h2>
+<h3 id="configdb.js"><code>config/db.js</code></h3>
+<ul>
+<li><strong><code>connectDB()</code></strong> — conecta Mongoose a <code>MONGODB_URI</code>. Antes fuerza los DNS a
+Google/Cloudflare (<code>dns.setServers([&quot;8.8.8.8&quot;,&quot;1.1.1.1&quot;])</code>) porque el resolver
+de c-ares bloquea las consultas SRV de Atlas. Si falla, corta el proceso.</li>
+</ul>
+<h3 id="configplans.js"><code>config/plans.js</code></h3>
+<p>Fuente de verdad del sistema de planes. Exporta:</p>
+<ul>
+<li><strong><code>PLAN_MAP</code></strong> — mapea el <code>plan_id</code> que viaja en el pago de MercadoPago
+(<code>basic/pro</code>) al valor interno de <code>User.subscription</code>. Hoy 1:1; se
+mantiene como capa de validación (el webhook rechaza plan_ids desconocidos).</li>
+<li><strong><code>PLAN_ORDER</code></strong> = <code>[&quot;free&quot;,&quot;basic&quot;,&quot;pro&quot;]</code>. El índice ES la jerarquía.</li>
+<li><strong><code>PLAN_FEATURES</code></strong> — features que desbloquea cada nivel (acumulativo).
+La landing pública pertenece a Free; Basic elimina publicidad y suma Excel,
+programación y PDF; Pro suma estadísticas, ilimitados y reseñas.</li>
+<li><strong><code>ITEM_LIMITS</code></strong>, <strong><code>FREE_ITEM_LIMIT</code></strong> y <strong><code>BASIC_ITEM_LIMIT</code></strong> — topes: Free 15,
+Basic 50 y Pro sin límite; <code>getItemLimit(plan)</code> resuelve el valor efectivo.</li>
+<li><strong><code>TEMPLATE_MIN_PLAN</code></strong> — mapa <code>templateId → plan mínimo</code> (gating escalonado de
+templates). Free: 1 diseño · Basic: 5 diseños totales · Pro: 15 diseños totales.</li>
+<li><strong><code>getFeaturesForPlan(plan)</code></strong> — devuelve todas las features de un plan y los
+inferiores.</li>
+<li><strong><code>hasMinPlan(userPlan, requiredPlan)</code></strong> — <code>true</code> si el plan del user alcanza el
+mínimo (compara índices en <code>PLAN_ORDER</code>).</li>
+</ul>
+<h3 id="configcloudinary.js"><code>config/cloudinary.js</code></h3>
+<ul>
+<li>Configura el SDK <code>cloudinary.v2</code> con las credenciales del <code>.env</code>.</li>
+<li>Define 3 <code>CloudinaryStorage</code> (storage engine propio, ver abajo) para carpetas
+<code>menu-digital/{users,menus,items}</code>, con <code>allowed_formats</code> y <code>transformation</code>
+(límite de ancho).</li>
+<li><code>IMAGE_SIZE_LIMIT</code> = 8MB, aplicado a las 3 instancias de <code>multer</code>.</li>
+<li>Exporta <code>cloudinary</code>, <code>uploadUser</code>, <code>uploadMenu</code>, <code>uploadItem</code> (middlewares multer).</li>
+</ul>
+<h3 id="configcloudinarystorage.js"><code>config/cloudinaryStorage.js</code></h3>
+<p>Storage engine de Multer propio que sube directo a Cloudinary vía <code>upload_stream</code>
+(reemplazó a <code>multer-storage-cloudinary</code>, que arrastraba una versión vulnerable de
+<code>cloudinary@1.x</code>).</p>
+<ul>
+<li><strong><code>class CloudinaryStorage</code></strong> — constructor recibe <code>{ cloudinary, params }</code>.
+<ul>
+<li><strong><code>_handleFile(req, file, cb)</code></strong> — streamea el archivo al <code>upload_stream</code>; en el
+callback devuelve <code>{ path: secure_url, size: bytes, filename: public_id }</code> (mismos
+campos que consumen los controllers: <code>req.file.path</code>).</li>
+<li><strong><code>_removeFile(req, file, cb)</code></strong> — <code>destroy(file.filename)</code> para revertir subidas.</li>
+</ul>
+</li>
+</ul>
+<h2 id="models">models/</h2>
+<h3 id="modelsuser.js"><code>models/User.js</code></h3>
+<p>Schema del dueño de local. Campos: <code>username</code> (único), <code>password</code> (hasheado,
+<code>select:false</code>, min 8), <code>slug</code> (URL pública), <code>active</code>, <code>admin</code>, <code>subscription</code>
+(enum <code>free/basic/pro</code>, default <code>free</code>), <code>subscriptionExpiresAt</code> (fin de vigencia
+paga; null para free y cuentas legacy), <code>menu</code> (bool, si ya creó menú),
+<code>hasDelivery</code>, <code>template</code> (nº, default 1), <code>contactInfo</code> (objeto: businessName, mail,
+number, address, social, <code>googleReviewUrl</code> — link &quot;Dejanos tu reseña&quot; de Google Maps),
+<code>media</code> (pictures[], backgroundPicture), <code>acceptedTerms*</code>. <code>timestamps</code>. Incluye hook
+de hasheo de password con bcrypt.</p>
+<h3 id="modelsmenu.js"><code>models/Menu.js</code></h3>
+<p>Cada documento es una <strong>sección o categoría</strong> del menú de un local. Campos: <code>userID</code>
+(ref User), <code>sectionID</code> (ref a otro Menu, para anidar categorías dentro de secciones;
+null si no tiene), <code>code</code>, <code>title</code> (requerido), <code>description</code>, <code>image</code>, <code>section</code>
+(bool: true = sección contenedora, false = categoría con items), <code>hidden</code>. <code>timestamps</code>.</p>
+<h3 id="modelsitem.js"><code>models/Item.js</code></h3>
+<p>Un <strong>producto</strong> del menú. Campos: <code>menuID</code> (ref Menu), <code>code</code>, <code>title</code> (requerido),
+<code>description</code>, <code>price</code> (null = sin precio), <code>offerPrice</code>, <code>offerRange</code> (<code>{from,to}</code>
+con fecha y hora de vigencia de la oferta), <code>options</code> (Map string→number, ej variantes de
+tamaño), <code>image</code>, <code>available</code>, <code>availabilitySchedule</code> (programación semanal
+<code>enabled</code> + hasta 4 rangos <code>{from,to}</code> por día), <code>isExtra</code>, <code>recommended</code>, <code>hidden</code>, <code>apt</code> (objeto
+libre: alérgenos, calorías...). <code>timestamps</code>.</p>
+<h3 id="modelspageview.js"><code>models/PageView.js</code></h3>
+<p>Agregado <strong>diario</strong> de visitas a la carta pública (una fila por local por día, con un
+contador). <code>userID</code> (ref User), <code>date</code> (string <code>&quot;YYYY-MM-DD&quot;</code>), <code>count</code>. Índice único
+<code>{userID, date}</code>. Se guarda como string (no Date) para hacer upsert por día sin lidiar
+con husos horarios en la query.</p>
+<h3 id="modelsitemview.js"><code>models/ItemView.js</code></h3>
+<p>Igual que PageView pero a <strong>nivel de producto</strong>: cuántas veces se tocó cada item de la
+carta, agregado por día. <code>userID</code> (ref User), <code>itemID</code> (ref Item), <code>date</code> (string
+<code>&quot;YYYY-MM-DD&quot;</code> en horario BA), <code>count</code>. Índice único <code>{userID, itemID, date}</code> + índice
+secundario <code>{userID, date}</code> para la agregación de &quot;top platos&quot;. Guarda <code>userID</code>
+denormalizado (derivable vía Item→Menu→User) para que la consulta no necesite joins.</p>
+<h3 id="modelscrmprofile.js"><code>models/CrmProfile.js</code></h3>
+<p>Datos de <strong>CRM</strong> de un cliente (un local suscripto), para uso interno del panel del CEO.
+Vive en su propia colección — NO se mete en User — a propósito: así estos datos internos
+nunca se filtran por los endpoints públicos de usuario. <code>userID</code> (ref User, único),
+<code>stage</code> (enum del pipeline: <code>lead/onboarding/activo/en_riesgo/baja</code>), <code>tags [String]</code>,
+<code>nextFollowUp</code> (Date), <code>notes</code> (subdocs <code>{text, kind, author, createdAt}</code>). <code>kind</code>
+distingue notas manuales (<code>&quot;note&quot;</code>) de <strong>eventos automáticos del sistema</strong> (<code>&quot;event&quot;</code>:
+cambio de plan, activar/desactivar cuenta, cambio de template — ver <code>utils/crmEvents.js</code>).
+Exporta también <code>STAGES</code>.</p>
+<h3 id="modelspendingregistration.js"><code>models/PendingRegistration.js</code></h3>
+<p>Alta paga todavía no convertida en <code>User</code>. Guarda temporalmente los datos de
+registro, plan y período, junto con el hash de un token opaco de activación y
+el <code>preferenceId/initPoint</code> de MercadoPago. Un retry recupera este documento y
+actualiza la misma preferencia en vez de crear otro checkout cobrable.
+La contraseña temporal se cifra con AES-256-GCM en
+<code>passwordCiphertext/passwordIV/passwordAuthTag</code>; los tres campos son <code>select:false</code>
+y requieren un <code>PENDING_REGISTRATION_SECRET</code> estable de al menos 32 caracteres en
+el backend. <code>password</code> queda oculto y se lee únicamente como compatibilidad transitoria
+para altas creadas antes de este cambio.
+<code>status</code> recorre el ciclo interno <code>pending/completed/failed</code>; el último estado real
+de MercadoPago vive separado en <code>paymentID/paymentStatus/paymentStatusDetail</code> y
+<code>paymentUpdatedAt</code>. Al completar elimina la contraseña, enlaza <code>userID</code> y un índice
+TTL limpia el documento vencido.</p>
+<h2 id="middleware">middleware/</h2>
+<h3 id="middlewareauth.js"><code>middleware/auth.js</code></h3>
+<ul>
+<li><strong><code>protect(req,res,next)</code></strong> — exige <code>Authorization: Bearer &lt;jwt&gt;</code>. Verifica el token
+(<code>jwt.verify</code> con <code>algorithms:[&quot;HS256&quot;]</code> fijado como defensa contra confusión de
+algoritmo), carga el user en <code>req.user</code> (sin password), rechaza si no existe o si la
+cuenta está desactivada (salvo admins), y expone <code>free</code> como plan efectivo si la
+suscripción paga ya venció.</li>
+<li><strong><code>isAdmin(req,res,next)</code></strong> — 403 si <code>req.user.admin</code> no es true. Se usa después de
+<code>protect</code>.</li>
+<li><strong><code>requirePlan(minPlan)</code></strong> — factory: devuelve un middleware que corta con 403 si
+<code>hasMinPlan(req.user.subscription, minPlan)</code> es false.</li>
+</ul>
+<h3 id="middlewareratelimiters.js"><code>middleware/rateLimiters.js</code></h3>
+<ul>
+<li><strong><code>authLimiter</code></strong> — 10 req / 15 min. Para login y registro (anti brute-force).</li>
+<li><strong><code>apiLimiter</code></strong> — 300 req / 15 min. Red de contención general en toda la API.</li>
+</ul>
+<h2 id="controllers">controllers/</h2>
+<h3 id="controllersusercontroller.js"><code>controllers/userController.js</code></h3>
+<p>Helpers internos:</p>
+<ul>
+<li><strong><code>trackView(userID)</code></strong> — suma 1 a la visita de hoy del local (upsert no bloqueante).
+El &quot;hoy&quot; se calcula en horario de Buenos Aires (<code>buenosAiresDateStr</code>).</li>
+<li><strong><code>trackItemView(userID, itemID)</code></strong> — mismo patrón que <code>trackView</code>, a nivel de
+producto (colección <code>ItemView</code>).</li>
+<li><strong><code>generateToken(id)</code></strong> — firma un JWT HS256 con el id, expira en <code>JWT_EXPIRES_IN</code>.</li>
+<li><strong><code>generateSlug(name)</code></strong> — normaliza un nombre a slug URL-friendly (saca acentos,
+espacios→guiones, colapsa guiones).</li>
+<li><strong><code>isWeakPassword(password)</code></strong> — <code>true</code> si tiene &lt; 8 chars o está en un blocklist de
+contraseñas comunes.</li>
+</ul>
+<p>Endpoints:</p>
+<ul>
+<li><strong><code>newUser</code></strong> <code>POST /api/users/register</code> — valida tipos (anti NoSQL injection),
+términos aceptados, fuerza de password; crea el user (slug desde businessName o
+username), devuelve token.</li>
+<li><strong><code>loginUser</code></strong> <code>POST /api/users/login</code> — valida credenciales, compara con bcrypt,
+devuelve token.</li>
+<li><strong><code>getAuthUser</code></strong> <code>GET /api/users/me</code> — datos del user autenticado + <code>itemCount</code> y
+<code>categoryCount</code> (para el dashboard).</li>
+<li><strong><code>fetchUserWithMenu</code></strong> <code>GET /api/users/:slug/menu</code> — carta <strong>pública</strong> por slug:
+arma el menú agrupado (secciones→categorías→items), filtra ocultos, y dispara
+<code>trackView</code>. Para Basic+ combina el interruptor manual <code>available</code> con la programación
+semanal del producto en horario de Buenos Aires; fuera de horario el item permanece
+visible como no disponible. Es lo que renderiza la carta pública.</li>
+<li><strong><code>fetchOwnMenu</code></strong> <code>GET /api/users/me/menu</code> — menú del dueño autenticado, <strong>sin</strong>
+filtrar ocultos (para gestionarlos en el editor) + objeto <code>limits</code>
+(<code>itemCount</code>, <code>itemLimit</code>, <code>canImportExcel</code>, <code>canExportPdf</code>, <code>canScheduleItems</code>) para
+la UI de gating.</li>
+<li><strong><code>fetchStats</code></strong> <code>GET /api/users/me/stats</code> (plan pro+) — devuelve <code>totalViews</code> y la
+serie <code>last30Days</code> (30 puntos, rellenando días sin visitas con 0), con las fechas
+calculadas en horario de Buenos Aires.</li>
+<li><strong><code>trackItemViewEndpoint</code></strong> <code>POST /api/users/:slug/menu/items/:itemID/view</code> (público) —
+registra que se tocó un producto de la carta. Resuelve el dueño desde el <strong>slug</strong> (no
+confía en un userID del cliente) y valida que el item sea realmente de ese local antes
+de contarlo. Responde siempre <code>204</code> (fire-and-forget, nunca rompe la experiencia).</li>
+<li><strong><code>fetchItemStats</code></strong> <code>GET /api/users/me/item-stats</code> (plan pro+) — top 10 de productos
+más vistos en los últimos 30 días (agregación sobre <code>ItemView</code> + join contra <code>Item</code>
+para título/imagen; un producto borrado se muestra como &quot;(producto eliminado)&quot;).</li>
+<li><strong><code>fetchUser</code></strong> <code>GET /api/users/:slug</code> — datos públicos de un local (landing por
+slug), disponible desde Basic; Free recibe 403 y el frontend deriva a la carta.</li>
+<li><strong><code>downloadMenuPdf</code></strong> <code>GET /api/users/:slug/menu/pdf</code> — genera el menú imprimible,
+disponible desde Basic aunque la URL sea pública; excluye productos manualmente
+pausados o fuera de su horario programado.</li>
+<li><strong><code>editUser</code></strong> <code>PUT /api/users/me</code> — edita <code>contactInfo/hasDelivery/media</code> (whitelist;
+<code>template</code> queda afuera a propósito, va por <code>useTemplate</code>). <code>googleReviewUrl</code> es el
+link/Place ID de reseñas requieren Pro y el link debe empezar con <code>http(s)://</code>.</li>
+<li><strong><code>uploadImage</code></strong> / <strong><code>uploadBackground</code></strong> — suben foto a la galería / de fondo del
+local (a Cloudinary).</li>
+<li><strong><code>removeImage</code></strong> / <strong><code>deleteBackground</code></strong> — sacan una foto de la galería / el fondo.</li>
+<li><strong><code>useTemplate</code></strong> <code>PATCH /api/users/template</code> — cambia el template; valida contra
+<code>TEMPLATE_MIN_PLAN</code> (id conocido + plan suficiente). <strong>Barrera real</strong> del gating de
+templates. Si el template realmente cambió, loguea un evento de CRM (<code>logCrmEvent</code>).</li>
+<li><strong><code>setActive</code></strong> <code>PATCH /api/users/active</code> — el dueño activa/desactiva su propia cuenta.</li>
+</ul>
+<h3 id="controllersmenucontroller.js"><code>controllers/menuController.js</code></h3>
+<ul>
+<li><strong><code>verifyOwnership(menuID, userID)</code></strong> — helper: 404 si no existe, 403 si el menú no es
+del user.</li>
+<li><strong><code>newMenu</code></strong> <code>POST /api/menus</code> — crea sección/categoría (code único por usuario);
+marca <code>User.menu = true</code>.</li>
+<li><strong><code>editMenu</code></strong> <code>PUT /api/menus/:menuID</code> — edita <code>title/description/code</code> (whitelist),
+revalida unicidad de code.</li>
+<li><strong><code>moveMenu</code></strong> <code>PATCH /api/menus/:menuID/move</code> — mueve una categoría a otra sección (o
+la saca, <code>sectionID:null</code>).</li>
+<li><strong><code>hideMenu</code></strong> <code>PATCH /api/menus/:menuID/hidden</code> — oculta/muestra sin borrar.</li>
+<li><strong><code>deleteMenu</code></strong> <code>DELETE /api/menus/:menuID</code> — elimina <strong>solo si está vacía</strong> (sección
+sin categorías / categoría sin items).</li>
+<li><strong><code>uploadImage</code></strong> <code>POST /api/menus/:menuID/upload-image</code> — foto de la categoría.</li>
+</ul>
+<h3 id="controllersitemcontroller.js"><code>controllers/itemController.js</code></h3>
+<ul>
+<li><strong><code>verifyMenuOwnership(menuID, userID)</code></strong> — igual patrón que arriba.</li>
+<li><strong><code>newItem</code></strong> <code>POST /api/items</code> — crea producto; aplica el tope escalonado (Free 15,
+Basic 50, Pro ilimitado), protege la programación de ofertas y disponibilidad desde
+Basic, valida horarios/solapamientos y la unicidad de <code>code</code> <strong>por usuario</strong> (no global).</li>
+<li><strong><code>editItem</code></strong> <code>PUT /api/items/:itemID</code> — edita campos de contenido (whitelist);
+unicidad de code por usuario solo si cambia.</li>
+<li><strong><code>moveItem</code></strong> <code>PATCH /api/items/:itemID/move</code> — mueve el item a otra categoría
+(verifica ownership de origen y destino).</li>
+<li><strong><code>uploadImage</code></strong> <code>POST /api/items/:itemID/upload-image</code> — foto del producto.</li>
+<li><strong><code>setHidden</code></strong> / <strong><code>setAvailable</code></strong> — togglean visibilidad / disponibilidad.</li>
+<li><strong><code>deleteItem</code></strong> <code>DELETE /api/items/:itemID</code> — elimina el producto.</li>
+</ul>
+<h3 id="controllersadmincontroller.js-rutas-adminceo"><code>controllers/adminController.js</code> (rutas admin/CEO)</h3>
+<ul>
+<li><strong><code>getAllUsers</code></strong> <code>GET /api/admin/allUsers</code> — lista todos los usuarios (sin password).</li>
+<li><strong><code>getUser</code></strong> <code>GET /api/admin/:userID</code> — un usuario por id.</li>
+<li><strong><code>setActiveUser</code></strong> <code>PATCH /api/admin/users/:userID/active</code> — activa/desactiva a
+cualquier cliente (no a sí mismo ni a otros admins). Loguea el evento en el CRM
+(&quot;Cuenta activada/desactivada por el CEO&quot;).</li>
+<li><strong><code>getStats</code></strong> <code>GET /api/admin/stats</code> — métricas globales de la plataforma (usuarios
+activos/inactivos/con menú, totales de menús/secciones/categorías/items, 5 usuarios
+recientes), todo en queries paralelas.</li>
+</ul>
+<h3 id="controllersmassivecontroller.js-importarexportar-excel-plan-basic"><code>controllers/massiveController.js</code> (importar/exportar Excel — plan basic+)</h3>
+<ul>
+<li><strong><code>parseBool(val)</code></strong> — normaliza <code>&quot;SI&quot;/&quot;NO&quot;</code> a boolean.</li>
+<li><strong><code>styleHeader(row)</code></strong> — estiliza la fila de encabezado del Excel generado.</li>
+<li><strong><code>getTemplate</code></strong> <code>GET /api/massive/template</code> — genera y descarga el <code>.xlsx</code> con los
+datos actuales del local (hoja Instrucciones + hoja Categorías + hoja Productos). Se
+usa tanto para <strong>exportar</strong> como para editar y reimportar.</li>
+<li><strong><code>parseExcel(buffer)</code></strong> — parsea las hojas Categorías/Productos del Excel subido a
+arrays de filas.</li>
+<li><strong><code>parseDate(val)</code></strong> — parsea <code>DD/MM/AAAA</code> a <code>Date</code> o null.</li>
+<li><strong><code>previewMassive</code></strong> <code>POST /api/massive/preview</code> — procesa el Excel y devuelve el
+<strong>resumen</strong> de cambios (a crear / actualizar / errores) sin guardar nada.</li>
+<li><strong><code>confirmMassive</code></strong> <code>POST /api/massive/confirm</code> — aplica los cambios fila por fila
+(categorías primero, después productos) e informa qué se creó/actualizó/falló.</li>
+</ul>
+<h3 id="controllerscrmcontroller.js-crm-interno-admin"><code>controllers/crmController.js</code> (CRM interno — admin)</h3>
+<p>Todas las rutas pasan por protect + isAdmin. <code>defaultProfile()</code> / <code>isValidId()</code> helpers,
+más <code>STAGE_LABEL</code>/<code>PLAN_LABEL</code> (etiquetas legibles para el Excel exportado).</p>
+<ul>
+<li><strong><code>listClients</code></strong> <code>GET /api/admin/crm/clients</code> — lista de clientes (locales) enriquecida
+con su etapa/tags/próximo seguimiento (dos queries que se cruzan en memoria).</li>
+<li><strong><code>getClient</code></strong> <code>GET /api/admin/crm/clients/:userID</code> — detalle: datos del local + su
+perfil de CRM (o default) + resumen de actividad (categorías/secciones/items).</li>
+<li><strong><code>updateProfile</code></strong> <code>PATCH /.../:userID</code> — actualiza etapa/tags/nextFollowUp (upsert;
+valida la etapa y que el user exista).</li>
+<li><strong><code>addNote</code></strong> <code>POST /.../:userID/notes</code> — agrega una nota (autor = admin logueado).</li>
+<li><strong><code>deleteNote</code></strong> <code>DELETE /.../:userID/notes/:noteID</code> — borra una nota puntual.</li>
+<li><strong><code>getOverdueCount</code></strong> <code>GET /api/admin/crm/overdue-count</code> — cantidad de clientes con
+seguimiento vencido (<code>nextFollowUp</code> en el pasado). Endpoint liviano para el badge de
+alerta del sidebar del panel.</li>
+<li><strong><code>exportClients</code></strong> <code>GET /api/admin/crm/export?stage=</code> — exporta el listado (opcional
+filtrado por etapa) a un <code>.xlsx</code> con ExcelJS (mismo patrón que el exportador de menús).</li>
+</ul>
+<h3 id="controllerspaymentcontroller.js-mercadopago"><code>controllers/paymentController.js</code> (MercadoPago)</h3>
+<ul>
+<li><strong><code>verifyMpSignature(req)</code></strong> — valida la firma HMAC-SHA256 del header <code>x-signature</code>
+contra <code>MP_WEBHOOK_SECRET</code> (con <code>timingSafeEqual</code>). Si el secret no está configurado,
+no bloquea pero avisa por consola.</li>
+<li><strong><code>getRegistrationStatus</code></strong> <code>POST /api/payments/registro/estado</code> — consulta con el
+token opaco si el alta paga sigue pendiente, se completó o falló. Cuando está
+completada devuelve también la sesión del <code>User</code> asociado, para recuperar el login
+automático aunque la acreditación se haya demorado.</li>
+<li><strong><code>mpWebhook</code></strong> <code>POST /api/payments/webhook</code> — endpoint que llama MercadoPago. Verifica
+firma, consulta el estado <strong>real</strong> del pago contra la API de MP (nunca confía en el
+query string), guarda su estado/detalle en las altas pendientes y, si está
+<code>approved</code>, crea el <code>User</code> o actualiza una cuenta existente. En altas fija
+<code>subscriptionExpiresAt</code>, elimina la contraseña
+temporal y habilita el login automático. En upgrades fija la vigencia desde la
+aprobación; en renovaciones anticipadas suma meses desde el vencimiento vigente (o
+desde la aprobación si ya venció). La fecha base viaja en metadata y produce un
+vencimiento absoluto idempotente ante reintentos del mismo webhook. Es la <strong>única</strong>
+vía legítima para cambiar/renovar un plan y registra el evento en el CRM.</li>
+</ul>
+<h2 id="routes">routes/</h2>
+<p>Cada archivo define un <code>express.Router</code> y ata rutas → middlewares → controllers.</p>
+<ul>
+<li><strong><code>routes/userRoutes.js</code></strong> — <code>/register</code> y <code>/login</code> (con <code>authLimiter</code>); rutas privadas
+<code>/me</code>, <code>/me/menu</code>, <code>/me/stats</code> y <code>/me/item-stats</code> (ambas requirePlan &quot;pro&quot;), <code>PUT /me</code>,
+uploads, <code>/template</code>, <code>/active</code>; y al final las públicas por slug
+<code>POST /:slug/menu/items/:itemID/view</code> (tracking por plato), <code>/:slug/menu</code> y <code>/:slug</code>
+(van últimas para no interceptar las rutas fijas).</li>
+<li><strong><code>routes/menuRoutes.js</code></strong> — CRUD de menús (todas <code>protect</code>).</li>
+<li><strong><code>routes/itemRoutes.js</code></strong> — CRUD de items (todas <code>protect</code>).</li>
+<li><strong><code>routes/adminRoutes.js</code></strong> — rutas admin (todas <code>protect + isAdmin</code>).</li>
+<li><strong><code>routes/massiveRoutes.js</code></strong> — <code>template/preview/confirm</code>, todas gateadas con
+<code>requirePlan(&quot;basic&quot;)</code>; multer en memoria con límite de 5MB.</li>
+<li><strong><code>routes/crmRoutes.js</code></strong> — CRM interno bajo <code>/api/admin/crm</code> (montado en app.js
+ANTES de <code>/api/admin</code> para que su prefijo matchee primero). Todas <code>protect + isAdmin</code>:
+<code>GET /overdue-count</code> y <code>GET /export</code> (de nombre fijo, van antes del param),
+<code>GET /clients</code>, <code>GET /clients/:userID</code>, <code>PATCH /clients/:userID</code>,
+<code>POST /clients/:userID/notes</code>, <code>DELETE /clients/:userID/notes/:noteID</code>.</li>
+<li><strong><code>routes/paymentRoutes.js</code></strong> — define <code>PLANES</code> (Basic/Pro) y períodos de
+1/3/6/12 meses. <code>POST /crear-preferencia-registro</code> crea o recupera el alta
+pendiente, crea/actualiza una única preferencia idempotente y devuelve
+<code>init_point</code> + token opaco; <code>POST /registro/estado</code> permite esperar al webhook;
+<code>POST /crear-preferencia</code> (autenticado) valida plan/período, impide downgrades,
+calcula el precio server-side y crea upgrades o renovaciones; <code>POST /webhook</code> crea
+la cuenta o acredita el cambio/renovación con vencimiento.</li>
+</ul>
+<h2 id="utils">utils/</h2>
+<ul>
+<li><strong><code>utils/authToken.js</code></strong> — <strong><code>generateAuthToken(userID)</code></strong>: genera el JWT de sesión
+compartido por el login tradicional y la recuperación de un alta paga completada.</li>
+<li><strong><code>utils/handleError.js</code></strong> — <strong><code>handleError(res, error, status=500)</code></strong>: loguea el error
+real server-side y responde un mensaje genérico (nunca reenvía <code>error.message</code> para no
+filtrar internals).</li>
+<li><strong><code>utils/dates.js</code></strong> — <strong><code>buenosAiresDateStr(date=now)</code></strong>: devuelve la fecha
+<code>&quot;YYYY-MM-DD&quot;</code> del instante leída en <code>America/Argentina/Buenos_Aires</code> (vía <code>Intl</code>, sin
+dependencias). Evita que las visitas después de las 21:00 se cuenten al día siguiente.
+<strong><code>addCalendarMonths(date, months)</code></strong> calcula vencimientos respetando el último día
+de meses cortos. También exporta <code>TIMEZONE_BA</code>.</li>
+<li><strong><code>utils/offers.js</code></strong> — normaliza y valida precio/período de una oferta, y resuelve
+si está activa en el instante actual. Una oferta sin período es manual/permanente;
+una programada requiere inicio y fin y solo se expone públicamente dentro del rango.</li>
+<li><strong><code>utils/itemAvailability.js</code></strong> — valida las franjas semanales de disponibilidad,
+detecta solapamientos y calcula el estado actual en horario de Buenos Aires.</li>
+<li><strong><code>utils/pendingCredentials.js</code></strong> — cifra y autentica con AES-256-GCM la contraseña
+que debe sobrevivir hasta la aprobación del pago; también descifra registros legacy
+mientras sigan dentro de su TTL.</li>
+<li><strong><code>utils/slug.js</code></strong> — centraliza la normalización y asignación única de slugs para
+registro gratuito, alta paga y edición. Si el nombre ya existe usa sufijos legibles
+(<code>cafe-roma-2</code>, <code>cafe-roma-3</code>) y reintenta si el índice <code>unique</code> detecta una carrera.</li>
+<li><strong><code>utils/crmEvents.js</code></strong> — <strong><code>logCrmEvent(userID, text)</code></strong>: inserta un evento
+automático (<code>kind:&quot;event&quot;</code>, sin autor) al principio del historial de CRM del cliente
+(upsert). Lo llaman <code>mpWebhook</code> (cambio de plan), <code>setActiveUser</code> (activar/desactivar)
+y <code>useTemplate</code> (cambio de template). Atrapa su propio error: nunca rompe el flujo
+principal si el logueo falla.</li>
+</ul>
+<hr />
+<h1 id="frontend">Frontend</h1>
+<p>Estructura: <code>src/{main.tsx, App.tsx, routes, context, hooks, lib, api, types, components, pages, Utils, styles}</code>. Cada componente tiene su <code>.module.css</code> (no
+documentado individualmente); tokens, keyframes, spinners y utilidades compartidas
+viven en <code>styles/globals.css</code> (ver <a href="#styles">styles/</a>).</p>
+<h2 id="entry-bootstrap">Entry / bootstrap</h2>
+<h3 id="main.tsx"><code>main.tsx</code></h3>
+<p>Punto de entrada. Crea el <code>QueryClient</code> de React Query (staleTime 2min, retry 1, sin
+refetch al enfocar el tab), importa <code>globals.css</code>, y monta <code>&lt;App/&gt;</code> dentro de
+<code>StrictMode</code> + <code>QueryClientProvider</code>.</p>
+<h3 id="app.tsx"><code>App.tsx</code></h3>
+<ul>
+<li><strong><code>PageLoader</code></strong> — spinner a pantalla completa (fallback de Suspense).</li>
+<li><strong><code>App</code></strong> — envuelve la app en <code>BrowserRouter</code> → <code>AuthProvider</code> → <code>Suspense</code> →
+<code>AppRoutes</code> (todas las páginas se cargan lazy).</li>
+</ul>
+<h2 id="routes-1"><a id="frontend-routes"></a>routes/</h2>
+<h3 id="routesapproutes.tsx"><code>routes/AppRoutes.tsx</code></h3>
+<ul>
+<li><strong><code>AppRoutes</code></strong> — declara todas las rutas con <code>lazy()</code>:
+<ul>
+<li>Públicas: <code>/</code> (AdminHome = landing comercial), <code>/login</code>, <code>/register</code>,
+<code>/register/plans</code>, <code>/register/success</code>, <code>/terminos</code>, <code>/privacidad</code>, <code>/contacto</code>.</li>
+<li>Admin (protegidas por <code>AdminRoute</code> + <code>AdminLayout</code>, el shell con sidebar/bottomnav):
+<code>/admin</code> (CEODashboard), <code>/admin/crm</code> (CrmClients).</li>
+<li>Dueño (protegidas por <code>UserRoute</code> + <code>DashboardLayout</code>): <code>/dashboard</code>,
+<code>/menu/editor</code>, <code>/user/editor</code>, <code>/estadisticas</code>.</li>
+<li>Tenant público por slug (al final): <code>/:slug</code> (UserHome) y <code>/:slug/menu</code> (UserMenu).</li>
+</ul>
+</li>
+</ul>
+<h3 id="routesadminroutes.tsx"><code>routes/AdminRoutes.tsx</code></h3>
+<ul>
+<li><strong><code>AdminRoute</code></strong> — guard: muestra loader mientras carga auth; redirige a <code>/login</code> si no
+está logueado, o a <code>/dashboard</code> si no es admin; si es admin renderiza <code>&lt;Outlet/&gt;</code>.</li>
+</ul>
+<h3 id="routesuserroutes.tsx"><code>routes/UserRoutes.tsx</code></h3>
+<ul>
+<li><strong><code>UserRoute</code></strong> — guard inverso: redirige a <code>/login</code> si no está logueado, o a <code>/admin</code>
+si es admin; si es dueño renderiza <code>&lt;Outlet/&gt;</code>.</li>
+</ul>
+<h2 id="context">context/</h2>
+<h3 id="contextauthcontext.tsx"><code>context/AuthContext.tsx</code></h3>
+<ul>
+<li><strong><code>AuthContextType</code></strong> (interface) y <strong><code>AuthContext</code></strong> — el contexto de auth (user,
+token, isLoading, login, <code>refreshUser</code>, logout, isAuthenticated). El tipo del user es <code>AuthUser</code>
+(definido en <code>types</code>).</li>
+</ul>
+<h3 id="contextauthprovider.tsx"><code>context/AuthProvider.tsx</code></h3>
+<ul>
+<li><strong><code>readAuthFromStorage()</code></strong> — lee token/user/expiry de localStorage; si el token venció
+o el JSON está corrupto, limpia y devuelve null.</li>
+<li><strong><code>AuthProvider</code></strong> — provee el contexto. Estado combinado (una sola lectura de
+localStorage). Funciones:
+<ul>
+<li><strong><code>login(username, password)</code></strong> — hace fetch a <code>/users/login</code>, adapta la
+<code>AuthResponse</code> a <code>AuthUser</code> (id/name/role/slug/subscription/vencimiento), guarda en state +
+localStorage (expiry 7 días).</li>
+<li><strong><code>refreshUser()</code></strong> — relee <code>/users/me</code> y sincroniza plan/vencimiento en state y
+localStorage. Se usa al volver de MercadoPago para no conservar el plan anterior.</li>
+<li><strong><code>logout()</code></strong> — limpia state y localStorage.</li>
+</ul>
+</li>
+</ul>
+<h3 id="contextuseauth.ts"><code>context/useAuth.ts</code></h3>
+<ul>
+<li><strong><code>useAuth()</code></strong> — hook que devuelve el <code>AuthContext</code>; tira error si se usa fuera del
+<code>AuthProvider</code>.</li>
+</ul>
+<h3 id="contextcartcontext.tsx"><code>context/CartContext.tsx</code></h3>
+<ul>
+<li><strong><code>CartLine</code></strong> (interface: itemId, title, unitPrice, quantity, selectedOption?) y
+<strong><code>CartContextType</code></strong> / <strong><code>CartContext</code></strong> — el contexto del <strong>carrito de la carta
+pública</strong> (items, addItem, removeItem, updateQuantity, clearCart, totalItems,
+totalPrice). Dos variantes distintas del mismo producto son líneas separadas.</li>
+</ul>
+<h3 id="contextcartprovider.tsx"><code>context/CartProvider.tsx</code></h3>
+<ul>
+<li><strong><code>lineKey(itemId, selectedOption)</code></strong> — clave única de línea (producto + variante).</li>
+<li><strong><code>readCart(slug)</code></strong> — lee el carrito de localStorage (tolerante a JSON corrupto).</li>
+<li><strong><code>CartProvider({slug, children})</code></strong> — provee el carrito. Persiste en localStorage
+bajo <code>cart:&lt;slug&gt;</code> (un carrito <strong>por local</strong>, no global); si el slug cambia por
+navegación SPA recarga el carrito de ese local (ajuste de estado durante el render,
+sin efecto). Si localStorage no está disponible sigue funcionando en memoria.</li>
+</ul>
+<h3 id="contextusecart.ts"><code>context/useCart.ts</code></h3>
+<ul>
+<li><strong><code>useCart()</code></strong> — hook consumidor del <code>CartContext</code> (mismo patrón que <code>useAuth</code>).</li>
+</ul>
+<h2 id="hooks">hooks/</h2>
+<h3 id="hooksusereveal.tsx"><code>hooks/useReveal.tsx</code></h3>
+<ul>
+<li><strong><code>useReveal&lt;T&gt;()</code></strong> — devuelve <code>{ref, revealed}</code>. Con un <code>IntersectionObserver</code>,
+marca <code>revealed=true</code> la primera vez que el elemento entra al viewport y deja de
+observar. Usado para scroll-reveal en la landing pública.</li>
+</ul>
+<h3 id="hooksuseasyncaction.tsx"><code>hooks/useAsyncAction.tsx</code></h3>
+<ul>
+<li><strong><code>useAsyncAction()</code></strong> — abstrae el boilerplate <code>setLoading/try/catch/setError</code> de las
+acciones async. Devuelve <code>{loading, error, success, setError, setSuccess, run, mountedRef}</code>. <strong><code>run(fn, opts)</code></strong> ejecuta la acción, maneja <code>ApiError</code> (mensajes
+reales según tipo), respeta <code>successMessage</code>/<code>onError</code> y no pisa estado si el
+componente se desmontó.</li>
+</ul>
+<h3 id="hooksusetheme.ts"><code>hooks/useTheme.ts</code></h3>
+<p>Tema claro/oscuro del <strong>panel</strong> (solo tokens <code>--admin-*</code>).</p>
+<ul>
+<li><strong><code>readTheme()</code></strong> — lee la preferencia de localStorage (default <code>&quot;dark&quot;</code>).</li>
+<li><strong><code>applyTheme(theme)</code></strong> — pone/saca <code>data-theme=&quot;light&quot;</code> en <code>&lt;html&gt;</code>.</li>
+<li><strong><code>useTheme()</code></strong> — devuelve <code>{theme, toggle, setTheme}</code>; persiste en localStorage. La
+primera aplicación (anti-flash) la hace un script inline en <code>index.html</code>.</li>
+</ul>
+<h2 id="lib">lib/</h2>
+<h3 id="libplans.ts"><code>lib/plans.ts</code></h3>
+<p>Espejo del sistema de planes del backend, para la UI.</p>
+<ul>
+<li><strong><code>PLAN_ORDER</code></strong>, <strong><code>PLAN_LABEL</code></strong> (nombres visibles), <strong><code>TEMPLATE_MIN_PLAN</code></strong> (mapa
+template→plan), y <strong><code>planMeetsMin(userPlan, minPlan)</code></strong> (helper de gating para
+candados/badges en el editor).</li>
+</ul>
+<h3 id="libwhatsapp.ts"><code>lib/whatsapp.ts</code></h3>
+<p>Helpers puros del <strong>pedido por WhatsApp</strong> (sin backend, sin gating por plan).</p>
+<ul>
+<li><strong><code>sanitizePhoneForWa(number)</code></strong> — convierte el teléfono guardado (dígitos locales
+sin código de país) al formato <code>54 9 &lt;área&gt;&lt;número&gt;</code> que exige <code>wa.me</code> para celulares
+argentinos; saca un <code>0</code> inicial de discado si lo hubiera. Devuelve null si no hay número.</li>
+<li><strong><code>buildOrderMessage(cart, businessName)</code></strong> — arma el texto legible del pedido
+(cantidad × producto, variante, subtotal por línea y total).</li>
+<li><strong><code>buildWaLink(number, message)</code></strong> — devuelve el link <code>https://wa.me/...?text=</code> (URL-
+encoded) o null si el número no sirve (el caller oculta el botón en ese caso).</li>
+</ul>
+<h2 id="api">api/</h2>
+<p>Capa de acceso a la API. Dos estilos coexisten: un cliente <code>axios</code> (<code>client.ts</code>) y un
+wrapper sobre <code>fetch</code> (<code>apiClient.ts</code>).</p>
+<h3 id="apiclient.ts"><code>api/client.ts</code></h3>
+<ul>
+<li><strong><code>apiClient</code></strong> (axios instance) — baseURL desde <code>VITE_API_URL</code>. Interceptor de
+request que adjunta el JWT desde localStorage; interceptor de response que, ante 401,
+limpia la sesión y redirige a <code>/login</code>.</li>
+</ul>
+<h3 id="apiapiclient.ts"><code>api/apiClient.ts</code></h3>
+<p>Wrapper tipado sobre <code>fetch</code>.</p>
+<ul>
+<li><strong><code>DEFAULT_MESSAGES</code></strong> — mensajes por tipo de error, en español.</li>
+<li><strong><code>class ApiError</code></strong> — error tipado (<code>type</code>, <code>status</code>, <code>details</code>) que viaja por la app.</li>
+<li><strong><code>classifyStatus(status)</code></strong> — mapea código HTTP → <code>ApiErrorType</code>.</li>
+<li><strong><code>ApiFetchOptions</code></strong> (interface) — extiende <code>RequestInit</code> (timeoutMs, parseJson).</li>
+<li><strong><code>apiFetch&lt;T&gt;(url, options)</code></strong> — reemplazo de <code>fetch</code>: timeout con AbortController,
+clasificación de errores, lectura del <code>message</code> del backend; siempre tira <code>ApiError</code>.</li>
+<li>(Exporta también <code>isCancelled</code> para distinguir cancelaciones intencionales.)</li>
+</ul>
+<h3 id="apiusers.ts"><code>api/users.ts</code></h3>
+<p>Funciones tipadas por endpoint de usuario: <strong><code>register</code></strong>, <strong><code>login</code></strong>,
+<strong><code>fetchUserBySlug</code></strong>, <strong><code>getMe</code></strong>, <strong><code>updateMe</code></strong>, <strong><code>uploadUserImage</code></strong>,
+<strong><code>setTemplate</code></strong>, <strong><code>setActive</code></strong>.</p>
+<h3 id="apimenus.ts"><code>api/menus.ts</code></h3>
+<p><strong><code>fetchPublicMenu(slug)</code></strong>, <strong><code>createMenu</code></strong>, <strong><code>updateMenu</code></strong>, <strong><code>hideMenu</code></strong>,
+<strong><code>uploadMenuImage</code></strong>.</p>
+<h3 id="apiitems.ts"><code>api/items.ts</code></h3>
+<p><strong><code>createItem</code></strong>, <strong><code>updateItem</code></strong>, <strong><code>moveItem</code></strong>, <strong><code>deleteItem</code></strong>,
+<strong><code>uploadItemImage</code></strong>, <strong><code>setItemHidden</code></strong>, <strong><code>setItemAvailable</code></strong>.</p>
+<h3 id="apimassive.ts"><code>api/massive.ts</code></h3>
+<p><strong><code>downloadMassiveTemplate</code></strong> (blob), <strong><code>previewMassiveImport(file)</code></strong>,
+<strong><code>confirmMassiveImport(file)</code></strong>, y <strong><code>triggerBlobDownload(blob, filename)</code></strong> (dispara la
+descarga en el navegador).</p>
+<h3 id="apicrm.ts"><code>api/crm.ts</code></h3>
+<p>CRM interno (admin): <strong><code>listCrmClients</code></strong>, <strong><code>getCrmClient</code></strong>, <strong><code>updateCrmProfile</code></strong>,
+<strong><code>addCrmNote</code></strong>, <strong><code>deleteCrmNote</code></strong>, <strong><code>getCrmOverdueCount</code></strong> (conteo de seguimientos
+vencidos para el badge del sidebar) y <strong><code>exportCrmClients(stage?)</code></strong> (descarga el
+listado como blob <code>.xlsx</code>, respetando el filtro de etapa).</p>
+<h3 id="apiindex.ts"><code>api/index.ts</code></h3>
+<p>Barrel: re-exporta <code>users/menus/items</code>, el <code>apiClient</code> (axios) y
+<code>apiFetch/isCancelled/ApiError</code>.</p>
+<h2 id="types">types/</h2>
+<h3 id="typesindex.ts"><code>types/index.ts</code></h3>
+<p>Tipos espejo de los schemas del backend y de las respuestas de la API. Incluye:
+<code>Subscription</code>, <code>ApiErrorType</code>, <code>ContactInfo</code>, <code>Media</code>, <code>User</code>, <code>AuthUser</code> (forma
+normalizada del user logueado en el contexto), <code>Menu</code>, <code>Item</code>, respuestas
+(<code>PublicMenuResponse</code>, <code>AuthResponse</code>, <code>TemplateResponse</code>, ...), el menú público
+agrupado (<code>Categoria</code>, <code>Seccion</code>, <code>MenuData</code>, <code>Tab</code>, <code>UserMenuResponse</code>), el menú del
+panel (<code>AdminItem/AdminCategoria/AdminSeccion/AdminMenuData</code>, con campos que solo usa el
+editor), <code>DashData</code>, <code>DayCount</code>, <code>StatsData</code>, la analítica por plato (<code>TopItemStat</code>,
+<code>ItemStatsData</code>), tipos de import masivo (<code>MassiveRowResult</code>, <code>MassivePreviewResponse</code>,
+<code>MassiveConfirmResponse</code>), de admin (<code>Plan</code>, <code>AdminStats</code>) y de CRM (<code>CrmStage</code>,
+<code>CrmNote</code> — con <code>kind: &quot;note&quot; | &quot;event&quot;</code> para distinguir notas manuales de eventos del
+sistema —, <code>CrmProfile</code>, <code>CrmClient</code>, <code>CrmClientDetail</code>). <code>ContactInfo</code> incluye
+<code>googleReviewUrl</code> (link de reseñas de Google Maps).</p>
+<h2 id="components">components/</h2>
+<h3 id="componentscommon"><code>components/Common/</code></h3>
+<ul>
+<li><strong><code>ErrorBoundary.tsx</code></strong> — <strong><code>class ErrorBoundary</code></strong>: error boundary de React (único
+modo de atrapar errores de render). <code>getDerivedStateFromError</code>, <code>componentDidCatch</code>
+(loguea, hook para Sentry), <code>handleReload</code> y un fallback con botón &quot;Recargar&quot;.</li>
+<li><strong><code>FullScreenLoader.tsx</code></strong> — <strong><code>FullScreenLoader</code></strong>: spinner a pantalla completa (guard
+de rutas). Usa las clases globales <code>.pageLoaderScreen</code>/<code>.pageLoaderRing</code> (mismo loader
+que el fallback de Suspense y las pantallas de carga del panel).</li>
+<li><strong><code>Spinner.tsx</code></strong> — <strong><code>Spinner({size})</code></strong>: spinner SVG inline para botones y overlays
+(&quot;Guardando...&quot;, subiendo imagen, etc). Hereda color vía <code>currentColor</code> y gira con la
+clase global <code>.iconSpinner</code>. Antes estaba copiado idéntico en UserEditor y MenuEditor.</li>
+<li><strong><code>UpgradeModal.tsx</code></strong> — selector compartido de suscripción para dashboard y
+paywalls. Filtra upgrades/renovaciones válidos según plan actual, ofrece Basic/Pro y
+períodos 1/3/6/12, calcula el total/ahorro informativo y envía sólo <code>planId/months</code>;
+el backend vuelve a validar y calcular el precio real. CSS en su módulo homónimo.</li>
+</ul>
+<h3 id="componentsadminhomeadminhome.tsx"><code>components/Admin/Home/AdminHome.tsx</code></h3>
+<p>Landing comercial pública (la home de <code>/</code>). Presenta la propuesta, precios y CTA a
+registrarse. Datos locales: <code>PLANS</code> (grilla Free/Basic/Pro con precio, features y
+badge) y <code>REVIEWS</code>. Las tarjetas viven en una sección inline de la landing —no hay
+modal de precios— y enlazan a <code>/register?plan=&lt;id&gt;</code>: Free muestra &quot;Crear cuenta&quot; y
+Basic/Pro, &quot;Pagar y crear cuenta&quot;. Los CTA generales desplazan hasta esa sección.
+Componente principal <strong><code>HomePage</code></strong> con hooks de animación (<code>useParallax</code>,
+<code>useReveal</code>, <code>useCounterOnView</code>, steam rings), <code>CustomCursor</code> y navegación mobile.</p>
+<h3 id="componentsadminpaneladminlayout.tsx"><code>components/Admin/Panel/AdminLayout.tsx</code></h3>
+<p>Shell del <strong>panel CEO</strong> (sidebar desktop + bottom nav mobile + <code>&lt;Outlet/&gt;</code> para <code>/admin</code>
+y <code>/admin/crm</code>), mismo patrón que el <code>DashboardLayout</code> del dueño.</p>
+<ul>
+<li><strong><code>AdminLayout</code></strong> — nav items (Panel / CRM), <code>useTheme</code> (toggle claro/oscuro),
+<code>handleLogout</code>, y un <strong>badge de alerta</strong> en el ítem CRM con la cantidad de clientes
+con seguimiento vencido (<code>getCrmOverdueCount</code>, se refresca en cada cambio de ruta).
+Íconos: <code>GridIcon</code>, <code>UsersIcon</code>, <code>LogoutIcon</code>, <code>SunIcon</code>, <code>MoonIcon</code>.</li>
+</ul>
+<h3 id="componentsadminpanelceodashboard.tsx"><code>components/Admin/Panel/CEODashboard.tsx</code></h3>
+<p>Panel interno del CEO (<code>/admin</code>). Helpers: <code>SUBSCRIPTION_LABEL</code>, <code>SUBSCRIPTION_COLOR</code>,
+<code>timeAgo(date)</code>. Componente <strong><code>CEODashboard</code></strong>: trae <code>/admin/stats</code> y <code>/admin/allUsers</code>,
+muestra KPIs, breakdown de suscripciones (free/basic/pro), buscador de
+clientes y toggle activar/desactivar. Sub-componente <strong><code>KpiCard</code></strong> (acentos vía CSS
+vars, theme-aware) y varios íconos SVG. La navegación/logout viven en <code>AdminLayout</code>; el
+<code>.module.css</code> define sus tokens locales (<code>--c-*</code>, glass, sombras) con un bloque
+<code>[data-theme=&quot;light&quot;]</code> para el tema claro.</p>
+<h3 id="componentsadmincrmcrmclients.tsx"><code>components/Admin/Crm/CrmClients.tsx</code></h3>
+<p><strong>CRM interno</strong> del CEO (<code>/admin/crm</code>). Helpers: <code>STAGE_META</code> (etiqueta+color por etapa),
+<code>STAGE_ORDER</code>, <code>fmtDate</code>, <code>isOverdue</code>, <code>timeAgo</code>, <code>dateInputValue</code>.</p>
+<ul>
+<li><strong><code>CrmClients</code></strong> — trae la lista (<code>listCrmClients</code>), la filtra por etapa (chips con
+contadores) y búsqueda, con <strong>dos vistas alternables</strong>: lista y <strong>Kanban</strong> (columnas
+por etapa, tarjetas arrastrables con drag &amp; drop nativo que llaman a
+<code>updateCrmProfile</code> al soltarlas — <code>moveToStage</code>, optimista). Arriba, un <strong>banner de
+seguimientos vencidos</strong> (clickeable: filtra solo esos clientes) y un botón
+<strong>&quot;Exportar a Excel&quot;</strong> (<code>exportCrmClients</code>, respeta el filtro de etapa activo). Al
+seleccionar un cliente abre el drawer.</li>
+<li><strong><code>ClientDrawer</code></strong> — panel lateral de detalle: trae <code>getCrmClient</code>, muestra perfil +
+actividad + link a la carta, y permite cambiar etapa, editar tags, setear el próximo
+seguimiento y gestionar el historial de <strong>Actividad</strong>: notas manuales mezcladas
+cronológicamente con los eventos automáticos del sistema (<code>kind:&quot;event&quot;</code> — estilo
+discreto, autor &quot;Sistema&quot;, sin botón de borrar). Los cambios se guardan al backend y
+se sincronizan con la fila del listado (optimista). Cierra con Escape.</li>
+</ul>
+<h3 id="componentsloginlogin.tsx"><code>components/Login/Login.tsx</code></h3>
+<ul>
+<li><strong><code>Login</code></strong> — formulario de login. Usa <code>useAuth().login</code>, muestra errores, redirige
+según rol al entrar. Toggle de ver/ocultar contraseña, &quot;recordarme&quot;.</li>
+</ul>
+<h3 id="componentsregisterregister.tsx"><code>components/Register/Register.tsx</code></h3>
+<ul>
+<li><strong><code>Register</code></strong> — formulario común para altas gratuitas y pagas. Valida
+username/password (min 8 chars, coincidencia) y aceptación de términos; guarda los
+datos temporalmente en <code>sessionStorage</code> como <code>pendingRegister</code> y navega a
+<code>/register/plans</code>. Si recibe <code>?plan=free|basic|pro</code>, conserva esa elección en la URL.</li>
+</ul>
+<h3 id="componentsregisterregisterplans.tsx"><code>components/Register/RegisterPlans.tsx</code></h3>
+<ul>
+<li><strong><code>RegisterPlans</code></strong> — confirma el plan elegido (Basic por defecto si no vino uno
+válido) y ofrece períodos de 1/3/6/12 meses para planes pagos. Free llama a
+<code>POST /users/register</code>, inicia sesión y redirige al dashboard. Basic/Pro llaman a
+<code>POST /payments/crear-preferencia-registro</code>, guardan el token opaco y redirigen al
+checkout de MercadoPago.</li>
+</ul>
+<h3 id="componentsregisterregistersuccess.tsx"><code>components/Register/RegisterSuccess.tsx</code></h3>
+<ul>
+<li><strong><code>RegisterSuccess</code></strong> — pantalla de retorno del alta paga. Consulta
+<code>POST /payments/registro/estado</code> hasta que el webhook complete la cuenta; luego hace
+un único login, limpia <code>pendingRegister</code> y redirige a <code>/dashboard</code>.</li>
+</ul>
+<h3 id="componentsuserhomehomeuserhome.tsx"><code>components/User/Home/Home/UserHome.tsx</code></h3>
+<p><strong>Landing pública por slug</strong> (<code>/:slug</code>). Núcleo del sistema de templates.</p>
+<ul>
+<li><strong><code>TemplateId</code></strong> / <strong><code>TemplateTokens</code></strong> (types), <strong><code>SLUG_REGEX</code></strong>, y
+<strong><code>TEMPLATE_TOKENS</code></strong> — mapa de config por template (heroClass, overlayClass,
+titleClass, showDeliveryRow, galleryRadius, btnLabel, useAvatar) para los 15 templates.</li>
+<li><strong><code>BusinessLandingPage</code></strong> — componente de ruta: valida el slug, hace fetch de
+<code>/users/:slug</code>, maneja loading/notFound, y renderiza <code>&lt;Template&gt;</code> con los tokens del
+template elegido.</li>
+<li><strong><code>Template</code></strong> — layout unificado (hero con foto/overlay o header con avatar según
+<code>useAvatar</code>, título, badge de delivery, lista de contacto, galería bento, botón &quot;Ver
+menú&quot;). Setea <code>document.title</code>.</li>
+<li>Sub-componentes: <strong><code>ContactList</code></strong> (chips de contacto con <code>useReveal</code>; incluye la fila
+&quot;Dejanos tu reseña en Google&quot; si el dueño cargó <code>googleReviewUrl</code>), <strong><code>Gallery</code></strong>
+(galería bento con foto destacada), <strong><code>Loader</code></strong> (skeleton con la silueta real),
+<strong><code>NotFound</code></strong> (clases globales <code>.t-notfound*</code>, compartidas con la carta).</li>
+<li><strong><code>ImageViewer</code></strong> — lightbox a pantalla completa (se abre al tocar la foto de portada
+o una de la galería). Theme-agnóstico: backdrop con blur, imagen con zoom de entrada,
+botones glassmorphic (cerrar / prev / next con estado disabled en los extremos) y
+contador &quot;N / total&quot;. Navegación por teclado (← → / Esc), bloqueo del scroll del fondo
+mientras está abierto, y <code>role=&quot;dialog&quot;</code> + aria-labels. Responsive (tap targets
+cómodos en mobile).</li>
+</ul>
+<h3 id="componentsuserhomemenuusermenu.tsx"><code>components/User/Home/Menu/UserMenu.tsx</code></h3>
+<p><strong>Carta pública</strong> (<code>/:slug/menu</code>). Helpers: <code>minOption(options)</code> (precio mínimo entre
+variantes), <code>fmt(n)</code> (formato de precio AR), <code>offerPct(orig, offer)</code> (% de descuento).</p>
+<ul>
+<li><strong><code>MenuPage</code></strong> — trae <code>/users/:slug/menu</code>, arma tabs por sección, aplica el template,
+scroll-reveal, <code>document.title</code>. La cabecera y las tabs viven en un <strong>único wrapper
+sticky</strong> (<code>.mpSticky</code>): las tabs quedan pegadas exactamente debajo del header sin
+acoplar un <code>top:</code> fijo a una altura que cambia entre mobile y desktop; al cambiar de
+tab se vuelve al tope de la página (el inicio visible del contenido). Envuelve todo en
+<strong><code>CartProvider</code></strong> (carrito por slug), renderiza el <strong><code>CartFab</code></strong> (botón flotante con
+badge de cantidad, solo si el carrito tiene algo), el <strong><code>CartDrawer</code></strong> — <strong>dentro</strong> del
+contenedor <code>[data-template]</code>, porque los tokens <code>--t-*</code> solo existen ahí — y, si hay
+<code>googleReviewUrl</code>, un <strong>banner de reseñas</strong> al final del listado (&quot;¿Te gustó lo que
+viste? Contanos en Google&quot;). <strong>Responsive</strong>: columna única estilo mobile hasta 1024px;
+de ahí en adelante el contenedor crece (~1080px) y cada categoría pasa a una <strong>grilla
+de 2 columnas</strong> (título ocupando ambas; <code>align-items:start</code> para que expandir
+variantes en una tarjeta no estire a su vecina).</li>
+<li><strong><code>ItemCard</code></strong> — tarjeta de producto (imagen con <code>loading=&quot;lazy&quot;</code>, precio, badges).
+El precio muestra un solo estado a la vez: oferta (precio nuevo + tachado + badge de
+descuento) &gt; variantes (&quot;Desde&quot; el mínimo) &gt; precio simple. Control de <strong>carrito</strong>:
+<code>AddControl</code> simple si el producto no tiene variantes, o un <code>AddControl</code> por variante
+dentro del panel expandible; el botón &quot;Variantes&quot; solo aparece cuando el panel
+realmente abre (con oferta activa el producto se agrega como ítem simple al precio de
+oferta). El primer tap sobre la tarjeta dispara el <strong>tracking de vista por plato</strong>
+(<code>POST /:slug/menu/items/:itemID/view</code>, fire-and-forget, una vez por montaje).</li>
+<li><strong><code>AddControl</code></strong> — botón &quot;+&quot; que al agregar se convierte en stepper −/cantidad/+
+(sincronizado con el carrito vía <code>useCart</code>).</li>
+<li><strong><code>CartFab</code></strong> — botón flotante del carrito (abre el drawer).</li>
+<li>Sub-componentes: <strong><code>MenuSkeleton</code></strong> (misma silueta que el contenido real, incluida la
+grilla de 2 columnas en desktop), <strong><code>NotFound</code></strong> (clases globales <code>.t-notfound*</code>),
+<strong><code>EmptyMenu</code></strong>, e íconos SVG (<code>BackIcon</code>, <code>PinIcon</code>, <code>DeliveryIcon</code>, <code>StarIcon</code>,
+<code>CartIcon</code>, <code>ImagePlaceholderIcon</code>).</li>
+</ul>
+<h3 id="componentsuserhomemenucartdrawer.tsx"><code>components/User/Home/Menu/CartDrawer.tsx</code></h3>
+<p>Panel deslizable del <strong>pedido</strong> (bottom-sheet en mobile, modal centrado en desktop),
+tematizado con los tokens <code>--t-*</code> del template activo.</p>
+<ul>
+<li><strong><code>CartDrawer({open, onClose, businessName, whatsappNumber})</code></strong> — lista las líneas
+del carrito (título, variante, stepper de cantidad, subtotal, quitar) con scroll
+interno propio (en pantallas bajas el listado scrollea en vez de empujar el total y
+el checkout fuera del viewport), muestra el total, y la <strong>zona de acciones de
+checkout</strong>: hoy el botón &quot;Pedir por WhatsApp&quot; (arma el link con <code>buildWaLink</code> +
+<code>buildOrderMessage</code> y lo abre en otra pestaña; si el local no cargó teléfono muestra
+un aviso en su lugar) y &quot;Vaciar pedido&quot; (con confirmación nativa — acción destructiva
+sin undo). La zona está separada a propósito para que sumar un botón de pago con
+MercadoPago después sea un cambio aislado. Debe renderizarse dentro del contenedor
+<code>[data-template]</code> (hereda los tokens <code>--t-*</code> de ahí). Íconos: <code>CloseIcon</code>,
+<code>TrashIcon</code>, <code>WhatsAppIcon</code>.</li>
+</ul>
+<h3 id="componentsuserpaneldashboardlayoutdashboardlayout.tsx"><code>components/User/Panel/DashboardLayout/DashboardLayout.tsx</code></h3>
+<p>Shell del panel del dueño (sidebar desktop + bottom nav mobile + <code>&lt;Outlet/&gt;</code>).</p>
+<ul>
+<li><strong><code>DashboardLayout</code></strong> — nav items, <code>useTheme</code> (toggle claro/oscuro con <code>themeLabel</code>),
+<code>handleLogout</code>. Íconos: <code>HomeIcon</code>, <code>DocIcon</code>, <code>StoreIcon</code>, <code>ChartIcon</code>, <code>LogoutIcon</code>,
+<code>SunIcon</code>, <code>MoonIcon</code>.</li>
+</ul>
+<h3 id="componentsuserpaneldashboarduserdashboard.tsx"><code>components/User/Panel/Dashboard/UserDashboard.tsx</code></h3>
+<p>Home del panel (<code>/dashboard</code>). Layout de dos columnas en desktop.</p>
+<ul>
+<li><strong><code>useSpotlight(ref)</code></strong> — hook: luz que sigue al cursor en las cards.</li>
+<li><strong><code>UserDashboard</code></strong> — trae <code>/users/me</code>, muestra bienvenida, tarjeta &quot;storefront&quot; (URL
+pública, copiar link, ver página, descargar QR con <code>qrcode</code>+<code>jsPDF</code>), tarjeta <strong>“Tu
+plan”</strong> (plan efectivo, vencimiento y CTA de upgrade/renovación), cards de navegación
+y la vista previa en vivo. Al volver con <code>?payment=success</code> reintenta <code>refreshUser</code>
+unos segundos por la posible carrera con el webhook. QR menu con portal.</li>
+<li><strong><code>SpotlightCard</code></strong> — card de navegación con el efecto spotlight.</li>
+<li><strong><code>PreviewCard</code></strong> — vista previa en vivo de la carta pública en un iframe escalado
+(toggle Móvil/Escritorio). Usa un <code>ResizeObserver</code> para calcular el <code>scale</code>: por ancho
+siempre, y por alto <strong>solo</strong> en el layout de dos columnas (evita el bucle de
+realimentación del layout apilado). Íconos <code>RefreshIcon</code>, etc.</li>
+</ul>
+<h3 id="componentsuserpanelmenueditormenueditor.tsx"><code>components/User/Panel/MenuEditor/MenuEditor.tsx</code></h3>
+<p>Editor del menú (<code>/menu/editor</code>). El componente más grande.</p>
+<ul>
+<li>Tipos importados de <code>types</code> como <code>Item/Categoria/Seccion/MenuData</code> (alias de los
+<code>Admin*</code>). <code>EMPTY_ITEM</code>, <code>icons</code>, constantes de Cloudinary.</li>
+<li>Sub-componentes: <strong><code>Toggle</code></strong>, <strong><code>TopBar</code></strong>, <strong><code>CategoriaAcordeon</code></strong> (memoizado —
+acordeón de categoría con items, drag &amp; drop). El spinner inline viene de
+<code>Common/Spinner</code>.</li>
+<li><strong><code>MenuEditorPage</code></strong> — estado del editor (menú, límites, vistas item/categoría/sección/
+massive-import, modales de borrado y de upgrade). Fetch a <code>/users/me/menu</code>, <code>refetch</code>,
+handlers CRUD de items/categorías/secciones, drag &amp; drop, subida de imágenes directo a
+Cloudinary, <strong>exportar/importar Excel</strong> y <strong>exportar PDF</strong> (gateados a Basic con
+modal de upsell). El formulario del producto permite activar una programación semanal
+Basic+ con varios rangos por día, incluso cruzando medianoche, y programar el inicio y
+fin de una oferta con fecha y hora. Los paywalls abren <code>Common/UpgradeModal</code> con el
+plan mínimo correspondiente.</li>
+</ul>
+<h3 id="componentsuserpanelusereditorusereditor.tsx"><code>components/User/Panel/UserEditor/UserEditor.tsx</code></h3>
+<p>&quot;Mi negocio&quot; (<code>/user/editor</code>). Tabs info / media / template.</p>
+<ul>
+<li><code>TEMPLATES</code> (los 15 con <code>minPlan</code>), <code>EMPTY_FORM</code>. Sub-componentes <code>Toggle</code> y
+<code>LockIcon</code>; el spinner inline viene de <code>Common/Spinner</code>.</li>
+<li><strong><code>UserEditorPage</code></strong> — edita datos de contacto (incluido el <strong>link de reseñas de
+Google Maps</strong>, disponible en Pro y validado como <code>http(s)://</code>), delivery, galería
+(subida múltiple a Cloudinary con progreso, drag &amp; drop) y <strong>selección de template</strong>
+con gating por plan (<code>planMeetsMin</code>): candado + badge del plan requerido y
+<code>Common/UpgradeModal</code> configurado con el nivel mínimo del template.</li>
+</ul>
+<h3 id="componentsuserpanelstatsuserstats.tsx"><code>components/User/Panel/Stats/UserStats.tsx</code></h3>
+<p>Estadísticas de visitas (<code>/estadisticas</code>, plan pro+).</p>
+<ul>
+<li><strong><code>requestStats(token)</code></strong> — fetch puro (sin React) de <code>/users/me/stats</code>; devuelve
+<code>{kind:&quot;locked&quot;|&quot;data&quot;|&quot;none&quot;}</code>.</li>
+<li><strong><code>requestItemStats(token)</code></strong> — ídem para <code>/users/me/item-stats</code> (mismo gate de plan;
+se pide después de stats para no duplicar el manejo del 403).</li>
+<li><strong><code>UserStats</code></strong> — carga inicial (con spinner) + <strong>auto-refresh en tiempo real</strong>
+(polling cada 45s solo con la pestaña visible + refresco al volver el foco). Muestra
+total y gráfico de los últimos 30 días, más la sección <strong>&quot;Productos más vistos&quot;</strong>
+(ranking top 10 con barra proporcional al más visto, solo si hay datos). Si el plan
+no incluye stats (403), muestra paywall que abre <code>Common/UpgradeModal</code> para Pro.</li>
+</ul>
+<h2 id="pages">pages/</h2>
+<h3 id="pageslegal"><code>pages/Legal/</code></h3>
+<p>Páginas legales estáticas:</p>
+<ul>
+<li><strong><code>Terms.tsx</code></strong> — <strong><code>Terms</code></strong>: términos y condiciones.</li>
+<li><strong><code>Privacy.tsx</code></strong> — <strong><code>Privacy</code></strong>: política de privacidad.</li>
+<li><strong><code>Contact.tsx</code></strong> — <strong><code>Contact</code></strong>: formulario de contacto con validación local
+(<code>FormState</code>, <code>validate()</code>, <code>handleChange</code>, <code>handleSubmit</code>).</li>
+</ul>
+<h2 id="utils-1"><a id="utils-frontend"></a>Utils/</h2>
+<h3 id="utilsmassiveimport.tsx"><code>Utils/MassiveImport.tsx</code></h3>
+<p>Asistente de importación por Excel (se abre desde el MenuEditor).</p>
+<ul>
+<li>Tipos <code>Resumen</code>/<code>Resultado</code> (derivados de las respuestas de la API), <code>Step</code>.</li>
+<li><strong><code>MassiveImport</code></strong> — flujo de 3 pasos (upload → preview → success): descarga de
+plantilla, drag &amp; drop del archivo (valida .xlsx y ≤5MB), preview de cambios y
+confirmación. Sub-componentes <strong><code>ResumenSection</code></strong> y <strong><code>ResultadoSection</code></strong> (render de
+las filas a crear/actualizar/errores).</li>
+</ul>
+<h2 id="styles"><a id="styles"></a>styles/</h2>
+<h3 id="stylesglobals.css"><code>styles/globals.css</code></h3>
+<p>Única hoja global; todo lo demás son CSS Modules por componente. La regla de la casa:
+<strong>lo que se repite en 2+ módulos se centraliza acá</strong>. Contiene:</p>
+<ul>
+<li><strong>Design tokens</strong>, en 4 familias con prefijo propio para no colisionar:
+<ul>
+<li>Paleta base del storefront claro (<code>--gold</code>, <code>--cream</code>, <code>--text-*</code>, <code>--surface-*</code>,
+radios, sombras, espaciado, escala tipográfica, easings, z-index).</li>
+<li><strong><code>--admin-*</code></strong> — panel de administración (Dashboard, editores, CEO, CRM). Tema
+oscuro default + bloque <code>:root[data-theme=&quot;light&quot;]</code> que redefine solo las bases
+(los derivados se recalculan solos vía <code>color-mix()</code>).</li>
+<li><strong><code>--auth-*</code></strong> — Login/Register/AdminHome (tema oscuro/ámbar).</li>
+<li><strong><code>--t-*</code></strong> — tokens <strong>por template</strong> de la carta pública: 15 bloques
+<code>[data-template=&quot;N&quot;]</code> (bg, surface, borders, text, accent, gradientes de hero;
+los premium suman <code>--t-bg-image</code> y <code>--t-btn-bg</code> metálico). Solo existen dentro
+del contenedor con <code>data-template</code>.</li>
+</ul>
+</li>
+<li><strong>Keyframes globales</strong> (<code>spin</code>, <code>spinReverse</code>, <code>t-fadeIn</code>, <code>t-fadeUp</code>,
+<code>t-slideRight</code>, <code>fadeUp</code>, <code>scaleIn</code>, <code>pulse</code>, <code>shimmer</code>, <code>slideDown</code>, <code>slideUp</code>) —
+los módulos los referencian sin redeclararlos.</li>
+<li><strong>Spinners de carga</strong> (3 variantes): <code>.pageLoaderScreen</code> + <code>.pageLoaderRing</code>
+(página completa, doble anillo conic-gradient, theme-aware vía <code>--admin-*</code>),
+<code>.iconSpinner</code> (SVG inline de botones — lo usa <code>Common/Spinner</code>) y
+<code>.btnSpinnerDark</code> (anillo oscuro sobre botón ámbar/dorado de Login/Contact).</li>
+<li><strong>Utilidades compartidas</strong>: <code>.sr-only</code> (texto solo para lectores de pantalla),
+<code>.t-notfound</code>/<code>.t-notfound-title</code>/<code>.t-notfound-sub</code> (estado &quot;no encontrado&quot; de las
+vistas públicas — colores fijos porque sin negocio no hay template del que heredar),
+<code>.grain</code> (textura), <code>.t-reveal</code>/<code>.t-reveal-in</code> (scroll-reveal con <code>useReveal</code>).</li>
+<li><strong>Componentes de template <code>.t-*</code></strong> (hero, header con avatar, badges, info-rows,
+galería bento, botones, cards, stats) que consumen los tokens <code>--t-*</code> — el layout de
+<code>UserHome</code> se arma con estas clases.</li>
+<li>Reset, base de <code>html/body</code>, <code>:focus-visible</code> global y <code>prefers-reduced-motion</code>.</li>
+</ul>
+<hr />
+<h1 id="flujos-clave">Flujos clave</h1>
+<ul>
+<li><p><strong>Registro y sesión</strong>: la landing enlaza a <code>/register?plan=&lt;id&gt;</code> y la selección se
+mantiene al pasar a <code>RegisterPlans</code>. Free usa <code>POST /users/register</code>, inicia sesión
+y entra directo al dashboard. En un alta paga, <code>RegisterPlans</code> crea la preferencia
+y conserva el token opaco; al volver de MP, <code>RegisterSuccess</code> espera
+<code>/payments/registro/estado</code>, ejecuta un único login cuando el webhook completa la
+cuenta y redirige a <code>/dashboard</code>. El JWT queda en localStorage (<code>AuthProvider</code>). Los
+guards <code>UserRoute</code>/<code>AdminRoute</code> protegen las rutas.</p>
+</li>
+<li><p><strong>Carga del menú</strong>: el dueño usa <code>MenuEditor</code> → <code>/menus</code> y <code>/items</code> (CRUD). Las
+imágenes van directo a Cloudinary. Los ocultos se ven en el editor pero no en la carta
+pública.</p>
+</li>
+<li><p><strong>Carta pública</strong>: visitante entra a <code>/:slug/menu</code> → <code>fetchUserWithMenu</code> arma el menú
+agrupado, filtra ocultos, calcula la disponibilidad semanal de cada producto en
+horario BA y registra la visita (<code>trackView</code>).</p>
+</li>
+<li><p><strong>Planes y pagos</strong>: hay dos entradas. El alta paga usa
+<code>POST /payments/crear-preferencia-registro</code> antes de que exista el usuario; el upsell
+desde el panel usa <code>POST /payments/crear-preferencia</code> sobre una cuenta autenticada.
+En ambos casos el <strong>webhook</strong> (<code>mpWebhook</code>) verifica el pago real antes de crear la
+cuenta o actualizar <code>User.subscription</code>/<code>subscriptionExpiresAt</code>. El panel abre el
+<code>Common/UpgradeModal</code> compartido (plan + 1/3/6/12 meses) desde la tarjeta “Tu plan”
+y desde cada paywall. El gating de features (límite de items, Excel, PDF, reseñas,
+ofertas y disponibilidad programadas, stats y templates) se valida en el backend
+(<code>requirePlan</code> / <code>TEMPLATE_MIN_PLAN</code>) y se refleja en la UI (<code>lib/plans.ts</code>). La
+landing del local está incluida en Free y muestra publicidad en ese nivel.</p>
+</li>
+<li><p><strong>Validación de pagos</strong>: <code>test/paymentWebhook.test.js</code> simula MercadoPago/Mongoose y
+cubre upgrades, renovaciones vigentes/vencidas, reintentos idempotentes, pagos
+pendientes, metadata inválida, preferencias legacy, firma inválida, usuario
+inexistente y alta paga. <code>test/pendingCredentials.test.js</code> verifica cifrado,
+manipulación y compatibilidad legacy; <code>test/slug.test.js</code> cubre colisiones y carreras.
+No reemplaza la prueba real end-to-end pendiente.</p>
+</li>
+<li><p><strong>Pedido por WhatsApp</strong>: en la carta pública el cliente arma un carrito
+(<code>CartProvider</code>, persistido en localStorage por slug) tocando &quot;+&quot; en cada producto
+(con selección de variante si tiene opciones). El <code>CartDrawer</code> muestra el pedido y
+el botón &quot;Pedir por WhatsApp&quot; abre <code>wa.me</code> con el mensaje prearmado
+(<code>lib/whatsapp.ts</code>) al número del local. 100% client-side, sin backend, sin gating
+por plan (el teléfono ya es público vía el link <code>tel:</code> existente).</p>
+</li>
+<li><p><strong>Reseñas de Google</strong> (Pro): el dueño carga <code>contactInfo.googleReviewUrl</code> en &quot;Mi negocio&quot;;
+la landing pública (<code>ContactList</code>) y la carta (banner al final del menú) muestran el
+CTA &quot;Dejanos tu reseña&quot; solo si el campo está cargado y el plan vigente es Pro.</p>
+</li>
+<li><p><strong>Estadísticas</strong>: cada visita incrementa <code>PageView</code> del día (BA), y cada tap sobre un
+producto incrementa <code>ItemView</code> (mismo esquema, a nivel plato). Los planes pro+ ven en
+<code>UserStats</code> la serie de 30 días con auto-refresh en tiempo real más el ranking de
+&quot;Productos más vistos&quot; (top 10 de la misma ventana).</p>
+</li>
+<li><p><strong>Import/export Excel</strong> (plan basic+): <code>getTemplate</code> genera el <code>.xlsx</code>;
+<code>previewMassive</code>/<code>confirmMassive</code> procesan la reimportación fila por fila y rechazan
+el archivo completo antes de mutar si supera el tope del plan.</p>
+</li>
+<li><p><strong>CRM interno</strong> (solo CEO/admin): desde <code>/admin/crm</code> se gestiona a los locales
+suscriptos como clientes (etapa del pipeline — en vista lista o Kanban con drag &amp;
+drop —, tags, seguimiento, notas). El historial mezcla notas manuales con eventos
+automáticos del sistema (<code>logCrmEvent</code>: cambios de plan vía webhook de MP,
+activar/desactivar cuenta, cambios de template). Los seguimientos vencidos se
+destacan con un banner en el CRM y un badge en el sidebar del panel
+(<code>/overdue-count</code>), y el listado se puede exportar a Excel (<code>/export</code>). Los datos
+viven en <code>CrmProfile</code>, aislados del modelo User para no filtrarse por ningún endpoint
+público; solo se acceden vía <code>/api/admin/crm</code> (protect + isAdmin).</p>
+</li>
+</ul>
+
+      </article>
+    </main>
+  </div>
+
+  <button class="icon-button back-top" id="backTop" type="button" aria-label="Volver arriba">↑</button>
+
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const doc = document.getElementById('docContent');
+      const sidebar = document.getElementById('sidebar');
+      const scrim = document.getElementById('scrim');
+      const menuToggle = document.getElementById('menuToggle');
+      const menuClose = document.getElementById('menuClose');
+      const themeToggle = document.getElementById('themeToggle');
+      const themeIcon = document.getElementById('themeIcon');
+      const searchInput = document.getElementById('searchInput');
+      const resultLine = document.getElementById('resultLine');
+      const backTop = document.getElementById('backTop');
+      const readProgress = document.getElementById('readProgress');
+      const filterButtons = [...document.querySelectorAll('[data-filter]')];
+      let activeFilter = 'all';
+
+      const originalTitle = doc.querySelector('h1');
+      if (originalTitle) originalTitle.classList.add('source-title');
+      const originalIndex = doc.querySelector('#indice');
+      if (originalIndex) {
+        let sibling = originalIndex.nextElementSibling;
+        originalIndex.remove();
+        if (sibling && sibling.tagName === 'UL') sibling.remove();
+      }
+
+      [...doc.querySelectorAll('table')].forEach((table) => {
+        const shell = document.createElement('div');
+        shell.className = 'table-shell';
+        table.parentNode.insertBefore(shell, table);
+        shell.appendChild(table);
+      });
+
+      let currentGroup = '';
+      [...doc.children].forEach((element) => {
+        if (element.tagName === 'H1' && element !== originalTitle) currentGroup = element.id;
+        element.dataset.group = currentGroup;
+      });
+
+      const headings = [...doc.querySelectorAll('h1:not(.source-title), h2, h3')];
+      const tocList = document.createElement('ul');
+      headings.forEach((heading) => {
+        if (!heading.id) return;
+        const item = document.createElement('li');
+        const link = document.createElement('a');
+        link.href = `#${heading.id}`;
+        link.textContent = heading.textContent;
+        link.dataset.level = heading.tagName === 'H1' ? '1' : heading.tagName === 'H2' ? '2' : '3';
+        link.addEventListener('click', closeMenu);
+        item.appendChild(link);
+        tocList.appendChild(item);
+      });
+      document.getElementById('generatedToc').appendChild(tocList);
+
+      const searchableBlocks = [...doc.children].filter((element) => element !== originalTitle);
+      const normalize = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+      function applyView() {
+        const query = normalize(searchInput.value.trim());
+        let visible = 0;
+        let currentHeadingVisible = false;
+        searchableBlocks.forEach((element) => {
+          const filterMatch = activeFilter === 'all' || element.dataset.group === activeFilter;
+          const searchMatch = !query || normalize(element.textContent).includes(query);
+          const show = filterMatch && searchMatch;
+          element.classList.toggle('is-hidden', !show);
+          if (show && !['HR'].includes(element.tagName)) visible += 1;
+          if (/^H[123]$/.test(element.tagName)) currentHeadingVisible = show;
+          else if (query && filterMatch && currentHeadingVisible && searchMatch) element.classList.remove('is-hidden');
+        });
+
+        const label = activeFilter === 'all'
+          ? 'todo el documento'
+          : document.querySelector(`[data-filter="${activeFilter}"]`).textContent.toLowerCase();
+        resultLine.textContent = query
+          ? `${visible} bloques encontrados en ${label}`
+          : activeFilter === 'all' ? '' : `Mostrando ${label}`;
+      }
+
+      function openMenu() {
+        sidebar.classList.add('is-open');
+        scrim.classList.add('is-open');
+        menuToggle.setAttribute('aria-expanded', 'true');
+      }
+      function closeMenu() {
+        sidebar.classList.remove('is-open');
+        scrim.classList.remove('is-open');
+        menuToggle.setAttribute('aria-expanded', 'false');
+      }
+
+      menuToggle.addEventListener('click', openMenu);
+      menuClose.addEventListener('click', closeMenu);
+      scrim.addEventListener('click', closeMenu);
+      document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeMenu(); });
+
+      const storedTheme = localStorage.getItem('architecture-theme');
+      const preferredTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      const setTheme = (theme) => {
+        root.dataset.theme = theme;
+        themeIcon.textContent = theme === 'dark' ? '☀' : '☾';
+        themeToggle.setAttribute('aria-label', theme === 'dark' ? 'Usar tema claro' : 'Usar tema oscuro');
+        document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#08111f' : '#f3f7fb';
+      };
+      setTheme(storedTheme || preferredTheme);
+      themeToggle.addEventListener('click', () => {
+        const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('architecture-theme', next);
+        setTheme(next);
+      });
+
+      searchInput.addEventListener('input', applyView);
+      filterButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          activeFilter = button.dataset.filter;
+          filterButtons.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+          applyView();
+          doc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+
+      document.querySelectorAll('.flow-node').forEach((button) => {
+        button.addEventListener('click', () => {
+          activeFilter = 'all';
+          filterButtons.forEach((item) => item.setAttribute('aria-pressed', String(item.dataset.filter === 'all')));
+          searchInput.value = '';
+          applyView();
+          document.getElementById(button.dataset.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+
+      const codeFiles = new Set();
+      doc.querySelectorAll('code').forEach((code) => {
+        const text = code.textContent.trim();
+        if (/\.(js|ts|tsx|css)$/.test(text) || /^(models|routes|utils|api|lib|hooks|context|components|pages)\//.test(text)) codeFiles.add(text);
+      });
+      document.getElementById('fileCount').textContent = codeFiles.size;
+      document.getElementById('sectionCount').textContent = headings.length;
+
+      const tocLinks = [...document.querySelectorAll('#generatedToc a')];
+      const observed = headings.filter((heading) => heading.id);
+      const observer = new IntersectionObserver((entries) => {
+        const visibleEntry = entries.find((entry) => entry.isIntersecting);
+        if (!visibleEntry) return;
+        tocLinks.forEach((link) => link.classList.toggle('is-active', link.hash === `#${visibleEntry.target.id}`));
+      }, { rootMargin: '-18% 0px -72% 0px' });
+      observed.forEach((heading) => observer.observe(heading));
+
+      const updateScroll = () => {
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        const progress = max > 0 ? Math.min(100, (window.scrollY / max) * 100) : 0;
+        readProgress.style.width = `${progress}%`;
+        backTop.classList.toggle('is-visible', window.scrollY > 700);
+      };
+      window.addEventListener('scroll', updateScroll, { passive: true });
+      window.addEventListener('resize', updateScroll);
+      backTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+      updateScroll();
+    })();
+  </script>
+</body>
+</html>
+

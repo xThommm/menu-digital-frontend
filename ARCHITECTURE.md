@@ -174,6 +174,11 @@ Alta paga todavía no convertida en `User`. Guarda temporalmente los datos de
 registro, plan y período, junto con el hash de un token opaco de activación y
 el `preferenceId/initPoint` de MercadoPago. Un retry recupera este documento y
 actualiza la misma preferencia en vez de crear otro checkout cobrable.
+La contraseña temporal se cifra con AES-256-GCM en
+`passwordCiphertext/passwordIV/passwordAuthTag`; los tres campos son `select:false`
+y requieren un `PENDING_REGISTRATION_SECRET` estable de al menos 32 caracteres en
+el backend. `password` queda oculto y se lee únicamente como compatibilidad transitoria
+para altas creadas antes de este cambio.
 `status` recorre el ciclo interno `pending/completed/failed`; el último estado real
 de MercadoPago vive separado en `paymentID/paymentStatus/paymentStatusDetail` y
 `paymentUpdatedAt`. Al completar elimina la contraseña, enlaza `userID` y un índice
@@ -384,8 +389,12 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   una programada requiere inicio y fin y solo se expone públicamente dentro del rango.
 - **`utils/itemAvailability.js`** — valida las franjas semanales de disponibilidad,
   detecta solapamientos y calcula el estado actual en horario de Buenos Aires.
-- **`utils/slug.js`** — **`generateSlug(name)`** centraliza la normalización usada por
-  el registro gratuito y el alta paga.
+- **`utils/pendingCredentials.js`** — cifra y autentica con AES-256-GCM la contraseña
+  que debe sobrevivir hasta la aprobación del pago; también descifra registros legacy
+  mientras sigan dentro de su TTL.
+- **`utils/slug.js`** — centraliza la normalización y asignación única de slugs para
+  registro gratuito, alta paga y edición. Si el nombre ya existe usa sufijos legibles
+  (`cafe-roma-2`, `cafe-roma-3`) y reintenta si el índice `unique` detecta una carrera.
 - **`utils/crmEvents.js`** — **`logCrmEvent(userID, text)`**: inserta un evento
   automático (`kind:"event"`, sin autor) al principio del historial de CRM del cliente
   (upsert). Lo llaman `mpWebhook` (cambio de plan), `setActiveUser` (activar/desactivar)
@@ -868,7 +877,9 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
 - **Validación de pagos**: `test/paymentWebhook.test.js` simula MercadoPago/Mongoose y
   cubre upgrades, renovaciones vigentes/vencidas, reintentos idempotentes, pagos
   pendientes, metadata inválida, preferencias legacy, firma inválida, usuario
-  inexistente y alta paga. No reemplaza la prueba real end-to-end pendiente.
+  inexistente y alta paga. `test/pendingCredentials.test.js` verifica cifrado,
+  manipulación y compatibilidad legacy; `test/slug.test.js` cubre colisiones y carreras.
+  No reemplaza la prueba real end-to-end pendiente.
 
 - **Pedido por WhatsApp**: en la carta pública el cliente arma un carrito
   (`CartProvider`, persistido en localStorage por slug) tocando "+" en cada producto
