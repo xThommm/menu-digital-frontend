@@ -1,7 +1,9 @@
-export default function FullScreenLoader() {
+import Spinner from "./Spinner";
+
+export default function FullScreenLoader({ label = "Cargando..." }: { label?: string }) {
   return (
     <div className="pageLoaderScreen">
-      <div className="pageLoaderRing" />
+      <Spinner size={36} label={label} />
     </div>
   );
 }

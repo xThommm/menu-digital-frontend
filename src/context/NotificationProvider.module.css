@@ -1,0 +1,86 @@
+.viewport {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: var(--z-toast);
+  width: min(380px, calc(100vw - 2 * var(--space-4)));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+.notice {
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-4);
+  border: 1px solid var(--admin-border-default);
+  border-left-width: 3px;
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-bg-elevated);
+  color: var(--admin-text-primary);
+  box-shadow: var(--admin-shadow-modal);
+  animation: notificationIn var(--transition-md) both;
+  pointer-events: auto;
+}
+
+.success { border-left-color: var(--admin-success-core); }
+.error { border-left-color: var(--admin-danger-core); }
+.info { border-left-color: var(--admin-gold); }
+
+.icon {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  color: var(--admin-gold-ink);
+  background: var(--admin-gold);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.success .icon { background: var(--admin-success-core); }
+.error .icon { background: var(--admin-danger-core); }
+
+.message {
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.close {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--admin-radius-sm);
+  background: transparent;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  font-size: var(--text-lg);
+  transition: color var(--transition), background var(--transition);
+}
+
+.close:hover {
+  color: var(--admin-text-primary);
+  background: var(--admin-bg-raised-3);
+}
+
+@keyframes notificationIn {
+  from { opacity: 0; transform: translateY(-8px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 599px) {
+  .viewport {
+    top: var(--space-3);
+    right: var(--space-3);
+    width: calc(100vw - 2 * var(--space-3));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notice { animation: none; }
+}

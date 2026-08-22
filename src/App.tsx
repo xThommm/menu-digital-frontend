@@ -1,22 +1,20 @@
 import { BrowserRouter } from "react-router-dom";
 import { Suspense } from "react";
 import { AuthProvider } from "./context/AuthProvider";
+import { NotificationProvider } from "./context/NotificationProvider";
 import AppRoutes from "./routes/AppRoutes";
-
-const PageLoader = () => (
-  <div className="pageLoaderScreen">
-    <div className="pageLoaderRing" />
-  </div>
-);
+import FullScreenLoader from "./components/Common/FullScreenLoader";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Suspense fallback={<PageLoader />}>
-          <AppRoutes />
-        </Suspense>
-      </AuthProvider>
+      <NotificationProvider>
+        <AuthProvider>
+          <Suspense fallback={<FullScreenLoader />}>
+            <AppRoutes />
+          </Suspense>
+        </AuthProvider>
+      </NotificationProvider>
     </BrowserRouter>
   );
 }
