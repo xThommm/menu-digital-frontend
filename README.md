@@ -39,10 +39,11 @@ solo refleja el plan efectivo.
 > cambios están publicados en `master`, pero falta confirmar los deploys y esta
 > prueba end-to-end todavía no fue realizada.
 
-El flujo durable de suscripciones está publicado en `master` (`frontend 05cd9db`,
-`backend 0a6e662`) y validado localmente con 53 tests backend más typecheck, lint y
-build frontend. Falta su validación real desplegada antes de considerarlo cerrado en
-producción.
+El flujo durable de suscripciones y su separación estricta entre pagos de prueba y
+producción están validados localmente con 62 tests backend más typecheck, lint y build
+frontend. Falta desplegar la revisión, configurar `NODE_ENV=production`,
+`MP_ENV=production` y el secreto del webhook en Koyeb, y realizar la validación real
+antes de considerarlo cerrado en producción.
 
 Los usuarios existentes administran su suscripción desde la tarjeta **“Tu plan”** del
 dashboard. Free puede subir a Basic/Pro; Basic puede renovar o subir a Pro; Pro puede

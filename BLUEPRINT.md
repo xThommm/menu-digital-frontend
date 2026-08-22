@@ -220,7 +220,7 @@ educa el mercado a costo cero.
 | M9 | **Estadísticas** | Visitas diarias (30 días, tiempo real con polling), ranking top-10 de productos más vistos | Pro+ |
 | M10 | **Import/Export Excel** | Plantilla generada con datos actuales, preview de cambios, confirmación fila a fila | Basic+ |
 | M10b | **Exportación PDF** | Menú imprimible generado desde la carta vigente | Basic+ |
-| M11 | **Suscripciones** ✅ | Checkout MercadoPago, alta automática, upgrades/renovaciones 1/3/6/12 meses, vencimiento visible, historial durable, validación del checkout original y webhook firmado/idempotente | — |
+| M11 | **Suscripciones** ✅ | Checkout MercadoPago, alta automática, upgrades/renovaciones 1/3/6/12 meses, vencimiento visible, historial durable, validación del checkout original, webhook firmado/idempotente y separación estricta test/producción por `live_mode` | — |
 | M12 | **Panel CEO + CRM interno** | KPIs de la plataforma, gestión de clientes (pipeline kanban, notas, eventos automáticos, seguimientos vencidos, export Excel) | Solo admin |
 
 #### Módulos del roadmap 🔜 (ver §11)
@@ -659,7 +659,9 @@ cuenta sin checkout, mientras Basic/Pro confirman período antes de abrir Mercad
 
 **PRÓXIMO PASO OBLIGATORIO — hacer antes de cualquier otro desarrollo:** validar el
 checkout completo con un pago real usando una cuenta compradora distinta de la
-vendedora. Confirmar primero que Vercel y Koyeb desplegaron `05cd9db`/`0a6e662`.
+vendedora. Confirmar primero que Vercel y Koyeb desplegaron la revisión que incorpora
+`MP_ENV`, que Koyeb usa `NODE_ENV=production`/`MP_ENV=production` y que el webhook
+tiene su clave secreta configurada.
 Verificar preferencia, monto, moneda, `checkout_id`, webhook, `PaymentCheckout`,
 `PaymentTransaction`, plan y `subscriptionExpiresAt`, estado `completed` del alta,
 evento CRM, redirección y sincronización del dashboard. Los precios vigentes ya son

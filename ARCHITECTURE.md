@@ -81,6 +81,16 @@ Arma la app Express y arranca el servidor.
 
 ## config/
 
+### `config/environment.js`
+- **`validateEnvironment()`** — se ejecuta al iniciar el backend y corta el proceso si
+  falta una variable crítica de autenticación, altas pagas o MercadoPago. Exige
+  `MP_ENV=test|production`, URLs HTTPS en producción y que `NODE_ENV`/`MP_ENV`
+  coincidan para impedir un deploy productivo con pagos de prueba.
+- **`getExpectedPaymentLiveMode()`** — traduce `MP_ENV` al `live_mode` esperado del
+  pago consultado a MercadoPago. El webhook audita pero no acredita un pago de otro
+  ambiente.
+- **`.env.example`** — contrato versionado de variables sin credenciales reales.
+
 ### `config/db.js`
 - **`connectDB()`** — conecta Mongoose a `MONGODB_URI`. Antes fuerza los DNS a
   Google/Cloudflare (`dns.setServers(["8.8.8.8","1.1.1.1"])`) porque el resolver
@@ -373,8 +383,9 @@ más `STAGE_LABEL`/`PLAN_LABEL` (etiquetas legibles para el Excel exportado).
 
 ### `controllers/paymentController.js` (MercadoPago)
 - **`verifyMpSignature(req)`** — valida la firma HMAC-SHA256 del header `x-signature`
-  contra `MP_WEBHOOK_SECRET` (con `timingSafeEqual`). Si el secret no está configurado,
-  no bloquea pero avisa por consola.
+  contra `MP_WEBHOOK_SECRET` (con `timingSafeEqual`). Falla cerrado con `401` si falta
+  el secreto o la firma no coincide; además la validación de arranque impide iniciar
+  el backend con ese secreto ausente.
 - **`getRegistrationStatus`** `POST /api/payments/registro/estado` — consulta con el
   token opaco si el alta paga sigue pendiente, se completó o falló. Cuando está
   completada devuelve también la sesión del `User` asociado, para recuperar el login
@@ -385,7 +396,9 @@ más `STAGE_LABEL`/`PLAN_LABEL` (etiquetas legibles para el Excel exportado).
   query string) y hace upsert de `PaymentTransaction` antes de cualquier validación
   o cambio de plan. Así también persiste pagos pendientes, rechazados o con metadata
   inválida; si Mongo falla en ese punto responde 500 sin modificar el usuario para
-  que MP reintente. Además guarda el estado/detalle en las altas pendientes y, si
+  que MP reintente. Compara `paymentData.live_mode` con `MP_ENV`; una discrepancia
+  queda `not_applied` con motivo `payment_environment_mismatch`. Además guarda el
+  estado/detalle en las altas pendientes y, si
   está `approved`, crea el `User` o actualiza una cuenta existente. Si una alta
   encuentra un `User` con las mismas credenciales (recovery de un fallo intermedio),
   primero reconcilia el beneficio de forma monotónica: no degrada un plan activo ni
@@ -1007,8 +1020,11 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
 - **Publicado en Git**: recuperación del alta paga y login final en frontend;
   `PendingRegistration`, `PaymentCheckout`, `PaymentTransaction`, validación estricta
   y aplicación transaccional en backend.
-- **Validado localmente**: 53 tests backend; frontend typecheck, lint y build; sin
+- **Validado localmente**: 62 tests backend; frontend typecheck, lint y build; sin
   errores de `git diff --check`.
+- **Hardening de ambiente**: el backend falla al arrancar si faltan variables críticas,
+  exige firma de webhook y solo acredita pagos cuyo `live_mode` coincide con
+  `MP_ENV`. En Koyeb deben quedar `NODE_ENV=production` y `MP_ENV=production`.
 - **Compatibilidad**: preferencias anteriores a `PaymentCheckout` se auditan como
   `legacy`; no pueden degradar plan o vigencia, aunque no permiten demostrar el
   importe original porque ese snapshot todavía no existía.
