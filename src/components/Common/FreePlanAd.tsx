@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
+import BrandMark from "./BrandMark";
 
 export default function FreePlanAd() {
   return (
     <aside className="t-free-plan-ad" aria-label="Publicidad de Menú Digital">
       <div className="t-free-plan-ad-content">
-        <span className="t-free-plan-ad-logo" aria-hidden>M</span>
+        <BrandMark className="t-free-plan-ad-logo" />
         <div className="t-free-plan-ad-copy">
           <span className="t-free-plan-ad-brand">Menú Digital</span>
           <strong className="t-free-plan-ad-title">

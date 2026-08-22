@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/useAuth";
 import { useTheme } from "../../../hooks/useTheme";
 import { getCrmOverdueCount } from "../../../api/crm";
+import BrandMark from "../../Common/BrandMark";
 import s from "./AdminLayout.module.css";
 
 const NAV_ITEMS = [
@@ -66,13 +67,7 @@ export default function AdminLayout() {
       <aside className={s.sidebar} aria-label="Navegación del panel CEO">
 
         <div className={s.logoSq} role="img" aria-label="MenuDigital">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="#0c0b09" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 2h1v6a3 3 0 0 0 6 0V2h1" />
-            <path d="M8 2v6" />
-            <path d="M15 2c0 4 3 5 3 9a3 3 0 0 1-6 0c0-4 3-5 3-9z" />
-            <path d="M8 22v-4" /><path d="M15 22v-4" /><path d="M5 22h14" />
-          </svg>
+          <BrandMark className={s.brandMarkImage} />
         </div>
 
         <nav className={s.sideNav}>

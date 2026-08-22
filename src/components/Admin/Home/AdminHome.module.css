@@ -56,12 +56,21 @@
 }
 
 .navLogo {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
   font-family: var(--font-auth-display);
   font-size: 1.3rem; font-weight: 700; font-style: italic;
   color: var(--auth-amber); text-decoration: none;
   text-shadow: 0 0 18px color-mix(in srgb, var(--auth-amber) 50%, transparent);
 }
 .navLogo span { font-style: normal; color: var(--auth-cream); opacity: .7; font-weight: 300; }
+
+.navLogoMark {
+  width: 20px;
+  height: 30px;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--auth-amber) 42%, transparent));
+}
 
 .navLinks {
   display: flex; gap: 2.5rem; list-style: none;
@@ -554,7 +563,20 @@
   max-width: 1200px; margin: 0 auto;
   display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;
 }
-.footLogo { font-family: var(--font-auth-display); font-size: 1.1rem; font-style: italic; font-weight: 700; color: var(--auth-amber); }
+.footLogo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-auth-display);
+  font-size: 1.1rem;
+  font-style: italic;
+  font-weight: 700;
+  color: var(--auth-amber);
+}
+.footLogoMark {
+  width: 18px;
+  height: 28px;
+}
 .footLinks { display: flex; gap: 2rem; }
 .footLinks a { font-size: .78rem; color: var(--auth-cream-dim); text-decoration: none; transition: color .2s; }
 .footLinks a:hover { color: var(--auth-amber); }

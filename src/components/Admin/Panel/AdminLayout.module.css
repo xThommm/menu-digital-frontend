@@ -27,23 +27,29 @@
 }
 
 .logoSq {
-  width: 34px;
-  height: 34px;
-  background: var(--admin-gold);
-  border-radius: var(--admin-radius-md);
+  width: 28px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: var(--admin-shadow-logo);
   margin-bottom: var(--space-6);
-  transition: box-shadow var(--transition-md), transform var(--transition-md);
+  transition: transform var(--transition-md);
   cursor: pointer;
 }
 
 .logoSq:hover {
-  box-shadow: var(--admin-shadow-logo-hover);
   transform: scale(1.06);
+}
+
+.brandMarkImage {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(var(--admin-shadow-logo));
+}
+
+.logoSq:hover .brandMarkImage {
+  filter: drop-shadow(var(--admin-shadow-logo-hover));
 }
 
 .sideNav {

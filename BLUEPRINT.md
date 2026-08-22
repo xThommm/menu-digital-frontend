@@ -122,14 +122,16 @@ La tesis, en tres partes:
 
 ### 3.2 TAM / SAM / SOM
 
-Supuestos explícitos (revisables): ARPU pago promedio ≈ $5.000 ARS/mes
-(≈ $60.000/año) a precios de julio 2026.
+Supuestos explícitos (revisables): con precios de agosto 2026, una mezcla de 70%
+Basic y 30% Pro da un ARPU de lista de $45.999. Aplicando una previsión promedio
+de 10% por descuentos de prepago, el **ARPU efectivo de referencia es $41.399/mes**
+(≈ $496.789/año), antes de comisiones, impuestos, devoluciones e inflación.
 
 | Capa | Definición | Tamaño | Valor anual potencial |
 |---|---|---|---|
-| **TAM** | Establecimientos gastronómicos de Argentina | ~67.000 locales | ~$4.000M ARS/año |
-| **SAM** | Locales independientes con dueño operativo digital-friendly (excluye cadenas con POS enterprise y locales sin ninguna operación digital), est. 45% | ~30.000 locales | ~$1.800M ARS/año |
-| **SOM** (24 meses) | Cuota alcanzable con distribución orgánica + partnerships, 1–3% del SAM | 300–900 locales pagos | $18M–$54M ARS/año |
+| **TAM** | Establecimientos gastronómicos de Argentina | ~67.000 locales | ~$33.285M ARS/año |
+| **SAM** | Locales independientes con dueño operativo digital-friendly (excluye cadenas con POS enterprise y locales sin ninguna operación digital), est. 45% | ~30.000 locales | ~$14.904M ARS/año |
+| **SOM** (24 meses) | Cuota alcanzable con distribución orgánica + partnerships, 1–3% del SAM | 300–900 locales pagos | $149M–$447M ARS/año |
 
 La expansión natural post-Argentina es LATAM hispanohablante (mismo idioma, mismos
 rails: WhatsApp + MercadoPago en AR/UY/CL/MX), pero no entra en el horizonte de este
@@ -661,21 +663,28 @@ registro, por lo que cada ajuste debe sincronizar ambos repositorios.
 
 ### 10.2 Unit economics (supuestos explícitos, base 2026)
 
-- **ARPU pago**: recalcular con la mezcla real Basic/Pro y los períodos elegidos.
-- **Costo marginal por local ≈ $0** (infra compartida: Vercel/Koyeb/Atlas/Cloudinary
-  en tiers bajos; margen bruto >90% hasta miles de locales).
-- **CAC objetivo por canal**: orgánico/viral ≈ $0; partnerships ≈ 1 mes de ARPU;
-  paid (si se activa) tope 3 meses de ARPU.
-- **LTV** con churn 3%/mes ⇒ vida media ~33 meses ⇒ LTV ≈ $165.000 ⇒ LTV/CAC >10
-  en canales orgánicos.
-- **Punto de cobertura de costos fijos de infra/tooling** (~USD 50–100/mes): ~15–30
-  suscripciones pagas. Todo lo demás es margen para reinvertir en growth.
+- **ARPU de lista**: 70% Basic + 30% Pro = **$45.999/mes**.
+- **ARPU efectivo de referencia**: **$41.399/mes**, aplicando una previsión promedio
+  de 10% por descuentos de prepago. Debe reemplazarse por la mezcla real cuando haya
+  suficiente volumen.
+- **CAC objetivo por canal**: partnerships ≤1 mes de ARPU efectivo (~$41.399);
+  paid, si se activa, ≤3 meses (~$124.197). Ambos límites deben revisarse sobre margen
+  de contribución, no solo facturación.
+- **LTV bruto de ingresos** con churn de 3%/mes: vida media ~33 meses y
+  **~$1,38M por cliente**. El LTV financiero debe descontar MercadoPago, impuestos,
+  devoluciones, soporte e infraestructura.
+- **Infra/tooling**: se mantiene la hipótesis de USD 50–100/mes, pero el punto de
+  cobertura se calcula cada mes como `costos fijos ARS / margen de contribución por
+  suscripción`; no se fija una cantidad mientras costo y facturación estén en monedas
+  distintas.
+- Todos los valores siguientes están expresados en **pesos constantes de agosto 2026**,
+  antes de comisiones, impuestos, devoluciones e inflación futura.
 
 | Escenario (24 meses) | Locales pagos | MRR | ARR |
 |---|---|---|---|
-| Piso | 300 | $1,5M ARS | $18M ARS |
-| Base | 600 | $3,0M ARS | $36M ARS |
-| Techo | 900 | $4,5M ARS | $54M ARS |
+| Piso | 300 | $12,42M ARS | $149,04M ARS |
+| Base | 600 | $24,84M ARS | $298,07M ARS |
+| Techo | 900 | $37,26M ARS | $447,11M ARS |
 
 ### 10.3 Líneas de ingreso futuras 🔜
 

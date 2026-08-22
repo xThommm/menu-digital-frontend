@@ -1265,6 +1265,11 @@ a:hover { opacity: 0.75; }
 /* ── Publicidad de Menú Digital para cartas del plan gratuito ──
    Compartida por UserHome y UserMenu. Mantiene la identidad de marca de
    Menú Digital para distinguirse claramente del contenido del local. */
+.md-brand-mark {
+  display: block;
+  object-fit: contain;
+}
+
 .t-free-plan-ad {
   position: relative;
   isolation: isolate;
@@ -1307,19 +1312,9 @@ a:hover { opacity: 0.75; }
 
 .t-free-plan-ad-logo {
   flex: 0 0 auto;
-  width: 46px;
-  height: 46px;
-  display: grid;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, var(--gold-light) 55%, transparent);
-  border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--gold) 14%, transparent);
-  color: var(--gold-light);
-  box-shadow: inset 0 0 18px color-mix(in srgb, var(--gold) 14%, transparent);
-  font-family: var(--font-serif);
-  font-size: var(--text-xl);
-  font-weight: 700;
-  font-style: italic;
+  width: 34px;
+  height: 50px;
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--gold) 36%, transparent));
 }
 
 .t-free-plan-ad-copy {
@@ -1405,8 +1400,8 @@ a:hover { opacity: 0.75; }
   }
 
   .t-free-plan-ad-logo {
-    width: 42px;
-    height: 42px;
+    width: 30px;
+    height: 44px;
   }
 
   .t-free-plan-ad-link {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import BrandMark from "../../Common/BrandMark";
 import styles from "./AdminHome.module.css";
 import type { Plan } from "../../../types"
 
@@ -414,7 +415,10 @@ useEffect(() => {
 
         {/* ── NAV ── */}
         <nav className={styles.nav} ref={navRef}>
-  <a className={styles.navLogo} href="/">Menú<span> Digital</span></a>
+  <a className={styles.navLogo} href="/">
+    <BrandMark className={styles.navLogoMark} />
+    Menú<span> Digital</span>
+  </a>
  
   {/* Links — ocultos en mobile, sin cambios en desktop */}
   <ul className={styles.navLinks}>
@@ -750,7 +754,10 @@ useEffect(() => {
         {/* ── FOOTER ── */}
         <footer className={styles.footer}>
           <div className={styles.footInner}>
-            <div className={styles.footLogo}>Menú Digital</div>
+            <div className={styles.footLogo}>
+              <BrandMark className={styles.footLogoMark} />
+              <span>Menú Digital</span>
+            </div>
             <div className={styles.footLinks}>
               <Link to="/terminos">Términos</Link>
               <Link to="/privacidad">Privacidad</Link>
