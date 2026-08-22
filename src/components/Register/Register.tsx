@@ -12,10 +12,16 @@ function readRequestedPlan() {
   return PLAN_IDS.includes(plan as (typeof PLAN_IDS)[number]) ? plan : null;
 }
 
+function shouldResumePendingRegistration() {
+  return Boolean(localStorage.getItem("pendingRegistrationToken"))
+    && !sessionStorage.getItem("pendingRegister");
+}
+
 export default function RegisterPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const requestedPlan = readRequestedPlan();
+  const [resumePendingRegistration] = useState(shouldResumePendingRegistration);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [username, setUsername] = useState("");
@@ -30,6 +36,9 @@ export default function RegisterPage() {
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
+  }
+  if (resumePendingRegistration) {
+    return <Navigate to="/register/success" replace />;
   }
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {

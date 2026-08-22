@@ -95,6 +95,25 @@
 .btn:active { transform: scale(0.98); }
 .btn:focus-visible { outline: 2px solid var(--auth-cream); outline-offset: 3px; }
 
+.actions {
+  margin-top: var(--space-6);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.actions .btn { margin-top: 0; }
+
+.btnSecondary {
+  border: 1px solid var(--auth-border);
+  background: transparent;
+  color: var(--auth-cream);
+  box-shadow: none;
+}
+
+.btnSecondary:hover { box-shadow: none; }
+
 @keyframes activationPulse {
   0% { opacity: 0.8; transform: scale(0.88); }
   70%, 100% { opacity: 0; transform: scale(1.18); }

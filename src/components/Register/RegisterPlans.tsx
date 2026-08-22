@@ -117,6 +117,9 @@ export default function RegisterPlansPage() {
 
   // Inicialización lazy: sin setState dentro de useEffect
   const [pending] = useState<PendingRegister | null>(readPending);
+  const [hasStoredRegistrationToken] = useState(
+    () => Boolean(localStorage.getItem("pendingRegistrationToken"))
+  );
   const [selectedPlan, setSelectedPlan] = useState<PlanId>(readSelectedPlan);
   const [months, setMonths] = useState(1);
   const [error, setError] = useFeedbackMessage("error", readPaymentError);
@@ -125,13 +128,18 @@ export default function RegisterPlansPage() {
   // Solo navegación si no hay datos de registro
   useEffect(() => {
     if (!pending) {
-      navigate(`/register?plan=${selectedPlan}`, { replace: true });
+      navigate(
+        hasStoredRegistrationToken
+          ? "/register/success"
+          : `/register?plan=${selectedPlan}`,
+        { replace: true }
+      );
     } else if (paymentStatus === "pending" && pending.registrationToken) {
       // Compatibilidad con preferencias creadas antes de que el back_url de
       // pagos pendientes apuntara directamente a /register/success.
       navigate("/register/success?payment=pending", { replace: true });
     }
-  }, [paymentStatus, pending, navigate, selectedPlan]);
+  }, [hasStoredRegistrationToken, paymentStatus, pending, navigate, selectedPlan]);
 
   const selected = PLANS.find((p) => p.id === selectedPlan)!;
   const multiplier =

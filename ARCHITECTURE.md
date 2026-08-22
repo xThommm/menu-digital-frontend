@@ -102,6 +102,13 @@ Fuente de verdad del sistema de planes. Exporta:
 - **`hasMinPlan(userPlan, requiredPlan)`** — `true` si el plan del user alcanza el
   mínimo (compara índices en `PLAN_ORDER`).
 
+### `config/paymentPlans.js`
+Fuente única backend de las condiciones comerciales que se envían a MercadoPago:
+`PAYMENT_PLANS`, moneda ARS, períodos válidos, multiplicadores y
+`getCheckoutAmount(planId, months)`. Crear una preferencia toma el importe de acá;
+el webhook de pagos nuevos valida contra el snapshot de `PaymentCheckout`, no contra
+el precio vigente al momento de recibir la notificación.
+
 ### `config/cloudinary.js`
 - Configura el SDK `cloudinary.v2` con las credenciales del `.env`.
 - Define 3 `CloudinaryStorage` (storage engine propio, ver abajo) para carpetas
@@ -172,8 +179,9 @@ Exporta también `STAGES`.
 ### `models/PendingRegistration.js`
 Alta paga todavía no convertida en `User`. Guarda temporalmente los datos de
 registro, plan y período, junto con el hash de un token opaco de activación y
-el `preferenceId/initPoint` de MercadoPago. Un retry recupera este documento y
-actualiza la misma preferencia en vez de crear otro checkout cobrable.
+el `preferenceId/initPoint` de MercadoPago y la referencia al `PaymentCheckout`.
+Un retry del mismo plan/período recupera y actualiza esa preferencia; si cambia la
+selección crea otro checkout con su propio snapshot y marca el anterior superseded.
 La contraseña temporal se cifra con AES-256-GCM en
 `passwordCiphertext/passwordIV/passwordAuthTag`; los tres campos son `select:false`
 y requieren un `PENDING_REGISTRATION_SECRET` estable de al menos 32 caracteres en
@@ -181,8 +189,40 @@ el backend. `password` queda oculto y se lee únicamente como compatibilidad tra
 para altas creadas antes de este cambio.
 `status` recorre el ciclo interno `pending/completed/failed`; el último estado real
 de MercadoPago vive separado en `paymentID/paymentStatus/paymentStatusDetail` y
-`paymentUpdatedAt`. Al completar elimina la contraseña, enlaza `userID` y un índice
-TTL limpia el documento vencido.
+`paymentUpdatedAt`. `completed` implica que el `User` asociado ya existe y recibió
+el plan/vencimiento comprado; recién entonces elimina la contraseña y enlaza
+`userID`. Un índice TTL limpia el documento vencido y la consulta por token también
+filtra `expiresAt` para no depender de la demora del monitor TTL de MongoDB.
+
+### `models/PaymentCheckout.js`
+Snapshot durable creado **antes** de enviar al usuario a MercadoPago. Sus condiciones
+de negocio son inmutables: operación, `User` o `PendingRegistration` asociado, plan,
+período, importe esperado, moneda y plan/vencimiento de origen. Después solo avanza
+el estado operativo (`creating/ready/superseded/failed/payment_received`) y se enlazan
+`preferenceId/initPoint`. No tiene TTL. Su `_id` viaja como `metadata.checkout_id` y
+permite demostrar qué ofreció el backend aunque los precios cambien más adelante.
+
+### `models/PaymentTransaction.js`
+Historial **durable** de cada pago consultado a MercadoPago. `paymentID` es único y
+cada reintento del webhook actualiza el mismo documento; no usa TTL y por eso
+sobrevive a la limpieza de `PendingRegistration`. Conserva `preferenceId` (nullable
+en los flujos que todavía no lo exponen), `merchantOrderID`, `externalReference`,
+referencias opcionales a `User`/`PendingRegistration`, operación
+(`registration/upgrade/renewal/unknown`), plan, período, importe, importe
+reembolsado, moneda, estado/detalle, modo live y las fechas informadas por MP.
+Además registra el resultado interno de la acreditación en
+`entitlementStatus` (`pending/not_applied/applied`), su motivo, plan/período
+efectivamente otorgados, fecha de aplicación y
+`subscriptionExpiresAtBefore/subscriptionExpiresAtAfter`. El vencimiento anterior
+se captura una sola vez antes de modificar `User`: campo ausente significa “todavía
+no capturado” y `null` significa “la cuenta realmente no tenía vencimiento”. En
+altas también conserva el `preferenceId` de `PendingRegistration` y enlaza el
+`User` definitivo cuando se crea.
+También enlaza `PaymentCheckout`, registra si la validación fue `strict`, `legacy` o
+`failed`, el motivo del rechazo y el instante del intento de aplicar el entitlement.
+No guarda el payload completo ni datos del comprador o de la tarjeta. Los campos de
+metadata externa no usan enums de negocio: aun un pago con metadata inválida debe
+quedar auditado sin convertir el webhook en un ciclo permanente de respuestas 500.
 
 ## middleware/
 
@@ -219,8 +259,9 @@ Endpoints:
 - **`newUser`** `POST /api/users/register` — valida tipos (anti NoSQL injection),
   términos aceptados, fuerza de password; crea el user (slug desde businessName o
   username), devuelve token.
-- **`loginUser`** `POST /api/users/login` — valida credenciales, compara con bcrypt,
-  devuelve token.
+- **`loginUser`** `POST /api/users/login` — valida credenciales, compara con bcrypt y
+  devuelve la sesión completa (`slug`, plan/vencimiento y token), incluida la vía de
+  recuperación manual después de un alta paga.
 - **`getAuthUser`** `GET /api/users/me` — datos del user autenticado + `itemCount` y
   `categoryCount` (para el dashboard).
 - **`fetchUserWithMenu`** `GET /api/users/:slug/menu` — carta **pública** por slug:
@@ -333,17 +374,34 @@ más `STAGE_LABEL`/`PLAN_LABEL` (etiquetas legibles para el Excel exportado).
 - **`getRegistrationStatus`** `POST /api/payments/registro/estado` — consulta con el
   token opaco si el alta paga sigue pendiente, se completó o falló. Cuando está
   completada devuelve también la sesión del `User` asociado, para recuperar el login
-  automático aunque la acreditación se haya demorado.
+  automático aunque la acreditación se haya demorado. Solo acepta registros cuyo
+  `expiresAt` sigue vigente.
 - **`mpWebhook`** `POST /api/payments/webhook` — endpoint que llama MercadoPago. Verifica
   firma, consulta el estado **real** del pago contra la API de MP (nunca confía en el
-  query string), guarda su estado/detalle en las altas pendientes y, si está
-  `approved`, crea el `User` o actualiza una cuenta existente. En altas fija
-  `subscriptionExpiresAt`, elimina la contraseña
+  query string) y hace upsert de `PaymentTransaction` antes de cualquier validación
+  o cambio de plan. Así también persiste pagos pendientes, rechazados o con metadata
+  inválida; si Mongo falla en ese punto responde 500 sin modificar el usuario para
+  que MP reintente. Además guarda el estado/detalle en las altas pendientes y, si
+  está `approved`, crea el `User` o actualiza una cuenta existente. Si una alta
+  encuentra un `User` con las mismas credenciales (recovery de un fallo intermedio),
+  primero reconcilia el beneficio de forma monotónica: no degrada un plan activo ni
+  acorta un vencimiento posterior. Solo después deja `PendingRegistration` en
+  `completed`. En altas nuevas fija `subscriptionExpiresAt`, elimina la contraseña
   temporal y habilita el login automático. En upgrades fija la vigencia desde la
-  aprobación; en renovaciones anticipadas suma meses desde el vencimiento vigente (o
-  desde la aprobación si ya venció). La fecha base viaja en metadata y produce un
-  vencimiento absoluto idempotente ante reintentos del mismo webhook. Es la **única**
-  vía legítima para cambiar/renovar un plan y registra el evento en el CRM.
+  aprobación. Para pagos nuevos exige que asociación, operación, plan, período,
+  importe y moneda coincidan con el `PaymentCheckout` original; los checkouts
+  desplegados antes de este snapshot quedan identificados como `legacy` para no
+  abandonar cobros que ya estaban abiertos. Upgrades y renovaciones se aplican en
+  una transacción MongoDB: releen el estado vigente, suman cada `paymentID` distinto
+  desde el vencimiento actual y conservan un vencimiento posterior. Un checkout
+  antiguo nunca baja el plan; si intentaría hacerlo queda `not_applied` para
+  conciliación/reembolso. Antes del efecto captura una sola vez los vencimientos
+  anterior/nuevo; después de completar
+  `User`/`PendingRegistration` marca la transacción `applied`. Una nueva entrega del
+  mismo `paymentID` refresca el estado financiero pero no reaplica el plan ni duplica
+  el evento CRM. Un reembolso o contracargo queda reflejado en el estado de MP sin
+  revocar automáticamente un beneficio históricamente aplicado. Es la **única** vía
+  legítima para cambiar/renovar un plan y registra el evento en el CRM.
 
 ## routes/
 
@@ -364,13 +422,13 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   `GET /overdue-count` y `GET /export` (de nombre fijo, van antes del param),
   `GET /clients`, `GET /clients/:userID`, `PATCH /clients/:userID`,
   `POST /clients/:userID/notes`, `DELETE /clients/:userID/notes/:noteID`.
-- **`routes/paymentRoutes.js`** — define `PLANES` (Basic/Pro) y períodos de
-  1/3/6/12 meses. `POST /crear-preferencia-registro` crea o recupera el alta
-  pendiente, crea/actualiza una única preferencia idempotente y devuelve
+- **`routes/paymentRoutes.js`** — usa la configuración central de precios y períodos.
+  `POST /crear-preferencia-registro` crea o recupera el alta pendiente, persiste el
+  snapshot de checkout, reutiliza la preferencia si no cambió la selección y devuelve
   `init_point` + token opaco; `POST /registro/estado` permite esperar al webhook;
   `POST /crear-preferencia` (autenticado) valida plan/período, impide downgrades,
-  calcula el precio server-side y crea upgrades o renovaciones; `POST /webhook` crea
-  la cuenta o acredita el cambio/renovación con vencimiento.
+  crea el snapshot server-side y luego la preferencia de upgrade/renovación;
+  `POST /webhook` crea la cuenta o acredita el cambio/renovación con vencimiento.
 
 ## utils/
 
@@ -668,18 +726,24 @@ vars, theme-aware) y varios íconos SVG. La navegación/logout viven en `AdminLa
   username/password (min 8 chars, coincidencia) y aceptación de términos; guarda los
   datos temporalmente en `sessionStorage` como `pendingRegister` y navega a
   `/register/plans`. Si recibe `?plan=free|basic|pro`, conserva esa elección en la URL.
+  Si la pestaña anterior se cerró pero existe `pendingRegistrationToken`, reanuda
+  `/register/success` en lugar de sobrescribir el alta pendiente.
 
 ### `components/Register/RegisterPlans.tsx`
 - **`RegisterPlans`** — confirma el plan elegido (Basic por defecto si no vino uno
   válido) y ofrece períodos de 1/3/6/12 meses para planes pagos. Free llama a
   `POST /users/register`, inicia sesión y redirige al dashboard. Basic/Pro llaman a
   `POST /payments/crear-preferencia-registro`, guardan el token opaco y redirigen al
-  checkout de MercadoPago.
+  checkout de MercadoPago. Si ya no existen los datos de la pestaña pero sobrevive
+  el token persistido, reanuda la pantalla de activación en vez de iniciar otro pago.
 
 ### `components/Register/RegisterSuccess.tsx`
 - **`RegisterSuccess`** — pantalla de retorno del alta paga. Consulta
   `POST /payments/registro/estado` hasta que el webhook complete la cuenta; luego hace
-  un único login, limpia `pendingRegister` y redirige a `/dashboard`.
+  un único login, limpia `pendingRegister` y redirige a `/dashboard`. Reintenta
+  respuestas transitorias (`408`, `429`, `5xx` y errores de red), conserva un copy
+  específico mientras el pago sigue pendiente y ofrece salidas a login, soporte o
+  un nuevo registro para estados terminales o tokens vencidos.
 
 ### `components/User/Home/Home/UserHome.tsx`
 **Landing pública por slug** (`/:slug`). Núcleo del sistema de templates.
@@ -869,8 +933,9 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   y entra directo al dashboard. En un alta paga, `RegisterPlans` crea la preferencia
   y conserva el token opaco; al volver de MP, `RegisterSuccess` espera
   `/payments/registro/estado`, ejecuta un único login cuando el webhook completa la
-  cuenta y redirige a `/dashboard`. El JWT queda en localStorage (`AuthProvider`). Los
-  guards `UserRoute`/`AdminRoute` protegen las rutas.
+  cuenta y redirige a `/dashboard`. Si se cierra la pestaña, el token persistido
+  permite reanudar esa activación sin repetir el pago. El JWT queda en localStorage
+  (`AuthProvider`). Los guards `UserRoute`/`AdminRoute` protegen las rutas.
 - **Carga del menú**: el dueño usa `MenuEditor` → `/menus` y `/items` (CRUD). Las
   imágenes van directo a Cloudinary. Los ocultos se ven en el editor pero no en la carta
   pública.
@@ -881,7 +946,11 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   `POST /payments/crear-preferencia-registro` antes de que exista el usuario; el upsell
   desde el panel usa `POST /payments/crear-preferencia` sobre una cuenta autenticada.
   En ambos casos el **webhook** (`mpWebhook`) verifica el pago real antes de crear la
-  cuenta o actualizar `User.subscription`/`subscriptionExpiresAt`. El panel abre el
+  cuenta o actualizar `User.subscription`/`subscriptionExpiresAt`. Los checkouts
+  nuevos llevan un snapshot durable y el webhook compara asociación, plan, período,
+  importe y moneda. Cada cobro distinto extiende una sola vez desde el estado vigente;
+  una preferencia antigua que implicaría downgrade no modifica la cuenta y queda para
+  conciliación. El panel abre el
   `Common/UpgradeModal` compartido (plan + 1/3/6/12 meses) desde la tarjeta “Tu plan”
   y desde cada paywall. El gating de features (límite de items, Excel, PDF, reseñas,
   ofertas y disponibilidad programadas, stats y templates) se valida en el backend
@@ -889,11 +958,19 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   landing del local está incluida en Free y muestra publicidad en ese nivel.
 
 - **Validación de pagos**: `test/paymentWebhook.test.js` simula MercadoPago/Mongoose y
-  cubre upgrades, renovaciones vigentes/vencidas, reintentos idempotentes, pagos
+  cubre upgrades, renovaciones vigentes/vencidas, reintentos idempotentes, cobros
+  distintos que acumulan exactamente una vez, validación de checkout/importe/moneda,
+  checkouts antiguos que no degradan plan o vigencia, pagos
   pendientes, metadata inválida, preferencias legacy, firma inválida, usuario
-  inexistente y alta paga. `test/pendingCredentials.test.js` verifica cifrado,
-  manipulación y compatibilidad legacy; `test/slug.test.js` cubre colisiones y carreras.
-  No reemplaza la prueba real end-to-end pendiente.
+  inexistente y alta paga. También verifica el upsert durable por `paymentID`, el
+  índice único sin TTL, el vínculo a alta/preferencia/usuario, los vencimientos antes
+  y después, la recuperación ante fallos intermedios y que una falla de auditoría
+  ocurra antes de tocar la suscripción. Incluye un flujo encadenado
+  `pending → approved → completed → JWT`, updates críticos nulos y la reconciliación
+  que evita degradar planes/vencimientos. `test/pendingCredentials.test.js` verifica
+  cifrado, manipulación y compatibilidad legacy; `test/slug.test.js` cubre colisiones
+  y carreras; `test/userAuth.test.js` fija que el login manual entregue el `slug`
+  requerido por `AuthProvider`. No reemplaza la prueba real end-to-end pendiente.
 
 - **Pedido por WhatsApp**: en la carta pública el cliente arma un carrito
   (`CartProvider`, persistido en localStorage por slug) tocando "+" en cada producto
