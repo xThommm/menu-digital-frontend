@@ -110,6 +110,7 @@ function readSelectedPlan(): PlanId {
 export default function RegisterPlansPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const paymentStatus = new URLSearchParams(window.location.search).get("payment");
 
   // Inicialización lazy: sin setState dentro de useEffect
   const [pending] = useState<PendingRegister | null>(readPending);
@@ -122,8 +123,12 @@ export default function RegisterPlansPage() {
   useEffect(() => {
     if (!pending) {
       navigate(`/register?plan=${selectedPlan}`, { replace: true });
+    } else if (paymentStatus === "pending" && pending.registrationToken) {
+      // Compatibilidad con preferencias creadas antes de que el back_url de
+      // pagos pendientes apuntara directamente a /register/success.
+      navigate("/register/success?payment=pending", { replace: true });
     }
-  }, [pending, navigate, selectedPlan]);
+  }, [paymentStatus, pending, navigate, selectedPlan]);
 
   const selected = PLANS.find((p) => p.id === selectedPlan)!;
   const multiplier =
@@ -155,6 +160,7 @@ export default function RegisterPlansPage() {
         if (!res.ok) throw new Error(data.message || "Error al registrarse");
 
         sessionStorage.removeItem("pendingRegister");
+        localStorage.removeItem("pendingRegistrationToken");
         await login(pending.username, pending.password);
         navigate("/dashboard", { replace: true });
         return;
@@ -186,6 +192,9 @@ export default function RegisterPlansPage() {
         "pendingRegister",
         JSON.stringify({ ...pending, registrationToken: data.registrationToken })
       );
+      // Permite recuperar la activación después de una recarga o de cerrar
+      // la pestaña, sin guardar la contraseña fuera de sessionStorage.
+      localStorage.setItem("pendingRegistrationToken", data.registrationToken);
       window.location.href = data.init_point;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Ocurrió un error");

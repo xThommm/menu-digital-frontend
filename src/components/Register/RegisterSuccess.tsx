@@ -1,42 +1,44 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
+import type { AuthResponse } from "../../types";
 import styles from "./RegisterSuccess.module.css";
 
 interface PendingRegister {
-  username: string;
-  password: string;
   registrationToken?: string;
 }
 
-function readPending(): PendingRegister | null {
+function readRegistrationToken(): string | null {
   try {
     const raw = sessionStorage.getItem("pendingRegister");
-    return raw ? JSON.parse(raw) as PendingRegister : null;
+    const pending = raw ? JSON.parse(raw) as PendingRegister : null;
+    return pending?.registrationToken
+      ?? localStorage.getItem("pendingRegistrationToken");
   } catch {
-    return null;
+    return localStorage.getItem("pendingRegistrationToken");
   }
 }
 
 export default function RegisterSuccessPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
-  const loginRef = useRef(login);
-  const [pending] = useState<PendingRegister | null>(readPending);
-  const hasActivationData = Boolean(
-    pending?.username && pending.password && pending.registrationToken
-  );
+  const { completeLogin } = useAuth();
+  const [registrationToken] = useState(readRegistrationToken);
+  const [retryKey, setRetryKey] = useState(0);
+  const [paymentFailed, setPaymentFailed] = useState(false);
+  const hasActivationData = Boolean(registrationToken);
   const [error, setError] = useState(() => hasActivationData
     ? ""
     : "No encontramos los datos para activar tu cuenta. Iniciá sesión cuando el pago se acredite."
   );
 
   useEffect(() => {
-    loginRef.current = login;
-  }, [login]);
+    if (registrationToken) {
+      localStorage.setItem("pendingRegistrationToken", registrationToken);
+    }
+  }, [registrationToken]);
 
   useEffect(() => {
-    if (!pending?.username || !pending.password || !pending.registrationToken) return;
+    if (!registrationToken) return;
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -49,40 +51,61 @@ export default function RegisterSuccessPage() {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ registrationToken: pending.registrationToken }),
+            body: JSON.stringify({ registrationToken }),
           }
         );
-        const data = await response.json();
+        const data = await response.json() as {
+          status?: "pending" | "completed" | "failed";
+          paymentStatus?: string | null;
+          paymentStatusDetail?: string | null;
+          auth?: AuthResponse;
+          message?: string;
+        };
 
         if (!response.ok) {
           setError(data.message || "No pudimos verificar la activación");
           return;
         }
         if (data.status === "failed") {
+          localStorage.removeItem("pendingRegistrationToken");
           setError("No pudimos completar la creación de la cuenta. Contactanos para revisar el pago.");
           return;
         }
+        if (data.paymentStatus === "rejected" || data.paymentStatus === "cancelled") {
+          setPaymentFailed(true);
+          setError(
+            data.paymentStatus === "rejected"
+              ? "Mercado Pago rechazó el pago. Podés volver a intentarlo sin crear otra cuenta."
+              : "El pago fue cancelado. Podés volver a intentarlo sin crear otra cuenta."
+          );
+          return;
+        }
         if (data.status === "completed") {
-          await loginRef.current(pending.username, pending.password);
+          if (!data.auth) {
+            throw new Error("La cuenta se activó pero no pudimos iniciar la sesión.");
+          }
+          completeLogin(data.auth);
           if (cancelled) return;
           sessionStorage.removeItem("pendingRegister");
+          localStorage.removeItem("pendingRegistrationToken");
           navigate("/dashboard", { replace: true });
           return;
         }
 
         attempts += 1;
-        if (attempts >= 40) {
-          throw new Error("La acreditación está demorando más de lo normal. Podés volver a intentar en unos minutos.");
+        if (attempts >= 120) {
+          setError("La acreditación sigue pendiente. Podés volver a verificar sin repetir el pago.");
+          return;
         }
-        timer = setTimeout(checkStatus, 1500);
+        timer = setTimeout(checkStatus, 5000);
       } catch (err) {
         attempts += 1;
         if (cancelled) return;
-        if (attempts >= 40) {
+        if (attempts >= 120) {
           setError(err instanceof Error ? err.message : "No pudimos activar la cuenta");
           return;
         }
-        timer = setTimeout(checkStatus, 1500);
+        timer = setTimeout(checkStatus, 5000);
       }
     };
 
@@ -91,7 +114,7 @@ export default function RegisterSuccessPage() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [navigate, pending]);
+  }, [completeLogin, navigate, registrationToken, retryKey]);
 
   return (
     <div className="auth-page-shell">
@@ -104,7 +127,25 @@ export default function RegisterSuccessPage() {
         <p>
           {error || "Estamos activando tu cuenta. Al terminar vas a ingresar automáticamente al panel."}
         </p>
-        {error && (
+        {error && paymentFailed && (
+          <Link to="/register/plans?payment=failure" className={styles.btn}>
+            Volver a intentar el pago
+          </Link>
+        )}
+        {error && registrationToken && !paymentFailed && (
+          <button
+            type="button"
+            className={styles.btn}
+            onClick={() => {
+              setError("");
+              setPaymentFailed(false);
+              setRetryKey(key => key + 1);
+            }}
+          >
+            Volver a verificar
+          </button>
+        )}
+        {error && !registrationToken && (
           <Link to="/login" className={styles.btn}>
             Ir a iniciar sesión
           </Link>

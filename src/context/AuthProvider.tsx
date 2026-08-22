@@ -35,6 +35,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setUser  = (u: AuthUser | null) => setAuth(prev => ({ ...prev, user: u }));
   const setToken = (t: string | null)   => setAuth(prev => ({ ...prev, token: t }));
 
+  const completeLogin = useCallback((data: AuthResponse): AuthUser => {
+    const loggedUser: AuthUser = {
+      id: data._id,
+      name: data.username,
+      role: data.admin ? "admin" : "user",
+      slug: data.slug,
+      subscription: data.subscription ?? "free",
+      subscriptionExpiresAt: data.subscriptionExpiresAt ?? null,
+    };
+
+    setAuth({ token: data.token, user: loggedUser });
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(loggedUser));
+    localStorage.setItem("tokenExpiry", String(Date.now() + 1000 * 60 * 60 * 24 * 7));
+    return loggedUser;
+  }, []);
+
   const refreshUser = useCallback(async (): Promise<AuthUser | null> => {
     if (!token) return null;
 
@@ -81,22 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = JSON.parse(text) as AuthResponse;
 
-      const loggedUser: AuthUser = {
-        id: data._id,
-        name: data.username,
-        role: data.admin ? "admin" : "user",
-        slug: data.slug,
-        subscription: data.subscription ?? "free",
-        subscriptionExpiresAt: data.subscriptionExpiresAt ?? null,
-      };
-
-      setToken(data.token);
-      setUser(loggedUser);
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(loggedUser));
-      localStorage.setItem("tokenExpiry", String(Date.now() + 1000 * 60 * 60 * 24 * 7));
-
-      return loggedUser;
+      return completeLogin(data);
     } catch (err) {
       console.error("Login error:", err);
       throw err;
@@ -114,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, refreshUser, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, completeLogin, refreshUser, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

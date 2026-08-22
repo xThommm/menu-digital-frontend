@@ -1249,6 +1249,7 @@ a:hover { opacity: 0.75; }
    ═══════════════════════════════════════════════════════════════ */
 
 .t-wrap {
+  display: flow-root;
   min-height: 100vh;
   background-color: var(--t-bg);
   /* --t-bg-image es opcional (default: none) — los templates premium lo usan

@@ -1,11 +1,12 @@
 import { createContext } from "react";
-import type { AuthUser } from "../types";
+import type { AuthResponse, AuthUser } from "../types";
 
 export interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<AuthUser>;
+  completeLogin: (data: AuthResponse) => AuthUser;
   refreshUser: () => Promise<AuthUser | null>;
   logout: () => void;
   isAuthenticated: boolean;

@@ -174,8 +174,10 @@ Alta paga todavía no convertida en `User`. Guarda temporalmente los datos de
 registro, plan y período, junto con el hash de un token opaco de activación y
 el `preferenceId/initPoint` de MercadoPago. Un retry recupera este documento y
 actualiza la misma preferencia en vez de crear otro checkout cobrable.
-`status` recorre `pending/completed/failed`; al completar elimina la contraseña,
-enlaza `userID` y un índice TTL limpia el documento vencido.
+`status` recorre el ciclo interno `pending/completed/failed`; el último estado real
+de MercadoPago vive separado en `paymentID/paymentStatus/paymentStatusDetail` y
+`paymentUpdatedAt`. Al completar elimina la contraseña, enlaza `userID` y un índice
+TTL limpia el documento vencido.
 
 ## middleware/
 
@@ -324,11 +326,14 @@ más `STAGE_LABEL`/`PLAN_LABEL` (etiquetas legibles para el Excel exportado).
   contra `MP_WEBHOOK_SECRET` (con `timingSafeEqual`). Si el secret no está configurado,
   no bloquea pero avisa por consola.
 - **`getRegistrationStatus`** `POST /api/payments/registro/estado` — consulta con el
-  token opaco si el alta paga sigue pendiente, se completó o falló.
+  token opaco si el alta paga sigue pendiente, se completó o falló. Cuando está
+  completada devuelve también la sesión del `User` asociado, para recuperar el login
+  automático aunque la acreditación se haya demorado.
 - **`mpWebhook`** `POST /api/payments/webhook` — endpoint que llama MercadoPago. Verifica
   firma, consulta el estado **real** del pago contra la API de MP (nunca confía en el
-  query string), y si está `approved` crea el `User` de un alta pendiente o actualiza
-  una cuenta existente. En altas fija `subscriptionExpiresAt`, elimina la contraseña
+  query string), guarda su estado/detalle en las altas pendientes y, si está
+  `approved`, crea el `User` o actualiza una cuenta existente. En altas fija
+  `subscriptionExpiresAt`, elimina la contraseña
   temporal y habilita el login automático. En upgrades fija la vigencia desde la
   aprobación; en renovaciones anticipadas suma meses desde el vencimiento vigente (o
   desde la aprobación si ya venció). La fecha base viaja en metadata y produce un
@@ -364,6 +369,8 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
 
 ## utils/
 
+- **`utils/authToken.js`** — **`generateAuthToken(userID)`**: genera el JWT de sesión
+  compartido por el login tradicional y la recuperación de un alta paga completada.
 - **`utils/handleError.js`** — **`handleError(res, error, status=500)`**: loguea el error
   real server-side y responde un mensaje genérico (nunca reenvía `error.message` para no
   filtrar internals).
