@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "../../context/useAuth";
+import { useFeedbackMessage } from "../../hooks/useFeedbackMessage";
 import { PLAN_LABEL, PLAN_ORDER } from "../../lib/plans";
 import type { Subscription } from "../../types";
 import Spinner from "./Spinner";
@@ -54,7 +55,7 @@ export default function UpgradeModal({
   const [planId, setPlanId] = useState<keyof typeof PAID_PLANS>(availablePlans[0] ?? minPlan);
   const [months, setMonths] = useState(1);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useFeedbackMessage("error");
 
   const option = MONTH_OPTIONS.find(item => item.months === months) ?? MONTH_OPTIONS[0];
   const monthlyPrice = PAID_PLANS[planId].price;

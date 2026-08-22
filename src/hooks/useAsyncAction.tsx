@@ -19,12 +19,13 @@
  * sesión vencida, servidor caído) en vez de un string fijo sin importar qué
  * pasó.
  *
- * No reemplaza los banners de error/success que ya existen en la UI — al
- * contrario, expone `error` / `success` con la misma forma (string) para que
- * sigan funcionando con el JSX y el useEffect de auto-clear que ya tenés.
+ * Los mensajes se conservan como strings para los banners inline que sigan
+ * siendo útiles y, mediante useFeedbackMessage, también se publican en el
+ * sistema global de notificaciones.
  */
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, isCancelled } from "./../api/apiClient";
+import { useFeedbackMessage } from "./useFeedbackMessage";
 
 interface RunOptions {
   /** Mensaje a mostrar en el banner de éxito si la acción termina bien. */
@@ -39,17 +40,26 @@ interface RunOptions {
 
 export function useAsyncAction() {
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useFeedbackMessage("error");
+  const [success, setSuccess] = useFeedbackMessage("success");
 
   // Evita pisar el estado de un componente ya desmontado (ej: el usuario
   // navega afuera del editor mientras una request todavía está en vuelo).
   const mountedRef = useRef(true);
+  const pendingRef = useRef(0);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const run = useCallback(async <T,>(
     fn: () => Promise<T>,
     opts: RunOptions = {}
   ): Promise<T | undefined> => {
+    pendingRef.current += 1;
     setLoading(true);
     setError("");
     setSuccess("");
@@ -64,15 +74,23 @@ export function useAsyncAction() {
 
       const apiErr = err instanceof ApiError
         ? err
-        : new ApiError("unknown", "Algo salió mal. Intentá de nuevo.");
+        : new ApiError(
+            "unknown",
+            err instanceof Error && err.message
+              ? err.message
+              : "Algo salió mal. Intentá de nuevo.",
+          );
 
-      opts.onError?.(apiErr);
-      if (mountedRef.current) setError(apiErr.message);
+      if (mountedRef.current) {
+        opts.onError?.(apiErr);
+        setError(apiErr.message);
+      }
       return undefined;
     } finally {
-      if (mountedRef.current) setLoading(false);
+      pendingRef.current = Math.max(0, pendingRef.current - 1);
+      if (mountedRef.current && pendingRef.current === 0) setLoading(false);
     }
-  }, []);
+  }, [setError, setSuccess]);
 
   return { loading, error, success, setError, setSuccess, run, mountedRef };
 }

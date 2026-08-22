@@ -418,9 +418,9 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
 `StrictMode` + `QueryClientProvider`.
 
 ### `App.tsx`
-- **`PageLoader`** — spinner a pantalla completa (fallback de Suspense).
-- **`App`** — envuelve la app en `BrowserRouter` → `AuthProvider` → `Suspense` →
-  `AppRoutes` (todas las páginas se cargan lazy).
+- **`App`** — envuelve la app en `BrowserRouter` → `NotificationProvider` →
+  `AuthProvider` → `Suspense` → `AppRoutes` (todas las páginas se cargan lazy). El
+  fallback de Suspense usa `FullScreenLoader`.
 
 ## <a id="frontend-routes"></a>routes/
 
@@ -465,6 +465,14 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
 - **`useAuth()`** — hook que devuelve el `AuthContext`; tira error si se usa fuera del
   `AuthProvider`.
 
+### `context/NotificationContext.ts`, `NotificationProvider.tsx` y `useNotifications.ts`
+- Sistema global de feedback con mensajes `success`, `error` e `info`. El provider
+  mantiene hasta cuatro avisos visibles, evita duplicados inmediatos, aplica tiempos
+  de cierre según el tipo y limpia sus timers al desmontarse. Los avisos usan
+  `role="alert"` para errores y `role="status"` para confirmaciones/información.
+- **`useNotifications()`** expone `notify`, `success`, `error` e `info`; exige estar
+  dentro de `NotificationProvider`.
+
 ### `context/CartContext.tsx`
 - **`CartLine`** (interface: itemId, title, unitPrice, quantity, selectedOption?) y
   **`CartContextType`** / **`CartContext`** — el contexto del **carrito de la carta
@@ -489,12 +497,18 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
   marca `revealed=true` la primera vez que el elemento entra al viewport y deja de
   observar. Usado para scroll-reveal en la landing pública.
 
+### `hooks/useFeedbackMessage.ts`
+- **`useFeedbackMessage(type, initialValue?)`** conserva un string para los banners
+  inline existentes y publica cada valor no vacío en el sistema global. Se usa en
+  formularios, editores, pagos y paneles para migrar feedback sin duplicar estado.
+
 ### `hooks/useAsyncAction.tsx`
 - **`useAsyncAction()`** — abstrae el boilerplate `setLoading/try/catch/setError` de las
   acciones async. Devuelve `{loading, error, success, setError, setSuccess, run,
   mountedRef}`. **`run(fn, opts)`** ejecuta la acción, maneja `ApiError` (mensajes
-  reales según tipo), respeta `successMessage`/`onError` y no pisa estado si el
-  componente se desmontó.
+  reales según tipo), respeta `successMessage`/`onError`, publica el resultado en las
+  notificaciones globales y soporta acciones concurrentes. `mountedRef` se activa al
+  montar y se invalida en el cleanup para no pisar estado tras el desmontaje.
 
 ### `hooks/useTheme.ts`
 Tema claro/oscuro del **panel** (solo tokens `--admin-*`).

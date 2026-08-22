@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
+import { useNotifications } from "../../context/useNotifications";
+import { useFeedbackMessage } from "../../hooks/useFeedbackMessage";
 import styles from "./RegisterPlans.module.css";
 
 type PlanId = "free" | "basic" | "pro";
@@ -110,13 +112,14 @@ function readSelectedPlan(): PlanId {
 export default function RegisterPlansPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { success: notifySuccess } = useNotifications();
   const paymentStatus = new URLSearchParams(window.location.search).get("payment");
 
   // Inicialización lazy: sin setState dentro de useEffect
   const [pending] = useState<PendingRegister | null>(readPending);
   const [selectedPlan, setSelectedPlan] = useState<PlanId>(readSelectedPlan);
   const [months, setMonths] = useState(1);
-  const [error, setError] = useState(readPaymentError);
+  const [error, setError] = useFeedbackMessage("error", readPaymentError);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Solo navegación si no hay datos de registro
@@ -162,6 +165,7 @@ export default function RegisterPlansPage() {
         sessionStorage.removeItem("pendingRegister");
         localStorage.removeItem("pendingRegistrationToken");
         await login(pending.username, pending.password);
+        notifySuccess("Cuenta creada correctamente.");
         navigate("/dashboard", { replace: true });
         return;
       }

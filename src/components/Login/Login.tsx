@@ -1,18 +1,21 @@
 import { useState, useRef } from "react";
 import { useNavigate, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
+import { useNotifications } from "../../context/useNotifications";
+import { useFeedbackMessage } from "../../hooks/useFeedbackMessage";
 import BrandMark from "../Common/BrandMark";
 import styles from "./Login.module.css";
 
 export default function LoginPage() {
   const { login, isAuthenticated, isLoading, user } = useAuth();
+  const { success: notifySuccess } = useNotifications();
   const navigate = useNavigate();
 
   const [username, setUsername] = useState(
     () => localStorage.getItem("md_remembered_user") || ""
   );
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useFeedbackMessage("error");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
@@ -67,6 +70,7 @@ export default function LoginPage() {
         localStorage.removeItem("md_remembered_user");
       }
 
+      notifySuccess("Sesión iniciada correctamente.");
       navigate(loggedUser.role === "admin" ? "/admin" : "/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Usuario o contraseña incorrectos.");

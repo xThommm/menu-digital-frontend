@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   NotificationContext,
   type NotificationOptions,
@@ -20,9 +20,20 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const nextIdRef = useRef(1);
   const lastRef = useRef<{ key: string; at: number } | null>(null);
+  const timeoutIdsRef = useRef(new Map<number, number>());
 
   const dismiss = useCallback((id: number) => {
+    const timeoutId = timeoutIdsRef.current.get(id);
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId);
+      timeoutIdsRef.current.delete(id);
+    }
     setItems(current => current.filter(item => item.id !== id));
+  }, []);
+
+  useEffect(() => () => {
+    timeoutIdsRef.current.forEach(timeoutId => window.clearTimeout(timeoutId));
+    timeoutIdsRef.current.clear();
   }, []);
 
   const notify = useCallback((options: NotificationOptions) => {
@@ -37,7 +48,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const id = nextIdRef.current++;
     const duration = options.duration ?? DEFAULT_DURATION[options.type];
     setItems(current => [...current.slice(-3), { ...options, message, id }]);
-    window.setTimeout(() => dismiss(id), duration);
+    const timeoutId = window.setTimeout(() => dismiss(id), duration);
+    timeoutIdsRef.current.set(id, timeoutId);
   }, [dismiss]);
 
   const value = useMemo(() => ({

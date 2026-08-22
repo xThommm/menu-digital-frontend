@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
+import { useFeedbackMessage } from "../../hooks/useFeedbackMessage";
 import BrandMark from "../Common/BrandMark";
 import styles from "./Register.module.css";
 
@@ -22,7 +23,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useFeedbackMessage("error");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);

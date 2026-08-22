@@ -6,23 +6,19 @@ export function useFeedbackMessage(
   type: Extract<NotificationType, "success" | "error">,
   initialValue: string | (() => string) = "",
 ) {
-  const initialRef = useRef<string | null>(null);
-  if (initialRef.current === null) {
-    initialRef.current = typeof initialValue === "function" ? initialValue() : initialValue;
-  }
-
-  const [message, setMessageState] = useState(initialRef.current);
+  const [initialMessage] = useState<string>(initialValue);
+  const [message, setMessageState] = useState(initialMessage);
   const messageRef = useRef(message);
   const notifications = useNotifications();
   const notify = notifications[type];
   const initialNotifiedRef = useRef(false);
 
   useEffect(() => {
-    if (!initialNotifiedRef.current && initialRef.current) {
+    if (!initialNotifiedRef.current && initialMessage) {
       initialNotifiedRef.current = true;
-      notify(initialRef.current);
+      notify(initialMessage);
     }
-  }, [notify]);
+  }, [initialMessage, notify]);
 
   const setMessage = useCallback((value: SetStateAction<string>) => {
     const next = typeof value === "function" ? value(messageRef.current) : value;

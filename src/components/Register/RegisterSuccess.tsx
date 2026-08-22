@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
+import { useNotifications } from "../../context/useNotifications";
+import { useFeedbackMessage } from "../../hooks/useFeedbackMessage";
 import type { AuthResponse } from "../../types";
 import styles from "./RegisterSuccess.module.css";
 
@@ -22,11 +24,12 @@ function readRegistrationToken(): string | null {
 export default function RegisterSuccessPage() {
   const navigate = useNavigate();
   const { completeLogin } = useAuth();
+  const { success: notifySuccess } = useNotifications();
   const [registrationToken] = useState(readRegistrationToken);
   const [retryKey, setRetryKey] = useState(0);
   const [paymentFailed, setPaymentFailed] = useState(false);
   const hasActivationData = Boolean(registrationToken);
-  const [error, setError] = useState(() => hasActivationData
+  const [error, setError] = useFeedbackMessage("error", () => hasActivationData
     ? ""
     : "No encontramos los datos para activar tu cuenta. Iniciá sesión cuando el pago se acredite."
   );
@@ -61,6 +64,7 @@ export default function RegisterSuccessPage() {
           auth?: AuthResponse;
           message?: string;
         };
+        if (cancelled) return;
 
         if (!response.ok) {
           setError(data.message || "No pudimos verificar la activación");
@@ -85,9 +89,9 @@ export default function RegisterSuccessPage() {
             throw new Error("La cuenta se activó pero no pudimos iniciar la sesión.");
           }
           completeLogin(data.auth);
-          if (cancelled) return;
           sessionStorage.removeItem("pendingRegister");
           localStorage.removeItem("pendingRegistrationToken");
+          notifySuccess("Cuenta activada correctamente.");
           navigate("/dashboard", { replace: true });
           return;
         }
@@ -114,7 +118,7 @@ export default function RegisterSuccessPage() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [completeLogin, navigate, registrationToken, retryKey]);
+  }, [completeLogin, navigate, notifySuccess, registrationToken, retryKey, setError]);
 
   return (
     <div className="auth-page-shell">

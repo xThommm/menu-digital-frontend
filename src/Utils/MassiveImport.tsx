@@ -1,5 +1,7 @@
 import { useState, useRef } from "react";
 import { useAuth } from "../context/useAuth";
+import { useNotifications } from "../context/useNotifications";
+import { useAsyncAction } from "../hooks/useAsyncAction";
 import type { MassiveRowResult, MassivePreviewResponse, MassiveConfirmResponse } from "../types";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
@@ -18,12 +20,14 @@ interface MassiveImportProps {
 // ── Componente ─────────────────────────────────────────────────────────────────
 export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps) {
   const { token } = useAuth();
+  const { success: notifySuccess, error: notifyError } = useNotifications();
+  const { loading, error, setError, run } = useAsyncAction();
 
   const [step, setStep]           = useState<Step>("upload");
   const [file, setFile]           = useState<File | null>(null);
   const [dragging, setDragging]   = useState(false);
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState("");
+  const [downloading, setDownloading] = useState(false);
+  const [validationError, setValidationError] = useState("");
   const [resumen, setResumen]     = useState<Resumen | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
 
@@ -33,6 +37,8 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
 
   // ── Descarga el template desde el backend ──────────────────────────────────
   const downloadTemplate = async () => {
+    if (downloading) return;
+    setDownloading(true);
     try {
       const res = await fetch("/api/massive/template", { headers: authHeaders });
       if (!res.ok) throw new Error();
@@ -43,18 +49,22 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
       a.download = "menu-digital-plantilla.xlsx";
       a.click();
       URL.revokeObjectURL(url);
+      notifySuccess("Plantilla descargada.");
     } catch {
-      setError("No se pudo descargar la plantilla.");
+      notifyError("No se pudo descargar la plantilla.");
+    } finally {
+      setDownloading(false);
     }
   };
 
   // ── Manejo del archivo ────────────────────────────────────────────────────
   const handleFileSelect = (f: File | null) => {
     if (!f) return;
-    if (f.size > 5 * 1024 * 1024) { setError("El archivo supera el límite de 5 MB."); return; }
+    if (f.size > 5 * 1024 * 1024) { setValidationError("El archivo supera el límite de 5 MB."); return; }
     const ext = f.name.split(".").pop()?.toLowerCase();
-    if (!["xlsx", "xls"].includes(ext ?? "")) { setError("Solo se aceptan archivos .xlsx o .xls."); return; }
+    if (!["xlsx", "xls"].includes(ext ?? "")) { setValidationError("Solo se aceptan archivos .xlsx o .xls."); return; }
     setFile(f);
+    setValidationError("");
     setError("");
   };
 
@@ -67,46 +77,41 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
   // ── Preview ───────────────────────────────────────────────────────────────
   const preview = async () => {
     if (!file) return;
-    setLoading(true); setError("");
-    try {
+    setValidationError("");
+    const data = await run(async () => {
       const form = new FormData();
       form.append("archivo", file);
       const res  = await fetch("/api/massive/preview", { method: "POST", headers: authHeaders, body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Error al procesar el archivo.");
-      setResumen(data.resumen);
-      setStep("preview");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al procesar el archivo.");
-    } finally {
-      setLoading(false);
-    }
+      const response = await res.json() as MassivePreviewResponse & { message?: string };
+      if (!res.ok) throw new Error(response.message || "Error al procesar el archivo.");
+      return response;
+    }, { successMessage: "Archivo procesado. Revisá los cambios." });
+    if (!data) return;
+    setResumen(data.resumen);
+    setStep("preview");
   };
 
   // ── Confirm ───────────────────────────────────────────────────────────────
   const confirm = async () => {
     if (!file) return;
-    setLoading(true); setError("");
-    try {
+    const data = await run(async () => {
       const form = new FormData();
       form.append("archivo", file);
       const res  = await fetch("/api/massive/confirm", { method: "POST", headers: authHeaders, body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Error al confirmar la importación.");
-      setResultado(data.resultado);
-      setStep("success");
-      onSuccess(); // refresca el menú en el padre
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al confirmar.");
-    } finally {
-      setLoading(false);
-    }
+      const response = await res.json() as MassiveConfirmResponse & { message?: string };
+      if (!res.ok) throw new Error(response.message || "Error al confirmar la importación.");
+      return response;
+    }, { successMessage: "Importación completada." });
+    if (!data) return;
+    setResultado(data.resultado);
+    setStep("success");
+    onSuccess(); // refresca el menú en el padre
   };
 
   // ── Reset ─────────────────────────────────────────────────────────────────
   const reset = () => {
     setFile(null); setResumen(null); setResultado(null);
-    setError(""); setStep("upload");
+    setValidationError(""); setError(""); setStep("upload");
   };
 
   // ── Totales de resumen ────────────────────────────────────────────────────
@@ -156,7 +161,7 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
       </div>
 
       <div className="content">
-        {error && <div className="error-banner">{error}</div>}
+        {(validationError || error) && <div className="error-banner" role="alert">{validationError || error}</div>}
 
         {/* ══════════════════════════════════════════
             PASO 1: SUBIR ARCHIVO
@@ -177,7 +182,9 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
                   <p className="info-card-desc">Incluye tus categorías y productos actuales para que puedas editarlos directamente.</p>
                 </div>
               </div>
-              <button className="outline-btn" onClick={downloadTemplate}>Descargar</button>
+              <button className="outline-btn" onClick={downloadTemplate} disabled={downloading}>
+                {downloading ? "Descargando…" : "Descargar"}
+              </button>
             </div>
 
             {/* Drop zone */}

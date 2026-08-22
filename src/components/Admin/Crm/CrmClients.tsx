@@ -8,6 +8,8 @@ import {
   deleteCrmNote,
   exportCrmClients,
 } from "../../../api/crm";
+import { useNotifications } from "../../../context/useNotifications";
+import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
 import { PLAN_LABEL } from "../../../lib/plans";
 import s from "./CrmClients.module.css";
 
@@ -53,9 +55,10 @@ const dateInputValue = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
 // Componente principal — lista/kanban de clientes + filtros + drawer de detalle
 // ══════════════════════════════════════════════════════════════════
 export default function CrmClients() {
+  const { success: notifySuccess, error: notifyError } = useNotifications();
   const [clients, setClients] = useState<CrmClient[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useFeedbackMessage("error");
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<CrmStage | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -78,13 +81,14 @@ export default function CrmClients() {
     };
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [setError]);
 
   // El drawer avisa cuando cambió algo de un cliente (etapa/tags/seguimiento)
   // para reflejarlo en la fila del listado sin volver a pedir todo.
   const patchClient = useCallback((userID: string, patch: Partial<CrmClient>) => {
     setClients((prev) => prev.map((c) => (c._id === userID ? { ...c, ...patch } : c)));
   }, []);
+  const closeDrawer = useCallback(() => setSelectedId(null), []);
 
   // Cambia de etapa al soltar una tarjeta en otra columna del kanban.
   // Optimista, igual que saveProfile del drawer.
@@ -92,10 +96,12 @@ export default function CrmClients() {
     patchClient(userID, { stage });
     try {
       await updateCrmProfile(userID, { stage });
+      notifySuccess("Etapa del cliente actualizada.");
     } catch {
+      notifyError("No se pudo guardar la nueva etapa del cliente.");
       /* si falla, el próximo refresh corrige */
     }
-  }, [patchClient]);
+  }, [notifyError, notifySuccess, patchClient]);
 
   // Conteo por etapa (para los chips de filtro).
   const countByStage = (stage: CrmStage) => clients.filter((c) => c.stage === stage).length;
@@ -124,8 +130,9 @@ export default function CrmClients() {
       a.download = `crm-clientes${stageFilter !== "all" ? `-${stageFilter}` : ""}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
+      notifySuccess("Listado de clientes exportado.");
     } catch {
-      setError("No se pudo exportar el listado. Intentá de nuevo.");
+      notifyError("No se pudo exportar el listado. Intentá de nuevo.");
     } finally {
       setExporting(false);
     }
@@ -327,7 +334,7 @@ export default function CrmClients() {
       {selectedId && (
         <ClientDrawer
           userID={selectedId}
-          onClose={() => setSelectedId(null)}
+          onClose={closeDrawer}
           onPatch={patchClient}
         />
       )}
@@ -352,6 +359,8 @@ function ClientDrawer({
   const [tagInput, setTagInput] = useState("");
   const [noteInput, setNoteInput] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
+  const { success: notifySuccess, error: notifyError } = useNotifications();
 
   // Carga del detalle + cierre con Escape.
   useEffect(() => {
@@ -361,7 +370,10 @@ function ClientDrawer({
         const d = await getCrmClient(userID);
         if (!cancelled) setDetail(d);
       } catch {
-        if (!cancelled) onClose();
+        if (!cancelled) {
+          notifyError("No se pudo cargar el detalle del cliente.");
+          onClose();
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -370,7 +382,7 @@ function ClientDrawer({
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => { cancelled = true; window.removeEventListener("keydown", onKey); };
-  }, [userID, onClose]);
+  }, [notifyError, userID, onClose]);
 
   // Guarda un cambio de etapa/tags/seguimiento y sincroniza el estado local +
   // la fila del listado (onPatch). Optimista: refleja el cambio enseguida.
@@ -381,7 +393,9 @@ function ClientDrawer({
     try {
       const updated = await updateCrmProfile(userID, patch);
       setDetail((d) => (d ? { ...d, crm: updated } : d));
+      notifySuccess("Perfil de CRM actualizado.");
     } catch {
+      notifyError("No se pudo guardar el cambio en el perfil de CRM.");
       /* si falla, el próximo fetch corrige; para un panel interno alcanza */
     }
   };
@@ -406,18 +420,26 @@ function ClientDrawer({
       const updated = await addCrmNote(userID, text);
       setDetail((d) => (d ? { ...d, crm: updated } : d));
       setNoteInput("");
+      notifySuccess("Nota agregada.");
     } catch {
-      /* noop */
+      notifyError("No se pudo agregar la nota.");
     } finally {
       setSavingNote(false);
     }
   };
 
   const removeNote = async (noteID: string) => {
+    if (deletingNoteId) return;
+    setDeletingNoteId(noteID);
     try {
       const updated = await deleteCrmNote(userID, noteID);
       setDetail((d) => (d ? { ...d, crm: updated } : d));
-    } catch { /* noop */ }
+      notifySuccess("Nota eliminada.");
+    } catch {
+      notifyError("No se pudo eliminar la nota.");
+    } finally {
+      setDeletingNoteId(null);
+    }
   };
 
   const u = detail?.user;
@@ -557,8 +579,8 @@ function ClientDrawer({
                           {n.kind === "event" ? "Sistema" : (n.author?.username ? `${n.author.username} · ` : "")}{timeAgo(n.createdAt)}
                         </span>
                         {n.kind !== "event" && (
-                          <button className={s.noteDelete} onClick={() => removeNote(n._id)} aria-label="Borrar nota" type="button">
-                            Borrar
+                          <button className={s.noteDelete} onClick={() => removeNote(n._id)} aria-label="Borrar nota" type="button" disabled={deletingNoteId !== null}>
+                            {deletingNoteId === n._id ? "Borrando…" : "Borrar"}
                           </button>
                         )}
                       </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "../../../../context/useAuth";
+import { useFeedbackMessage } from "../../../../hooks/useFeedbackMessage";
 import type { Subscription, DayKey, DayHours, Schedule } from "../../../../types/index";
 import { planMeetsMin, PLAN_LABEL, TEMPLATE_MIN_PLAN } from "../../../../lib/plans";
 import Spinner from "../../../Common/Spinner";
@@ -155,8 +156,8 @@ export default function UserEditorPage() {
   const [uploading, setUploading] = useState<"bg" | "gallery" | null>(null);
   const [galleryProgress, setGalleryProgress] = useState<{ done: number; total: number } | null>(null);
   const [galleryDragOver, setGalleryDragOver] = useState(false);
-  const [error,     setError]     = useState("");
-  const [success,   setSuccess]   = useState("");
+  const [error,     setError]     = useFeedbackMessage("error");
+  const [success,   setSuccess]   = useFeedbackMessage("success");
 
   const [tab, setTab] = useState<Tab>("info");
 
@@ -202,13 +203,13 @@ export default function UserEditorPage() {
     if (!success) return;
     const t = setTimeout(() => setSuccess(""), 3500);
     return () => clearTimeout(t);
-  }, [success]);
+  }, [success, setSuccess]);
 
   useEffect(() => {
     if (!error) return;
     const t = setTimeout(() => setError(""), 6000);
     return () => clearTimeout(t);
-  }, [error]);
+  }, [error, setError]);
 
   // Libera el object URL del recorte si el componente se desmonta con el
   // modal abierto.
@@ -267,7 +268,7 @@ export default function UserEditorPage() {
       }
     };
     fetchData();
-  }, [token]);
+  }, [token, setError]);
 
   // Save info
   const saveInfo = async () => {
@@ -576,7 +577,7 @@ export default function UserEditorPage() {
       setPictures(prev);
       setError("No se pudo eliminar la imagen.");
     }
-  }, [pictures, authHeaders]);
+  }, [pictures, authHeaders, setError]);
 
   // Drag & drop de fotos sobre la galería. Se usa un contador de
   // enter/leave (en vez de un booleano simple) porque el grid tiene hijos:

@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../../context/useAuth";
+import { useNotifications } from "../../../context/useNotifications";
+import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
 import { PLAN_LABEL, PLAN_ORDER } from "../../../lib/plans";
 import s from "./CEODashboard.module.css";
 import type { User, Subscription, AdminStats } from "../../../types"
@@ -28,12 +30,14 @@ function timeAgo(dateStr: string) {
 
 export default function CEODashboard() {
   const { user, token } = useAuth();
+  const { success: notifySuccess, error: notifyError } = useNotifications();
 
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [clients, setClients] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState<string | null>(null);
+  const [error, setError]     = useFeedbackMessage("error");
   const [search, setSearch]   = useState("");
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
 
   // Carga stats y lista de clientes en paralelo
@@ -60,9 +64,11 @@ export default function CEODashboard() {
       }
     };
     load();
-  }, [token]);
+  }, [setError, token]);
 
   const handleToggleActive = useCallback(async (clientId: string, current: boolean) => {
+    if (togglingId) return;
+    setTogglingId(clientId);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/users/${clientId}/active`, {
         method: "PATCH",
@@ -76,10 +82,13 @@ export default function CEODashboard() {
       setClients(prev =>
         prev.map(c => c._id === clientId ? { ...c, active: !current } : c)
       );
+      notifySuccess(`Cliente ${current ? "desactivado" : "activado"}.`);
     } catch {
-      // silencioso
+      notifyError(`No se pudo ${current ? "desactivar" : "activar"} el cliente.`);
+    } finally {
+      setTogglingId(null);
     }
-  }, [token]);
+  }, [notifyError, notifySuccess, togglingId, token]);
 
   const subBreakdown = clients.reduce((acc, c) => {
     acc[c.subscription] = (acc[c.subscription] ?? 0) + 1;
@@ -133,7 +142,7 @@ export default function CEODashboard() {
           </div>
         </div>
 
-        {error && <div className={s.errorBanner}>{error}</div>}
+        {error && <div className={s.errorBanner} role="alert">{error}</div>}
 
         {/* ── KPI Grid principal ── */}
         {stats && (
@@ -241,10 +250,12 @@ export default function CEODashboard() {
               </span>
               <span className={s.clientDate}>{timeAgo(c.createdAt)}</span>
               <button
+                type="button"
                 className={`${s.toggleActiveBtn} ${c.active ? s.toggleDeactivate : s.toggleActivate}`}
                 onClick={() => handleToggleActive(c._id, c.active)}
+                disabled={togglingId !== null}
               >
-                {c.active ? "Desactivar" : "Activar"}
+                {togglingId === c._id ? "Guardando…" : c.active ? "Desactivar" : "Activar"}
               </button>
             </div>
           ))}

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef, memo, useMemo } from "react";
 import { useAuth } from "../../../../context/useAuth";
+import { useNotifications } from "../../../../context/useNotifications";
+import { useFeedbackMessage } from "../../../../hooks/useFeedbackMessage";
 import MassiveImport from "../../../../Utils/MassiveImport";
 import type {
   AdminItem as Item,
@@ -385,6 +387,7 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
 
 export default function MenuEditorPage() {
   const { token, user } = useAuth();
+  const { success: notifySuccess } = useNotifications();
 
   const [menuData,    setMenuData]    = useState<MenuData | null>(null);
   const [limits,      setLimits]      = useState<{
@@ -397,7 +400,7 @@ export default function MenuEditorPage() {
   } | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState(false);
-  const [error,       setError]       = useState("");
+  const [error,       setError]       = useFeedbackMessage("error");
 
   // Modal de upgrade compartido: se abre por el límite de productos
   // del plan free o por intentar usar el importador de Excel sin plan
@@ -448,7 +451,7 @@ export default function MenuEditorPage() {
     if (!error) return;
     const t = setTimeout(() => setError(""), 6000);
     return () => clearTimeout(t);
-  }, [error]);
+  }, [error, setError]);
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
 
@@ -470,7 +473,7 @@ export default function MenuEditorPage() {
       }
     };
     fetchMenu();
-  }, [token]);
+  }, [token, setError]);
 
   // ── Refresca el menú desde el backend ──────────────────────────────────────
 
@@ -492,7 +495,7 @@ export default function MenuEditorPage() {
     } catch {
       setError("No se pudo actualizar el menú.");
     }
-  }, [token, activeCategoria]);
+  }, [token, activeCategoria, setError]);
 
   // ── Acordeón ──────────────────────────────────────────────────────────────
 
@@ -520,7 +523,7 @@ export default function MenuEditorPage() {
     setItemForm({ ...EMPTY_ITEM, availabilitySchedule: emptyAvailabilitySchedule() });
     setError("");
     setView("item-form");
-  }, [limits]);
+  }, [limits, setError]);
 
   const openEditItem = useCallback((item: Item, cat: Categoria) => {
     setActiveCategoria(cat);
@@ -556,7 +559,7 @@ export default function MenuEditorPage() {
     });
     setError("");
     setView("item-form");
-  }, []);
+  }, [setError]);
 
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -583,7 +586,7 @@ export default function MenuEditorPage() {
     } finally {
       setImageUploading(false);
     }
-  }, []);
+  }, [setError]);
 
   const removeItemImage = useCallback(() => {
     setItemForm(f => ({ ...f, image: "" }));
@@ -676,6 +679,7 @@ export default function MenuEditorPage() {
       }
       if (!res.ok) throw new Error(data.message || "No se pudo guardar el producto.");
       await refetch();
+      notifySuccess(activeItem ? "Producto actualizado." : "Producto creado.");
       setView("menu");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar el producto.");
@@ -696,6 +700,13 @@ export default function MenuEditorPage() {
       throw new Error(data.message || "No se pudo eliminar.");
     }
     await refetch();
+    notifySuccess(
+      deleteModal.type === "item"
+        ? "Producto eliminado."
+        : deleteModal.type === "categoria"
+          ? "Categoría eliminada."
+          : "Sección eliminada.",
+    );
     setDeleteModal(null);
     setView("menu");
   } catch (err) {
@@ -724,11 +735,12 @@ export default function MenuEditorPage() {
         body: JSON.stringify({ available: !item.available }),
       });
       if (!res.ok) throw new Error();
+      notifySuccess(item.available ? "Producto pausado." : "Producto activado.");
     } catch {
       setError("No se pudo cambiar la disponibilidad.");
       await refetch(); // Revertir
     }
-  }, [authHeaders, refetch]);
+  }, [authHeaders, refetch, notifySuccess, setError]);
 
   // ── Drag & Drop ────────────────────────────────────────────────────────────
 
@@ -758,12 +770,13 @@ export default function MenuEditorPage() {
       });
       if (!res.ok) throw new Error();
       await refetch();
+      notifySuccess("Producto movido.");
     } catch {
       setError("No se pudo mover el producto.");
     } finally {
       setDraggedItem(null);
     }
-  }, [authHeaders, refetch]);
+  }, [authHeaders, refetch, notifySuccess, setError]);
 
   const handleDragEnd = useCallback(() => {
     setDraggedItem(null);
@@ -776,13 +789,13 @@ export default function MenuEditorPage() {
     setCategoriaForm({ title: "", description: "", code: "", seccionID: "", editingId: "" });
     setError("");
     setView("categoria-form");
-  }, []);
+  }, [setError]);
 
   const openEditCategoria = useCallback((cat: Categoria) => {
     setCategoriaForm({ title: cat.title, description: cat.description || "", code: cat.code || "", seccionID: "", editingId: cat._id });
     setError("");
     setView("categoria-form");
-  }, []);
+  }, [setError]);
 
   const saveCategoria = async () => {
     if (!categoriaForm.title.trim()) { setError("El nombre es obligatorio."); return; }
@@ -802,6 +815,7 @@ export default function MenuEditorPage() {
       }
       if (!res.ok) throw new Error();
       await refetch();
+      notifySuccess(categoriaForm.editingId ? "Categoría actualizada." : "Categoría creada.");
       setView("menu");
     } catch {
       setError("No se pudo guardar la categoría.");
@@ -816,13 +830,13 @@ export default function MenuEditorPage() {
     setSeccionForm({ title: "", code: "", editingId: "" });
     setError("");
     setView("seccion-form");
-  }, []);
+  }, [setError]);
 
   const openEditSeccion = useCallback((sec: Seccion) => {
     setSeccionForm({ title: sec.title, code: sec.code || "", editingId: sec._id });
     setError("");
     setView("seccion-form");
-  }, []);
+  }, [setError]);
 
   const saveSeccion = async () => {
     if (!seccionForm.title.trim()) { setError("El nombre es obligatorio."); return; }
@@ -842,6 +856,7 @@ export default function MenuEditorPage() {
       }
       if (!res.ok) throw new Error();
       await refetch();
+      notifySuccess(seccionForm.editingId ? "Sección actualizada." : "Sección creada.");
       setView("menu");
     } catch {
       setError("No se pudo guardar la sección.");
@@ -869,12 +884,13 @@ export default function MenuEditorPage() {
       a.download = "menu-digital-plantilla.xlsx";
       a.click();
       URL.revokeObjectURL(url);
+      notifySuccess("Menú exportado a Excel.");
     } catch {
       setError("No se pudo exportar el menú. Intentá de nuevo.");
     } finally {
       setExporting(false);
     }
-  }, [token, limits]);
+  }, [token, limits, notifySuccess, setError]);
 
   const exportMenuPdf = async () => {
     if (!canExportPdf) { setUpgradeReason("pdf"); return; }
@@ -890,6 +906,7 @@ export default function MenuEditorPage() {
       a.download = `${user.slug}-menu.pdf`;
       a.click();
       URL.revokeObjectURL(url);
+      notifySuccess("Menú exportado a PDF.");
     } catch {
       setError("No se pudo exportar el menú a PDF. Intentá de nuevo.");
     } finally {

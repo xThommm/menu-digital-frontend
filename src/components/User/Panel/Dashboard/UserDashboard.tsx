@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import { jsPDF } from "jspdf";
 import { useAuth } from "../../../../context/useAuth";
+import { useNotifications } from "../../../../context/useNotifications";
 import { PLAN_LABEL } from "../../../../lib/plans";
 import type { DashData } from "../../../../types";
 import UpgradeModal from "../../../Common/UpgradeModal";
@@ -29,6 +30,11 @@ function useSpotlight(ref: React.RefObject<HTMLElement>) {
 
 export default function UserDashboard() {
   const { token, user, isLoading, refreshUser } = useAuth();
+  const {
+    success: notifySuccess,
+    error: notifyError,
+    info: notifyInfo,
+  } = useNotifications();
   const navigate = useNavigate();
 
   const [data, setData]     = useState<DashData | null>(null);
@@ -50,38 +56,64 @@ export default function UserDashboard() {
     if (!paymentStatus || !token) return;
 
     window.history.replaceState({}, "", window.location.pathname);
+    if (paymentStatus === "failure") {
+      notifyError("El pago no se completó. Podés volver a intentarlo.");
+      return;
+    } else if (paymentStatus === "pending") {
+      notifyInfo("El pago está pendiente. Tu plan se actualizará cuando se acredite.");
+      return;
+    }
+    notifyInfo("Pago aprobado. Estamos actualizando tu plan.");
+
     let cancelled = false;
     const previousPlan = user?.subscription;
     const previousExpiry = user?.subscriptionExpiresAt;
 
     const syncPayment = async () => {
-      const attempts = paymentStatus === "success" ? 6 : 1;
+      const attempts = 6;
       for (let attempt = 0; attempt < attempts && !cancelled; attempt += 1) {
         const refreshed = await refreshUser();
         if (refreshed && (
           refreshed.subscription !== previousPlan
           || refreshed.subscriptionExpiresAt !== previousExpiry
-        )) return;
+        )) {
+          notifySuccess("Tu plan quedó actualizado correctamente.");
+          return;
+        }
         if (attempt < attempts - 1) {
           await new Promise(resolve => window.setTimeout(resolve, 1000));
         }
       }
     };
 
-    syncPayment();
+    syncPayment().catch(() => {
+      if (!cancelled) {
+        notifyError("No pudimos verificar la actualización del plan. Intentá recargar la página.");
+      }
+    });
     return () => { cancelled = true; };
-  }, [refreshUser, token, user?.subscription, user?.subscriptionExpiresAt]);
+  }, [
+    notifyError,
+    notifyInfo,
+    notifySuccess,
+    refreshUser,
+    token,
+    user?.subscription,
+    user?.subscriptionExpiresAt,
+  ]);
 
   useEffect(() => {
     if (isLoading) return;
     if (!token) return;
+    let cancelled = false;
     const load = async () => {
       try {
         const res = await fetch("/api/users/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) return;
+        if (!res.ok) throw new Error("No se pudo cargar el resumen del negocio.");
         const json = await res.json();
+        if (cancelled) return;
         setData({
           businessName:  json.contactInfo?.businessName ?? "",
           slug:          json.slug ?? "",
@@ -91,11 +123,14 @@ export default function UserDashboard() {
           categoryCount: json.categoryCount ?? 0,
         });
       } catch {
-        // El dashboard sigue mostrándose aunque fallen los stats
+        if (!cancelled) {
+          notifyError("No pudimos cargar el resumen del negocio. Intentá recargar la página.");
+        }
       }
     };
     load();
-  }, [token, isLoading]);
+    return () => { cancelled = true; };
+  }, [token, isLoading, notifyError]);
 
   const publicUrl = data?.slug
     ? `${window.location.origin}/${data.slug}`
@@ -107,8 +142,11 @@ export default function UserDashboard() {
       await navigator.clipboard.writeText(publicUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch { /* fallback silencioso */ }
-  }, [publicUrl]);
+      notifySuccess("Enlace copiado.");
+    } catch {
+      notifyError("No se pudo copiar el enlace.");
+    }
+  }, [notifyError, notifySuccess, publicUrl]);
 
   const handleOpen = useCallback(() => {
     if (!publicUrl) return;
@@ -192,13 +230,20 @@ export default function UserDashboard() {
 
         pdf.save(`${filename}.pdf`);
       }
+      notifySuccess(`QR descargado en ${format.toUpperCase()}.`);
     } catch {
-      // La descarga es un "extra" — si falla no interrumpimos el resto
-      // del dashboard con un banner de error.
+      notifyError("No se pudo generar el QR. Intentá de nuevo.");
     } finally {
       setGeneratingQr(false);
     }
-  }, [publicUrl, data, generatingQr, generateQrDataUrl]);
+  }, [
+    publicUrl,
+    data,
+    generatingQr,
+    generateQrDataUrl,
+    notifyError,
+    notifySuccess,
+  ]);
 
   const displayName = data?.businessName;
 

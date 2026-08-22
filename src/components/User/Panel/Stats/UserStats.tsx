@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../../../context/useAuth";
+import { useNotifications } from "../../../../context/useNotifications";
 import type { StatsData, ItemStatsData } from "../../../../types";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import s from "./UserStats.module.css";
@@ -40,6 +41,7 @@ async function requestItemStats(token: string): Promise<ItemStatsResult> {
 
 export default function UserStats() {
   const { token, user, isLoading: authLoading } = useAuth();
+  const { error: notifyError } = useNotifications();
 
   const [stats, setStats]         = useState<StatsData | null>(null);
   const [itemStats, setItemStats] = useState<ItemStatsData | null>(null);
@@ -65,14 +67,16 @@ export default function UserStats() {
         const ir = await requestItemStats(token);
         if (!cancelled && ir.kind === "data") setItemStats(ir.data);
       } catch {
-        // El panel sigue mostrándose aunque falle la carga de estadísticas
+        if (!cancelled) {
+          notifyError("No pudimos cargar las estadísticas. Intentá recargar la página.");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
     run();
     return () => { cancelled = true; };
-  }, [authLoading, token]);
+  }, [authLoading, token, notifyError]);
 
   // "Tiempo real": las visitas se registran en el backend en el momento
   // (upsert por cada vista de la carta), así que refrescando periódicamente
