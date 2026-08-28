@@ -350,9 +350,6 @@
   vertical-align: middle;
 }
 .clientTable th {
-  position: sticky;
-  top: 73px;
-  z-index: 2;
   background: var(--admin-bg-elevated);
   color: var(--admin-text-muted);
   font-size: var(--text-xs);
