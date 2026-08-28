@@ -1271,7 +1271,8 @@ a:hover { opacity: 0.75; }
 }
 
 .t-free-plan-ad {
-  position: relative;
+  position: fixed;
+  bottom: -11vw;
   isolation: isolate;
   overflow: hidden;
   width: min(100% - 2rem, 680px);
