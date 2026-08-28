@@ -1,321 +1,399 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
+import apiClient from "../../../api/client";
+import { listAdminPayments } from "../../../api/adminPayments";
+import { listCrmClients } from "../../../api/crm";
 import { useAuth } from "../../../context/useAuth";
-import { useNotifications } from "../../../context/useNotifications";
-import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
+import { formatPaymentAmount } from "../../../lib/adminPayments";
 import { PLAN_LABEL, PLAN_ORDER } from "../../../lib/plans";
+import type {
+  AdminPaymentsResponse,
+  AdminStats,
+  CrmAttentionSummary,
+  CrmClient,
+  Subscription,
+} from "../../../types";
 import s from "./CEODashboard.module.css";
-import type { User, Subscription, AdminStats } from "../../../types"
 
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const SUBSCRIPTION_COLOR: Record<Subscription, string> = {
-  free:  "#3d3a33",
-  basic: "#4c7a2e",
-  pro:   "#2e5c7a",
-};
+interface CrmDashboardData {
+  clients: CrmClient[];
+  attentionSummary?: CrmAttentionSummary;
+}
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "hoy";
-  if (days === 1) return "ayer";
-  if (days < 30) return `hace ${days}d`;
+  const days = Math.max(0, Math.floor(diff / 86_400_000));
+  if (days === 0) return "Hoy";
+  if (days === 1) return "Ayer";
+  if (days < 30) return `Hace ${days} días`;
   const months = Math.floor(days / 30);
-  if (months < 12) return `hace ${months}m`;
-  return `hace ${Math.floor(months / 12)}a`;
+  if (months < 12) return `Hace ${months} ${months === 1 ? "mes" : "meses"}`;
+  const years = Math.floor(months / 12);
+  return `Hace ${years} ${years === 1 ? "año" : "años"}`;
 }
 
-// ── Componente principal ──────────────────────────────────────────────────────
-
 export default function CEODashboard() {
-  const { user, token } = useAuth();
-  const { success: notifySuccess, error: notifyError } = useNotifications();
-
+  const { user } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
-  const [clients, setClients] = useState<User[]>([]);
+  const [crmData, setCrmData] = useState<CrmDashboardData | null>(null);
+  const [paymentsData, setPaymentsData] = useState<AdminPaymentsResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useFeedbackMessage("error");
-  const [search, setSearch]   = useState("");
-  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
-
-  // Carga stats y lista de clientes en paralelo
   useEffect(() => {
-    const headers = { Authorization: `Bearer ${token}` };
-    const load = async () => {
-      try {
-        const [statsRes, usersRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/admin/stats`,    { headers }),
-          fetch(`${import.meta.env.VITE_API_URL}/admin/allUsers`, { headers }),
-        ]);
-        if (!statsRes.ok || !usersRes.ok) throw new Error("Error al cargar datos");
-        const [statsData, usersData] = await Promise.all([
-          statsRes.json(),
-          usersRes.json(),
-        ]);
-        setStats(statsData);
-        setClients(usersData.filter((u: User) => !u.admin));
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Error desconocido";
-        setError(message);    
-      } finally {
-        setLoading(false);
+    let cancelled = false;
+
+    Promise.allSettled([
+      apiClient.get<AdminStats>("/admin/stats").then((response) => response.data),
+      listCrmClients(),
+      listAdminPayments({ page: 1, limit: 5 }),
+    ]).then(([statsResult, crmResult, paymentsResult]) => {
+      if (cancelled) return;
+
+      if (statsResult.status === "fulfilled") setStats(statsResult.value);
+      if (crmResult.status === "fulfilled") setCrmData(crmResult.value);
+      if (paymentsResult.status === "fulfilled") setPaymentsData(paymentsResult.value);
+
+      const failedSources = [statsResult, crmResult, paymentsResult]
+        .filter((result) => result.status === "rejected").length;
+      if (failedSources > 0) {
+        setError("Algunos indicadores no pudieron actualizarse. Los módulos siguen disponibles.");
       }
-    };
-    load();
-  }, [setError, token]);
-
-  const handleToggleActive = useCallback(async (clientId: string, current: boolean) => {
-    if (togglingId) return;
-    setTogglingId(clientId);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/users/${clientId}/active`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ active: !current }),
-      });
-      if (!res.ok) throw new Error();
-      setClients(prev =>
-        prev.map(c => c._id === clientId ? { ...c, active: !current } : c)
-      );
-      notifySuccess(`Cliente ${current ? "desactivado" : "activado"}.`);
-    } catch {
-      notifyError(`No se pudo ${current ? "desactivar" : "activar"} el cliente.`);
-    } finally {
-      setTogglingId(null);
-    }
-  }, [notifyError, notifySuccess, togglingId, token]);
-
-  const subBreakdown = clients.reduce((acc, c) => {
-    acc[c.subscription] = (acc[c.subscription] ?? 0) + 1;
-    return acc;
-  }, {} as Record<Subscription, number>);
-
-  const newThisMonth = clients.filter(c => {
-    const d = new Date(c.createdAt);
-    const now = new Date();
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }).length;
-
-  const withDelivery = clients.filter(c => c.hasDelivery).length;
-
-  const filtered = clients.filter(c => {
-    const q = search.toLowerCase();
-    return (
-      c.username.toLowerCase().includes(q) ||
-      c.contactInfo?.businessName?.toLowerCase().includes(q) ||
-      c.slug?.toLowerCase().includes(q)
-    );
-  });
-
-  const todayStr = (() => {
-    const d = new Date().toLocaleDateString("es-AR", {
-      weekday: "long", day: "numeric", month: "long", year: "numeric"
+      setLoading(false);
     });
-    return d.charAt(0).toUpperCase() + d.slice(1);
-  })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (loading) {
     return (
       <div className="pageLoaderScreen">
-        <div className="pageLoaderRing" />
+        <div className="pageLoaderRing" aria-label="Cargando dashboard…" />
       </div>
     );
   }
 
+  const clients = crmData?.clients ?? [];
+  const attention = crmData?.attentionSummary;
+  const payments = paymentsData?.summary;
+  const totalClients = crmData ? clients.length : null;
+  const newThisMonth = clients.filter((client) => {
+    const createdAt = new Date(client.createdAt);
+    const now = new Date();
+    return createdAt.getMonth() === now.getMonth()
+      && createdAt.getFullYear() === now.getFullYear();
+  }).length;
+  const planBreakdown = clients.reduce<Record<Subscription, number>>((totals, client) => {
+    totals[client.subscription] += 1;
+    return totals;
+  }, { free: 0, basic: 0, pro: 0 });
+  const publishedPercent = stats && stats.usuarios.total > 0
+    ? Math.round((stats.usuarios.conMenuPublicado / stats.usuarios.total) * 100)
+    : 0;
+  const recentClients = clients.slice(0, 5);
+  const today = new Date().toLocaleDateString("es-AR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
   return (
-    <div className={s.dash}>
-
-      {/* ── Contenido centrado con máximo ancho ── */}
-      <div className={s.dashInner}>
-
-        {/* ── Bienvenida ── */}
-        <div className={s.welcome}>
-          <div className={s.welcomeLeft}>
-            <p className={s.welcomeEyebrow}>Panel interno</p>
-            <h1 className={s.welcomeTitle}>Hola, {user?.name ?? "Admin"}</h1>
-            <p className={s.welcomeSub}>{todayStr}</p>
+    <div className={s.dashboard}>
+      <main className={s.inner}>
+        <header className={s.hero}>
+          <div>
+            <p className={s.eyebrow}>Resumen ejecutivo</p>
+            <h1>Dashboard de MenuDigital</h1>
+            <p className={s.heroCopy}>
+              Hola, {user?.name || "Admin"}. Este es el estado general de la operación.
+            </p>
           </div>
-        </div>
+          <time className={s.today}>{today}</time>
+        </header>
 
         {error && <div className={s.errorBanner} role="alert">{error}</div>}
 
-        {/* ── KPI Grid principal ── */}
-        {stats && (
-          <div className={s.kpiGrid}>
-            <KpiCard label="Clientes totales"    value={stats.usuarios.total}            icon={<UsersIcon />}    />
-            <KpiCard label="Activos"             value={stats.usuarios.activos}          icon={<ActiveIcon />}   accent="green" />
-            <KpiCard label="Inactivos"           value={stats.usuarios.inactivos}        icon={<InactiveIcon />} accent="red"   />
-            <KpiCard label="Nuevos este mes"     value={newThisMonth}                    icon={<NewIcon />}      accent="gold"  />
+        <section className={s.kpiGrid} aria-label="Indicadores principales">
+          <KpiCard
+            icon={<UsersIcon />}
+            label="Clientes"
+            value={stats ? stats.usuarios.total : "—"}
+            detail={stats ? `${stats.usuarios.activos} cuentas activas` : "Dato no disponible"}
+          />
+          <KpiCard
+            icon={<MenuIcon />}
+            label="Menús publicados"
+            value={stats ? stats.usuarios.conMenuPublicado : "—"}
+            detail={stats ? `${publishedPercent}% de las cuentas` : "Dato no disponible"}
+            tone="success"
+          />
+          <KpiCard
+            icon={<ProductsIcon />}
+            label="Productos"
+            value={stats ? stats.items.total : "—"}
+            detail={stats ? `${stats.items.disponibles} disponibles` : "Dato no disponible"}
+          />
+          <KpiCard
+            icon={<PaymentsIcon />}
+            label="Importe acreditado"
+            value={payments ? formatPaymentAmount(payments.appliedAmount, payments.currency) : "—"}
+            detail={payments ? `${payments.applied} pagos con plan aplicado` : "Dato no disponible"}
+            tone="gold"
+          />
+        </section>
 
-            <div className={s.kpiDivider} />
+        <section className={s.shortcuts} aria-label="Accesos rápidos">
+          <ModuleShortcut
+            to="/admin/crm"
+            icon={<UsersIcon />}
+            eyebrow="Clientes 360"
+            title="Gestionar CRM"
+            description="Abrí fichas, onboarding, seguimientos y alertas de cada cliente."
+            metric={crmData ? `${attention?.clients ?? 0} requieren atención` : "Abrir módulo"}
+          />
+          <ModuleShortcut
+            to="/admin/payments"
+            icon={<PaymentsIcon />}
+            eyebrow="Cobros persistidos"
+            title="Revisar pagos"
+            description="Consultá estados, acreditaciones y operaciones que necesitan revisión."
+            metric={payments ? `${payments.attention} requieren atención` : "Abrir módulo"}
+            tone="gold"
+          />
+        </section>
 
-            <KpiCard label="Con menú publicado"  value={stats.usuarios.conMenuPublicado} icon={<MenuIcon />}     />
-            <KpiCard label="Con delivery"        value={withDelivery}                    icon={<DeliveryIcon />} />
-            <KpiCard label="Total productos"     value={stats.items.total}               icon={<ItemIcon />}     />
-            <KpiCard label="Categorías creadas"  value={stats.menus.categorias}          icon={<GridIcon />}     />
-          </div>
-        )}
-
-        {/* ── Suscripciones breakdown ── */}
-        <div className={s.sectionTitle}>Suscripciones</div>
-        <div className={s.subGrid}>
-          {PLAN_ORDER.map(key => (
-            <div key={key} className={s.subCard}>
-              <div className={s.subDot} style={{ background: SUBSCRIPTION_COLOR[key] }} />
-              <div className={s.subInfo}>
-                <span className={s.subLabel}>{PLAN_LABEL[key]}</span>
-                <span className={s.subCount}>{subBreakdown[key] ?? 0}</span>
-              </div>
+        <section className={s.primaryGrid}>
+          <article className={s.panel}>
+            <PanelHeader
+              eyebrow="Bandeja operativa"
+              title="Atención de clientes"
+              action="Ir al CRM"
+              to="/admin/crm"
+            />
+            <div className={s.attentionList}>
+              <AttentionRow label="Problemas de pago" value={attention?.paymentIssues} tone="danger" />
+              <AttentionRow label="Suscripciones vencidas" value={attention?.expiredSubscriptions} tone="danger" />
+              <AttentionRow label="Vencen en los próximos 30 días" value={attention?.expiringSubscriptions} tone="warning" />
+              <AttentionRow label="Planes sin vencimiento registrado" value={attention?.missingExpirySubscriptions} tone="warning" />
+              <AttentionRow label="Seguimientos vencidos" value={attention?.overdueFollowUps} tone="warning" />
+              <AttentionRow label="Onboarding incompleto" value={attention?.incompleteOnboarding} />
             </div>
-          ))}
-        </div>
+          </article>
 
-        {/* ── Clientes recientes ── */}
-        {stats && stats.recientes.length > 0 && (
-          <>
-            <div className={s.sectionTitle}>Últimos registros</div>
+          <article className={s.panel}>
+            <PanelHeader
+              eyebrow="Estado financiero"
+              title="Pagos"
+              action="Ver historial"
+              to="/admin/payments"
+            />
+            <div className={s.paymentHero}>
+              <span>Importe con plan acreditado</span>
+              <strong>{payments ? formatPaymentAmount(payments.appliedAmount, payments.currency) : "—"}</strong>
+              <small>{payments ? `${payments.total} registros en el historial local` : "Datos no disponibles"}</small>
+            </div>
+            <div className={s.paymentStats}>
+              <SmallStat label="Aprobados" value={payments?.approved} tone="success" />
+              <SmallStat label="Pendientes" value={payments?.pending} tone="warning" />
+              <SmallStat label="Fallidos" value={payments?.failed} tone="danger" />
+              <SmallStat label="A revisar" value={payments?.attention} tone="danger" />
+            </div>
+          </article>
+        </section>
+
+        <section className={s.secondaryGrid}>
+          <article className={s.panel}>
+            <PanelHeader eyebrow="Cartera" title="Clientes por plan" />
+            <div className={s.planList}>
+              {PLAN_ORDER.map((plan) => {
+                const count = planBreakdown[plan];
+                const percent = totalClients ? Math.round((count / totalClients) * 100) : 0;
+                return (
+                  <div className={s.planRow} key={plan}>
+                    <div className={s.planRowHeader}>
+                      <span className={`${s.planPill} ${s[`plan_${plan}`]}`}>{PLAN_LABEL[plan]}</span>
+                      <span>{crmData ? `${count} · ${percent}%` : "—"}</span>
+                    </div>
+                    <div className={s.planTrack} aria-hidden="true">
+                      <span className={`${s.planFill} ${s[`planFill_${plan}`]}`} style={{ width: `${percent}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className={s.panelFoot}>
+              {crmData ? `${newThisMonth} altas durante el mes actual` : "Cartera no disponible"}
+            </p>
+          </article>
+
+          <article className={s.panel}>
+            <PanelHeader eyebrow="Contenido" title="Estado de la plataforma" />
+            <div className={s.contentGrid}>
+              <ContentStat label="Menús" value={stats?.menus.total} />
+              <ContentStat label="Secciones" value={stats?.menus.secciones} />
+              <ContentStat label="Categorías" value={stats?.menus.categorias} />
+              <ContentStat label="Sin menú publicado" value={stats?.usuarios.sinMenuPublicado} tone="warning" />
+            </div>
+          </article>
+        </section>
+
+        <section className={`${s.panel} ${s.recentPanel}`}>
+          <PanelHeader eyebrow="Actividad reciente" title="Últimos clientes registrados" action="Ver todos" to="/admin/crm" />
+          {recentClients.length > 0 ? (
             <div className={s.recentList}>
-              {stats.recientes.map(u => (
-                <div key={u._id} className={s.recentRow}>
-                  <div className={s.recentAvatar}>
-                    {(u.username?.[0] ?? "?").toUpperCase()}
-                  </div>
-                  <div className={s.recentInfo}>
-                    <span className={s.recentName}>{u.username}</span>
-                    <span className={s.recentMeta}>
-                      {u.slug ?? "sin slug"} · {u.menu ? "con menú" : "sin menú"}
-                    </span>
-                  </div>
-                  <div className={s.recentRight}>
-                    <span className={`${s.statusPill} ${u.active ? s.pillOn : s.pillOff}`}>
-                      {u.active ? "Activo" : "Inactivo"}
-                    </span>
-                    <span className={s.recentDate}>{timeAgo(u.createdAt)}</span>
-                  </div>
-                </div>
+              {recentClients.map((client) => (
+                <Link className={s.recentRow} to={`/admin/crm?client=${client._id}`} key={client._id}>
+                  <span className={s.avatar} aria-hidden="true">
+                    {(client.businessName || client.username).charAt(0).toUpperCase()}
+                  </span>
+                  <span className={s.clientIdentity}>
+                    <strong>{client.businessName || "Sin nombre comercial"}</strong>
+                    <small>@{client.username} · {client.slug || "sin slug"}</small>
+                  </span>
+                  <span className={`${s.planPill} ${s[`plan_${client.subscription}`]}`}>
+                    {PLAN_LABEL[client.subscription]}
+                  </span>
+                  <span className={`${s.accountStatus} ${client.active ? s.accountActive : s.accountInactive}`}>
+                    {client.active ? "Activo" : "Inactivo"}
+                  </span>
+                  <time>{timeAgo(client.createdAt)}</time>
+                  <ArrowIcon />
+                </Link>
               ))}
             </div>
-          </>
-        )}
-
-        {/* ── Tabla de todos los clientes ── */}
-        <div className={s.sectionHeader}>
-          <div className={s.sectionTitle} style={{ margin: 0 }}>Todos los clientes</div>
-          <div className={s.searchWrap}>
-            <SearchIcon />
-            <input
-              className={s.searchInput}
-              placeholder="Buscar por nombre, negocio o slug…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className={s.clientTable}>
-          <div className={`${s.clientRow} ${s.clientRowHeader}`}>
-            <span>Negocio / usuario</span>
-            <span>Slug</span>
-            <span>Plan</span>
-            <span>Estado</span>
-            <span>Registro</span>
-            <span>Acción</span>
-          </div>
-
-          {filtered.length === 0 && (
-            <div className={s.emptyHint}>
-              {search ? "Sin resultados para esa búsqueda." : "No hay clientes aún."}
-            </div>
+          ) : (
+            <p className={s.emptyState}>
+              {crmData ? "Todavía no hay clientes registrados." : "No se pudo cargar la actividad reciente."}
+            </p>
           )}
-
-          {filtered.map(c => (
-            <div key={c._id} className={s.clientRow}>
-              <div className={s.clientName}>
-                <span className={s.clientBusiness}>
-                  {c.contactInfo?.businessName || "—"}
-                </span>
-                <span className={s.clientUsername}>{c.username}</span>
-              </div>
-              <span className={s.clientSlug}>{c.slug ?? "—"}</span>
-              <span className={s.clientSub} style={{ color: SUBSCRIPTION_COLOR[c.subscription] }}>
-                {PLAN_LABEL[c.subscription]}
-              </span>
-              <span className={`${s.statusPill} ${c.active ? s.pillOn : s.pillOff}`}>
-                {c.active ? "Activo" : "Inactivo"}
-              </span>
-              <span className={s.clientDate}>{timeAgo(c.createdAt)}</span>
-              <button
-                type="button"
-                className={`${s.toggleActiveBtn} ${c.active ? s.toggleDeactivate : s.toggleActivate}`}
-                onClick={() => handleToggleActive(c._id, c.active)}
-                disabled={togglingId !== null}
-              >
-                {togglingId === c._id ? "Guardando…" : c.active ? "Desactivar" : "Activar"}
-              </button>
-            </div>
-          ))}
-        </div>
-
-      </div>{/* /dashInner */}
+        </section>
+      </main>
     </div>
   );
 }
-
-// ── Sub-componentes ───────────────────────────────────────────────────────────
 
 interface KpiCardProps {
+  icon: ReactNode;
   label: string;
-  value: number;
-  icon: React.ReactNode;
-  accent?: "green" | "red" | "gold";
+  value: string | number;
+  detail: string;
+  tone?: "neutral" | "success" | "gold";
 }
 
-function KpiCard({ label, value, icon, accent }: KpiCardProps) {
-  const accentColor = accent === "green" ? "var(--c-emerald)"
-    : accent === "red"  ? "var(--c-garnet)"
-    : accent === "gold" ? "var(--c-gold)"
-    : "var(--c-ink-dim)";
-
+function KpiCard({ icon, label, value, detail, tone = "neutral" }: KpiCardProps) {
   return (
-    <div className={s.kpiCard}>
-      <div className={s.kpiIcon} style={{ color: accentColor }}>{icon}</div>
-      <div className={s.kpiValue} style={{ color: accentColor }}>{value}</div>
-      <div className={s.kpiLabel}>{label}</div>
+    <article className={`${s.kpiCard} ${s[`kpi_${tone}`]}`}>
+      <div className={s.kpiHeader}>
+        <span>{label}</span>
+        <span className={s.kpiIcon}>{icon}</span>
+      </div>
+      <strong>{value}</strong>
+      <small>{detail}</small>
+    </article>
+  );
+}
+
+interface ModuleShortcutProps {
+  to: string;
+  icon: ReactNode;
+  eyebrow: string;
+  title: string;
+  description: string;
+  metric: string;
+  tone?: "neutral" | "gold";
+}
+
+function ModuleShortcut({ to, icon, eyebrow, title, description, metric, tone = "neutral" }: ModuleShortcutProps) {
+  return (
+    <Link className={`${s.moduleShortcut} ${s[`shortcut_${tone}`]}`} to={to}>
+      <span className={s.shortcutIcon}>{icon}</span>
+      <span className={s.shortcutBody}>
+        <small>{eyebrow}</small>
+        <strong>{title}</strong>
+        <span>{description}</span>
+      </span>
+      <span className={s.shortcutMetric}>{metric}</span>
+      <span className={s.shortcutArrow}><ArrowIcon /></span>
+    </Link>
+  );
+}
+
+function PanelHeader({ eyebrow, title, action, to }: {
+  eyebrow: string;
+  title: string;
+  action?: string;
+  to?: string;
+}) {
+  return (
+    <header className={s.panelHeader}>
+      <div>
+        <p>{eyebrow}</p>
+        <h2>{title}</h2>
+      </div>
+      {action && to && <Link to={to}>{action}<ArrowIcon /></Link>}
+    </header>
+  );
+}
+
+function AttentionRow({ label, value, tone = "neutral" }: {
+  label: string;
+  value?: number;
+  tone?: "neutral" | "warning" | "danger";
+}) {
+  return (
+    <div className={s.attentionRow}>
+      <span className={`${s.attentionDot} ${s[`dot_${value ? tone : "neutral"}`]}`} />
+      <span>{label}</span>
+      <strong>{value ?? "—"}</strong>
     </div>
   );
 }
 
-// ── Íconos ────────────────────────────────────────────────────────────────────
+function SmallStat({ label, value, tone = "neutral" }: {
+  label: string;
+  value?: number;
+  tone?: "neutral" | "success" | "warning" | "danger";
+}) {
+  return (
+    <div className={`${s.smallStat} ${s[`smallStat_${tone}`]}`}>
+      <strong>{value ?? "—"}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function ContentStat({ label, value, tone = "neutral" }: {
+  label: string;
+  value?: number;
+  tone?: "neutral" | "warning";
+}) {
+  return (
+    <div className={`${s.contentStat} ${s[`contentStat_${tone}`]}`}>
+      <strong>{value ?? "—"}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
 
 function UsersIcon() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>;
 }
-function ActiveIcon() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
-}
-function InactiveIcon() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>;
-}
-function NewIcon() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
-}
+
 function MenuIcon() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5v-12Z"/><path d="M4 17.5A2.5 2.5 0 0 1 6.5 15H20M8 7h7M8 11h5"/></svg>;
 }
-function DeliveryIcon() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>;
+
+function ProductsIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="2" cy="7" r=".5"/><circle cx="2" cy="12" r=".5"/><circle cx="2" cy="17" r=".5"/></svg>;
 }
-function ItemIcon() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>;
+
+function PaymentsIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/></svg>;
 }
-function GridIcon() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>;
-}
-function SearchIcon() {
-  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
+
+function ArrowIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>;
 }
