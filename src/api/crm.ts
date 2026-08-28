@@ -1,10 +1,20 @@
 import apiClient from './client'
-import type { CrmClient, CrmClientDetail, CrmProfile, CrmStage } from '../types'
+import type {
+  CrmAttentionSummary,
+  CrmClient,
+  CrmClientDetail,
+  CrmProfile,
+  CrmStage,
+} from '../types'
 
 // ── CRM interno (todas admin-only; el JWT lo adjunta el interceptor de client) ──
 
 // GET /api/admin/crm/clients → lista de clientes con su etapa de CRM
-export const listCrmClients = async (): Promise<{ clients: CrmClient[]; stages: CrmStage[] }> => {
+export const listCrmClients = async (): Promise<{
+  clients: CrmClient[]
+  stages: CrmStage[]
+  attentionSummary?: CrmAttentionSummary
+}> => {
   const res = await apiClient.get('/admin/crm/clients')
   return res.data
 }

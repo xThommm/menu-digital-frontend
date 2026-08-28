@@ -1,6 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import type { AdminPayment, CrmClient, CrmClientDetail, CrmStage } from "../../../types";
+import type {
+  AdminPayment,
+  CrmAttentionCode,
+  CrmAttentionSummary,
+  CrmClient,
+  CrmClientDetail,
+  CrmStage,
+} from "../../../types";
 import {
   listCrmClients,
   getCrmClient,
@@ -33,6 +40,28 @@ const STAGE_META: Record<CrmStage, { label: string; color: string }> = {
   baja:       { label: "Baja",       color: "#c97070" },
 };
 const STAGE_ORDER: CrmStage[] = ["lead", "onboarding", "activo", "en_riesgo", "baja"];
+
+const ATTENTION_META: Record<CrmAttentionCode, { label: string; shortLabel: string }> = {
+  payment_issue: { label: "Pagos con incidencia", shortLabel: "Pago" },
+  subscription_expired: { label: "Suscripciones vencidas", shortLabel: "Vencida" },
+  subscription_expiring: { label: "Vencen en 30 días", shortLabel: "Por vencer" },
+  subscription_missing_expiry: { label: "Planes sin vencimiento", shortLabel: "Sin vencimiento" },
+  follow_up_overdue: { label: "Seguimientos vencidos", shortLabel: "Seguimiento" },
+  onboarding_incomplete: { label: "Onboarding incompleto", shortLabel: "Onboarding" },
+};
+
+const EMPTY_ATTENTION_SUMMARY: CrmAttentionSummary = {
+  clients: 0,
+  paymentIssues: 0,
+  expiredSubscriptions: 0,
+  expiringSubscriptions: 0,
+  missingExpirySubscriptions: 0,
+  overdueFollowUps: 0,
+  incompleteOnboarding: 0,
+};
+
+type SortKey = "client" | "stage" | "expiry" | "payment" | "followUp" | "attention";
+type SortDirection = "asc" | "desc";
 
 const ONBOARDING_ITEMS = [
   { key: "businessInfo", label: "Datos del negocio", detail: "Nombre y dirección" },
@@ -88,6 +117,29 @@ const planExpiryLabel = (subscription: CrmClient["subscription"], iso: string | 
   return `${new Date(iso).getTime() < Date.now() ? "Venció" : "Vence"} ${fmtDate(iso)}`;
 };
 
+// Compatibilidad durante un despliegue escalonado: si todavía responde el
+// backend anterior, conservamos al menos la alerta de seguimiento que ya podía
+// deducirse del contrato viejo. Las demás señales siguen siendo del servidor.
+const normalizeAttention = (clients: CrmClient[]) => clients.map((client) => {
+  if (client.attention) return client;
+  return {
+    ...client,
+    attention: isOverdue(client.nextFollowUp)
+      ? ["follow_up_overdue" as const]
+      : [],
+  };
+});
+
+const summarizeAttention = (clients: CrmClient[]): CrmAttentionSummary => ({
+  clients: clients.filter((client) => (client.attention || []).length > 0).length,
+  paymentIssues: clients.filter((client) => client.attention?.includes("payment_issue")).length,
+  expiredSubscriptions: clients.filter((client) => client.attention?.includes("subscription_expired")).length,
+  expiringSubscriptions: clients.filter((client) => client.attention?.includes("subscription_expiring")).length,
+  missingExpirySubscriptions: clients.filter((client) => client.attention?.includes("subscription_missing_expiry")).length,
+  overdueFollowUps: clients.filter((client) => client.attention?.includes("follow_up_overdue")).length,
+  incompleteOnboarding: clients.filter((client) => client.attention?.includes("onboarding_incomplete")).length,
+});
+
 // ══════════════════════════════════════════════════════════════════
 // Componente principal — lista/kanban de clientes + filtros + drawer de detalle
 // ══════════════════════════════════════════════════════════════════
@@ -95,13 +147,18 @@ export default function CrmClients() {
   const { success: notifySuccess, error: notifyError } = useNotifications();
   const [urlParams, setUrlParams] = useSearchParams();
   const [clients, setClients] = useState<CrmClient[]>([]);
+  const [attentionSummary, setAttentionSummary] = useState<CrmAttentionSummary>(EMPTY_ATTENTION_SUMMARY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useFeedbackMessage("error");
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<CrmStage | "all">("all");
+  const [planFilter, setPlanFilter] = useState<CrmClient["subscription"] | "all">("all");
+  const [accountFilter, setAccountFilter] = useState<"all" | "active" | "inactive">("all");
+  const [attentionFilter, setAttentionFilter] = useState<CrmAttentionCode | "all">("all");
   const selectedId = urlParams.get("client");
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
-  const [onlyOverdue, setOnlyOverdue] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("client");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [exporting, setExporting] = useState(false);
   const [dragOverStage, setDragOverStage] = useState<CrmStage | null>(null);
   const [movingClientId, setMovingClientId] = useState<string | null>(null);
@@ -110,8 +167,12 @@ export default function CrmClients() {
     let cancelled = false;
     const load = async () => {
       try {
-        const { clients } = await listCrmClients();
-        if (!cancelled) setClients(clients);
+        const response = await listCrmClients();
+        if (!cancelled) {
+          const normalizedClients = normalizeAttention(response.clients);
+          setClients(normalizedClients);
+          setAttentionSummary(response.attentionSummary || summarizeAttention(normalizedClients));
+        }
       } catch {
         if (!cancelled) setError("No se pudieron cargar los clientes.");
       } finally {
@@ -127,6 +188,16 @@ export default function CrmClients() {
   const patchClient = useCallback((userID: string, patch: Partial<CrmClient>) => {
     setClients((prev) => prev.map((c) => (c._id === userID ? { ...c, ...patch } : c)));
   }, []);
+  const refreshClients = useCallback(async () => {
+    try {
+      const response = await listCrmClients();
+      const normalizedClients = normalizeAttention(response.clients);
+      setClients(normalizedClients);
+      setAttentionSummary(response.attentionSummary || summarizeAttention(normalizedClients));
+    } catch {
+      setError("El cambio se guardó, pero no se pudo actualizar la tabla 360.");
+    }
+  }, [setError]);
   const openDrawer = useCallback((userID: string) => {
     const next = new URLSearchParams(urlParams);
     next.set("client", userID);
@@ -148,30 +219,71 @@ export default function CrmClients() {
     try {
       await updateCrmProfile(userID, { stage });
       patchClient(userID, { stage });
+      await refreshClients();
       notifySuccess("Etapa del cliente actualizada.");
     } catch {
       notifyError("No se pudo guardar la nueva etapa del cliente.");
     } finally {
       setMovingClientId(null);
     }
-  }, [clients, movingClientId, notifyError, notifySuccess, patchClient]);
+  }, [clients, movingClientId, notifyError, notifySuccess, patchClient, refreshClients]);
 
   // Conteo por etapa (para los chips de filtro).
   const countByStage = (stage: CrmStage) => clients.filter((c) => c.stage === stage).length;
 
-  const overdueClients = clients.filter((c) => isOverdue(c.nextFollowUp));
-
   const filtered = clients.filter((c) => {
     if (stageFilter !== "all" && c.stage !== stageFilter) return false;
-    if (onlyOverdue && !isOverdue(c.nextFollowUp)) return false;
+    if (planFilter !== "all" && c.subscription !== planFilter) return false;
+    if (accountFilter === "active" && !c.active) return false;
+    if (accountFilter === "inactive" && c.active) return false;
+    if (attentionFilter !== "all" && !(c.attention || []).includes(attentionFilter)) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return (
       c.businessName.toLowerCase().includes(q) ||
       c.username.toLowerCase().includes(q) ||
-      c.slug.toLowerCase().includes(q)
+      c.slug.toLowerCase().includes(q) ||
+      (c.contactInfo?.mail || "").toLowerCase().includes(q)
     );
   });
+
+  const sortValue = (client: CrmClient, key: SortKey): string | number => {
+    if (key === "client") return client.businessName || client.username;
+    if (key === "stage") return STAGE_ORDER.indexOf(client.stage);
+    if (key === "expiry") return client.subscriptionExpiresAt
+      ? new Date(client.subscriptionExpiresAt).getTime()
+      : Number.MAX_SAFE_INTEGER;
+    if (key === "payment") return client.lastPayment?.createdAt
+      ? new Date(client.lastPayment.createdAt).getTime()
+      : 0;
+    if (key === "followUp") return client.nextFollowUp
+      ? calendarDate(client.nextFollowUp).getTime()
+      : Number.MAX_SAFE_INTEGER;
+    return (client.attention || []).length;
+  };
+
+  const sortedClients = [...filtered].sort((left, right) => {
+    const leftValue = sortValue(left, sortKey);
+    const rightValue = sortValue(right, sortKey);
+    const result = typeof leftValue === "string" && typeof rightValue === "string"
+      ? leftValue.localeCompare(rightValue, "es", { sensitivity: "base" })
+      : Number(leftValue) - Number(rightValue);
+    return sortDirection === "asc" ? result : -result;
+  });
+
+  const changeSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDirection(key === "attention" || key === "payment" ? "desc" : "asc");
+  };
+
+  const selectAttention = (code: CrmAttentionCode | "all") => {
+    setAttentionFilter((current) => (current === code ? "all" : code));
+    setViewMode("list");
+  };
 
   const handleExport = async () => {
     setExporting(true);
@@ -208,25 +320,22 @@ export default function CrmClients() {
             <p className={s.eyebrow}>CRM</p>
             <h1 className={s.title}>Clientes</h1>
           </div>
-          <span className={s.countBadge}>{clients.length}</span>
+          <span className={s.countBadge}>
+            {sortedClients.length === clients.length
+              ? clients.length
+              : `${sortedClients.length} de ${clients.length}`}
+          </span>
         </div>
       </header>
 
       <div className={s.content}>
         {error && <div className={s.errorBanner} role="alert">{error}</div>}
 
-        {/* ── Alerta de seguimientos vencidos ── */}
-        {overdueClients.length > 0 && (
-          <button
-            type="button"
-            className={`${s.overdueBanner} ${onlyOverdue ? s.overdueBannerActive : ""}`}
-            onClick={() => setOnlyOverdue((v) => !v)}
-          >
-            <WarningIcon />
-            {overdueClients.length} {overdueClients.length === 1 ? "cliente tiene" : "clientes tienen"} seguimiento vencido
-            <span className={s.overdueBannerAction}>{onlyOverdue ? "Ver todos" : "Ver solo estos"}</span>
-          </button>
-        )}
+        <AttentionInbox
+          summary={attentionSummary}
+          active={attentionFilter}
+          onSelect={selectAttention}
+        />
 
         {/* ── Filtros por etapa (solo en vista lista — en kanban ya están separados por columna) ── */}
         {viewMode === "list" && (
@@ -252,7 +361,7 @@ export default function CrmClients() {
           </div>
         )}
 
-        {/* ── Buscador + vista + exportar ── */}
+        {/* ── Buscador + filtros operativos + vista + exportar ── */}
         <div className={s.toolbarRow}>
           <div className={s.searchRow}>
             <svg className={s.searchIcon} width="15" height="15" viewBox="0 0 24 24" fill="none"
@@ -261,17 +370,40 @@ export default function CrmClients() {
             </svg>
             <input
               className={s.searchInput}
-              placeholder="Buscar por negocio, usuario o slug…"
+              placeholder="Buscar negocio, usuario, slug o email…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
+          <select
+            className={s.toolbarSelect}
+            value={planFilter}
+            onChange={(e) => setPlanFilter(e.target.value as CrmClient["subscription"] | "all")}
+            aria-label="Filtrar por plan"
+          >
+            <option value="all">Todos los planes</option>
+            <option value="free">Gratis</option>
+            <option value="basic">Básico</option>
+            <option value="pro">Pro</option>
+          </select>
+
+          <select
+            className={s.toolbarSelect}
+            value={accountFilter}
+            onChange={(e) => setAccountFilter(e.target.value as "all" | "active" | "inactive")}
+            aria-label="Filtrar por estado de cuenta"
+          >
+            <option value="all">Todas las cuentas</option>
+            <option value="active">Activas</option>
+            <option value="inactive">Inactivas</option>
+          </select>
+
           <div className={s.viewToggle}>
             <button
               className={`${s.viewToggleBtn} ${viewMode === "list" ? s.viewToggleBtnActive : ""}`}
               onClick={() => setViewMode("list")}
-              aria-label="Vista lista"
+              aria-label="Vista tabla"
               aria-current={viewMode === "list" ? "true" : undefined}
               type="button"
             >
@@ -294,35 +426,33 @@ export default function CrmClients() {
           </button>
         </div>
 
-        {/* ── Vista lista ── */}
+        {/* ── Vista Clientes 360 ── */}
         {viewMode === "list" && (
-          filtered.length === 0 ? (
+          sortedClients.length === 0 ? (
             <p className={s.emptyHint}>No hay clientes que coincidan.</p>
           ) : (
-            <ul className={s.clientList}>
-              {filtered.map((c) => (
-                <li key={c._id}>
-                  <button className={s.clientRow} onClick={() => openDrawer(c._id)} type="button">
-                    <span className={s.stageDot} style={{ background: STAGE_META[c.stage].color }} title={STAGE_META[c.stage].label} />
-                    <span className={s.clientMain}>
-                      <span className={s.clientName}>
-                        {c.businessName || <span className={s.clientNameEmpty}>Sin nombre — @{c.username}</span>}
-                      </span>
-                      <span className={s.clientMeta}>
-                        {STAGE_META[c.stage].label}
-                        {!c.active && <span className={s.inactiveTag}>Inactivo</span>}
-                        {c.nextFollowUp && (
-                          <span className={`${s.followUp} ${isOverdue(c.nextFollowUp) ? s.followUpOverdue : ""}`}>
-                            {isOverdue(c.nextFollowUp) ? "Seguimiento vencido" : "Seguir"} · {fmtFollowUpDate(c.nextFollowUp)}
-                          </span>
-                        )}
-                      </span>
-                    </span>
-                    <span className={`${s.planBadge} ${s[`plan_${c.subscription}`]}`}>{PLAN_LABEL[c.subscription]}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <div className={s.clientTableShell}>
+              <table className={s.clientTable}>
+                <thead>
+                  <tr>
+                    <SortableHeader label="Cliente" sortKey="client" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
+                    <th>Contacto</th>
+                    <SortableHeader label="Plan / vencimiento" sortKey="expiry" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
+                    <SortableHeader label="Etapa" sortKey="stage" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
+                    <th>Onboarding</th>
+                    <SortableHeader label="Último pago" sortKey="payment" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
+                    <SortableHeader label="Seguimiento" sortKey="followUp" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
+                    <SortableHeader label="Alertas" sortKey="attention" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
+                    <th><span className={s.srOnly}>Acciones</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedClients.map((client) => (
+                    <ClientTableRow key={client._id} client={client} onOpen={openDrawer} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )
         )}
 
@@ -330,7 +460,7 @@ export default function CrmClients() {
         {viewMode === "kanban" && (
           <div className={s.kanbanBoard}>
             {STAGE_ORDER.map((st) => {
-              const stClients = filtered.filter((c) => c.stage === st);
+              const stClients = sortedClients.filter((c) => c.stage === st);
               return (
                 <div
                   key={st}
@@ -389,9 +519,173 @@ export default function CrmClients() {
           userID={selectedId}
           onClose={closeDrawer}
           onPatch={patchClient}
+          onRefresh={refreshClients}
         />
       )}
     </div>
+  );
+}
+
+function AttentionInbox({
+  summary,
+  active,
+  onSelect,
+}: {
+  summary: CrmAttentionSummary;
+  active: CrmAttentionCode | "all";
+  onSelect: (code: CrmAttentionCode | "all") => void;
+}) {
+  const cards: { code: CrmAttentionCode; count: number; tone: "danger" | "warning" | "neutral" }[] = [
+    { code: "payment_issue", count: summary.paymentIssues, tone: "danger" },
+    { code: "subscription_expired", count: summary.expiredSubscriptions, tone: "danger" },
+    { code: "subscription_expiring", count: summary.expiringSubscriptions, tone: "warning" },
+    { code: "subscription_missing_expiry", count: summary.missingExpirySubscriptions, tone: "warning" },
+    { code: "follow_up_overdue", count: summary.overdueFollowUps, tone: "warning" },
+    { code: "onboarding_incomplete", count: summary.incompleteOnboarding, tone: "neutral" },
+  ];
+
+  return (
+    <section className={s.attentionInbox} aria-labelledby="attention-title">
+      <div className={s.attentionHeader}>
+        <div>
+          <p className={s.attentionEyebrow}>Operación diaria</p>
+          <h2 id="attention-title"><WarningIcon /> Bandeja de atención</h2>
+        </div>
+        <button
+          type="button"
+          className={`${s.attentionTotal} ${active === "all" ? s.attentionTotalActive : ""}`}
+          onClick={() => onSelect("all")}
+        >
+          {summary.clients} {summary.clients === 1 ? "cliente requiere" : "clientes requieren"} atención
+        </button>
+      </div>
+      <div className={s.attentionGrid}>
+        {cards.map((card) => (
+          <button
+            key={card.code}
+            type="button"
+            className={`${s.attentionCard} ${s[`attention_${card.tone}`]} ${active === card.code ? s.attentionCardActive : ""}`}
+            onClick={() => onSelect(card.code)}
+            aria-pressed={active === card.code}
+            disabled={card.count === 0}
+          >
+            <strong>{card.count}</strong>
+            <span>{ATTENTION_META[card.code].label}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  activeKey,
+  direction,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  activeKey: SortKey;
+  direction: SortDirection;
+  onSort: (key: SortKey) => void;
+}) {
+  const active = activeKey === sortKey;
+  return (
+    <th scope="col" aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}>
+      <button type="button" className={s.sortButton} onClick={() => onSort(sortKey)}>
+        {label}
+        <span aria-hidden>{active ? (direction === "asc" ? "↑" : "↓") : "↕"}</span>
+      </button>
+    </th>
+  );
+}
+
+function ClientTableRow({ client, onOpen }: { client: CrmClient; onOpen: (userID: string) => void }) {
+  const alerts = client.attention || [];
+  const onboarding = client.onboarding;
+  const payment = client.lastPayment;
+  const paymentHasIssue = Boolean(
+    payment && payment.status === "approved" && payment.entitlementStatus !== "applied"
+  );
+
+  return (
+    <tr className={!client.active ? s.clientTableRowInactive : undefined}>
+      <td>
+        <button type="button" className={s.tableClientButton} onClick={() => onOpen(client._id)}>
+          <span className={s.tableClientName}>
+            {client.businessName || <em>Sin nombre comercial</em>}
+          </span>
+          <span>@{client.username}</span>
+        </button>
+      </td>
+      <td>
+        <div className={s.tableContact}>
+          <span>{client.contactInfo?.mail || "Sin email"}</span>
+          <small>{client.contactInfo?.number ? String(client.contactInfo.number) : "Sin teléfono"}</small>
+        </div>
+      </td>
+      <td>
+        <div className={s.tablePlan}>
+          <span className={`${s.planBadge} ${s[`plan_${client.subscription}`]}`}>{PLAN_LABEL[client.subscription]}</span>
+          <small>{planExpiryLabel(client.subscription, client.subscriptionExpiresAt || null)}</small>
+        </div>
+      </td>
+      <td>
+        <span className={s.tableStage}>
+          <span className={s.stageDot} style={{ background: STAGE_META[client.stage].color }} />
+          {STAGE_META[client.stage].label}
+        </span>
+      </td>
+      <td>
+        {onboarding ? (
+          <div className={s.tableOnboarding}>
+            <span>{onboarding.completedCount}/{onboarding.total}</span>
+            <span className={s.tableProgressTrack} aria-label={`${onboarding.completedCount} de ${onboarding.total} pasos completos`}>
+              <span style={{ width: `${Math.round((onboarding.completedCount / onboarding.total) * 100)}%` }} />
+            </span>
+          </div>
+        ) : <span className={s.tableMuted}>Sin datos</span>}
+      </td>
+      <td>
+        {payment ? (
+          <div className={`${s.tablePayment} ${paymentHasIssue ? s.tablePaymentIssue : ""}`}>
+            <strong>{formatPaymentAmount(payment.amount, payment.currency || "ARS")}</strong>
+            <span>{PAYMENT_STATUS_LABEL[payment.status || ""] || payment.status || "Sin estado"}</span>
+            <small>{payment.createdAt ? fmtDate(payment.createdAt) : "Sin fecha"}</small>
+          </div>
+        ) : <span className={s.tableMuted}>Sin pagos</span>}
+      </td>
+      <td>
+        {client.nextFollowUp ? (
+          <span className={`${s.tableFollowUp} ${isOverdue(client.nextFollowUp) ? s.tableFollowUpOverdue : ""}`}>
+            {isOverdue(client.nextFollowUp) ? "Vencido" : "Agendado"}
+            <small>{fmtFollowUpDate(client.nextFollowUp)}</small>
+          </span>
+        ) : <span className={s.tableMuted}>Sin agendar</span>}
+      </td>
+      <td>
+        {alerts.length ? (
+          <div className={s.tableAlerts}>
+            {alerts.slice(0, 2).map((code) => (
+              <span key={code}>{ATTENTION_META[code].shortLabel}</span>
+            ))}
+            {alerts.length > 2 && <small>+{alerts.length - 2}</small>}
+          </div>
+        ) : <span className={s.tableOk}>Al día</span>}
+      </td>
+      <td>
+        <button
+          type="button"
+          className={s.tableOpenButton}
+          onClick={() => onOpen(client._id)}
+          aria-label={`Abrir ficha de ${client.businessName || client.username}`}
+        >
+          →
+        </button>
+      </td>
+    </tr>
   );
 }
 
@@ -402,10 +696,12 @@ function ClientDrawer({
   userID,
   onClose,
   onPatch,
+  onRefresh,
 }: {
   userID: string;
   onClose: () => void;
   onPatch: (userID: string, patch: Partial<CrmClient>) => void;
+  onRefresh: () => Promise<void>;
 }) {
   const [detail, setDetail] = useState<CrmClientDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -470,6 +766,7 @@ function ClientDrawer({
       if (patch.tags !== undefined) listPatch.tags = updated.tags;
       if (patch.nextFollowUp !== undefined) listPatch.nextFollowUp = updated.nextFollowUp;
       onPatch(userID, listPatch);
+      void onRefresh();
       notifySuccess("Perfil de CRM actualizado.");
       return true;
     } catch {
@@ -554,6 +851,7 @@ function ClientDrawer({
       // de la cuenta modifica el punto "Carta operativa".
       const refreshed = await getCrmClient(userID).catch(() => null);
       if (refreshed) setDetail(refreshed);
+      void onRefresh();
 
       notifySuccess(active ? "Cuenta activada." : "Cuenta desactivada.");
     } catch {

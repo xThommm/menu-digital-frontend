@@ -347,6 +347,13 @@ export interface AdminStats {
 // admin — estos datos nunca vienen en respuestas públicas de usuario.
 
 export type CrmStage = "lead" | "onboarding" | "activo" | "en_riesgo" | "baja"
+export type CrmAttentionCode =
+  | "payment_issue"
+  | "subscription_expired"
+  | "subscription_expiring"
+  | "subscription_missing_expiry"
+  | "follow_up_overdue"
+  | "onboarding_incomplete"
 
 // kind distingue notas manuales ("note") de eventos que loguea el sistema
 // solo ("event": cambio de plan, activar/desactivar, cambio de template).
@@ -372,11 +379,33 @@ export interface CrmClient {
   businessName: string
   slug: string
   subscription: Subscription
+  subscriptionExpiresAt?: string | null
   active: boolean
   createdAt: string
+  contactInfo?: Pick<ContactInfo, "mail" | "number">
   stage: CrmStage
   tags: string[]
   nextFollowUp: string | null
+  onboarding?: CrmOnboardingStatus
+  lastPayment?: {
+    status: string | null
+    entitlementStatus: "pending" | "not_applied" | "applied"
+    amount: number | null
+    currency: string | null
+    createdAt: string | null
+  } | null
+  paymentAttentionCount?: number
+  attention?: CrmAttentionCode[]
+}
+
+export interface CrmAttentionSummary {
+  clients: number
+  paymentIssues: number
+  expiredSubscriptions: number
+  expiringSubscriptions: number
+  missingExpirySubscriptions: number
+  overdueFollowUps: number
+  incompleteOnboarding: number
 }
 
 export interface CrmClientDetailUser {
