@@ -7,10 +7,12 @@ import {
   addCrmNote,
   deleteCrmNote,
   exportCrmClients,
+  setCrmClientActive,
 } from "../../../api/crm";
 import { useNotifications } from "../../../context/useNotifications";
 import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
 import { PLAN_LABEL } from "../../../lib/plans";
+import { sanitizePhoneForWa } from "../../../lib/whatsapp";
 import s from "./CrmClients.module.css";
 
 // ── Metadata de cada etapa del pipeline: etiqueta visible + color del punto. ──
@@ -22,6 +24,16 @@ const STAGE_META: Record<CrmStage, { label: string; color: string }> = {
   baja:       { label: "Baja",       color: "#c97070" },
 };
 const STAGE_ORDER: CrmStage[] = ["lead", "onboarding", "activo", "en_riesgo", "baja"];
+
+const ONBOARDING_ITEMS = [
+  { key: "businessInfo", label: "Datos del negocio", detail: "Nombre y dirección" },
+  { key: "contactChannel", label: "Canal de contacto", detail: "Email o WhatsApp" },
+  { key: "schedule", label: "Horarios", detail: "Al menos un día habilitado" },
+  { key: "branding", label: "Identidad visual", detail: "Portada o galería" },
+  { key: "menuStructure", label: "Categorías", detail: "Estructura de la carta" },
+  { key: "products", label: "Productos", detail: "Al menos uno cargado" },
+  { key: "publicMenu", label: "Carta operativa", detail: "Cuenta activa y carta con productos" },
+] as const;
 
 // ── Helpers de fecha ──
 const fmtDate = (iso: string | null) =>
@@ -50,6 +62,12 @@ const timeAgo = (iso: string) => {
 
 // value del <input type="date"> (YYYY-MM-DD) desde un ISO.
 const dateInputValue = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
+
+const planExpiryLabel = (subscription: CrmClient["subscription"], iso: string | null) => {
+  if (subscription === "free") return "Sin vencimiento";
+  if (!iso) return "Sin fecha registrada";
+  return `${new Date(iso).getTime() < Date.now() ? "Venció" : "Vence"} ${fmtDate(iso)}`;
+};
 
 // ══════════════════════════════════════════════════════════════════
 // Componente principal — lista/kanban de clientes + filtros + drawer de detalle
@@ -360,6 +378,8 @@ function ClientDrawer({
   const [noteInput, setNoteInput] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
+  const [changingActive, setChangingActive] = useState(false);
+  const [copyingLink, setCopyingLink] = useState(false);
   const { success: notifySuccess, error: notifyError } = useNotifications();
 
   // Carga del detalle + cierre con Escape.
@@ -442,8 +462,54 @@ function ClientDrawer({
     }
   };
 
+  const copyPublicMenuLink = async () => {
+    if (!detail?.user.slug || copyingLink) return;
+    setCopyingLink(true);
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/${detail.user.slug}/menu`);
+      notifySuccess("Enlace de la carta copiado.");
+    } catch {
+      notifyError("No se pudo copiar el enlace de la carta.");
+    } finally {
+      setCopyingLink(false);
+    }
+  };
+
+  const toggleClientActive = async () => {
+    if (!detail || changingActive) return;
+    const nextActive = !detail.user.active;
+    const confirmed = window.confirm(
+      nextActive
+        ? "¿Activar esta cuenta y permitir el acceso público?"
+        : "¿Desactivar esta cuenta? El cliente y su carta dejarán de estar accesibles."
+    );
+    if (!confirmed) return;
+
+    setChangingActive(true);
+    try {
+      const active = await setCrmClientActive(userID, nextActive);
+      setDetail((current) => current ? { ...current, user: { ...current.user, active } } : current);
+      onPatch(userID, { active });
+
+      // El servidor es la fuente del checklist; lo refrescamos porque el estado
+      // de la cuenta modifica el punto "Carta operativa".
+      const refreshed = await getCrmClient(userID).catch(() => null);
+      if (refreshed) setDetail(refreshed);
+
+      notifySuccess(active ? "Cuenta activada." : "Cuenta desactivada.");
+    } catch {
+      notifyError("No se pudo cambiar el estado de la cuenta.");
+    } finally {
+      setChangingActive(false);
+    }
+  };
+
   const u = detail?.user;
   const crm = detail?.crm;
+  const whatsappPhone = sanitizePhoneForWa(u?.contactInfo.number ?? null);
+  const onboardingPercent = detail?.onboarding.total
+    ? Math.round((detail.onboarding.completedCount / detail.onboarding.total) * 100)
+    : 0;
 
   return (
     <div className={s.drawerOverlay} onClick={onClose} role="dialog" aria-modal="true" aria-label="Detalle del cliente">
@@ -466,6 +532,39 @@ function ClientDrawer({
             </header>
 
             <div className={s.drawerBody}>
+              {/* ── Acciones operativas ── */}
+              <section className={s.section}>
+                <p className={s.sectionLabel}>Acciones rápidas</p>
+                <div className={s.actionGrid}>
+                  {whatsappPhone && (
+                    <a className={s.actionButton} href={`https://wa.me/${whatsappPhone}`} target="_blank" rel="noreferrer">
+                      WhatsApp
+                    </a>
+                  )}
+                  {u.contactInfo.mail && (
+                    <a className={s.actionButton} href={`mailto:${u.contactInfo.mail}`}>Email</a>
+                  )}
+                  {u.slug && (
+                    <>
+                      <a className={s.actionButton} href={`/${u.slug}/menu`} target="_blank" rel="noreferrer">
+                        Ver carta ↗
+                      </a>
+                      <button className={s.actionButton} onClick={copyPublicMenuLink} disabled={copyingLink} type="button">
+                        {copyingLink ? "Copiando…" : "Copiar enlace"}
+                      </button>
+                    </>
+                  )}
+                  <button
+                    className={`${s.actionButton} ${u.active ? s.actionDanger : s.actionPrimary}`}
+                    onClick={toggleClientActive}
+                    disabled={changingActive}
+                    type="button"
+                  >
+                    {changingActive ? "Guardando…" : (u.active ? "Desactivar cuenta" : "Activar cuenta")}
+                  </button>
+                </div>
+              </section>
+
               {/* ── Perfil / actividad ── */}
               <section className={s.section}>
                 <div className={s.metaGrid}>
@@ -482,15 +581,68 @@ function ClientDrawer({
                     <span className={s.metaValue}>{fmtDate(u.createdAt)}</span>
                   </div>
                   <div className={s.metaItem}>
-                    <span className={s.metaLabel}>Carga</span>
-                    <span className={s.metaValue}>{detail.activity.categoryCount} cat · {detail.activity.itemCount} prod</span>
+                    <span className={s.metaLabel}>Vigencia</span>
+                    <span className={s.metaValue}>{planExpiryLabel(u.subscription, u.subscriptionExpiresAt)}</span>
+                  </div>
+                  <div className={s.metaItem}>
+                    <span className={s.metaLabel}>Carta</span>
+                    <span className={s.metaValue}>{detail.activity.categoryCount} cat · {detail.activity.sectionCount} sec · {detail.activity.itemCount} prod</span>
+                  </div>
+                  <div className={s.metaItem}>
+                    <span className={s.metaLabel}>Delivery</span>
+                    <span className={s.metaValue}>{u.hasDelivery ? "Habilitado" : "No habilitado"}</span>
                   </div>
                 </div>
-                {u.slug && (
-                  <a className={s.slugLink} href={`/${u.slug}`} target="_blank" rel="noreferrer">
-                    Ver carta pública ↗
-                  </a>
-                )}
+              </section>
+
+              {/* ── Datos de contacto ── */}
+              <section className={s.section}>
+                <p className={s.sectionLabel}>Contacto</p>
+                <dl className={s.contactList}>
+                  <div className={s.contactRow}>
+                    <dt>Email</dt><dd>{u.contactInfo.mail || "Sin cargar"}</dd>
+                  </div>
+                  <div className={s.contactRow}>
+                    <dt>WhatsApp</dt><dd>{u.contactInfo.number ?? "Sin cargar"}</dd>
+                  </div>
+                  <div className={s.contactRow}>
+                    <dt>Dirección</dt><dd>{u.contactInfo.address || "Sin cargar"}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              {/* ── Onboarding calculado por el backend ── */}
+              <section className={s.section}>
+                <div className={s.onboardingHeader}>
+                  <p className={s.sectionLabel}>Onboarding</p>
+                  <span className={s.onboardingCount}>
+                    {detail.onboarding.completedCount}/{detail.onboarding.total}
+                  </span>
+                </div>
+                <div
+                  className={s.progressTrack}
+                  role="progressbar"
+                  aria-label="Progreso de onboarding"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={onboardingPercent}
+                >
+                  <span className={s.progressFill} style={{ width: `${onboardingPercent}%` }} />
+                </div>
+                <ul className={s.onboardingList}>
+                  {ONBOARDING_ITEMS.map((item) => {
+                    const done = detail.onboarding[item.key];
+                    return (
+                      <li key={item.key} className={`${s.onboardingItem} ${done ? s.onboardingDone : ""}`}>
+                        <span className={s.onboardingMark} aria-hidden>{done ? "✓" : "○"}</span>
+                        <span>
+                          <strong>{item.label}</strong>
+                          <small>{item.detail}</small>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
               </section>
 
               {/* ── Etapa ── */}

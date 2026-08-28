@@ -379,8 +379,34 @@ export interface CrmClient {
   nextFollowUp: string | null
 }
 
+export interface CrmClientDetailUser {
+  _id: string
+  username: string
+  slug: string
+  subscription: Subscription
+  subscriptionExpiresAt: string | null
+  active: boolean
+  hasDelivery: boolean
+  createdAt: string
+  contactInfo: Pick<ContactInfo, "businessName" | "mail" | "number" | "address">
+}
+
+export interface CrmOnboardingStatus {
+  businessInfo: boolean
+  contactChannel: boolean
+  schedule: boolean
+  branding: boolean
+  menuStructure: boolean
+  products: boolean
+  publicMenu: boolean
+  completedCount: number
+  total: number
+  completed: boolean
+}
+
 export interface CrmClientDetail {
-  user: User
+  user: CrmClientDetailUser
   crm: CrmProfile
   activity: { categoryCount: number; sectionCount: number; itemCount: number }
+  onboarding: CrmOnboardingStatus
 }

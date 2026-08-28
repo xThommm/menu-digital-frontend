@@ -1,0 +1,746 @@
+MENUDIGITAL
+REVISION TECNICA, CIBERSEGURIDAD Y PUNTOS PENDIENTES
+Fecha del relevamiento: 27 de agosto de 2026
+
+===============================================================================
+1. OBJETIVO Y ALCANCE
+===============================================================================
+
+Este documento registra la auditoria de los repositorios:
+
+- menu-digital-frontend
+- menu-digital-backend
+
+La revision se realizo en modo de solo lectura sobre el codigo funcional.
+No se implementaron correcciones de seguridad ni cambios de arquitectura.
+
+Alcance revisado:
+
+- 98 archivos versionados del frontend.
+- 55 archivos versionados del backend.
+- 153 archivos versionados en total.
+- 44.427 lineas de archivos de texto entre codigo, configuracion,
+  documentacion, tests y lockfiles.
+- Rutas, controllers, modelos, middlewares, helpers, componentes, contextos,
+  clientes HTTP, configuracion Vercel/Koyeb visible en repositorio, paquetes,
+  pruebas y cabeceras HTTP productivas.
+- Escaneo de secretos solo sobre archivos versionados. Los archivos .env
+  locales no fueron abiertos ni inspeccionados.
+
+Los archivos binarios, fuentes e imagenes fueron inventariados pero no tienen
+contenido semantico que pueda auditarse linea por linea como codigo.
+
+===============================================================================
+2. CONCLUSION EJECUTIVA
+===============================================================================
+
+MenuDigital tiene una base backend razonablemente solida para un SaaS real:
+el ownership multi-tenant, el gating de planes, la autenticacion de rutas, la
+separacion del CRM y la persistencia durable de pagos estan correctamente
+orientados.
+
+No obstante, existen cuatro superficies de riesgo alto que deben resolverse
+antes de considerar el sistema suficientemente endurecido:
+
+1. Generacion publica de PDF con HTML inyectable y navegador sin sandbox.
+2. Subida directa y reutilizable a Cloudinary desde el navegador.
+3. JWT, token de activacion y contraseña temporal persistidos en Web Storage,
+   combinados con ausencia de CSP en el frontend productivo.
+4. Rate limiting posiblemente mal identificado detras del proxy de Koyeb y
+   falta de limites especificos en endpoints costosos.
+
+Estos pendientes no impiden continuar con las vistas y funciones del CRM,
+pero cualquier nueva funcion administrativa debe mantener la autorizacion en
+backend, limitar la informacion personal devuelta y evitar ampliar las
+superficies anteriores.
+
+===============================================================================
+3. HALLAZGOS DE PRIORIDAD ALTA
+===============================================================================
+
+SEG-01 - PDF: INYECCION HTML, SSRF Y AGOTAMIENTO DE RECURSOS
+
+Estado: confirmado mediante inspeccion y prueba local no destructiva.
+
+Evidencia:
+
+- backend/src/controllers/itemController.js acepta y persiste Item.image como
+  una cadena enviada por el cliente.
+- backend/src/utils/menuPdfTemplate.js inserta item.image directamente dentro
+  del atributo src de una etiqueta img sin escapar el atributo.
+- backend/src/controllers/userController.js carga el HTML con page.setContent.
+- backend/src/utils/pdfBrowser.js inicia Puppeteer con --no-sandbox y
+  --disable-setuid-sandbox.
+- backend/src/routes/userRoutes.js publica la descarga de PDF sin login.
+
+Impacto:
+
+- Un dueño autenticado puede guardar un valor que rompa el atributo HTML.
+- El navegador automatizado puede efectuar solicitudes a URLs externas o
+  internas alcanzables desde el backend.
+- La combinacion permite una superficie de SSRF, exfiltracion y consumo de
+  CPU/memoria.
+- El endpoint publico puede invocarse repetidamente y solo depende del limite
+  general de la API.
+
+Resolucion propuesta:
+
+- Validar y normalizar toda URL de imagen en backend.
+- Aceptar solo URLs HTTPS pertenecientes a los recursos Cloudinary previstos.
+- Escapar atributos HTML, no solamente el texto visible.
+- Desactivar JavaScript en la pagina del PDF.
+- Interceptar requests de Puppeteer y permitir solo origenes necesarios.
+- Bloquear loopback, redes privadas, link-local y esquemas no HTTP/HTTPS.
+- Agregar limite dedicado, concurrencia maxima y, si es viable, cache del PDF.
+- Evaluar volver a ejecutar Chromium con sandbox real en el entorno de deploy.
+- Agregar tests de regresion de inyeccion, SSRF y limite de concurrencia.
+
+
+SEG-02 - CLOUDINARY: SUBIDA DIRECTA SIN AUTENTICACION
+
+Estado: confirmado en el bundle del frontend.
+
+Evidencia:
+
+- frontend/src/components/User/Panel/MenuEditor/MenuEditor.tsx contiene una URL
+  de upload y un preset, y sube directamente desde el navegador.
+- El flujo no pasa por JWT, ownership, limite por cuenta ni el storage propio
+  del backend.
+- Ya existen endpoints backend protegidos para subir imagenes de items, menus
+  y usuarios.
+
+Impacto:
+
+- Cualquier persona que inspeccione el bundle puede reutilizar el preset.
+- Posible consumo de almacenamiento, transformaciones y cuota de Cloudinary.
+- Se duplican dos flujos de subida con reglas diferentes.
+
+Problema adicional:
+
+- En los endpoints de item y menu, Multer/Cloudinary procesa el archivo antes
+  de que el controller confirme que el recurso pertenece al usuario.
+- Un request contra un ID ajeno puede ser rechazado despues de haber creado un
+  recurso huerfano en Cloudinary.
+
+Resolucion propuesta:
+
+- Retirar la subida directa del frontend.
+- Reutilizar el endpoint backend autenticado existente.
+- Verificar ownership antes de iniciar la subida.
+- Aplicar limite por usuario y cantidad de archivos.
+- Guardar public_id y eliminar/reemplazar el recurso anterior al editar.
+- Auditar y restringir el preset actual desde el panel de Cloudinary.
+- Revisar recursos huerfanos existentes.
+
+
+SEG-03 - SESION Y CREDENCIALES EN WEB STORAGE
+
+Estado: confirmado.
+
+Evidencia:
+
+- frontend/src/context/AuthProvider.tsx guarda JWT y datos de usuario en
+  localStorage.
+- frontend/src/components/Register/Register.tsx guarda la contraseña del alta
+  en texto plano dentro de sessionStorage.
+- frontend/src/components/Register/RegisterPlans.tsx mantiene la contraseña y
+  el token de activacion durante el flujo de Mercado Pago.
+- frontend/src/components/Register/RegisterSuccess.tsx copia el token de
+  activacion a localStorage.
+- backend/src/controllers/paymentController.js permite que ese token obtenga
+  un JWT nuevo cada vez mientras el registro siga vigente.
+
+Impacto:
+
+- Cualquier XSS futura o dependencia frontend comprometida podria leer JWT,
+  contraseña temporal y token de activacion.
+- Un JWT de administrador robado da acceso al CRM y datos de clientes.
+- El token de activacion se comporta como credencial reutilizable, no como un
+  intercambio de un solo uso.
+
+Controles positivos observados:
+
+- No se encontro dangerouslySetInnerHTML, eval ni new Function en el frontend.
+- React escapa normalmente los textos renderizados.
+
+Resolucion propuesta a corto plazo:
+
+- No conservar la contraseña despues de crear exitosamente la preferencia.
+- Convertir el token de activacion en intercambio de un solo uso.
+- Limpiar todos los datos pendientes en estados terminales.
+- Sincronizar expiracion del frontend con el JWT real del servidor.
+- Agregar una CSP estricta al frontend.
+
+Cambio de arquitectura futuro:
+
+- Reemplazar JWT en localStorage por cookie Secure, HttpOnly y SameSite.
+- Al migrar a cookies, agregar proteccion CSRF adecuada.
+- Crear/persistir el registro pendiente cifrado antes del redirect y conservar
+  en el navegador solamente un identificador opaco.
+
+
+SEG-04 - FRONTEND PRODUCTIVO SIN CABECERAS DE DEFENSA EN PROFUNDIDAD
+
+Estado: confirmado consultando la respuesta productiva.
+
+La respuesta de Vercel tiene HSTS, pero no se observaron:
+
+- Content-Security-Policy.
+- X-Content-Type-Options: nosniff.
+- Referrer-Policy.
+- Permissions-Policy.
+- Proteccion explicita contra framing.
+
+frontend/vercel.json solo contiene rewrites. frontend/index.html contiene un
+script inline para aplicar el tema, por lo que una CSP estricta necesitara
+mover ese script a un archivo o autorizar su hash exacto.
+
+Resolucion propuesta:
+
+- Definir las cabeceras en vercel.json.
+- Empezar CSP en Report-Only y revisar violaciones.
+- Limitar connect-src a la propia app, backend y servicios realmente usados.
+- Limitar img-src a Cloudinary/data/self segun la necesidad real.
+- Permitir Google Fonts explicitamente o, preferentemente, servir las fuentes
+  desde el propio proyecto.
+- Pasar a una CSP aplicada despues de validar login, pagos, carta y panel.
+
+
+SEG-05 - RATE LIMITING DETRAS DE KOYEB
+
+Estado: riesgo altamente probable; requiere verificacion de req.ip en runtime.
+
+Evidencia:
+
+- backend/src/app.js no configura trust proxy.
+- backend/src/middleware/rateLimiters.js depende de la IP que Express resuelva.
+- Koyeb entrega la IP real en X-Forwarded-For y documenta que solo la ultima IP
+  de la cadena puede considerarse certificada.
+
+Impacto posible:
+
+- Todos los clientes pueden compartir un contador correspondiente al proxy.
+- Un atacante podria provocar bloqueos globales o evadir protecciones si la IP
+  cambia entre proxies.
+- Login/registro pueden no tener la proteccion esperada.
+
+Resolucion propuesta:
+
+- Instrumentar temporalmente de forma segura req.ip y la forma del encabezado,
+  sin guardar datos personales de manera permanente.
+- Configurar una funcion de trust proxy acotada a la topologia de Koyeb.
+- No usar trust proxy=true de forma indiscriminada.
+- Agregar limites dedicados para:
+  * login y registro gratuito;
+  * creacion de preferencia de registro pago;
+  * consulta de estado de activacion;
+  * PDF;
+  * uploads;
+  * tracking publico.
+- Considerar clave combinada IP + usuario en rutas autenticadas.
+
+===============================================================================
+4. DEPENDENCIAS CON AVISOS DE SEGURIDAD
+===============================================================================
+
+Auditoria npm realizada el 27 de agosto de 2026.
+
+Frontend, dependencias de produccion:
+
+- 4 paquetes afectados.
+- 3 reportados como severidad alta.
+- 1 reportado como severidad moderada.
+
+Paquetes principales:
+
+- axios 1.16.0: avisos de recursion, prototype pollution, limites de cuerpo y
+  configuracion de proxy. Debe actualizarse a una version corregida.
+- react-router-dom/react-router 7.18.1: aviso alto en modo RSC. La app actual
+  usa BrowserRouter como SPA, por lo que el camino vulnerable no parece
+  alcanzable, pero corresponde actualizar.
+- dompurify 3.4.11: llega mediante jsPDF. El uso actual crea el PDF con API
+  grafica y no con html(), por lo que la alcanzabilidad es baja, pero debe
+  actualizarse transitivamente.
+- Las alertas de postcss, nanoid y brace-expansion del audit completo afectan
+  principalmente tooling/dev y deben incluirse en el mantenimiento del lock.
+
+Backend, dependencias de produccion:
+
+- 4 paquetes afectados.
+- 2 reportados como severidad alta.
+- 1 moderado.
+- 1 bajo.
+
+Paquetes principales:
+
+- mongoose 7.8.9: prototype pollution en casting de updates. La aplicacion
+  usa allowlists en muchos controllers, lo que reduce la exposicion, pero la
+  dependencia directa debe subir al parche corregido.
+- ip-address 10.2.0: clasificacion incorrecta de direcciones especiales. Es
+  transitiva de express-rate-limit y socks; actualizar el arbol.
+- brace-expansion: avisos de DoS en ramas transitivas usadas por ExcelJS.
+- body-parser 1.20.5: aviso bajo de limite de cuerpo bajo configuracion invalida.
+
+Tareas:
+
+- DEP-01: actualizar primero axios, react-router-dom y mongoose con cambios
+  minimos de version.
+- DEP-02: actualizar jsPDF/DOMPurify y verificar la generacion de QR/PDF.
+- DEP-03: resolver dependencias transitivas de ExcelJS y express-rate-limit.
+- DEP-04: ejecutar typecheck, lint, build, npm test y npm audit tras cada lote.
+- DEP-05: no ejecutar npm audit fix --force sin revisar el diff y breaking
+  changes.
+
+===============================================================================
+5. REGISTRO, AUTENTICACION Y ADMINISTRACION
+===============================================================================
+
+AUTH-01 - ACEPTACION DE TERMINOS EN REGISTRO PAGO
+
+- backend/src/routes/paymentRoutes.js valida acceptedTerms por truthiness.
+- Valores no booleanos como una cadena no vacia pueden aceptarse.
+- Debe exigirse acceptedTerms === true y rechazarse cualquier otro tipo.
+- La version de terminos debe registrarse siempre desde configuracion backend.
+
+AUTH-02 - POLITICA DE CONTRASEÑAS INCONSISTENTE
+
+- El registro gratuito rechaza una lista basica de contraseñas comunes.
+- El registro pago solo exige ocho caracteres.
+- Debe existir un unico helper backend usado por ambos flujos.
+- Mantener respuestas de login genericas para evitar enumeracion.
+
+AUTH-03 - SIN RECUPERACION DE CUENTA
+
+- El boton "Olvidaste tu contraseña" no tiene accion.
+- No existen endpoints de cambio o recuperacion de contraseña.
+- No hay tokenVersion, jti ni revocacion anticipada de JWT.
+
+Cambio de arquitectura futuro:
+
+- Diseñar recuperacion con tokens de un solo uso, hash en base, expiracion y
+  respuesta neutral para no confirmar si una cuenta existe.
+- Agregar revocacion de sesiones cuando cambie contraseña o se desactive una
+  cuenta.
+- Agregar MFA para administradores antes de ampliar operaciones sensibles.
+
+AUTH-04 - JWT ADMINISTRATIVO
+
+- El JWT contiene solo el ID y vence por defecto a los siete dias.
+- El backend vuelve a consultar User y bloquea cuentas inactivas, lo cual es
+  positivo.
+- No existe MFA ni una duracion distinta para administradores.
+- Considerar sesion admin mas corta y confirmacion reciente para acciones de
+  alto impacto.
+
+===============================================================================
+6. PAGOS Y MERCADO PAGO
+===============================================================================
+
+Controles positivos:
+
+- Precio y duracion se recalculan en backend.
+- Existe PaymentCheckout como snapshot de operacion, plan, meses, importe y
+  moneda.
+- PaymentTransaction persiste idempotencia y evita aplicar dos veces el mismo
+  paymentID.
+- El flujo de entitlement usa transacciones de MongoDB.
+- Se valida ambiente live/test.
+- La firma HMAC usa timingSafeEqual y compatibilidad acotada para el cambio de
+  UUID producido por Envoy/Koyeb.
+- Los secretos requeridos y HTTPS se validan al iniciar.
+
+PAY-01 - LOGS TEMPORALES Y ERRORES CRUDOS
+
+- Permanecen multiples logs [MP registro] de diagnostico temporal.
+- paymentRoutes.js imprime tambien el objeto error completo.
+- paymentController.js registra query, manifest, hash recibido, hash esperado
+  y longitud del secreto cuando una firma no coincide.
+- utils/handleError.js ejecuta console.error(error) para cualquier excepcion.
+
+Riesgo:
+
+- Los errores de SDK/proveedor pueden contener request, response, URLs o datos
+  internos no apropiados para logs productivos.
+- Los campos controlados por un atacante pueden generar log injection o ruido.
+
+Resolucion:
+
+- Eliminar diagnosticos temporales una vez cerrado el problema original.
+- Mantener correlation ID, etapa, IDs internos, plan, meses, importes numericos
+  y booleanos de presencia.
+- No registrar req.body, contraseñas, emails, tokens, secretos, Authorization,
+  firmas completas ni init_point completo.
+- Implementar un logger estructurado con redaccion central si el volumen lo
+  justifica, evitando una dependencia nueva si no aporta beneficio claro.
+
+PAY-02 - CHECKOUT LEGACY SIN SNAPSHOT ESTRICTO
+
+- Un pago sin checkout_id continua por el camino legacy.
+- Ese camino no compara necesariamente plan, meses, importe y moneda contra un
+  snapshot durable.
+
+Resolucion:
+
+- Definir una fecha de corte o version minima.
+- Mantener legacy solo para preferencias antiguas identificables.
+- Rechazar nuevas operaciones sin checkout_id.
+- Medir primero si aun existen transacciones legacy pendientes.
+
+PAY-03 - TOKEN DE ACTIVACION REUTILIZABLE
+
+- El endpoint de estado puede emitir un JWT nuevo varias veces durante la
+  vigencia del PendingRegistration.
+- Convertir el token en credencial de un solo intercambio o rotarlo al emitir
+  la primera sesion.
+
+PAY-04 - VALIDACION E2E PRODUCTIVA
+
+- Los tests locales y el simulador no prueban el circuito real completo.
+- Sigue siendo obligatorio verificar con comprador y medio de pago distintos
+  del vendedor:
+  * preferencia, plan, meses, importe y moneda;
+  * webhook firmado;
+  * PaymentCheckout y PaymentTransaction;
+  * plan y vencimiento en User;
+  * evento CRM;
+  * redirect;
+  * Dashboard y AuthContext.
+
+===============================================================================
+7. EXCEL, MODELOS Y CALIDAD DE DATOS
+===============================================================================
+
+DATA-01 - IMPORTACION XLSX
+
+- El archivo comprimido se limita a 5 MB en memoria.
+- No existen limites de hojas, filas, columnas, celdas o tamaño descomprimido.
+- Un XLSX comprimido especialmente construido puede consumir mucha memoria o
+  CPU durante workbook.xlsx.load.
+- La confirmacion procesa filas individualmente y puede quedar parcialmente
+  aplicada.
+- Algunos findByIdAndUpdate de la importacion no usan runValidators.
+- Se devuelven err.message por fila al usuario autenticado.
+
+Resolucion:
+
+- Validar MIME, extension y firma ZIP basica.
+- Limitar filas, columnas y celdas por hoja antes de aplicar cambios.
+- Limitar longitud de cada celda.
+- Ejecutar runValidators en updates.
+- Validar todo el workbook antes de escribir.
+- Definir si el producto necesita operacion atomica o resultado parcial
+  explicito. Usar una transaccion es un cambio de comportamiento que debe
+  decidirse antes de implementarlo.
+
+DATA-02 - VALIDACION DE MODELOS
+
+- User, Menu, Item y CrmProfile no definen maxLength en la mayoria de textos.
+- Item no impone minimos/rangos en todos los precios desde el schema.
+- User.contactInfo, social, location y Item.apt usan Object libre.
+- User.media admite URLs arbitrarias al editar el perfil.
+- CrmProfile permite arrays de tags y notas sin limites de cantidad/tamaño.
+
+Resolucion:
+
+- Definir limites razonables de negocio en backend y schema.
+- Mantener allowlists por endpoint.
+- Validar URLs de imagen y campos sociales.
+- Limitar tags, notas y longitud de texto CRM.
+- Normalizar telefono como string para no perder ceros iniciales.
+
+DATA-03 - CICLO DE VIDA DE IMAGENES
+
+- Eliminar una imagen de usuario solo elimina la referencia MongoDB.
+- Reemplazar portada/item/menu no elimina necesariamente el recurso anterior.
+- Guardar public_id junto a secure_url y realizar borrado controlado.
+- La eliminacion debe ocurrir solo despues de confirmar ownership.
+
+DATA-04 - ANALITICAS MANIPULABLES
+
+- PageView aumenta con cada consulta publica a la carta.
+- ItemView aumenta con cada llamada publica al endpoint de vista.
+- No existe deduplicacion, identificacion de bots ni limite especifico.
+- Las metricas Pro deben considerarse conteos de eventos, no visitantes
+  unicos confiables, hasta endurecer el tracking.
+
+===============================================================================
+8. CRM Y PANEL ADMIN
+===============================================================================
+
+Controles positivos:
+
+- CrmProfile vive en una coleccion separada de User.
+- Todas las rutas CRM pasan por protect + isAdmin.
+- El listado usa una proyeccion acotada.
+- El detalle valida ObjectId y comprueba que el usuario exista.
+- Las notas guardan autor y timestamp.
+- El cambio de estado de cuenta evita desactivar al propio admin y modificar a
+  otro administrador.
+
+CRM-SEC-01 - MINIMIZACION DE DATOS
+
+- adminController.getAllUsers devuelve documentos User completos salvo
+  password, aunque las vistas no necesitan todos los campos.
+- crmController.getClient tambien devuelve User completo salvo password.
+- Definir DTOs/proyecciones explicitas por vista.
+- No devolver acceptedTerms interno, media completa, schedule u otros datos si
+  una pantalla no los necesita.
+
+CRM-SEC-02 - LIMITES Y VALIDACION
+
+- Limitar longitud de nota, cantidad de tags, longitud por tag y cantidad de
+  notas retornadas.
+- Validar nextFollowUp como fecha valida y dentro de un rango razonable.
+- Agregar paginacion al historial antes de que el array crezca.
+
+CRM-SEC-03 - AUDITORIA ADMINISTRATIVA
+
+Cambio de arquitectura futuro:
+
+- Crear un registro administrativo inmutable para acciones sensibles:
+  actor, accion, cliente, fecha, resultado y correlation ID.
+- No guardar secretos, cuerpos completos ni informacion innecesaria.
+- Diferenciar eventos automaticos de negocio, notas CRM y auditoria de
+  seguridad; tienen finalidades y retenciones distintas.
+
+CRM-SEC-04 - EXPORTACION
+
+- La exportacion XLSX esta protegida por admin, lo cual es correcto.
+- Agregar paginacion/streaming solo si el volumen lo necesita.
+- Registrar la accion de exportar porque produce una copia transportable de
+  datos de clientes.
+- Limitar columnas a las estrictamente necesarias.
+
+CRM-SEC-05 - NUEVAS FUNCIONES DEL ADMIN
+
+Toda funcion nueva debe cumplir:
+
+- Ruta backend protegida con protect + isAdmin.
+- Validacion y allowlist en servidor.
+- Respuesta con proyeccion minima.
+- Confirmacion explicita para acciones destructivas o de alto impacto.
+- Evento CRM cuando tenga valor comercial.
+- Evento de auditoria cuando modifique seguridad, plan, acceso o datos.
+- No permitir que el frontend decida permisos o planes.
+- Tests de 401, 403, ID invalido, usuario inexistente y caso exitoso.
+
+===============================================================================
+9. FRONTEND: CALIDAD Y MANTENIBILIDAD
+===============================================================================
+
+FE-01 - CLIENTES HTTP DUPLICADOS
+
+- Existe un cliente Axios con interceptor JWT.
+- Existe apiFetch con timeout y clasificacion de errores.
+- Muchos componentes usan fetch directamente.
+- El comportamiento ante 401, timeout, JSON invalido y base URL varia segun
+  la pantalla.
+
+Resolucion:
+
+- Elegir un unico cliente HTTP gradual, sin reescribir todo de una vez.
+- Migrar primero CRM/admin y luego los flujos de usuario.
+- Centralizar token, timeout, errores y respuesta 401.
+
+FE-02 - MODULOS API SIN USO O DESACTUALIZADOS
+
+- users.ts, menus.ts, items.ts y massive.ts no son la ruta principal usada por
+  los componentes actuales.
+- menus.ts referencia un endpoint publico que no coincide con las rutas
+  backend actuales.
+- Eliminar codigo muerto solo despues de confirmar imports y migracion.
+
+FE-03 - EXPIRACION JWT HARDCODEADA
+
+- AuthProvider asume siete dias aunque el backend permite JWT_EXPIRES_IN.
+- Debe leerse exp desde el token validado o recibirse expiresAt del backend.
+- refreshUser deberia ejecutarse al iniciar para no confiar solo en User de
+  localStorage. La seguridad real igualmente permanece en el backend.
+
+FE-04 - IMAGENES REMOTAS Y PRIVACIDAD
+
+- URLs de imagen controladas por el dueño se muestran en la carta publica.
+- Un host externo recibe IP, user-agent y referrer del visitante.
+- Normalizar imagenes por Cloudinary y definir Referrer-Policy.
+
+FE-05 - REDIRECT DE MERCADO PAGO
+
+- window.location.href usa init_point devuelto por backend.
+- El origen es normalmente Mercado Pago, pero conviene validar HTTPS y host
+  permitido antes de redirigir como defensa en profundidad.
+
+===============================================================================
+10. BACKEND: CALIDAD Y MANTENIBILIDAD
+===============================================================================
+
+BE-01 - VALIDACION DISPERSA
+
+- Las reglas se implementan manualmente en cada controller/ruta.
+- Esto produjo diferencias como acceptedTerms y contraseñas entre altas.
+- Antes de agregar una libreria, extraer helpers pequeños compartidos para
+  reglas repetidas.
+
+BE-02 - APP Y SERVIDOR ACOPLADOS
+
+- src/app.js configura Express, conecta DB y ejecuta app.listen.
+- Esto dificulta tests de integracion con una app importable.
+- Separar createApp/app de server/listen cuando se agreguen pruebas HTTP.
+
+BE-03 - ERRORES Y OBSERVABILIDAD
+
+- Las respuestas al cliente son genericas, lo cual es positivo.
+- El log interno imprime errores completos.
+- Definir niveles, correlation ID y redaccion de campos sensibles.
+
+BE-04 - DNS FORZADO
+
+- config/db.js fuerza 8.8.8.8 y 1.1.1.1 para resolver SRV.
+- Esto evita un problema operativo conocido, pero introduce dependencia y
+  exposicion de consultas DNS a terceros.
+- Revisar periodicamente si Koyeb todavia necesita este workaround.
+
+BE-05 - CORS
+
+- Existe allowlist explicita para produccion y desarrollo.
+- app.options('*', cors()) es redundante con el middleware CORS anterior y
+  puede generar confusion futura.
+- Centralizar una unica configuracion y mover origenes a configuracion validada
+  cuando se agreguen dominios personalizados.
+
+===============================================================================
+11. PRUEBAS Y VERIFICACIONES REALIZADAS
+===============================================================================
+
+Frontend:
+
+- npm run typecheck: correcto.
+- npm run lint: correcto.
+- npm run build: correcto.
+- Vite proceso 418 modulos y genero el build productivo.
+- No existe suite automatizada de tests frontend.
+
+Backend:
+
+- npm test: 69 tests, 69 correctos, 0 fallos.
+- node --check: 50 archivos JavaScript correctos.
+
+Cobertura backend destacada:
+
+- Entorno productivo/test.
+- Ofertas y horarios.
+- Registro pendiente cifrado.
+- Slugs.
+- Checkouts y pagos.
+- Webhook, HMAC, Envoy y firma invalida.
+- Idempotencia, renovaciones, vencimientos y CRM asociado a pagos.
+
+Cobertura faltante prioritaria:
+
+- PDF e inyeccion de atributos.
+- SSRF/request interception de Puppeteer.
+- Upload antes/despues de ownership.
+- Limites por usuario y proxy real.
+- Rutas completas de CRM/admin con 401/403.
+- XLSX hostil, limites de filas y operacion parcial.
+- Registro pago con acceptedTerms no booleano.
+- Activacion de un solo uso.
+- Tests frontend de sesion y registro.
+
+===============================================================================
+12. CONTROLES QUE YA ESTAN BIEN RESUELTOS
+===============================================================================
+
+- Ownership de Menu e Item en backend.
+- Gating de planes y templates en backend.
+- JWT verificado con algoritmo HS256 explicito.
+- User consultado en cada request y cuenta inactiva bloqueada.
+- Password con bcrypt y select:false.
+- Secretos obligatorios con longitud minima.
+- Credenciales temporales pagas cifradas con AES-256-GCM.
+- Helmet en backend.
+- Allowlist CORS.
+- Sanitizacion NoSQL en rutas compatibles.
+- Limite general y limite de login/registro existentes.
+- Respuestas de error genericas.
+- PaymentCheckout durable.
+- PaymentTransaction e idempotencia.
+- Transacciones MongoDB para entitlements.
+- Validacion de importe, moneda, plan, meses y ambiente.
+- Firma HMAC con comparacion timing-safe.
+- CRM aislado del modelo User y protegido por admin.
+- Indices unicos en datos criticos.
+- No se encontraron secretos reales en archivos versionados.
+- .env esta ignorado en ambos repositorios.
+- No se encontro render HTML peligroso en la SPA.
+
+===============================================================================
+13. BACKLOG PRIORIZADO PARA EL FUTURO
+===============================================================================
+
+FASE 1 - CONTENCION INMEDIATA
+
+[ ] SEG-01 Corregir template y aislamiento del PDF.
+[ ] SEG-01 Agregar limite/concurrencia/cache al PDF.
+[ ] SEG-02 Retirar upload directo a Cloudinary.
+[ ] SEG-02 Verificar ownership antes del upload.
+[ ] SEG-04 Agregar cabeceras y CSP al frontend.
+[ ] DEP-01 Actualizar axios, react-router-dom y mongoose.
+[ ] AUTH-01 Exigir acceptedTerms === true.
+[ ] AUTH-02 Unificar politica de contraseña.
+[ ] PAY-01 Retirar logs temporales y errores crudos.
+
+FASE 2 - ENDURECIMIENTO DEL FLUJO
+
+[ ] SEG-03 No persistir contraseña durante el pago.
+[ ] PAY-03 Convertir token de activacion en un solo uso.
+[ ] SEG-05 Verificar y configurar IP real en Koyeb.
+[ ] SEG-05 Limites dedicados para PDF, pagos, estado y uploads.
+[ ] PAY-02 Definir corte para checkouts legacy.
+[ ] DATA-01 Limitar XLSX y validar antes de escribir.
+[ ] DATA-02 Agregar limites de schema/DTO.
+[ ] DATA-03 Implementar eliminacion de recursos Cloudinary.
+[ ] CRM-SEC-01 Minimizar DTOs admin/CRM.
+[ ] CRM-SEC-02 Limitar tags, notas y fechas.
+
+FASE 3 - CAMBIOS DE ARQUITECTURA
+
+[ ] Migrar autenticacion a cookies HttpOnly + CSRF.
+[ ] Agregar revocacion/tokenVersion.
+[ ] Implementar recuperacion de contraseña segura.
+[ ] Implementar MFA para administradores.
+[ ] Separar app Express de server/listen.
+[ ] Crear auditoria administrativa inmutable.
+[ ] Definir atomicidad/transaccion para importacion masiva.
+[ ] Consolidar el cliente HTTP frontend.
+
+FASE 4 - VALIDACION Y OPERACION
+
+[ ] Agregar tests de integracion de seguridad.
+[ ] Ejecutar E2E real de Mercado Pago.
+[ ] Revisar CSP Report-Only y pasar a enforcement.
+[ ] Auditar recursos huerfanos de Cloudinary.
+[ ] Revisar npm audit en cada lote de actualizacion.
+[ ] Documentar rotacion de secretos y respuesta a incidente.
+[ ] Definir respaldo/restauracion probado de MongoDB Atlas.
+
+===============================================================================
+14. CRITERIO PARA CONTINUAR CON EL CRM ADMIN
+===============================================================================
+
+Se puede continuar con las funciones y vistas del CRM manteniendo estas reglas:
+
+1. No ampliar getAllUsers con mas datos; usar DTOs especificos.
+2. Toda accion operativa debe existir en backend y usar protect + isAdmin.
+3. El frontend solo refleja permisos y estado; nunca los decide.
+4. Planes, vencimientos y activaciones deben pasar por reglas de dominio y no
+   por updates libres enviados desde el navegador.
+5. Acciones sensibles deben pedir confirmacion y quedar registradas.
+6. No almacenar secretos, pagos completos ni cuerpos de requests en notas CRM.
+7. Mantener notas comerciales separadas de auditoria de seguridad.
+8. Agregar paginacion y filtros antes de que las colecciones crezcan.
+9. Reutilizar tokens --admin-* y componentes compartidos del panel.
+10. Agregar pruebas backend por cada nueva operacion administrativa.
+
+Este documento queda como registro y backlog. Los puntos no deben corregirse
+en bloque ni mezclarse con cambios de CRM sin una decision explicita, porque
+varios afectan autenticacion, pagos, almacenamiento y arquitectura productiva.

@@ -7,8 +7,8 @@ import Spinner from "./Spinner";
 import styles from "./UpgradeModal.module.css";
 
 const PAID_PLANS = {
-  basic: { price: 2_000 },
-  pro: { price: 5_000 },
+  basic: { price: 29_999 },
+  pro: { price: 49_999 },
 } as const;
 
 const MONTH_OPTIONS = [

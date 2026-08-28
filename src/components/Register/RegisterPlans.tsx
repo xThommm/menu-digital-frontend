@@ -40,7 +40,7 @@ const PLANS: {
   {
     id: "basic",
     name: "Básico",
-    price: 2000,
+    price: 29999,
     description: "Para locales en crecimiento",
     features: [
       "Hasta 50 productos",
@@ -54,7 +54,7 @@ const PLANS: {
   {
     id: "pro",
     name: "Pro",
-    price: 5000,
+    price: 49999,
     description: "Máximo control",
     features: [
       "Todo lo del plan Básico",

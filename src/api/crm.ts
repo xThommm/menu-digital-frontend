@@ -15,6 +15,12 @@ export const getCrmClient = async (userID: string): Promise<CrmClientDetail> => 
   return res.data
 }
 
+// PATCH /api/admin/users/:userID/active → activa o desactiva una cuenta
+export const setCrmClientActive = async (userID: string, active: boolean): Promise<boolean> => {
+  const res = await apiClient.patch(`/admin/users/${userID}/active`, { active })
+  return res.data.user.active
+}
+
 // PATCH /api/admin/crm/clients/:userID → actualiza etapa / tags / próximo seguimiento
 export const updateCrmProfile = async (
   userID: string,

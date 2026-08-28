@@ -454,18 +454,98 @@
   margin: 0;
 }
 
+/* Acciones operativas */
+.actionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.actionButton {
+  min-height: var(--control-min-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--admin-text-secondary);
+  background: var(--admin-bg-raised);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  padding: 0.5rem 0.7rem;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color var(--admin-transition), color var(--admin-transition), background var(--admin-transition);
+}
+.actionButton:hover:not(:disabled) { border-color: var(--admin-gold); color: var(--admin-gold); }
+.actionButton:disabled { opacity: 0.55; cursor: not-allowed; }
+.actionPrimary {
+  color: var(--admin-success-text);
+  background: var(--admin-success-bg);
+  border-color: var(--admin-success-border);
+}
+.actionDanger {
+  color: var(--admin-red-text);
+  background: var(--admin-red-bg);
+  border-color: var(--admin-red-border);
+}
+
 /* Meta / actividad */
 .metaGrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
 .metaItem { display: flex; flex-direction: column; gap: 3px; }
 .metaLabel { font-size: var(--text-xs); color: var(--admin-text-muted); }
 .metaValue { font-size: var(--text-sm); color: var(--admin-text-primary); font-weight: 500; }
-.slugLink {
-  font-size: var(--text-sm);
-  color: var(--admin-gold);
-  align-self: flex-start;
-  transition: opacity var(--admin-transition);
+.contactList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
 }
-.slugLink:hover { opacity: 0.8; }
+.contactRow {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.contactRow dt { color: var(--admin-text-muted); }
+.contactRow dd { color: var(--admin-text-primary); margin: 0; overflow-wrap: anywhere; }
+
+/* Onboarding */
+.onboardingHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.onboardingCount {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--admin-text-warm);
+  font-variant-numeric: tabular-nums;
+}
+.progressTrack {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  background: var(--admin-bg-elevated);
+  border-radius: var(--radius-full);
+}
+.progressFill {
+  display: block;
+  height: 100%;
+  background: var(--admin-success-core);
+  border-radius: inherit;
+  transition: width var(--admin-transition);
+}
+.onboardingList { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.onboardingItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--admin-text-muted);
+  font-size: var(--text-sm);
+}
+.onboardingItem strong { display: block; color: var(--admin-text-secondary); font-weight: 500; }
+.onboardingItem small { display: block; margin-top: 1px; color: var(--admin-text-muted); font-size: var(--text-xs); }
+.onboardingMark { width: 18px; flex-shrink: 0; color: var(--admin-text-faint); font-weight: 700; text-align: center; }
+.onboardingDone .onboardingMark,
+.onboardingDone strong { color: var(--admin-success-text); }
 
 /* Etapa */
 .stagePicker { display: flex; flex-wrap: wrap; gap: var(--space-2); }
@@ -638,6 +718,7 @@
 
 @media (max-width: 420px) {
   .metaGrid { grid-template-columns: 1fr; }
+  .actionGrid { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
