@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import type { CrmClient, CrmClientDetail, CrmStage } from "../../../types";
+import { Link, useSearchParams } from "react-router-dom";
+import type { AdminPayment, CrmClient, CrmClientDetail, CrmStage } from "../../../types";
 import {
   listCrmClients,
   getCrmClient,
@@ -9,8 +10,16 @@ import {
   exportCrmClients,
   setCrmClientActive,
 } from "../../../api/crm";
+import { listAdminPayments } from "../../../api/adminPayments";
 import { useNotifications } from "../../../context/useNotifications";
 import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
+import {
+  ENTITLEMENT_LABEL,
+  OPERATION_LABEL,
+  PAYMENT_STATUS_LABEL,
+  formatPaymentAmount,
+  formatPaymentDate,
+} from "../../../lib/adminPayments";
 import { PLAN_LABEL } from "../../../lib/plans";
 import { sanitizePhoneForWa } from "../../../lib/whatsapp";
 import s from "./CrmClients.module.css";
@@ -39,10 +48,20 @@ const ONBOARDING_ITEMS = [
 const fmtDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" }) : "";
 
+// Los seguimientos son días de calendario (no instantes). El backend los
+// persiste como Date a medianoche UTC, así que usamos YYYY-MM-DD para evitar
+// que Buenos Aires los muestre como el día anterior.
+const calendarDate = (iso: string) => {
+  const [year, month, day] = iso.slice(0, 10).split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+const fmtFollowUpDate = (iso: string) =>
+  calendarDate(iso).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
+
 // Una fecha de seguimiento está "vencida" si ya pasó (comparando por día).
 const isOverdue = (iso: string | null) => {
   if (!iso) return false;
-  const d = new Date(iso);
+  const d = calendarDate(iso);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return d < today;
@@ -74,16 +93,18 @@ const planExpiryLabel = (subscription: CrmClient["subscription"], iso: string | 
 // ══════════════════════════════════════════════════════════════════
 export default function CrmClients() {
   const { success: notifySuccess, error: notifyError } = useNotifications();
+  const [urlParams, setUrlParams] = useSearchParams();
   const [clients, setClients] = useState<CrmClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useFeedbackMessage("error");
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<CrmStage | "all">("all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedId = urlParams.get("client");
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [onlyOverdue, setOnlyOverdue] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [dragOverStage, setDragOverStage] = useState<CrmStage | null>(null);
+  const [movingClientId, setMovingClientId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,20 +127,34 @@ export default function CrmClients() {
   const patchClient = useCallback((userID: string, patch: Partial<CrmClient>) => {
     setClients((prev) => prev.map((c) => (c._id === userID ? { ...c, ...patch } : c)));
   }, []);
-  const closeDrawer = useCallback(() => setSelectedId(null), []);
+  const openDrawer = useCallback((userID: string) => {
+    const next = new URLSearchParams(urlParams);
+    next.set("client", userID);
+    setUrlParams(next, { replace: true });
+  }, [setUrlParams, urlParams]);
+  const closeDrawer = useCallback(() => {
+    const next = new URLSearchParams(urlParams);
+    next.delete("client");
+    setUrlParams(next, { replace: true });
+  }, [setUrlParams, urlParams]);
 
-  // Cambia de etapa al soltar una tarjeta en otra columna del kanban.
-  // Optimista, igual que saveProfile del drawer.
+  // Cambia de etapa al soltar una tarjeta. Se refleja recién cuando el servidor
+  // confirma para no mostrar como guardado un movimiento que pudo fallar.
   const moveToStage = useCallback(async (userID: string, stage: CrmStage) => {
-    patchClient(userID, { stage });
+    const current = clients.find((client) => client._id === userID);
+    if (!current || current.stage === stage || movingClientId) return;
+
+    setMovingClientId(userID);
     try {
       await updateCrmProfile(userID, { stage });
+      patchClient(userID, { stage });
       notifySuccess("Etapa del cliente actualizada.");
     } catch {
       notifyError("No se pudo guardar la nueva etapa del cliente.");
-      /* si falla, el próximo refresh corrige */
+    } finally {
+      setMovingClientId(null);
     }
-  }, [notifyError, notifySuccess, patchClient]);
+  }, [clients, movingClientId, notifyError, notifySuccess, patchClient]);
 
   // Conteo por etapa (para los chips de filtro).
   const countByStage = (stage: CrmStage) => clients.filter((c) => c.stage === stage).length;
@@ -267,7 +302,7 @@ export default function CrmClients() {
             <ul className={s.clientList}>
               {filtered.map((c) => (
                 <li key={c._id}>
-                  <button className={s.clientRow} onClick={() => setSelectedId(c._id)} type="button">
+                  <button className={s.clientRow} onClick={() => openDrawer(c._id)} type="button">
                     <span className={s.stageDot} style={{ background: STAGE_META[c.stage].color }} title={STAGE_META[c.stage].label} />
                     <span className={s.clientMain}>
                       <span className={s.clientName}>
@@ -278,7 +313,7 @@ export default function CrmClients() {
                         {!c.active && <span className={s.inactiveTag}>Inactivo</span>}
                         {c.nextFollowUp && (
                           <span className={`${s.followUp} ${isOverdue(c.nextFollowUp) ? s.followUpOverdue : ""}`}>
-                            {isOverdue(c.nextFollowUp) ? "Seguimiento vencido" : "Seguir"} · {fmtDate(c.nextFollowUp)}
+                            {isOverdue(c.nextFollowUp) ? "Seguimiento vencido" : "Seguir"} · {fmtFollowUpDate(c.nextFollowUp)}
                           </span>
                         )}
                       </span>
@@ -318,13 +353,13 @@ export default function CrmClients() {
                     {stClients.map((c) => (
                       <div
                         key={c._id}
-                        className={s.kanbanCard}
-                        draggable
+                        className={`${s.kanbanCard} ${movingClientId === c._id ? s.kanbanCardMoving : ""}`}
+                        draggable={movingClientId !== c._id}
                         onDragStart={(e) => e.dataTransfer.setData("text/plain", c._id)}
-                        onClick={() => setSelectedId(c._id)}
+                        onClick={() => openDrawer(c._id)}
                         role="button"
                         tabIndex={0}
-                        onKeyDown={(e) => { if (e.key === "Enter") setSelectedId(c._id); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") openDrawer(c._id); }}
                       >
                         <span className={s.kanbanCardName}>
                           {c.businessName || `@${c.username}`}
@@ -335,7 +370,7 @@ export default function CrmClients() {
                         </span>
                         {c.nextFollowUp && (
                           <span className={`${s.followUp} ${isOverdue(c.nextFollowUp) ? s.followUpOverdue : ""}`}>
-                            {fmtDate(c.nextFollowUp)}
+                            {fmtFollowUpDate(c.nextFollowUp)}
                           </span>
                         )}
                       </div>
@@ -374,10 +409,15 @@ function ClientDrawer({
 }) {
   const [detail, setDetail] = useState<CrmClientDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [payments, setPayments] = useState<AdminPayment[]>([]);
+  const [paymentsTotal, setPaymentsTotal] = useState(0);
+  const [paymentsLoading, setPaymentsLoading] = useState(true);
+  const [paymentsError, setPaymentsError] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [noteInput, setNoteInput] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [changingActive, setChangingActive] = useState(false);
   const [copyingLink, setCopyingLink] = useState(false);
   const { success: notifySuccess, error: notifyError } = useNotifications();
@@ -386,17 +426,30 @@ function ClientDrawer({
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      try {
-        const d = await getCrmClient(userID);
-        if (!cancelled) setDetail(d);
-      } catch {
-        if (!cancelled) {
-          notifyError("No se pudo cargar el detalle del cliente.");
-          onClose();
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+      setLoading(true);
+      setPaymentsLoading(true);
+      setPaymentsError(false);
+      const [detailResult, paymentsResult] = await Promise.allSettled([
+        getCrmClient(userID),
+        listAdminPayments({ userID, page: 1, limit: 5 }),
+      ]);
+      if (cancelled) return;
+
+      if (detailResult.status === "rejected") {
+        notifyError("No se pudo cargar el detalle del cliente.");
+        onClose();
+        return;
       }
+      setDetail(detailResult.value);
+      setLoading(false);
+
+      if (paymentsResult.status === "fulfilled") {
+        setPayments(paymentsResult.value.payments);
+        setPaymentsTotal(paymentsResult.value.pagination.total);
+      } else {
+        setPaymentsError(true);
+      }
+      setPaymentsLoading(false);
     };
     load();
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -404,32 +457,38 @@ function ClientDrawer({
     return () => { cancelled = true; window.removeEventListener("keydown", onKey); };
   }, [notifyError, userID, onClose]);
 
-  // Guarda un cambio de etapa/tags/seguimiento y sincroniza el estado local +
-  // la fila del listado (onPatch). Optimista: refleja el cambio enseguida.
+  // Guarda etapa/tags/seguimiento y actualiza la UI solo con la respuesta
+  // confirmada por el servidor. También bloquea cambios superpuestos.
   const saveProfile = async (patch: Partial<Pick<CrmClientDetail["crm"], "stage" | "tags" | "nextFollowUp">>) => {
-    if (!detail) return;
-    setDetail({ ...detail, crm: { ...detail.crm, ...patch } });
-    onPatch(userID, patch as Partial<CrmClient>);
+    if (!detail || savingProfile) return false;
+    setSavingProfile(true);
     try {
       const updated = await updateCrmProfile(userID, patch);
       setDetail((d) => (d ? { ...d, crm: updated } : d));
+      const listPatch: Partial<CrmClient> = {};
+      if (patch.stage !== undefined) listPatch.stage = updated.stage;
+      if (patch.tags !== undefined) listPatch.tags = updated.tags;
+      if (patch.nextFollowUp !== undefined) listPatch.nextFollowUp = updated.nextFollowUp;
+      onPatch(userID, listPatch);
       notifySuccess("Perfil de CRM actualizado.");
+      return true;
     } catch {
       notifyError("No se pudo guardar el cambio en el perfil de CRM.");
-      /* si falla, el próximo fetch corrige; para un panel interno alcanza */
+      return false;
+    } finally {
+      setSavingProfile(false);
     }
   };
 
-  const addTag = () => {
+  const addTag = async () => {
     const t = tagInput.trim();
-    if (!t || !detail) return;
+    if (!t || !detail || savingProfile) return;
     if (detail.crm.tags.includes(t)) { setTagInput(""); return; }
-    saveProfile({ tags: [...detail.crm.tags, t] });
-    setTagInput("");
+    if (await saveProfile({ tags: [...detail.crm.tags, t] })) setTagInput("");
   };
   const removeTag = (tag: string) => {
-    if (!detail) return;
-    saveProfile({ tags: detail.crm.tags.filter((x) => x !== tag) });
+    if (!detail || savingProfile) return;
+    void saveProfile({ tags: detail.crm.tags.filter((x) => x !== tag) });
   };
 
   const submitNote = async () => {
@@ -506,9 +565,10 @@ function ClientDrawer({
 
   const u = detail?.user;
   const crm = detail?.crm;
+  const onboarding = detail?.onboarding;
   const whatsappPhone = sanitizePhoneForWa(u?.contactInfo.number ?? null);
-  const onboardingPercent = detail?.onboarding.total
-    ? Math.round((detail.onboarding.completedCount / detail.onboarding.total) * 100)
+  const onboardingPercent = onboarding?.total
+    ? Math.round((onboarding.completedCount / onboarding.total) * 100)
     : 0;
 
   return (
@@ -612,11 +672,11 @@ function ClientDrawer({
               </section>
 
               {/* ── Onboarding calculado por el backend ── */}
-              <section className={s.section}>
+              {onboarding && <section className={s.section}>
                 <div className={s.onboardingHeader}>
                   <p className={s.sectionLabel}>Onboarding</p>
                   <span className={s.onboardingCount}>
-                    {detail.onboarding.completedCount}/{detail.onboarding.total}
+                    {onboarding.completedCount}/{onboarding.total}
                   </span>
                 </div>
                 <div
@@ -631,7 +691,7 @@ function ClientDrawer({
                 </div>
                 <ul className={s.onboardingList}>
                   {ONBOARDING_ITEMS.map((item) => {
-                    const done = detail.onboarding[item.key];
+                    const done = onboarding[item.key];
                     return (
                       <li key={item.key} className={`${s.onboardingItem} ${done ? s.onboardingDone : ""}`}>
                         <span className={s.onboardingMark} aria-hidden>{done ? "✓" : "○"}</span>
@@ -643,7 +703,7 @@ function ClientDrawer({
                     );
                   })}
                 </ul>
-              </section>
+              </section>}
 
               {/* ── Etapa ── */}
               <section className={s.section}>
@@ -653,7 +713,8 @@ function ClientDrawer({
                     <button
                       key={st}
                       className={`${s.stageOption} ${crm.stage === st ? s.stageOptionActive : ""}`}
-                      onClick={() => saveProfile({ stage: st })}
+                      onClick={() => { void saveProfile({ stage: st }); }}
+                      disabled={savingProfile}
                       type="button"
                       style={crm.stage === st ? { borderColor: STAGE_META[st].color } : undefined}
                     >
@@ -672,10 +733,11 @@ function ClientDrawer({
                     type="date"
                     className={s.dateInput}
                     value={dateInputValue(crm.nextFollowUp)}
-                    onChange={(e) => saveProfile({ nextFollowUp: e.target.value || null })}
+                    onChange={(e) => { void saveProfile({ nextFollowUp: e.target.value || null }); }}
+                    disabled={savingProfile}
                   />
                   {crm.nextFollowUp && (
-                    <button className={s.clearBtn} onClick={() => saveProfile({ nextFollowUp: null })} type="button">
+                    <button className={s.clearBtn} onClick={() => { void saveProfile({ nextFollowUp: null }); }} disabled={savingProfile} type="button">
                       Quitar
                     </button>
                   )}
@@ -690,7 +752,7 @@ function ClientDrawer({
                   {crm.tags.map((tag) => (
                     <span key={tag} className={s.tag}>
                       {tag}
-                      <button className={s.tagRemove} onClick={() => removeTag(tag)} aria-label={`Quitar ${tag}`} type="button">×</button>
+                      <button className={s.tagRemove} onClick={() => removeTag(tag)} aria-label={`Quitar ${tag}`} type="button" disabled={savingProfile}>×</button>
                     </span>
                   ))}
                   <input
@@ -698,9 +760,53 @@ function ClientDrawer({
                     placeholder="Agregar…"
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void addTag(); } }}
+                    disabled={savingProfile}
                   />
                 </div>
+              </section>
+
+              {/* ── Historial financiero durable ── */}
+              <section className={s.section}>
+                <div className={s.paymentHistoryHeader}>
+                  <p className={s.sectionLabel}>Pagos ({paymentsTotal})</p>
+                  <Link className={s.paymentHistoryLink} to={`/admin/payments?userID=${userID}`}>
+                    Ver historial completo →
+                  </Link>
+                </div>
+                {paymentsLoading ? (
+                  <p className={s.paymentHistoryHint}>Cargando pagos…</p>
+                ) : paymentsError ? (
+                  <p className={s.paymentHistoryError}>No se pudo cargar el historial de pagos.</p>
+                ) : payments.length === 0 ? (
+                  <p className={s.paymentHistoryHint}>Este cliente todavía no tiene pagos registrados.</p>
+                ) : (
+                  <ul className={s.paymentHistoryList}>
+                    {payments.map((payment) => (
+                      <li className={s.paymentHistoryItem} key={payment.id || payment.paymentID}>
+                        <div className={s.paymentHistoryMain}>
+                          <div>
+                            <strong>{OPERATION_LABEL[payment.operation]} · {payment.planId || "Plan sin identificar"}</strong>
+                            <span>{formatPaymentDate(payment.paymentCreatedAt || payment.createdAt)}</span>
+                          </div>
+                          <strong>{formatPaymentAmount(payment.amount, payment.currency || "ARS")}</strong>
+                        </div>
+                        <div className={s.paymentHistoryStatuses}>
+                          <span>{PAYMENT_STATUS_LABEL[payment.status || ""] || payment.status || "Sin estado MP"}</span>
+                          <span className={
+                            payment.entitlementStatus === "applied"
+                              ? s.paymentApplied
+                              : payment.entitlementStatus === "pending"
+                                ? s.paymentPending
+                                : s.paymentNotApplied
+                          }>
+                            {ENTITLEMENT_LABEL[payment.entitlementStatus]}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </section>
 
               {/* ── Actividad: notas manuales + eventos automáticos, mezclados

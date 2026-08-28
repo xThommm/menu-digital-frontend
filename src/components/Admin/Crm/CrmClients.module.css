@@ -342,6 +342,7 @@
 }
 .kanbanCard:hover { border-color: var(--admin-border-gold-mid); }
 .kanbanCard:active { cursor: grabbing; transform: scale(0.98); }
+.kanbanCardMoving { opacity: 0.55; cursor: progress; }
 .kanbanCardName {
   font-size: var(--text-sm);
   font-weight: 500;
@@ -547,6 +548,48 @@
 .onboardingDone .onboardingMark,
 .onboardingDone strong { color: var(--admin-success-text); }
 
+/* Historial de pagos dentro de la ficha */
+.paymentHistoryHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.paymentHistoryLink { color: var(--admin-gold); font-size: var(--text-xs); font-weight: 600; }
+.paymentHistoryHint,
+.paymentHistoryError { margin: 0; font-size: var(--text-sm); }
+.paymentHistoryHint { color: var(--admin-text-muted); }
+.paymentHistoryError { color: var(--admin-red-text); }
+.paymentHistoryList { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.paymentHistoryItem {
+  padding: var(--space-3);
+  border: 0.5px solid var(--admin-border-subtle);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-bg-raised);
+}
+.paymentHistoryMain { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.paymentHistoryMain > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.paymentHistoryMain strong { color: var(--admin-text-primary); font-size: var(--text-sm); font-weight: 600; }
+.paymentHistoryMain span { color: var(--admin-text-muted); font-size: var(--text-xs); }
+.paymentHistoryStatuses { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.paymentHistoryStatuses span {
+  padding: 2px 7px;
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--radius-full);
+  color: var(--admin-text-muted);
+  font-size: var(--text-xs);
+}
+.paymentHistoryStatuses .paymentApplied {
+  border-color: var(--admin-success-border);
+  background: var(--admin-success-bg);
+  color: var(--admin-success-text);
+}
+.paymentHistoryStatuses .paymentPending {
+  border-color: var(--admin-border-gold-mid);
+  background: var(--admin-gold-glow);
+  color: var(--admin-gold);
+}
+.paymentHistoryStatuses .paymentNotApplied {
+  border-color: var(--admin-red-border);
+  background: var(--admin-red-bg);
+  color: var(--admin-red-text);
+}
+
 /* Etapa */
 .stagePicker { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .stageOption {
@@ -564,6 +607,11 @@
   transition: border-color var(--admin-transition), background var(--admin-transition), color var(--admin-transition);
 }
 .stageOption:hover { border-color: var(--admin-border-warm); }
+.stageOption:disabled,
+.dateInput:disabled,
+.clearBtn:disabled,
+.tagRemove:disabled,
+.tagInput:disabled { opacity: 0.55; cursor: not-allowed; }
 .stageOptionActive {
   color: var(--admin-text-primary);
   background: var(--admin-bg-raised-4);

@@ -7,8 +7,9 @@ import BrandMark from "../../Common/BrandMark";
 import s from "./AdminLayout.module.css";
 
 const NAV_ITEMS = [
-  { path: "/admin",     label: "Panel", short: "Panel", icon: <GridIcon /> },
-  { path: "/admin/crm", label: "CRM",   short: "CRM",   icon: <UsersIcon /> },
+  { path: "/admin",          label: "Panel", short: "Panel", icon: <GridIcon /> },
+  { path: "/admin/crm",      label: "CRM",   short: "CRM",   icon: <UsersIcon /> },
+  { path: "/admin/payments", label: "Pagos", short: "Pagos", icon: <PaymentsIcon /> },
 ];
 
 export default function AdminLayout() {
@@ -214,6 +215,17 @@ function UsersIcon() {
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function PaymentsIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <line x1="2" y1="10" x2="22" y2="10" />
+      <line x1="6" y1="15" x2="10" y2="15" />
     </svg>
   );
 }

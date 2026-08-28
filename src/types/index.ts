@@ -408,5 +408,68 @@ export interface CrmClientDetail {
   user: CrmClientDetailUser
   crm: CrmProfile
   activity: { categoryCount: number; sectionCount: number; itemCount: number }
-  onboarding: CrmOnboardingStatus
+  // Opcional durante un despliegue escalonado: el backend debe publicarse
+  // antes, pero el drawer no debe romperse si responde una versión anterior.
+  onboarding?: CrmOnboardingStatus
+}
+
+// ── Pagos internos (panel del CEO) ─────────────────────────────────────────
+
+export type AdminPaymentOperation = "registration" | "upgrade" | "renewal" | "unknown"
+export type AdminPaymentEntitlement = "pending" | "not_applied" | "applied"
+export type AdminPaymentCheckoutValidation = "strict" | "legacy" | "failed"
+
+export interface AdminPaymentCustomer {
+  id: string | null
+  username: string
+  businessName: string
+  slug: string
+}
+
+export interface AdminPayment {
+  id: string | null
+  paymentID: string
+  preferenceId: string | null
+  operation: AdminPaymentOperation
+  planId: string | null
+  months: number | null
+  amount: number | null
+  refundedAmount: number | null
+  currency: string | null
+  status: string | null
+  statusDetail: string | null
+  liveMode: boolean | null
+  paymentCreatedAt: string | null
+  paymentApprovedAt: string | null
+  paymentUpdatedAt: string | null
+  lastWebhookAt: string
+  entitlementStatus: AdminPaymentEntitlement
+  entitlementReason: string | null
+  entitlementAppliedAt: string | null
+  checkoutValidation: AdminPaymentCheckoutValidation
+  checkoutValidationReason: string | null
+  appliedPlanId: string | null
+  appliedMonths: number | null
+  subscriptionExpiresAtAfter: string | null
+  createdAt: string
+  checkout: { id: string | null; status: string | null } | null
+  customer: AdminPaymentCustomer | null
+}
+
+export interface AdminPaymentsSummary {
+  total: number
+  approved: number
+  pending: number
+  failed: number
+  refunded: number
+  applied: number
+  attention: number
+  appliedAmount: number
+  currency: string
+}
+
+export interface AdminPaymentsResponse {
+  payments: AdminPayment[]
+  summary: AdminPaymentsSummary
+  pagination: { page: number; limit: number; total: number; pages: number }
 }
