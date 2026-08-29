@@ -424,30 +424,50 @@
   display: grid; grid-template-columns: 1fr 1fr; gap: 6rem; align-items: center;
 }
 .qrVisual { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+
+/* Corrección de contenedor y desbordamiento */
 .qrFrame {
   width: 280px; height: 280px;
-  border: 1px solid color-mix(in srgb, var(--auth-amber) 25%, transparent); border-radius: 16px;
-  background: white;
+  border: 1px solid color-mix(in srgb, var(--auth-amber) 25%, transparent); 
+  border-radius: 16px;
+  background: #ffffff;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 0 50px color-mix(in srgb, var(--auth-amber) 20%, transparent), 0 0 100px color-mix(in srgb, var(--auth-amber) 8%, transparent);
   position: relative;
+  overflow: hidden; /* <--- CRÍTICO: Recorta las esquinas de la imagen dentro del frame */
+  padding: 16px;   /* <--- Opcional: Da un margen interno para que la imagen no choque contra el marco */
 }
+
+/* Regla para que la imagen pase a ser responsive dentro del marco */
+.qrFrame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 8px; /* Un redondeado suave opcional para la imagen interior */
+  display: block;
+}
+
 .qrFrame::before {
   content: ''; position: absolute; inset: -2px; border-radius: 18px;
   background: linear-gradient(135deg, color-mix(in srgb, var(--auth-amber) 40%, transparent), transparent 50%, rgba(255,58,110,.3));
   z-index: -1;
 }
-.qrCorner { position: absolute; width: 20px; height: 20px; }
+
+/* Elevamos las esquinas e indicador sobre la imagen */
+.qrCorner { position: absolute; width: 20px; height: 20px; z-index: 2; }
 .qrTl { top: -1px; left: -1px; border-top: 2px solid var(--auth-amber); border-left: 2px solid var(--auth-amber); border-radius: 4px 0 0 0; }
 .qrTr { top: -1px; right: -1px; border-top: 2px solid var(--auth-amber); border-right: 2px solid var(--auth-amber); border-radius: 0 4px 0 0; }
 .qrBl { bottom: -1px; left: -1px; border-bottom: 2px solid var(--auth-amber); border-left: 2px solid var(--auth-amber); border-radius: 0 0 0 4px; }
 .qrBr { bottom: -1px; right: -1px; border-bottom: 2px solid var(--auth-amber); border-right: 2px solid var(--auth-amber); border-radius: 0 0 4px 0; }
+
 .scanLine {
   position: absolute; left: 10px; right: 10px; height: 2px;
   background: linear-gradient(90deg, transparent, var(--auth-amber), transparent);
   box-shadow: 0 0 8px var(--auth-amber);
   animation: scan 2.5s ease-in-out infinite;
+  z-index: 3; /* <--- Mantiene la línea láser por encima del QR */
 }
+
 @keyframes scan {
   0%   { top: 15%; opacity: 1; }
   50%  { top: 80%; opacity: .6; }
@@ -768,9 +788,15 @@
 }
 
 @media (max-width: 599px) {
+  .footInner {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
   .footLinks {
     flex-wrap: wrap;
-    gap: var(--space-3) var(--space-5);
+    justify-content: center;
+    gap: var(--space-3) var(--space-4);
   }
 }
 

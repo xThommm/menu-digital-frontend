@@ -58,40 +58,40 @@ const PLANS: Plan[] = [
   },
 ];
 
-const REVIEWS = [
-  {
-    name: "Martina Sosa",
-    business: "La Pérgola Café",
-    location: "Palermo, CABA",
-    text: "Antes imprimíamos el menú cada semana porque cambiábamos los precios. Ahora en dos minutos lo tenemos actualizado y los clientes lo escanean con el celular.",
-    stars: 5,
-    initial: "M",
-  },
-  {
-    name: "Roberto Funes",
-    business: "Don Funes Parrilla",
-    location: "Lanús, GBA Sur",
-    text: "Pensé que era complicado pero me ayudaron a cargarlo todo desde un Excel. Mis clientes me dicen que el menú se ve muy prolijo. Vale cada peso.",
-    stars: 5,
-    initial: "R",
-  },
-  {
-    name: "Camila Ríos",
-    business: "Café del Ángel",
-    location: "Córdoba Capital",
-    text: "Lo que más me gusta es poder ocultar lo que se agotó sin borrarlo. Y el diseño quedó igual que la estética del local. Lo recomiendo a todos mis colegas.",
-    stars: 5,
-    initial: "C",
-  },
-  {
-    name: "Hernán Vidal",
-    business: "Sushi Nakamura",
-    location: "Rosario, Santa Fe",
-    text: "Tenemos más de 80 productos y la carga masiva por Excel nos ahorró horas de trabajo. El soporte responde rápido y siempre resuelven.",
-    stars: 5,
-    initial: "H",
-  },
-];
+// const REVIEWS = [
+//   {
+//     name: "Martina Sosa",
+//     business: "La Pérgola Café",
+//     location: "Palermo, CABA",
+//     text: "Antes imprimíamos el menú cada semana porque cambiábamos los precios. Ahora en dos minutos lo tenemos actualizado y los clientes lo escanean con el celular.",
+//     stars: 5,
+//     initial: "M",
+//   },
+//   {
+//     name: "Roberto Funes",
+//     business: "Don Funes Parrilla",
+//     location: "Lanús, GBA Sur",
+//     text: "Pensé que era complicado pero me ayudaron a cargarlo todo desde un Excel. Mis clientes me dicen que el menú se ve muy prolijo. Vale cada peso.",
+//     stars: 5,
+//     initial: "R",
+//   },
+//   {
+//     name: "Camila Ríos",
+//     business: "Café del Ángel",
+//     location: "Córdoba Capital",
+//     text: "Lo que más me gusta es poder ocultar lo que se agotó sin borrarlo. Y el diseño quedó igual que la estética del local. Lo recomiendo a todos mis colegas.",
+//     stars: 5,
+//     initial: "C",
+//   },
+//   {
+//     name: "Hernán Vidal",
+//     business: "Sushi Nakamura",
+//     location: "Rosario, Santa Fe",
+//     text: "Tenemos más de 80 productos y la carga masiva por Excel nos ahorró horas de trabajo. El soporte responde rápido y siempre resuelven.",
+//     stars: 5,
+//     initial: "H",
+//   },
+// ];
 
 // ─────────────────────────────────────────────
 // HOOK: PARALLAX
@@ -289,7 +289,7 @@ function PhoneMockup() {
 // ─────────────────────────────────────────────
 // SUBCOMPONENTE: QR FRAME
 // ─────────────────────────────────────────────
-function QRFrame() {
+function QRFrame({ children }: { children?: React.ReactNode }) {
   return (
     <div className={styles.qrVisual}>
       <div className={styles.qrFrame}>
@@ -298,41 +298,13 @@ function QRFrame() {
         <div className={`${styles.qrCorner} ${styles.qrBl}`} />
         <div className={`${styles.qrCorner} ${styles.qrBr}`} />
         <div className={styles.scanLine} />
-        <svg viewBox="0 0 200 200" width="200" height="200" xmlns="http://www.w3.org/2000/svg">
-          <rect x="10" y="10" width="60" height="60" fill="none" stroke="#000" strokeWidth="5" rx="4" />
-          <rect x="22" y="22" width="36" height="36" fill="#000" rx="2" />
-          <rect x="130" y="10" width="60" height="60" fill="none" stroke="#000" strokeWidth="5" rx="4" />
-          <rect x="142" y="22" width="36" height="36" fill="#000" rx="2" />
-          <rect x="10" y="130" width="60" height="60" fill="none" stroke="#000" strokeWidth="5" rx="4" />
-          <rect x="22" y="142" width="36" height="36" fill="#000" rx="2" />
-          <rect x="84" y="10" width="12" height="12" fill="#000" rx="1" />
-          <rect x="100" y="10" width="12" height="12" fill="#000" rx="1" />
-          <rect x="116" y="10" width="12" height="12" fill="#000" rx="1" />
-          <rect x="84" y="26" width="12" height="12" fill="#000" rx="1" />
-          <rect x="116" y="42" width="12" height="12" fill="#000" rx="1" />
-          <rect x="10" y="84" width="12" height="12" fill="#000" rx="1" />
-          <rect x="10" y="100" width="12" height="12" fill="#000" rx="1" />
-          <rect x="26" y="84" width="12" height="12" fill="#000" rx="1" />
-          <rect x="42" y="116" width="12" height="12" fill="#000" rx="1" />
-          <rect x="84" y="84" width="12" height="12" fill="#000" rx="1" />
-          <rect x="100" y="100" width="12" height="12" fill="#000" rx="1" />
-          <rect x="116" y="84" width="12" height="12" fill="#000" rx="1" />
-          <rect x="84" y="116" width="12" height="12" fill="#000" rx="1" />
-          <rect x="130" y="84" width="12" height="12" fill="#000" rx="1" />
-          <rect x="146" y="100" width="12" height="12" fill="#000" rx="1" />
-          <rect x="162" y="84" width="12" height="12" fill="#000" rx="1" />
-          <rect x="178" y="84" width="12" height="12" fill="#000" rx="1" />
-          <rect x="130" y="116" width="12" height="12" fill="#000" rx="1" />
-          <rect x="162" y="130" width="12" height="12" fill="#000" rx="1" />
-          <rect x="100" y="130" width="12" height="12" fill="#000" rx="1" />
-          <rect x="116" y="146" width="12" height="12" fill="#000" rx="1" />
-          <rect x="100" y="162" width="12" height="12" fill="#000" rx="1" />
-          <rect x="130" y="178" width="12" height="12" fill="#000" rx="1" />
-          <rect x="146" y="162" width="12" height="12" fill="#000" rx="1" />
-          <rect x="178" y="130" width="12" height="12" fill="#000" rx="1" />
-          <rect x="178" y="162" width="12" height="12" fill="#000" rx="1" />
-          <rect x="92" y="92" width="16" height="16" fill="#ff9500" rx="2" />
-        </svg>
+        {children ?? (
+          <img 
+            src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://www.menudigitalapp.com.ar/register" 
+            alt="QR Login Menu Digital App" 
+            style={{ width: '100%', height: 'auto', display: 'block' }}
+          />
+        )}
       </div>
       <p className={styles.qrLabel}>↑ Tu QR personalizado</p>
     </div>
@@ -424,7 +396,7 @@ useEffect(() => {
   <ul className={styles.navLinks}>
     <li><a href="#how">Cómo funciona</a></li>
     <li><a href="#features">Funciones</a></li>
-    <li><a href="#reviews">Clientes</a></li>
+    {/* <li><a href="#reviews">Clientes</a></li> */}
     <li><a href="#about">Quiénes somos</a></li>
   </ul>
  
@@ -454,9 +426,9 @@ useEffect(() => {
     <a href="#features" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
       Funciones
     </a>
-    <a href="#reviews" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
+    {/* <a href="#reviews" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
       Clientes
-    </a>
+    </a> */}
     <a href="#about" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
       Quiénes somos
     </a>
@@ -641,62 +613,42 @@ useEffect(() => {
         </section>
 
         {/* ── QR DEMO ── */}
-        <section className={styles.qrSection}>
-          <div className={styles.qrInner}>
-            <div className={styles.reveal}>
-              <QRFrame />
-            </div>
-            <div className={styles.reveal}>
-              <div className={styles.eyebrow}>Sin complicaciones</div>
-              <h2 className={styles.sectionH2}>
-                Un QR.<br /><em>Todo tu menú.</em>
-              </h2>
-              <p className={styles.qrDesc}>
-                Imprimís el código QR y lo ponés en la mesa, en la barra o en la puerta. Cada escaneo lleva al menú actualizado al instante. Sin links raros, sin descargas, sin fricción.
-              </p>
-              <ul className={styles.qrList}>
-                <li>Funciona con la cámara nativa del celular</li>
-                <li>Se abre en el navegador, sin instalar nada</li>
-                <li>Un QR para todas las mesas o uno por mesa</li>
-                <li>Descargable en PDF listo para imprimir</li>
-              </ul>
-              <Link className={styles.btnPrimary} to="/register?plan=free">
-                Quiero mi QR gratis →
-              </Link>
-            </div>
-          </div>
-        </section>
+<section className={styles.qrSection}>
+  <div className={styles.qrInner}>
+    <div className={styles.reveal}>
+      <QRFrame>
+        <img 
+          src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://www.menudigitalapp.com.ar/register" 
+          alt="QR Login Menu Digital App" 
+          style={{ width: '100%', height: 'auto', display: 'block' }}
+        />
+      </QRFrame>
+    </div>
+    <div className={styles.reveal}>
+      <div className={styles.eyebrow}>Sin complicaciones</div>
+      <h2 className={styles.sectionH2}>
+        Un QR.<br /><em>Todo tu menú.</em>
+      </h2>
+      <p className={styles.qrDesc}>
+        Imprimís el código QR y lo ponés en la mesa, en la barra o en la puerta. Cada escaneo lleva al menú actualizado al instante. Sin links raros, sin descargas, sin fricción.
+      </p>
+      <ul className={styles.qrList}>
+        <li>Funciona con la cámara nativa del celular</li>
+        <li>Se abre en el navegador, sin instalar nada</li>
+        <li>Un QR para todas las mesas o uno por mesa</li>
+        <li>Descargable en PDF listo para imprimir</li>
+      </ul>
+      <Link className={styles.btnPrimary} to="/register?plan=free">
+        Quiero mi QR gratis →
+      </Link>
+    </div>
+  </div>
+</section>
 
         {/* ── AMBER LINE ── */}
         <div className={styles.amberLine} />
 
-        {/* ── REVIEWS ── */}
-        <section className={styles.reviews} id="reviews">
-          <div className={styles.sectionInner}>
-            <div className={styles.reveal}>
-              <div className={styles.eyebrow}>Reseñas</div>
-              <h2 className={styles.sectionH2}>
-                Lo que dicen los locales<br /><em>que ya lo usan.</em>
-              </h2>
-            </div>
-            <div className={styles.revGrid}>
-              {REVIEWS.map((r, i) => (
-                <div className={`${styles.revCard} ${styles.reveal}`} key={i} data-hover>
-                  <div className={styles.revStars}>{"★".repeat(r.stars)}</div>
-                  <p className={styles.revText}>"{r.text}"</p>
-                  <div className={styles.revFooter}>
-                    <div className={styles.revAvatar}>{r.initial}</div>
-                    <div>
-                      <div className={styles.revName}>{r.name}</div>
-                      <div className={styles.revBiz}>{r.business} · {r.location}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
+        
         {/* ── ABOUT ── */}
         <section className={styles.about} id="about">
           <div className={styles.aboutInner}>
