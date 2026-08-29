@@ -93,6 +93,36 @@ const MAX_IMAGE_MB = 5;
 // ── Vistas posibles ────────────────────────────────────────────────────────────
 
 type View = "menu" | "item-form" | "categoria-form" | "seccion-form" | "massive-import";
+type ItemFormSection = "basics" | "promotions" | "availability";
+
+interface ItemFieldErrors {
+  title?: string;
+  price?: string;
+  code?: string;
+}
+
+const cloneItemForm = (form: ItemFormState): ItemFormState => ({
+  ...form,
+  offerRange: { ...form.offerRange },
+  options: form.options.map(option => ({ ...option })),
+  availabilitySchedule: {
+    enabled: form.availabilitySchedule.enabled,
+    mon: form.availabilitySchedule.mon.map(range => ({ ...range })),
+    tue: form.availabilitySchedule.tue.map(range => ({ ...range })),
+    wed: form.availabilitySchedule.wed.map(range => ({ ...range })),
+    thu: form.availabilitySchedule.thu.map(range => ({ ...range })),
+    fri: form.availabilitySchedule.fri.map(range => ({ ...range })),
+    sat: form.availabilitySchedule.sat.map(range => ({ ...range })),
+    sun: form.availabilitySchedule.sun.map(range => ({ ...range })),
+  },
+});
+
+const normalizeSearchValue = (value: string | null | undefined) =>
+  (value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es-AR")
+    .trim();
 
 // ── Íconos ─────────────────────────────────────────────────────────────────────
 
@@ -198,7 +228,17 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () =
 
 // ── TopBar sub-componente ─────────────────────────────────────────────────────
 
-function TopBar({ title, onBack, rightSlot }: { title: string; onBack: () => void; rightSlot?: React.ReactNode }) {
+function TopBar({
+  title,
+  subtitle,
+  status,
+  onBack,
+}: {
+  title: string;
+  subtitle?: string;
+  status?: string;
+  onBack: () => void;
+}) {
   return (
     <header className={styles.topBar}>
       <button
@@ -210,11 +250,56 @@ function TopBar({ title, onBack, rightSlot }: { title: string; onBack: () => voi
       >
         {icons.back}
       </button>
-      <span className={styles.topTitle}>{title}</span>
-      <div style={{ width: 36 }} aria-hidden="true">
-        {rightSlot}
+      <div className={styles.topHeading}>
+        <span className={styles.topTitle}>{title}</span>
+        {subtitle && <span className={styles.topSubtitle}>{subtitle}</span>}
       </div>
+      {status
+        ? <span className={styles.unsavedStatus} role="status">{status}</span>
+        : <span className={styles.topSpacer} aria-hidden="true" />}
     </header>
+  );
+}
+
+function FormSection({
+  number,
+  title,
+  summary,
+  expanded,
+  onToggle,
+  children,
+}: {
+  number: number;
+  title: string;
+  summary: string;
+  expanded: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  const panelId = `item-form-section-${number}`;
+
+  return (
+    <section className={`${styles.formSection} ${expanded ? styles.formSectionOpen : ""}`}>
+      <button
+        className={styles.formSectionHeader}
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-controls={panelId}
+      >
+        <span className={styles.formSectionNumber}>{number}</span>
+        <span className={styles.formSectionTitle}>{title}</span>
+        <span className={styles.formSectionSummary}>{summary}</span>
+        <span className={`${styles.formSectionChevron} ${expanded ? styles.formSectionChevronOpen : ""}`}>
+          {icons.chevron}
+        </span>
+      </button>
+      {expanded && (
+        <div id={panelId} className={styles.formSectionBody}>
+          {children}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -429,14 +514,19 @@ export default function MenuEditorPage() {
   const [activeCategoria, setActiveCategoria] = useState<Categoria | null>(null);
   const [activeItem,      setActiveItem]      = useState<Item | null>(null);
   const [expandedCats,    setExpandedCats]    = useState<Set<string>>(new Set());
+  const [searchQuery,     setSearchQuery]     = useState("");
+  const [openItemSections, setOpenItemSections] = useState<Set<ItemFormSection>>(new Set(["basics"]));
 
   const [deleteModal, setDeleteModal] = useState<{
     type: "item" | "categoria" | "seccion";
     id: string;
     name: string;
   } | null>(null);
+  const [discardModalOpen, setDiscardModalOpen] = useState(false);
 
-  const [itemForm,      setItemForm]      = useState(EMPTY_ITEM);
+  const [itemForm,      setItemForm]      = useState(() => cloneItemForm(EMPTY_ITEM));
+  const [initialItemForm, setInitialItemForm] = useState(() => cloneItemForm(EMPTY_ITEM));
+  const [itemFieldErrors, setItemFieldErrors] = useState<ItemFieldErrors>({});
   const [categoriaForm, setCategoriaForm] = useState({ title: "", description: "", code: "", seccionID: "", editingId: "" });
   const [seccionForm,   setSeccionForm]   = useState({ title: "", code: "", editingId: "" });
 
@@ -520,7 +610,11 @@ export default function MenuEditorPage() {
     }
     setActiveCategoria(cat);
     setActiveItem(null);
-    setItemForm({ ...EMPTY_ITEM, availabilitySchedule: emptyAvailabilitySchedule() });
+    const nextForm = cloneItemForm({ ...EMPTY_ITEM, availabilitySchedule: emptyAvailabilitySchedule() });
+    setItemForm(nextForm);
+    setInitialItemForm(cloneItemForm(nextForm));
+    setItemFieldErrors({});
+    setOpenItemSections(new Set(["basics"]));
     setError("");
     setView("item-form");
   }, [limits, setError]);
@@ -528,7 +622,7 @@ export default function MenuEditorPage() {
   const openEditItem = useCallback((item: Item, cat: Categoria) => {
     setActiveCategoria(cat);
     setActiveItem(item);
-    setItemForm({
+    const nextForm: ItemFormState = {
       title:       item.title,
       description: item.description || "",
       price:       item.price?.toString()      || "",
@@ -556,10 +650,28 @@ export default function MenuEditorPage() {
             sun: [...item.availabilitySchedule.sun],
           }
         : emptyAvailabilitySchedule(),
-    });
+    };
+    setItemForm(nextForm);
+    setInitialItemForm(cloneItemForm(nextForm));
+    setItemFieldErrors({});
+    const initialSections = new Set<ItemFormSection>(["basics"]);
+    if (nextForm.offerPrice || nextForm.offerScheduled || nextForm.options.length > 0) initialSections.add("promotions");
+    if (nextForm.availabilitySchedule.enabled || nextForm.hidden || nextForm.recommended || !nextForm.available) {
+      initialSections.add("availability");
+    }
+    setOpenItemSections(initialSections);
     setError("");
     setView("item-form");
   }, [setError]);
+
+  const toggleItemSection = useCallback((section: ItemFormSection) => {
+    setOpenItemSections(previous => {
+      const next = new Set(previous);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
+      return next;
+    });
+  }, []);
 
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -594,33 +706,75 @@ export default function MenuEditorPage() {
 
   const saveItem = async () => {
     const preservesLockedOffer = !canScheduleOffers && Boolean(activeItem) && itemForm.offerScheduled;
-    if (!itemForm.title.trim()) { setError("El nombre es obligatorio."); return; }
-    if (!itemForm.code.trim()) { setError("El código es obligatorio."); return; }
-    if (!itemForm.price.trim()) { setError("El precio es obligatorio."); return; }
-    if (itemForm.price !== "" && isNaN(Number(itemForm.price))) { setError("El precio debe ser un número."); return; }
-    if (itemForm.price !== "" && (!Number(itemForm.price) || Number(itemForm.price) <= 0)) { setError("El precio debe ser un número positivo."); return; }
-    if (!preservesLockedOffer && itemForm.offerPrice !== "" && isNaN(Number(itemForm.offerPrice))) { setError("El precio de oferta debe ser un número."); return; }
-    if (!preservesLockedOffer && itemForm.offerPrice !== "" && (!Number(itemForm.offerPrice) || Number(itemForm.offerPrice) <= 0)) { setError("El precio de oferta debe ser un número positivo."); return; }
+    const showSectionError = (section: ItemFormSection, message: string) => {
+      setOpenItemSections(previous => new Set(previous).add(section));
+      setError(message);
+    };
+
+    if (imageUploading) {
+      showSectionError("basics", "Esperá a que termine de subir la imagen antes de guardar.");
+      return;
+    }
+
+    const nextFieldErrors: ItemFieldErrors = {};
+    if (!itemForm.title.trim()) nextFieldErrors.title = "Ingresá el nombre del producto.";
+    if (!itemForm.code.trim()) nextFieldErrors.code = "Ingresá el código interno.";
+    if (!itemForm.price.trim()) nextFieldErrors.price = "Ingresá el precio.";
+    else if (isNaN(Number(itemForm.price)) || Number(itemForm.price) <= 0) {
+      nextFieldErrors.price = "El precio debe ser un número mayor a cero.";
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setItemFieldErrors(nextFieldErrors);
+      showSectionError("basics", "Revisá los campos obligatorios antes de guardar.");
+      const firstInvalidId = nextFieldErrors.title ? "item-title" : nextFieldErrors.price ? "item-price" : "item-code";
+      window.requestAnimationFrame(() => document.getElementById(firstInvalidId)?.focus());
+      return;
+    }
+    setItemFieldErrors({});
+
+    if (!preservesLockedOffer && itemForm.offerPrice !== "" && isNaN(Number(itemForm.offerPrice))) {
+      showSectionError("promotions", "El precio de oferta debe ser un número.");
+      return;
+    }
+    if (!preservesLockedOffer && itemForm.offerPrice !== "" && (!Number(itemForm.offerPrice) || Number(itemForm.offerPrice) <= 0)) {
+      showSectionError("promotions", "El precio de oferta debe ser un número positivo.");
+      return;
+    }
     if (!preservesLockedOffer && itemForm.offerPrice !== "" && Number(itemForm.offerPrice) >= Number(itemForm.price)) {
-      setError("El precio de oferta debe ser menor al precio original.");
+      showSectionError("promotions", "El precio de oferta debe ser menor al precio original.");
       return;
     }
     if (itemForm.offerScheduled && !preservesLockedOffer) {
-      if (!itemForm.offerPrice) { setError("Ingresá un precio de oferta antes de programarla."); return; }
+      if (!itemForm.offerPrice) { showSectionError("promotions", "Ingresá un precio de oferta antes de programarla."); return; }
       if (!itemForm.offerRange.from || !itemForm.offerRange.to) {
-        setError("Indicá el inicio y el fin de la oferta.");
+        showSectionError("promotions", "Indicá el inicio y el fin de la oferta.");
         return;
       }
       if (itemForm.offerRange.from >= itemForm.offerRange.to) {
-        setError("El fin de la oferta debe ser posterior al inicio.");
+        showSectionError("promotions", "El fin de la oferta debe ser posterior al inicio.");
         return;
       }
     }
+
+    const normalizedOptions = itemForm.options
+      .map(option => ({ key: option.key.trim(), value: option.value.trim() }))
+      .filter(option => option.key || option.value);
+    if (normalizedOptions.some(option => !option.key || !option.value || isNaN(Number(option.value)) || Number(option.value) <= 0)) {
+      showSectionError("promotions", "Cada variante necesita un nombre y un precio mayor a cero.");
+      return;
+    }
+    const optionKeys = normalizedOptions.map(option => normalizeSearchValue(option.key));
+    if (new Set(optionKeys).size !== optionKeys.length) {
+      showSectionError("promotions", "Los nombres de las variantes no pueden repetirse.");
+      return;
+    }
+
     if (itemForm.availabilitySchedule.enabled) {
       const ranges = DAYS.flatMap(({ key }) => itemForm.availabilitySchedule[key]);
-      if (ranges.length === 0) { setError("Agregá al menos un horario antes de activar la programación."); return; }
+      if (ranges.length === 0) { showSectionError("availability", "Agregá al menos un horario antes de activar la programación."); return; }
       if (ranges.some(({ from, to }) => !from || !to || from === to)) {
-        setError("Revisá los horarios: cada rango necesita un inicio y un fin diferentes.");
+        showSectionError("availability", "Revisá los horarios: cada rango necesita un inicio y un fin diferentes.");
         return;
       }
     }
@@ -628,8 +782,8 @@ export default function MenuEditorPage() {
 
     try {
       const optionsObj: Record<string, number> = {};
-      itemForm.options.forEach(({ key, value }) => {
-        if (key.trim()) optionsObj[key.trim()] = Number(value) || 0;
+      normalizedOptions.forEach(({ key, value }) => {
+        optionsObj[key] = Number(value);
       });
       const body = {
         menuID: activeCategoria!._id,
@@ -650,7 +804,7 @@ export default function MenuEditorPage() {
                   }
                 : { from: null, to: null },
             }),
-        code: itemForm.code,
+        code: itemForm.code.trim(),
         available: itemForm.available,
         hidden: itemForm.hidden,
         recommended: itemForm.recommended,
@@ -680,6 +834,7 @@ export default function MenuEditorPage() {
       if (!res.ok) throw new Error(data.message || "No se pudo guardar el producto.");
       await refetch();
       notifySuccess(activeItem ? "Producto actualizado." : "Producto creado.");
+      setInitialItemForm(cloneItemForm(itemForm));
       setView("menu");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar el producto.");
@@ -922,6 +1077,73 @@ export default function MenuEditorPage() {
     : 0;
 
   const atItemLimit = !!(limits && limits.itemLimit != null && limits.itemCount >= limits.itemLimit);
+  const normalizedSearchQuery = normalizeSearchValue(searchQuery);
+  const searchActive = normalizedSearchQuery.length > 0;
+
+  const searchResults = useMemo(() => {
+    if (!menuData || !normalizedSearchQuery) return [];
+
+    const matches: { item: Item; categoria: Categoria; sectionTitle: string }[] = [];
+    const collectMatches = (categoria: Categoria, sectionTitle: string) => {
+      categoria.items?.forEach(item => {
+        const searchableText = normalizeSearchValue([
+          item.title,
+          item.description,
+          item.code,
+          categoria.title,
+          categoria.code,
+          sectionTitle,
+        ].filter(Boolean).join(" "));
+
+        if (searchableText.includes(normalizedSearchQuery)) {
+          matches.push({ item, categoria, sectionTitle });
+        }
+      });
+    };
+
+    menuData.secciones.forEach(section => {
+      section.categorias.forEach(categoria => collectMatches(categoria, section.title));
+    });
+    menuData.sinSeccion.forEach(categoria => collectMatches(categoria, "Sin sección"));
+
+    return matches;
+  }, [menuData, normalizedSearchQuery]);
+
+  const activeSectionTitle = useMemo(() => {
+    if (!menuData || !activeCategoria) return "";
+    return menuData.secciones.find(section =>
+      section.categorias.some(categoria => categoria._id === activeCategoria._id)
+    )?.title ?? "";
+  }, [activeCategoria, menuData]);
+
+  const itemFormDirty = view === "item-form" && JSON.stringify(itemForm) !== JSON.stringify(initialItemForm);
+  const itemFormBreadcrumb = [activeSectionTitle, activeCategoria?.title].filter(Boolean).join(" / ");
+  const promotionsSummary = itemForm.options.length > 0
+    ? `${itemForm.options.length} variante${itemForm.options.length !== 1 ? "s" : ""}${itemForm.offerPrice ? " · Con oferta" : " · Sin oferta"}`
+    : itemForm.offerPrice ? "Sin variantes · Con oferta" : "Sin variantes · Sin oferta";
+  const availabilitySummary = `${itemForm.available ? "Disponible" : "Pausado"} · ${itemForm.hidden ? "Oculto" : "Visible"}`;
+
+  const requestCloseItemForm = () => {
+    if (imageUploading) {
+      setError("Esperá a que termine de subir la imagen antes de salir.");
+      return;
+    }
+    if (itemFormDirty) {
+      setDiscardModalOpen(true);
+      return;
+    }
+    setView("menu");
+  };
+
+  useEffect(() => {
+    if (!itemFormDirty) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [itemFormDirty]);
 
   // ── Pantalla de carga ─────────────────────────────────────────────────────
 
@@ -975,6 +1197,78 @@ export default function MenuEditorPage() {
                   {error}
                 </div>
               )}
+
+              <div className={styles.searchPanel}>
+                <label className="sr-only" htmlFor="menu-search">Buscar en el menú</label>
+                <input
+                  id="menu-search"
+                  className={styles.searchInput}
+                  type="search"
+                  placeholder="Buscar producto, categoría o código"
+                  value={searchQuery}
+                  onChange={event => setSearchQuery(event.target.value)}
+                  autoComplete="off"
+                />
+                {searchQuery && (
+                  <button
+                    className={styles.searchClear}
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    Limpiar
+                  </button>
+                )}
+              </div>
+
+              {searchActive ? (
+                <section className={styles.searchResults} aria-labelledby="search-results-title">
+                  <div className={styles.searchResultsHeader}>
+                    <p id="search-results-title">
+                      {searchResults.length} resultado{searchResults.length !== 1 ? "s" : ""}
+                    </p>
+                    <span aria-live="polite">para “{searchQuery.trim()}”</span>
+                  </div>
+
+                  {searchResults.length > 0 ? (
+                    <div className={styles.searchResultsList} role="list">
+                      {searchResults.map(({ item, categoria, sectionTitle }) => (
+                        <div key={item._id} role="listitem">
+                          <button
+                            className={styles.searchResultRow}
+                            type="button"
+                            onClick={() => openEditItem(item, categoria)}
+                          >
+                            {item.image && (
+                              <img className={styles.searchResultImage} src={item.image} alt="" />
+                            )}
+                            <span className={styles.searchResultInfo}>
+                              <span className={styles.searchResultName}>{item.title}</span>
+                              <span className={styles.searchResultPath}>{sectionTitle} / {categoria.title}</span>
+                              <span className={styles.searchResultPrice}>
+                                {item.offerPrice != null
+                                  ? `Oferta $${item.offerPrice.toLocaleString("es-AR")}`
+                                  : item.price != null
+                                    ? `$${item.price.toLocaleString("es-AR")}`
+                                    : "Sin precio"}
+                              </span>
+                            </span>
+                            <span className={`${styles.searchResultStatus} ${item.available ? styles.searchResultStatusOn : styles.searchResultStatusOff}`}>
+                              {item.hidden ? "Oculto" : item.available ? "Disponible" : "Pausado"}
+                            </span>
+                            <span className={styles.searchResultAction}>Editar</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.searchEmpty}>
+                      <p>No encontramos productos con ese término.</p>
+                      <span>Probá con el nombre, código, categoría o sección.</span>
+                    </div>
+                  )}
+                </section>
+              ) : (
+                <>
 
               {/* Secciones */}
               {menuData?.secciones.map(sec => (
@@ -1077,6 +1371,8 @@ export default function MenuEditorPage() {
                   <p>Tu menú está vacío.</p>
                   <p className={styles.emptySub}>Creá una categoría para empezar a agregar productos.</p>
                 </div>
+              )}
+                </>
               )}
             </div>
 
@@ -1193,28 +1489,57 @@ export default function MenuEditorPage() {
           <>
             <TopBar
               title={activeItem ? "Editar producto" : "Nuevo producto"}
-              onBack={() => setView("menu")}
+              subtitle={itemFormBreadcrumb || undefined}
+              status={itemFormDirty ? "Cambios sin guardar" : undefined}
+              onBack={requestCloseItemForm}
             />
             <div className={`${styles.content} ${styles.formContent}`}>
               {error && <div className={styles.errorBanner} role="alert">{error}</div>}
 
-              {activeCategoria && (
-                <p className={styles.formContext}>
-                  en <strong>{activeCategoria.title}</strong>
-                </p>
-              )}
+              <div className={styles.productSummary}>
+                {itemForm.image && (
+                  <img className={styles.productSummaryImage} src={itemForm.image} alt="" />
+                )}
+                <div className={styles.productSummaryText}>
+                  <strong>{itemForm.title.trim() || (activeItem ? activeItem.title : "Nuevo producto")}</strong>
+                  <span>
+                    {itemForm.price && Number(itemForm.price) > 0
+                      ? `$${Number(itemForm.price).toLocaleString("es-AR")}`
+                      : "Completá la información principal"}
+                  </span>
+                </div>
+              </div>
 
+              <form
+                className={styles.itemForm}
+                onSubmit={event => { event.preventDefault(); void saveItem(); }}
+                noValidate
+              >
+              <FormSection
+                number={1}
+                title="Información y precio"
+                summary="Datos principales"
+                expanded={openItemSections.has("basics")}
+                onToggle={() => toggleItemSection("basics")}
+              >
               <div className={styles.field}>
-                <label htmlFor="item-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
+                <label htmlFor="item-title">Nombre <span className={styles.requiredMark} aria-hidden="true">*</span></label>
                 <input
                   id="item-title"
                   type="text"
                   placeholder="Ej: Pizza napolitana"
                   value={itemForm.title}
-                  onChange={e => setItemForm(f => ({ ...f, title: e.target.value }))}
+                  onChange={e => {
+                    setItemForm(f => ({ ...f, title: e.target.value }));
+                    setItemFieldErrors(previous => ({ ...previous, title: undefined }));
+                  }}
                   autoFocus
                   maxLength={80}
+                  required
+                  aria-invalid={Boolean(itemFieldErrors.title)}
+                  aria-describedby={itemFieldErrors.title ? "item-title-error" : undefined}
                 />
+                {itemFieldErrors.title && <span id="item-title-error" className={styles.fieldError}>{itemFieldErrors.title}</span>}
               </div>
 
               <div className={styles.field}>
@@ -1240,29 +1565,33 @@ export default function MenuEditorPage() {
                   />
 
                   {itemForm.image ? (
-                    <div
-                      className={styles.imagePreviewWrapper}
-                      onClick={() => !imageUploading && itemImageInputRef.current?.click()}
-                      role="button"
-                      tabIndex={0}
-                      aria-label="Cambiar imagen"
-                      onKeyDown={e => e.key === "Enter" && !imageUploading && itemImageInputRef.current?.click()}
-                    >
-                      <img src={itemForm.image} alt="Vista previa del producto" className={styles.imagePreview} />
-                      {imageUploading && (
-                        <div className={styles.imageUploadingOverlay}>
-                          <Spinner size={18} /> Subiendo...
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        className={styles.removeImage}
-                        onClick={e => { e.stopPropagation(); removeItemImage(); }}
-                        aria-label="Quitar imagen"
-                        title="Quitar imagen"
-                      >
-                        {icons.close}
-                      </button>
+                    <div className={styles.imagePreviewWrapper}>
+                      <div className={styles.imagePreviewFrame}>
+                        <img src={itemForm.image} alt="Vista previa del producto" className={styles.imagePreview} />
+                        {imageUploading && (
+                          <div className={styles.imageUploadingOverlay}>
+                            <Spinner size={18} /> Subiendo...
+                          </div>
+                        )}
+                      </div>
+                      <div className={styles.imagePreviewActions}>
+                        <button
+                          type="button"
+                          className={styles.changeImageButton}
+                          onClick={() => itemImageInputRef.current?.click()}
+                          disabled={imageUploading}
+                        >
+                          {imageUploading ? "Subiendo..." : "Cambiar imagen"}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.removeImageButton}
+                          onClick={removeItemImage}
+                          disabled={imageUploading}
+                        >
+                          Quitar
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <button
@@ -1278,30 +1607,66 @@ export default function MenuEditorPage() {
                 </div>
               </div>
 
-              <div className={styles.fieldRow}>
-                <div className={styles.field}>
-                  <label htmlFor="item-price">Precio</label>
-                  <input
-                    id="item-price"
-                    type="number"
-                    placeholder="0"
-                    min="0"
-                    value={itemForm.price}
-                    onChange={e => setItemForm(f => ({ ...f, price: e.target.value }))}
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label htmlFor="item-offer">Precio oferta</label>
-                  <input
-                    id="item-offer"
-                    type="number"
-                    placeholder="0"
-                    min="0"
-                    value={itemForm.offerPrice}
-                    disabled={!canScheduleOffers && itemForm.offerScheduled}
-                    onChange={e => setItemForm(f => ({ ...f, offerPrice: e.target.value }))}
-                  />
-                </div>
+              <div className={styles.field}>
+                <label htmlFor="item-price">Precio <span className={styles.requiredMark} aria-hidden="true">*</span></label>
+                <input
+                  id="item-price"
+                  type="number"
+                  placeholder="0"
+                  min="0.01"
+                  step="0.01"
+                  value={itemForm.price}
+                  onChange={e => {
+                    setItemForm(f => ({ ...f, price: e.target.value }));
+                    setItemFieldErrors(previous => ({ ...previous, price: undefined }));
+                  }}
+                  required
+                  aria-invalid={Boolean(itemFieldErrors.price)}
+                  aria-describedby={itemFieldErrors.price ? "item-price-error" : undefined}
+                />
+                {itemFieldErrors.price && <span id="item-price-error" className={styles.fieldError}>{itemFieldErrors.price}</span>}
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="item-code">Código interno <span className={styles.requiredMark} aria-hidden="true">*</span></label>
+                <input
+                  id="item-code"
+                  type="text"
+                  placeholder="Ej: pizza-napo"
+                  value={itemForm.code}
+                  onChange={e => {
+                    setItemForm(f => ({ ...f, code: e.target.value }));
+                    setItemFieldErrors(previous => ({ ...previous, code: undefined }));
+                  }}
+                  required
+                  aria-invalid={Boolean(itemFieldErrors.code)}
+                  aria-describedby={itemFieldErrors.code ? "item-code-error" : "item-code-hint"}
+                />
+                {itemFieldErrors.code
+                  ? <span id="item-code-error" className={styles.fieldError}>{itemFieldErrors.code}</span>
+                  : <span id="item-code-hint" className={styles.fieldHint}>Usalo para identificar el producto dentro del editor.</span>}
+              </div>
+              </FormSection>
+
+              <FormSection
+                number={2}
+                title="Variantes y promociones"
+                summary={promotionsSummary}
+                expanded={openItemSections.has("promotions")}
+                onToggle={() => toggleItemSection("promotions")}
+              >
+              <div className={styles.field}>
+                <label htmlFor="item-offer">Precio oferta</label>
+                <input
+                  id="item-offer"
+                  type="number"
+                  placeholder="0"
+                  min="0.01"
+                  step="0.01"
+                  value={itemForm.offerPrice}
+                  disabled={!canScheduleOffers && itemForm.offerScheduled}
+                  onChange={e => setItemForm(f => ({ ...f, offerPrice: e.target.value }))}
+                />
               </div>
 
               <section className={styles.scheduleCard} aria-labelledby="offer-schedule-title">
@@ -1364,17 +1729,6 @@ export default function MenuEditorPage() {
                 )}
               </section>
 
-              <div className={styles.field}>
-                <label htmlFor="item-code">Código interno</label>
-                <input
-                  id="item-code"
-                  type="text"
-                  placeholder="Ej: pizza-napo"
-                  value={itemForm.code}
-                  onChange={e => setItemForm(f => ({ ...f, code: e.target.value }))}
-                />
-              </div>
-
               {/* Variantes */}
               <div className={styles.field}>
                 <div className={styles.fieldLabelRow}>
@@ -1427,6 +1781,15 @@ export default function MenuEditorPage() {
                 ))}
               </div>
 
+              </FormSection>
+
+              <FormSection
+                number={3}
+                title="Disponibilidad y visibilidad"
+                summary={availabilitySummary}
+                expanded={openItemSections.has("availability")}
+                onToggle={() => toggleItemSection("availability")}
+              >
               {/* Programación semanal de disponibilidad */}
               <section className={styles.scheduleCard} aria-labelledby="item-schedule-title">
                 <div className={styles.scheduleHeader}>
@@ -1549,7 +1912,7 @@ export default function MenuEditorPage() {
                 {[
                   { label: "Disponible",   desc: "Se puede pedir ahora",          key: "available" },
                   { label: "Ocultar",      desc: "No aparece en la carta pública", key: "hidden" },
-                  { label: "Recomendado",  desc: "Se destaca con un ícono ⭐",     key: "recommended" },
+                  { label: "Recomendado",  desc: "Se destaca en la carta pública", key: "recommended" },
                 ].map(({ label, desc, key }) => (
                   <div key={key} className={styles.toggleRow}>
                     <div>
@@ -1564,18 +1927,38 @@ export default function MenuEditorPage() {
                   </div>
                 ))}
               </div>
+              </FormSection>
+
+              {searchActive && (
+                <button className={styles.backToResults} type="button" onClick={requestCloseItemForm}>
+                  Volver a resultados
+                </button>
+              )}
 
               <div className={styles.formBtns}>
                 <button
-                  className={styles.saveBtn}
-                  onClick={saveItem}
-                  disabled={saving}
-                  aria-busy={saving}
+                  className={styles.cancelBtn}
                   type="button"
+                  onClick={requestCloseItemForm}
+                  disabled={saving || imageUploading}
                 >
-                  {saving ? <><Spinner /> Guardando...</> : activeItem ? "Guardar cambios" : "Crear producto"}
+                  Cancelar
                 </button>
-                {activeItem && (
+                <button
+                  className={styles.saveBtn}
+                  disabled={saving || imageUploading}
+                  aria-busy={saving}
+                  type="submit"
+                >
+                  {saving
+                    ? <><Spinner /> Guardando...</>
+                    : imageUploading
+                      ? "Subiendo imagen..."
+                      : activeItem ? "Guardar cambios" : "Crear producto"}
+                </button>
+              </div>
+              {activeItem && (
+                <div className={styles.dangerZone}>
                   <button
                     className={styles.deleteBtn}
                     type="button"
@@ -1583,8 +1966,9 @@ export default function MenuEditorPage() {
                   >
                     Eliminar producto
                   </button>
-                )}
-              </div>
+                </div>
+              )}
+              </form>
             </div>
           </>
         )}
@@ -1706,6 +2090,36 @@ export default function MenuEditorPage() {
               </div>
             </div>
           </>
+        )}
+
+        {/* ══ MODAL: DESCARTAR CAMBIOS DEL PRODUCTO ══ */}
+        {discardModalOpen && (
+          <div
+            className={styles.modalOverlay}
+            onClick={() => setDiscardModalOpen(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="discard-modal-title"
+          >
+            <div className={styles.modal} onClick={event => event.stopPropagation()}>
+              <p id="discard-modal-title" className={styles.modalTitle}>¿Descartar los cambios?</p>
+              <p className={styles.modalDesc}>
+                Los datos que modificaste en este producto no se guardarán.
+              </p>
+              <div className={styles.modalBtns}>
+                <button className={styles.modalCancel} onClick={() => setDiscardModalOpen(false)} type="button" autoFocus>
+                  Seguir editando
+                </button>
+                <button
+                  className={styles.modalConfirm}
+                  onClick={() => { setDiscardModalOpen(false); setView("menu"); }}
+                  type="button"
+                >
+                  Descartar
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ══ MODAL DE CONFIRMACIÓN ══ */}
