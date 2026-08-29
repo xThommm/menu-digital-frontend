@@ -67,7 +67,7 @@
   border-bottom: 0.5px solid var(--admin-border-subtle);
   background: var(--admin-bg-base);
   position: sticky;
-  top: calc(57px + env(safe-area-inset-top));
+  top: calc(52px + env(safe-area-inset-top));
   z-index: 9;
 }
 
