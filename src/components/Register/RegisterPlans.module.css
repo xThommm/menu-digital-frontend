@@ -134,6 +134,8 @@
   text-transform: uppercase;
 }
 
+
+
 .planDesc { margin-bottom: var(--space-4); color: var(--auth-cream-mid); font-size: var(--text-sm); }
 
 .features {
@@ -168,30 +170,90 @@
 
 .monthsLabel { margin-bottom: var(--space-3); }
 
-.monthsGrid { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-4); }
+.monthsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
 
 .monthBtn {
-  min-height: var(--control-min-size);
-  padding: var(--space-2) var(--space-4);
+  min-height: auto;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
   border: 1px solid var(--auth-border-soft);
   border-radius: var(--radius-xs);
   background: transparent;
   color: var(--auth-cream-mid);
   cursor: pointer;
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  transition: border-color var(--auth-transition), background var(--auth-transition), color var(--auth-transition);
+  transition:
+    border-color var(--auth-transition),
+    background var(--auth-transition),
+    color var(--auth-transition);
 }
 
-.monthBtn:hover:not(:disabled) { border-color: color-mix(in srgb, var(--auth-amber) 42%, transparent); color: var(--auth-cream); }
-.monthBtn:focus-visible { outline: 2px solid var(--auth-amber); outline-offset: 2px; }
-.monthBtn:disabled { cursor: wait; opacity: 0.6; }
+.monthBtn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--auth-amber) 42%, transparent);
+  color: var(--auth-cream);
+}
+.monthBtn:focus-visible {
+  outline: 2px solid var(--auth-amber);
+  outline-offset: 2px;
+}
 
+.monthBtn:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
 .monthSelected {
   border-color: var(--auth-amber);
   background: color-mix(in srgb, var(--auth-amber) 11%, transparent);
   color: var(--auth-cream);
 }
+
+.monthTitle {
+  color: var(--auth-cream);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.monthSubtitle {
+  color: var(--auth-cream-dim);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+}
+
+.monthSave {
+  margin-top: 2px;
+  color: var(--auth-success-text);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.savingsList {
+  margin: var(--space-3) 0 0;
+  padding-left: var(--space-4);
+  color: var(--auth-success-text);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  list-style: disc;
+}
+
+.savingsList li + li {
+  margin-top: var(--space-1);
+}
+
+@media (max-width: 480px) {
+  .monthsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 
 .total {
   display: flex;
@@ -263,6 +325,133 @@
 
 .back a:hover { color: var(--auth-amber); }
 .back a:focus-visible { outline: 2px solid var(--auth-amber); outline-offset: 4px; }
+
+.sellerSection {
+  margin-bottom: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--auth-border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--auth-input-bg);
+}
+
+.sellerLabel {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  color: var(--auth-amber);
+  font-family: var(--font-auth-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sellerOptional {
+  color: var(--auth-cream-dim);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+
+.sellerRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.sellerInput {
+  flex: 1 1 140px;
+  min-height: var(--control-min-size);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--auth-border-soft);
+  border-radius: var(--radius-xs);
+  background: var(--auth-input-bg-focus);
+  color: var(--auth-cream);
+  font-family: var(--font-auth-mono);
+  font-size: var(--text-sm);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sellerInput:focus {
+  outline: none;
+  border-color: var(--auth-border-focus);
+}
+
+.sellerInput:disabled {
+  opacity: 0.7;
+}
+
+.sellerApplyBtn,
+.sellerClearBtn {
+  min-height: var(--control-min-size);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color var(--auth-transition), background var(--auth-transition), color var(--auth-transition);
+}
+
+.sellerApplyBtn {
+  border: 1px solid var(--auth-amber);
+  background: color-mix(in srgb, var(--auth-amber) 14%, transparent);
+  color: var(--auth-amber);
+}
+
+.sellerApplyBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--auth-amber) 22%, transparent);
+}
+
+.sellerApplyBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sellerClearBtn {
+  border: 1px solid var(--auth-border-soft);
+  background: transparent;
+  color: var(--auth-cream-mid);
+}
+
+.sellerClearBtn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--auth-error-text) 50%, transparent);
+  color: var(--auth-error-text);
+}
+
+.sellerHint,
+.sellerSuccess,
+.sellerError {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.sellerHint {
+  color: var(--auth-cream-dim);
+}
+
+.sellerSuccess {
+  color: var(--auth-success-text);
+}
+
+.sellerError {
+  color: var(--auth-error-text);
+}
+
+@media (max-width: 480px) {
+  .sellerRow {
+    flex-direction: column;
+  }
+  .sellerApplyBtn,
+  .sellerClearBtn {
+    width: 100%;
+  }
+}
+
 
 @media (max-width: 760px) {
   .card { max-width: 520px; padding: var(--space-6); }

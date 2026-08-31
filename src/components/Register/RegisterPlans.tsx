@@ -53,17 +53,47 @@ function readSelectedPlan(): PlanId {
   return plan === "free" || plan === "basic" || plan === "pro" ? plan : "basic";
 }
 
+const MONTH_OPTION_COPY: Record<
+  1 | 3 | 6 | 12,
+  { title: string; subtitle: string }
+> = {
+  1: {
+    title: "1 mes",
+    subtitle: "Ideal para probar",
+  },
+  3: {
+    title: "3 meses",
+    subtitle: "Prueba extendida",
+  },
+  6: {
+    title: "6 meses",
+    subtitle: "Medio año al precio de hoy · 1 mes de regalo",
+  },
+  12: {
+    title: "12 meses",
+    subtitle: "Un año al precio actual · 3 meses de regalo",
+  },
+};
+
 export default function RegisterPlansPage() {
   const navigate = useNavigate();
   const catalog = usePlans();
   const { login } = useAuth();
   const { success: notifySuccess } = useNotifications();
-  const paymentStatus = new URLSearchParams(window.location.search).get("payment");
+  const paymentStatus = new URLSearchParams(window.location.search).get(
+    "payment",
+  );
+  const [sellerCodeInput, setSellerCodeInput] = useState("");
+  const [appliedSellerCode, setAppliedSellerCode] = useState<string | null>(
+    null,
+  );
+  const [sellerCodeError, setSellerCodeError] = useState("");
+  const [validatingCode, setValidatingCode] = useState(false);
 
   // Inicialización lazy: sin setState dentro de useEffect
   const [pending] = useState<PendingRegister | null>(readPending);
-  const [hasStoredRegistrationToken] = useState(
-    () => Boolean(localStorage.getItem("pendingRegistrationToken"))
+  const [hasStoredRegistrationToken] = useState(() =>
+    Boolean(localStorage.getItem("pendingRegistrationToken")),
   );
   const [selectedPlan, setSelectedPlan] = useState<PlanId>(readSelectedPlan);
   const [months, setMonths] = useState(1);
@@ -77,19 +107,108 @@ export default function RegisterPlansPage() {
         hasStoredRegistrationToken
           ? "/register/success"
           : `/register?plan=${selectedPlan}`,
-        { replace: true }
+        { replace: true },
       );
     } else if (paymentStatus === "pending" && pending.registrationToken) {
       // Compatibilidad con preferencias creadas antes de que el back_url de
       // pagos pendientes apuntara directamente a /register/success.
       navigate("/register/success?payment=pending", { replace: true });
     }
-  }, [hasStoredRegistrationToken, paymentStatus, pending, navigate, selectedPlan]);
+  }, [
+    hasStoredRegistrationToken,
+    paymentStatus,
+    pending,
+    navigate,
+    selectedPlan,
+  ]);
 
-  const selected = catalog.data?.find(plan => plan.name === selectedPlan);
-  const billingOption = selected?.billingOptions.find(option => option.months === months);
-  const totalPrice = billingOption?.total;
-  const ready = !!selected && !!billingOption && !catalog.isError && !catalog.isFetching;
+  const selected = catalog.data?.find((plan) => plan.name === selectedPlan);
+
+  // Precios: lista por defecto; promo solo si hay código de vendedor aplicado.
+  const listMonthly = selected?.price ?? 0;
+  const promoMonthly = selected
+    ? (selected.discountPrice ?? selected.price)
+    : 0;
+  const usePromo = Boolean(appliedSellerCode);
+  const monthly = usePromo ? promoMonthly : listMonthly;
+  const multiplier = selected?.periodMultipliers?.[months as 1 | 3 | 6 | 12];
+  const totalPrice =
+    selected && multiplier != null
+      ? Math.round(monthly * multiplier)
+      : undefined;
+  const listTotal =
+    selected && multiplier != null
+      ? Math.round(listMonthly * multiplier)
+      : undefined;
+  const savings =
+    usePromo && listTotal != null && totalPrice != null
+      ? listTotal - totalPrice
+      : 0;
+
+  // Costo si pagaras cada mes suelto al mismo precio mensual actual
+  const fullMonthsTotal =
+    selected && totalPrice != null ? monthly * months : undefined;
+
+  // Ahorro solo por el multiplicador (3 / 6 / 12 meses)
+  const periodSavings =
+    fullMonthsTotal != null && totalPrice != null
+      ? fullMonthsTotal - totalPrice
+      : 0;
+
+  // Ahorro extra por código de vendedor (ya lo tenías como `savings`)
+  const sellerSavings = savings;
+
+  const ready =
+  !!selected
+  && !catalog.isError
+  && !catalog.isFetching
+  && (
+    selectedPlan === "free"
+    || (totalPrice != null && totalPrice > 0)
+  );
+
+  const applySellerCode = async () => {
+    const code = sellerCodeInput.trim().toUpperCase();
+    setSellerCodeError("");
+    if (!code) {
+      setSellerCodeError("Ingresá un código.");
+      return;
+    }
+    if (!/^[A-Z]{3}-\d{3}$/.test(code)) {
+      setSellerCodeError("Formato inválido. Ejemplo: ABC-123");
+      return;
+    }
+    setValidatingCode(true);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/payments/validate-seller-code`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        setAppliedSellerCode(null);
+        setSellerCodeError(data.message || "Código no encontrado");
+        return;
+      }
+      setAppliedSellerCode(data.code);
+      setSellerCodeInput(data.code);
+    } catch {
+      setAppliedSellerCode(null);
+      setSellerCodeError("No se pudo validar el código. Intentá de nuevo.");
+    } finally {
+      setValidatingCode(false);
+    }
+  };
+
+  const clearSellerCode = () => {
+    setAppliedSellerCode(null);
+    setSellerCodeInput("");
+    setSellerCodeError("");
+  };
 
   const handleContinue = async () => {
     if (!pending || !ready || !selected || isSubmitting) return;
@@ -109,7 +228,7 @@ export default function RegisterPlansPage() {
               acceptedTerms: pending.acceptedTerms,
               contactInfo: pending.contactInfo,
             }),
-          }
+          },
         );
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Error al registrarse");
@@ -132,13 +251,16 @@ export default function RegisterPlansPage() {
             planId: selectedPlan,
             months,
             planVersion: selected.version,
+            ...(appliedSellerCode ? { sellerCode: appliedSellerCode } : {}),
           }),
-        }
+        },
       );
       const data = await res.json();
       if (!res.ok) {
         if (data.code === "PLAN_PRICE_CHANGED") await catalog.refetch();
-        throw new Error(data.error || data.message || "Error al iniciar el pago");
+        throw new Error(
+          data.error || data.message || "Error al iniciar el pago",
+        );
       }
 
       if (!data.registrationToken) {
@@ -148,7 +270,10 @@ export default function RegisterPlansPage() {
       // No borramos sessionStorage: si falla el pago y vuelve, puede reintentar
       sessionStorage.setItem(
         "pendingRegister",
-        JSON.stringify({ ...pending, registrationToken: data.registrationToken })
+        JSON.stringify({
+          ...pending,
+          registrationToken: data.registrationToken,
+        }),
       );
       // Permite recuperar la activación después de una recarga o de cerrar
       // la pestaña, sin guardar la contraseña fuera de sessionStorage.
@@ -177,74 +302,206 @@ export default function RegisterPlansPage() {
         </div>
 
         {catalog.isPending && <Spinner label="Cargando planes" />}
-        {catalog.isError && <div className={styles.errorBanner} role="alert"><p>No se pudieron cargar los planes. Intentá nuevamente.</p><button type="button" onClick={() => void catalog.refetch()} disabled={catalog.isFetching}>Reintentar</button></div>}
-        <div className={styles.plansGrid}>
-          {!catalog.isError && catalog.data?.map((plan) => (
+        {catalog.isError && (
+          <div className={styles.errorBanner} role="alert">
+            <p>No se pudieron cargar los planes. Intentá nuevamente.</p>
             <button
-              key={plan.name}
               type="button"
-              className={`${styles.planCard} ${
-                selectedPlan === plan.name ? styles.planSelected : ""
-              } ${(plan.name === "basic") ? styles.planHighlight : ""}`}
-              onClick={() => setSelectedPlan(plan.name)}
-              disabled={isSubmitting}
-              aria-pressed={selectedPlan === plan.name}
+              onClick={() => void catalog.refetch()}
+              disabled={catalog.isFetching}
             >
-              {(plan.name === "basic") && (
-                <span className={styles.badge}>Recomendado</span>
-              )}
-              {selectedPlan === plan.name && (
-                <span className={styles.selectionMark} aria-hidden>✓</span>
-              )}
-              <div className={styles.planName}>{plan.label}</div>
-              <div className={styles.planPrice}>
-                {plan.price === 0 ? (
-                  "Gratis"
-                ) : (
-                  <>
-                    {formatPrice(plan.effectivePrice)}
-                    <span>/mes</span>
-                  </>
-                )}
-              </div>
-              <p className={styles.planDesc}>{plan.description}</p>
-              <ul className={styles.features}>
-                {getPlanFeatureLabels(plan.features).map((f) => (
-                  <li key={f}><span aria-hidden>→</span>{f}</li>
-                ))}
-              </ul>
+              Reintentar
             </button>
-          ))}
+          </div>
+        )}
+        <div className={styles.plansGrid}>
+          {!catalog.isError &&
+            catalog.data?.map((plan) => (
+              <button
+                key={plan.name}
+                type="button"
+                className={`${styles.planCard} ${
+                  selectedPlan === plan.name ? styles.planSelected : ""
+                } ${plan.name === "basic" ? styles.planHighlight : ""}`}
+                onClick={() => setSelectedPlan(plan.name)}
+                disabled={isSubmitting}
+                aria-pressed={selectedPlan === plan.name}
+              >
+                {plan.name === "basic" && (
+                  <span className={styles.badge}>Recomendado</span>
+                )}
+                {selectedPlan === plan.name && (
+                  <span className={styles.selectionMark} aria-hidden>
+                    ✓
+                  </span>
+                )}
+                <div className={styles.planName}>{plan.label}</div>
+                <div className={styles.planPrice}>
+                  {plan.price === 0 ? (
+                    "Gratis"
+                  ) : (
+                    <>
+                      {formatPrice(
+                        appliedSellerCode
+                          ? (plan.discountPrice ?? plan.price)
+                          : plan.price,
+                      )}
+                      <span>/mes</span>
+                      <br />
+                     <span>Antes {formatPrice(plan.price)}</span>
+                    </>
+                  )}
+                </div>
+                <p className={styles.planDesc}>{plan.description}</p>
+                <ul className={styles.features}>
+                  {getPlanFeatureLabels(plan.features).map((f) => (
+                    <li key={f}>
+                      <span aria-hidden>→</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </button>
+            ))}
         </div>
+
+        {selectedPlan !== "free" && (
+          <div className={styles.sellerSection}>
+            <label className={styles.sellerLabel} htmlFor="seller-code">
+              Código de descuento
+              <span className={styles.sellerOptional}>opcional</span>
+            </label>
+            <div className={styles.sellerRow}>
+              <input
+                id="seller-code"
+                className={styles.sellerInput}
+                value={sellerCodeInput}
+                maxLength={7}
+                autoComplete="off"
+                spellCheck={false}
+                disabled={
+                  isSubmitting || validatingCode || Boolean(appliedSellerCode)
+                }
+                placeholder="ABC-123"
+                onChange={(e) => {
+                  setSellerCodeInput(
+                    e.target.value
+                      .toUpperCase()
+                      .replace(/[^A-Z0-9-]/g, "")
+                      .slice(0, 7),
+                  );
+                  setSellerCodeError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (!appliedSellerCode) void applySellerCode();
+                  }
+                }}
+              />
+              {appliedSellerCode ? (
+                <button
+                  type="button"
+                  className={styles.sellerClearBtn}
+                  onClick={clearSellerCode}
+                  disabled={isSubmitting}
+                >
+                  Quitar
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.sellerApplyBtn}
+                  onClick={() => void applySellerCode()}
+                  disabled={
+                    isSubmitting || validatingCode || !sellerCodeInput.trim()
+                  }
+                >
+                  {validatingCode ? "Validando…" : "Aplicar código"}
+                </button>
+              )}
+            </div>
+            {appliedSellerCode && (
+              <p className={styles.sellerSuccess} role="status">
+                Código {appliedSellerCode} aplicado · precio promocional y 7
+                días de regalo
+              </p>
+            )}
+            {sellerCodeError && (
+              <p className={styles.sellerError} role="alert">
+                {sellerCodeError}
+              </p>
+            )}
+            {!appliedSellerCode && !sellerCodeError && (
+              <p className={styles.sellerHint}>
+                Si tenés un código, aplicálo antes de pagar para ver el precio
+                final.
+              </p>
+            )}
+          </div>
+        )}
 
         {selectedPlan !== "free" && ready && (
           <div className={styles.monthsSection}>
             <label className={styles.monthsLabel}>¿Por cuánto tiempo?</label>
             <div className={styles.monthsGrid}>
-              {selected?.billingOptions.map((opt) => (
-                <button
-                  key={opt.months}
-                  type="button"
-                  className={`${styles.monthBtn} ${
-                    months === opt.months ? styles.monthSelected : ""
-                  }`}
-                  onClick={() => setMonths(opt.months)}
-                  disabled={isSubmitting}
-                  aria-pressed={months === opt.months}
-                >
-                  {opt.months} {opt.months === 1 ? "mes" : "meses"}
-                </button>
-              ))}
+              {([1, 3, 6, 12] as const).map((m) => {
+                const copy = MONTH_OPTION_COPY[m];
+                const optionMultiplier = selected?.periodMultipliers?.[m];
+                const optionTotal =
+                  selected && optionMultiplier != null
+                    ? Math.round(monthly * optionMultiplier)
+                    : null;
+                const optionPeriodSave =
+                  optionTotal != null ? monthly * m - optionTotal : 0;
+
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    className={`${styles.monthBtn} ${
+                      months === m ? styles.monthSelected : ""
+                    }`}
+                    onClick={() => setMonths(m)}
+                    disabled={isSubmitting}
+                    aria-pressed={months === m}
+                  >
+                    <span className={styles.monthTitle}>{copy.title}</span>
+                    <span className={styles.monthSubtitle}>
+                      {copy.subtitle}
+                    </span>
+                    {optionPeriodSave > 0 && (
+                      <span className={styles.monthSave}>
+                        Ahorrás {formatPrice(optionPeriodSave)} vs mes a mes
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
             <div className={styles.total}>
               <span className={styles.totalLabel}>Total a pagar</span>
               <strong>{formatPrice(totalPrice!)}</strong>
-              {(billingOption?.savings ?? 0) > 0 && (
-                <span className={styles.savings}>
-                  Ahorrás {formatPrice(billingOption!.savings)}
-                </span>
-              )}
             </div>
+
+            {(periodSavings > 0 || sellerSavings > 0) && (
+              <ul className={styles.savingsList}>
+                
+                {sellerSavings > 0 && (
+                  <li>
+                    Por código de descuento: ahorrás {formatPrice(sellerSavings)}{" "}
+                    
+                  </li>
+                )}
+                {periodSavings > 0 && (
+                  <li>
+                    Por pagar {months} {months === 1 ? "mes" : "meses"}: ahorrás{" "}
+                    {formatPrice(periodSavings)} frente a {months} pagos
+                    mensuales
+                  </li>
+                )}
+              </ul>
+            )}
           </div>
         )}
 
@@ -262,18 +519,23 @@ export default function RegisterPlansPage() {
         >
           {isSubmitting
             ? "Procesando..."
-            : !ready ? "Esperando catálogo…"
-            : selectedPlan === "free"
-            ? "Crear cuenta gratis"
-            : `Pagar ${formatPrice(totalPrice!)} y crear cuenta`}
+            : !ready
+              ? "Esperando catálogo…"
+              : selectedPlan === "free"
+                ? "Crear cuenta gratis"
+                : `Pagar ${formatPrice(totalPrice!)} y crear cuenta`}
         </button>
 
         {selectedPlan !== "free" && ready && (
-          <p className={styles.secure}>Pago seguro · Tus datos están protegidos</p>
+          <p className={styles.secure}>
+            Pago seguro · Tus datos están protegidos
+          </p>
         )}
 
         <div className={styles.back}>
-          <Link to={`/register?plan=${selectedPlan}`}>← Volver al formulario</Link>
+          <Link to={`/register?plan=${selectedPlan}`}>
+            ← Volver al formulario
+          </Link>
         </div>
       </div>
     </div>

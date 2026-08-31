@@ -5,12 +5,23 @@ import { useTheme } from "../../../hooks/useTheme";
 import { getCrmOverdueCount } from "../../../api/crm";
 import BrandMark from "../../Common/BrandMark";
 import s from "./AdminLayout.module.css";
+import { DollarSign, LayoutPanelLeft, LogOut, MoreHorizontal, PlayingCards, Speech, Users } from "lucide-react";
+
+// const NAV_ITEMS = [
+//   { path: "/admin",          label: "Panel", short: "Panel", icon: <GridIcon /> },
+//   { path: "/admin/crm",      label: "CRM",   short: "CRM",   icon: <UsersIcon /> },
+//   { path: "/admin/payments", label: "Pagos", short: "Pagos", icon: <PaymentsIcon /> },
+//   { path: "/admin/plans", label: "Planes", short: "Planes", icon: <PlanIcon /> },
+//   { path: "/admin/sellers",  label: "Vendedores", short: "Vend.",  icon: <SellerIcon /> },
+// ];
+
 
 const NAV_ITEMS = [
-  { path: "/admin",          label: "Panel", short: "Panel", icon: <GridIcon /> },
-  { path: "/admin/crm",      label: "CRM",   short: "CRM",   icon: <UsersIcon /> },
-  { path: "/admin/payments", label: "Pagos", short: "Pagos", icon: <PaymentsIcon /> },
-  { path: "/admin/plans", label: "Planes", short: "Planes", icon: <GridIcon /> },
+  { path: "/admin",          label: "Panel",      short: "Panel",  icon: <LayoutPanelLeft size={20} strokeWidth={1.5} /> },
+  { path: "/admin/crm",      label: "CRM",        short: "CRM",    icon: <Users size={20} strokeWidth={1.5} /> },
+  { path: "/admin/payments", label: "Pagos",      short: "Pagos",  icon: <DollarSign size={20} strokeWidth={1.5} /> },
+  { path: "/admin/plans",    label: "Planes",     short: "Planes", icon: <PlayingCards size={20} strokeWidth={1.5} /> },
+  { path: "/admin/sellers",  label: "Vendedores", short: "Vend.",  icon: <Speech size={20} strokeWidth={1.5} /> },
 ];
 
 export default function AdminLayout() {
@@ -107,7 +118,7 @@ export default function AdminLayout() {
           aria-label="Cerrar sesión"
           data-tooltip="Salir"
         >
-          <LogoutIcon />
+          <LogOut size={20} strokeWidth={1.5} />
         </button>
       </aside>
 
@@ -150,7 +161,7 @@ export default function AdminLayout() {
           aria-expanded={mobileMoreOpen}
           aria-controls="admin-mobile-more-menu"
         >
-          <span className="admin-mobile-dock__icon"><MoreIcon /></span>
+          <span className="admin-mobile-dock__icon"><MoreHorizontal size={20} strokeWidth={1.5} /></span>
           Más
         </button>
       </nav>
@@ -186,7 +197,7 @@ export default function AdminLayout() {
               className="admin-mobile-more__item admin-mobile-more__item--danger"
               onClick={handleLogout}
             >
-              <LogoutIcon />
+              <LogOut />
               Cerrar sesión
             </button>
           </div>
@@ -199,58 +210,8 @@ export default function AdminLayout() {
 
 // ── Íconos ────────────────────────────────────────────────────────────────────
 
-function GridIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
-      <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-    </svg>
-  );
-}
 
-function UsersIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}
 
-function PaymentsIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="2" y="5" width="20" height="14" rx="2" />
-      <line x1="2" y1="10" x2="22" y2="10" />
-      <line x1="6" y1="15" x2="10" y2="15" />
-    </svg>
-  );
-}
-
-function LogoutIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-  );
-}
-
-function MoreIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <circle cx="5" cy="12" r="1.5" />
-      <circle cx="12" cy="12" r="1.5" />
-      <circle cx="19" cy="12" r="1.5" />
-    </svg>
-  );
-}
 
 // Sol = "pasar a claro" (se muestra cuando el tema actual es oscuro).
 function SunIcon() {
