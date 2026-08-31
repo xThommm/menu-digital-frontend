@@ -605,7 +605,7 @@ BE-05 - CORS
 - app.options('*', cors()) es redundante con el middleware CORS anterior y
   puede generar confusion futura.
 - Centralizar una unica configuracion y mover origenes a configuracion validada
-  cuando se agreguen dominios personalizados.
+  si se incorporan nuevos origenes web autorizados.
 
 ===============================================================================
 11. PRUEBAS Y VERIFICACIONES REALIZADAS

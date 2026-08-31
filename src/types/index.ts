@@ -8,6 +8,22 @@
 // "free" es el piso (sin pagar); basic/pro son los pagos.
 export type Subscription = "free" | "basic" | "pro"
 
+// Contrato del catálogo MongoDB. Los valores vienen de la API, nunca del nombre del plan.
+export interface PlanFeatures {
+  menu_editor: boolean
+  qr: boolean
+  pedido_whatsapp: boolean
+  landing_page: boolean
+  sin_publicidad: boolean
+  carga_masiva_excel: boolean
+  programacion_productos: boolean
+  menu_pdf: boolean
+  estadisticas: boolean
+  item_limit: number | null
+  templateIds: number[]
+}
+export type BooleanPlanFeature = Exclude<keyof PlanFeatures, "item_limit" | "templateIds">
+
 // ✅ Movido desde apiClient.ts — toda la app importa desde acá
 export type ApiErrorType =
   | "network"
@@ -29,10 +45,6 @@ export interface ContactInfo {
   address: string
   social: Record<string, string>
   businessName: string
-  googleReviewUrl: string
-  googlePlaceId?: string
-  googleRating?: number
-  googleReviewCount?: number
   reservationMessage?: string
 }
 
@@ -74,6 +86,7 @@ export interface ItemAvailabilitySchedule {
 export type Schedule = Record<DayKey, DayHours>
 
 export interface User {
+  features?: PlanFeatures
   _id: string
   username: string
   slug: string
@@ -303,16 +316,6 @@ export interface MassiveConfirmResponse {
 
 // ── Admin / CEO ────────────────────────────────────────────────────────────────
 
-export interface Plan {
-  id: string
-  name: string
-  price: number
-  period: string
-  highlight: boolean
-  features: string[]
-  badge?: string
-  monthlyEquiv?: string
-}
 
 export interface AdminStats {
   usuarios: {

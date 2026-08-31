@@ -350,7 +350,7 @@
 
 /* ═══════════════════════════════════════════════════════════════
    CARRITO — control de agregar / cantidad en la tarjeta, botón
-   flotante y badge de reseñas de Google.
+   flotante.
    ═══════════════════════════════════════════════════════════════ */
 .addBtn {
   width: var(--control-min-size);
@@ -457,52 +457,6 @@
   align-items: center;
   justify-content: center;
   box-shadow: 0 0 0 2px var(--t-bg);
-}
-
-.reviewBanner {
-  margin-top: 1rem;
-  padding: 1rem;
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--t-accent) 8%, var(--t-surface));
-  border: 0.5px solid color-mix(in srgb, var(--t-accent) 22%, transparent);
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  align-items: flex-start;
-  text-align: left;
-}
-
-@media (min-width: 480px) {
-  .reviewBanner {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-}
-
-.reviewBannerText {
-  font-size: 0.825rem;
-  color: var(--t-text);
-}
-
-.reviewBannerBtn {
-  min-height: var(--control-min-size);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--t-accent);
-  border: 0.5px solid color-mix(in srgb, var(--t-accent) 35%, transparent);
-  border-radius: var(--radius-full);
-  padding: 0.45rem 0.9rem;
-  text-decoration: none;
-  transition: background 0.15s ease;
-}
-
-.reviewBannerBtn:hover {
-  background: color-mix(in srgb, var(--t-accent) 12%, transparent);
 }
 
 @keyframes fadeInOptions {

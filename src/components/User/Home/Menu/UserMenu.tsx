@@ -38,6 +38,7 @@ export default function MenuPage() {
   const [menu, setMenu]         = useState<MenuData | null>(null);
   const [loading, setLoading]   = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [cartOpen, setCartOpen] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
@@ -49,13 +50,17 @@ export default function MenuPage() {
         const res = await fetch(`/api/users/${slug}/menu`, {
           signal: controller.signal,
         });
-        if (!res.ok) { setNotFound(true); return; }
+        if (!res.ok) {
+          if (res.status === 404) setNotFound(true);
+          else setLoadError(true);
+          return;
+        }
         const data = await res.json();
         setUser(data.user);
         setMenu(data.menu);
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
-        setNotFound(true);
+        setLoadError(true);
       } finally {
         setLoading(false);
       }
@@ -132,6 +137,7 @@ export default function MenuPage() {
   );
 
   if (loading) return <MenuSkeleton />;
+  if (loadError) return <NotFound unavailable />;
   if (notFound || !menu || !user) return <NotFound />;
 
   if (tabs.length === 0) {
@@ -139,8 +145,8 @@ export default function MenuPage() {
       <EmptyMenu
         name={user.contactInfo.businessName}
         template={user.template}
-        showAd={user.subscription === "free"}
-        onBack={goBack}
+        showAd={user.features?.sin_publicidad !== true}
+        onBack={user.features?.landing_page === true ? goBack : undefined}
       />
     );
   }
@@ -363,6 +369,8 @@ function AddControl({
   onAdd: () => void;
   onChange: (q: number) => void;
 }) {
+  const { enabled } = useCart();
+  if (!enabled) return null;
   if (qty === 0) {
     return (
       <button
@@ -428,15 +436,15 @@ function MenuSkeleton() {
 }
 
   return (
-    <CartProvider slug={slug ?? ""}>
+    <CartProvider slug={slug ?? ""} enabled={user.features?.pedido_whatsapp === true}>
       <div className={styles.mp} data-template={user.template ?? 1}>
 
         {/* ── Cabecera + tabs (un solo bloque sticky — ver .mpSticky) ── */}
         <div className={styles.mpSticky}>
           <header className={styles.mpHeader}>
-            <button className={styles.mpBack} onClick={goBack} aria-label="Volver al inicio del local">
+            {user.features?.landing_page && <button className={styles.mpBack} onClick={goBack} aria-label="Volver al inicio del local">
               <BackIcon />
-            </button>
+            </button>}
             <div className={styles.mpHeaderInfo}>
               <h1 className={styles.mpName}>{info.businessName || "Menú"}</h1>
               <div className={styles.mpMeta}>
@@ -507,40 +515,27 @@ function MenuSkeleton() {
             })
           )}
 
-          {info.googleReviewUrl && (
-            <div className={styles.reviewBanner}>
-              <span className={styles.reviewBannerText}>¿Te gustó lo que viste? Contanos en Google.</span>
-              <a
-                className={styles.reviewBannerBtn}
-                href={info.googleReviewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <StarIcon /> Dejar reseña
-              </a>
-            </div>
-          )}
         </main>
 
-        {user.subscription === "free" && <FreePlanAd />}
+        {user.features?.sin_publicidad !== true && <FreePlanAd />}
 
-        <CartFab onClick={() => setCartOpen(true)} />
+        {user.features?.pedido_whatsapp && <CartFab onClick={() => setCartOpen(true)} />}
 
         {/* Dentro de .mp a propósito: el drawer usa los tokens --t-* del
             template activo, que solo existen dentro de este contenedor. */}
-        <CartDrawer
+        {user.features?.pedido_whatsapp && <CartDrawer
           open={cartOpen}
           onClose={() => setCartOpen(false)}
           businessName={info.businessName || "el local"}
           whatsappNumber={info.number}
-        />
+        />}
 
         {previewIndex !== null && (
           <ItemPreviewModal
             items={visibleTabItems}
             index={previewIndex}
             onClose={() => setPreviewIndex(null)}
-            hasDelivery={user.hasDelivery}
+            hasDelivery={user.hasDelivery && user.features?.pedido_whatsapp === true}
             onNavigate={setPreviewIndex}
           />
         )}
@@ -622,11 +617,12 @@ function CartIcon() {
 
 // ── Estados ───────────────────────────────────────────────────────────────────
 
-function NotFound() {
+function NotFound({ unavailable = false }: { unavailable?: boolean }) {
   return (
     <div className="t-notfound" role="alert">
-      <p className="t-notfound-title">Menú no encontrado</p>
-      <p className="t-notfound-sub">Este negocio no tiene menú disponible.</p>
+      <p className="t-notfound-title">{unavailable ? "No pudimos cargar el menú" : "Menú no encontrado"}</p>
+      <p className="t-notfound-sub">{unavailable ? "El servicio no está disponible por el momento. Intentá nuevamente." : "Este negocio no tiene menú disponible."}</p>
+      {unavailable && <button className="t-notfound-retry" onClick={() => window.location.reload()}>Reintentar</button>}
     </div>
   );
 }
@@ -640,13 +636,13 @@ function EmptyMenu({
   name: string;
   template: number;
   showAd: boolean;
-  onBack: () => void;
+  onBack?: () => void;
 }) {
   return (
     <div className={styles.emptyMenu} data-template={template}>
       <p className={styles.emptyMenuTitle}>{name}</p>
       <p className={styles.emptyMenuSub}>El menú todavía no tiene productos cargados.</p>
-      <button onClick={onBack} className={styles.emptyMenuBtn}>Volver</button>
+      {onBack && <button onClick={onBack} className={styles.emptyMenuBtn}>Volver</button>}
       {showAd && <FreePlanAd />}
     </div>
   );

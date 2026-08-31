@@ -212,6 +212,7 @@ export default function BusinessLandingPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   // Derivación de estado — fuera del efecto, sin setState
   const slugIsValid = !!slug && SLUG_REGEX.test(slug);
@@ -233,14 +234,19 @@ export default function BusinessLandingPage() {
         const res = await fetch(`/api/users/${slug}`, {
           signal: controller.signal,
         });
+        if (res.status === 403) {
+          const error = await res.json();
+          if (error.code === "LANDING_NOT_INCLUDED") { navigate(`/${slug}/menu`, { replace: true }); return; }
+        }
         if (!res.ok) {
-          setNotFound(true);
+          if (res.status === 404) setNotFound(true);
+          else setLoadError(true);
           return;
         }
         setUser(await res.json());
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
-        setNotFound(true);
+        setLoadError(true);
       } finally {
         setLoading(false);
       }
@@ -248,13 +254,14 @@ export default function BusinessLandingPage() {
 
     fetchUser();
     return () => controller.abort();
-  }, [slug, slugIsValid]);
+  }, [slug, slugIsValid, navigate]);
 
   // ── Returns después de todos los hooks ──
   // Un slug inválido nunca dispara el fetch, así que nunca debería mostrar el
   // loader: se resuelve directamente en el render, sin pasar por setState.
   if (!slugIsValid) return <NotFound />;
   if (loading) return <Loader />;
+  if (loadError) return <NotFound unavailable />;
   if (notFound || !user) return <NotFound />;
 
   const templateId = (user.template ?? 1) as TemplateId;
@@ -362,12 +369,7 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
       )}
 
       <div className="t-body">
-        <GoogleRatingBadge
-          rating={info.googleRating}
-          reviewCount={info.googleReviewCount}
-          reviewUrl={info.googleReviewUrl}
-        />
-        <MapBadge address={info.address} placeId={info.googlePlaceId} businessName={businessName} />
+        <MapBadge address={info.address} businessName={businessName} />
         <ContactList
           info={info}
           hasDelivery={hasDelivery}
@@ -390,7 +392,7 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
           {tokens.btnLabel}
         </button>
       </div>
-      {user.subscription === "free" && <FreePlanAd />}
+      {user.features?.sin_publicidad !== true && <FreePlanAd />}
       {viewerOpen && (
   <ImageViewer
     images={galleryImages}
@@ -429,109 +431,30 @@ function OpenStatusBadge({ isOpen }: { isOpen: boolean }) {
 }
 
 
-// ── GoogleRatingBadge ─────────────────────────────────────────────────────────
-// `rating`/`reviewCount` los completa el backend consultando la Places API con
-// el Place ID cargado en el editor (ver UserEditor.tsx) — acá solo pintamos lo
-// que llega. Si todavía no hay rating (Place ID sin cargar, o falló la
-// consulta) pero sí hay un link de reseñas, mostramos el link solo, sin
-// inventar un rating.
-
-interface GoogleRatingBadgeProps {
-  rating?: number;
-  reviewCount?: number;
-  reviewUrl?: string;
-}
-
-function GoogleRatingBadge({ rating, reviewCount, reviewUrl }: GoogleRatingBadgeProps) {
-  if (!rating) return null;
-
-  const content = (
-    <>
-      <StarRow rating={rating} />
-      <span className="t-google-rating-value">{rating.toFixed(1)}</span>
-      {typeof reviewCount === "number" && (
-        <span className="t-google-rating-count">
-          ({reviewCount} {reviewCount === 1 ? "reseña" : "reseñas"})
-        </span>
-      )}
-      <span className="t-google-rating-source">Google</span>
-    </>
-  );
-
-  if (reviewUrl) {
-    return (
-      <a
-        className="t-google-rating"
-        href={reviewUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={`${rating.toFixed(1)} de 5 en Google${typeof reviewCount === "number" ? `, ${reviewCount} reseñas` : ""}`}
-      >
-        {content}
-      </a>
-    );
-  }
-
-  return (
-    <div
-      className="t-google-rating"
-      aria-label={`${rating.toFixed(1)} de 5 en Google${typeof reviewCount === "number" ? `, ${reviewCount} reseñas` : ""}`}
-    >
-      {content}
-    </div>
-  );
-}
-
-// Redondea al medio punto más cercano (4.3 → 4.5) solo para decidir cuántas
-// estrellas pintar llenas/medias/vacías; el número exacto se muestra aparte.
-function StarRow({ rating }: { rating: number }) {
-  const rounded = Math.round(rating * 2) / 2;
-
-  return (
-    <span className="t-google-stars" aria-hidden="true">
-      {Array.from({ length: 5 }, (_, i) => {
-        const position = i + 1;
-        let fill: "full" | "half" | "empty" = "empty";
-        if (rounded >= position) fill = "full";
-        else if (rounded >= position - 0.5) fill = "half";
-        return <StarIcon key={i} fill={fill} />;
-      })}
-    </span>
-  );
-}
-
-// ── MapBadge ──────────────────────────────────────────────────────────────────
-// A diferencia del rating, esto no necesita ninguna API ni key: es solo un
-// link armado a mano a Google Maps. Con Place ID el link abre directo ese
-// lugar puntual (más preciso, evita ambigüedad con nombres de calle
-// repetidos); sin Place ID pero con dirección, cae a una búsqueda por texto,
-// que Maps resuelve igual de bien para la gran mayoría de direcciones.
+// ── Ubicación del local: enlace a Maps por dirección, sin APIs externas ──
 
 interface MapBadgeProps {
   address?: string;
-  placeId?: string;
   businessName: string;
 }
 
-function MapBadge({ address, placeId, businessName }: MapBadgeProps) {
-  if (!address && !placeId) return null;
+function MapBadge({ address, businessName }: MapBadgeProps) {
+  if (!address) return null;
 
-  const mapsUrl = placeId
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(businessName)}&query_place_id=${encodeURIComponent(placeId)}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address!)}`;
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 
   return (
     <a
-      className="t-google-rating t-google-map"
+      className={styles.mapBadge}
       href={mapsUrl}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Ver ubicación de ${businessName} en Google Maps`}
     >
-      <span className="t-google-map-icon">
+      <span className={styles.mapIcon}>
         <PinIcon />
       </span>
-      <span className="t-google-map-text">{address || "Ver ubicación"}</span>
+      <span className={styles.mapText}>{address}</span>
       <ExternalIcon />
     </a>
   );
@@ -563,7 +486,6 @@ function ContactList({ info, hasDelivery, showDeliveryRow, businessName }: Conta
     info.mail ||
     instagram ||
     facebook ||
-    info.googleReviewUrl ||
     (showDeliveryRow && hasDelivery);
 
   if (!hasAnyInfo) return null;
@@ -596,9 +518,6 @@ function ContactList({ info, hasDelivery, showDeliveryRow, businessName }: Conta
         )}
         {showDeliveryRow && hasDelivery && (
           <InfoRow icon={<DeliveryIcon />} text="Delivery disponible" />
-        )}
-        {info.googleReviewUrl && (
-          <InfoRow icon={<StarIcon />} text="Dejanos tu reseña en Google" href={info.googleReviewUrl} />
         )}
       </div>
       {info.number && (
@@ -1096,36 +1015,6 @@ function ExternalIcon() {
   );
 }
 
-let starIdCounter = 0;
-
-// `fill` es "full" por defecto para no romper el uso existente en ContactList
-// (ícono decorativo junto al link "Dejanos tu reseña"). El estado "half" usa
-// un gradiente con id único por instancia — varias estrellas medias en la
-// misma página no pueden compartir id de <linearGradient>, cada una pisaría
-// el clip de la anterior.
-function StarIcon({ fill = "full" }: { fill?: "full" | "half" | "empty" }) {
-  const gradId = useState(() => `star-half-${starIdCounter++}`)[0];
-  const fillValue = fill === "half" ? `url(#${gradId})` : fill === "full" ? "currentColor" : "none";
-
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      {fill === "half" && (
-        <defs>
-          <linearGradient id={gradId} x1="0" x2="1" y1="0" y2="0">
-            <stop offset="50%" stopColor="currentColor" />
-            <stop offset="50%" stopColor="transparent" />
-          </linearGradient>
-        </defs>
-      )}
-      <path
-        fill={fillValue}
-        d="M12 2 9.1 8.6 2 9.3l5.5 4.8L5.8 21 12 17.3 18.2 21l-1.7-6.9L22 9.3l-7.1-.7Z"
-      />
-    </svg>
-  );
-}
-
 // ── Estados ───────────────────────────────────────────────────────────────────
 
 function Loader() {
@@ -1154,13 +1043,14 @@ function Loader() {
   );
 }
 
-function NotFound() {
+function NotFound({ unavailable = false }: { unavailable?: boolean }) {
   return (
     <div className="t-notfound" role="alert">
-      <p className="t-notfound-title">Local no encontrado</p>
+      <p className="t-notfound-title">{unavailable ? "No pudimos cargar el local" : "Local no encontrado"}</p>
       <p className="t-notfound-sub">
-        El negocio que buscás no existe o no está activo.
+        {unavailable ? "El servicio no está disponible por el momento. Intentá nuevamente." : "El negocio que buscás no existe o no está activo."}
       </p>
+      {unavailable && <button className="t-notfound-retry" onClick={() => window.location.reload()}>Reintentar</button>}
     </div>
   );
 }

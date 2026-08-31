@@ -2,61 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import BrandMark from "../../Common/BrandMark";
 import styles from "./AdminHome.module.css";
-import type { Plan } from "../../../types"
+import { usePlans } from "../../../hooks/usePlans";
+import { getPlanFeatureLabels } from "../../../lib/plans";
+import Spinner from "../../Common/Spinner";
 
 // ─────────────────────────────────────────────
 // DATOS
 // ─────────────────────────────────────────────
-const PLANS: Plan[] = [
-  {
-    id: "free",
-    name: "Free",
-    price: 0,
-    highlight: false,
-    period: "para siempre",
-    features: [
-      "Menú digital + editor",
-      "QR descargable",
-      "Landing page del local",
-      "Mensaje para delivery/take away por WhatsApp",
-      "Hasta 15 productos",
-      "Incluye publicidad de Menú Digital",
-    ],
-  },
-  {
-    id: "basic",
-    name: "Basic",
-    price: 29999,
-    period: "elegí período",
-    highlight: false,
-    monthlyEquiv: "$29.999/mes",
-    features: [
-      "Sin publicidad",
-      "Hasta 50 productos",
-      "Modificación masiva por Excel",
-      "Programación de productos",
-      "Exportar menú a PDF",
-      "5 diseños disponibles",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: 49999,
-    period: "elegí período",
-    highlight: true,
-    badge: "Más elegido",
-    features: [
-      "Todo lo del Basic",
-      "Productos ilimitados",
-      "Métricas de visitas y productos",
-      "Dominio propio",
-      "15 diseños disponibles",
-      "Reseñas integradas",
-    ],
-    monthlyEquiv: "$49.999/mes",
-  },
-];
 
 // const REVIEWS = [
 //   {
@@ -315,6 +267,7 @@ function QRFrame({ children }: { children?: React.ReactNode }) {
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────
 export default function HomePage() {
+  const catalog = usePlans();
   const [menuOpen, setMenuOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
@@ -587,24 +540,26 @@ useEffect(() => {
               </p>
             </div>
 
+            {catalog.isPending && <Spinner label="Cargando planes" />}
+            {catalog.isError && <div role="alert"><p>No se pudieron cargar los planes.</p><button className={styles.planCta} onClick={() => void catalog.refetch()} disabled={catalog.isFetching}>Reintentar</button></div>}
             <div className={styles.plansGrid}>
-              {PLANS.map((plan) => (
+              {!catalog.isError && catalog.data?.map((plan) => (
                 <article
-                  key={plan.id}
-                  className={`${styles.planCard} ${plan.highlight ? styles.highlightCard : ""} ${styles.reveal}`}
+                  key={plan.name}
+                  className={`${styles.planCard} ${(plan.name === "pro") ? styles.highlightCard : ""} ${styles.revealed}`}
                   data-hover
                 >
-                  {plan.badge && <div className={styles.planBadge}>{plan.badge}</div>}
-                  <div className={styles.planName}>{plan.name}</div>
+                  {plan.name === "pro" && <div className={styles.planBadge}>Pro</div>}
+                  <div className={styles.planName}>{plan.label}</div>
                   <div className={styles.planPrice}>
-                    <span>$</span>{plan.price.toLocaleString("es-AR")}
+                    <span>$</span>{plan.effectivePrice.toLocaleString("es-AR")}
                   </div>
-                  <div className={styles.planPeriod}>{plan.period}</div>
+                  <div className={styles.planPeriod}>{plan.name === "free" ? "Sin cargo" : "ARS / mes base"}</div>
                   <ul className={styles.planFeat}>
-                    {plan.features.map((feature) => <li key={feature}>{feature}</li>)}
+                    {getPlanFeatureLabels(plan.features).map((feature) => <li key={feature}>{feature}</li>)}
                   </ul>
-                  <Link className={styles.planCta} to={`/register?plan=${plan.id}`}>
-                    {plan.id === "free" ? "Crear cuenta" : "Pagar y crear cuenta"} →
+                  <Link className={styles.planCta} to={`/register?plan=${plan.name}`}>
+                    {plan.name === "free" ? "Crear cuenta" : "Pagar y crear cuenta"} →
                   </Link>
                 </article>
               ))}

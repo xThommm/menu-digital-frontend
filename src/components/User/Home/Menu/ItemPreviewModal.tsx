@@ -374,6 +374,8 @@ function AddControl({
   onAdd: () => void;
   onChange: (q: number) => void;
 }) {
+  const { enabled } = useCart();
+  if (!enabled) return null;
   if (qty === 0) {
     return (
       <button type="button" className={styles.addBtn} onClick={onAdd} aria-label="Agregar al pedido">

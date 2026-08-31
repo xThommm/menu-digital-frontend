@@ -19,6 +19,7 @@ const AdminLayout  = lazy(() => import("../../src/components/Admin/Panel/AdminLa
 const CEODashboard = lazy(() => import("../../src/components/Admin/Panel/CEODashboard"));
 const CrmClients   = lazy(() => import("../../src/components/Admin/Crm/CrmClients"));
 const AdminPayments = lazy(() => import("../../src/components/Admin/Payments/AdminPayments"));
+const AdminPlans = lazy(() => import("../components/Admin/Plans/AdminPlans"));
 
 // User (dueño del restaurante autenticado)
 const DashboardLayout = lazy(() => import("../../src/components/User/Panel/DashboardLayout/DashboardLayout"));
@@ -50,6 +51,7 @@ export default function AppRoutes() {
           <Route path="/admin"     element={<CEODashboard />} />
           <Route path="/admin/crm" element={<CrmClients />} />
           <Route path="/admin/payments" element={<AdminPayments />} />
+          <Route path="/admin/plans" element={<AdminPlans />} />
         </Route>
       </Route>
 

@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { path: "/admin",          label: "Panel", short: "Panel", icon: <GridIcon /> },
   { path: "/admin/crm",      label: "CRM",   short: "CRM",   icon: <UsersIcon /> },
   { path: "/admin/payments", label: "Pagos", short: "Pagos", icon: <PaymentsIcon /> },
+  { path: "/admin/plans", label: "Planes", short: "Planes", icon: <GridIcon /> },
 ];
 
 export default function AdminLayout() {

@@ -5,8 +5,9 @@ import QRCode from "qrcode";
 import { jsPDF } from "jspdf";
 import { useAuth } from "../../../../context/useAuth";
 import { useNotifications } from "../../../../context/useNotifications";
-import { PLAN_LABEL } from "../../../../lib/plans";
+import { getPlanFeatureLabels, PLAN_LABEL } from "../../../../lib/plans";
 import type { DashData } from "../../../../types";
+import { usePlans } from "../../../../hooks/usePlans";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import s from "./UserDashboard.module.css";
 
@@ -30,6 +31,9 @@ function useSpotlight(ref: React.RefObject<HTMLElement>) {
 
 export default function UserDashboard() {
   const { token, user, isLoading, refreshUser } = useAuth();
+  const catalog = usePlans();
+  const currentPlan = catalog.isError ? undefined : catalog.data?.find(plan => plan.name === user?.subscription);
+  const canDownloadQr = currentPlan?.features.qr === true;
   const {
     success: notifySuccess,
     error: notifyError,
@@ -186,16 +190,16 @@ export default function UserDashboard() {
   // pegado en la mesa — el cliente quiere ver el menú, no una página de
   // presentación.
   const generateQrDataUrl = useCallback(() => {
-    if (!publicUrl) return null;
+    if (!publicUrl || !canDownloadQr) return null;
     return QRCode.toDataURL(`${publicUrl}/menu`, {
       width: 1024,
       margin: 2,
       color: { dark: "#1a1208", light: "#ffffffff" },
     });
-  }, [publicUrl]);
+  }, [publicUrl, canDownloadQr]);
 
   const handleDownloadQr = useCallback(async (format: "png" | "pdf") => {
-    if (!publicUrl || generatingQr) return;
+    if (!publicUrl || generatingQr || !canDownloadQr) return;
     setQrMenuOpen(false);
     setGeneratingQr(true);
     try {
@@ -240,6 +244,9 @@ export default function UserDashboard() {
     publicUrl,
     data,
     generatingQr,
+    setQrMenuOpen,
+    setGeneratingQr,
+    canDownloadQr,
     generateQrDataUrl,
     notifyError,
     notifySuccess,
@@ -265,13 +272,9 @@ export default function UserDashboard() {
           <div className={`${s.planCard} ${user.subscription === "pro" ? s.planCardPro : ""}`}>
             <div className={s.planInfo}>
               <span className={s.planLabel}>Tu plan</span>
-              <strong className={s.planName}>{PLAN_LABEL[user.subscription]}</strong>
+              <strong className={s.planName}>{currentPlan?.label ?? PLAN_LABEL[user.subscription]}</strong>
               <span className={s.planDescription}>
-                {user.subscription === "free"
-                  ? "Hasta 15 productos y publicidad de Menú Digital."
-                  : user.subscription === "basic"
-                    ? "Hasta 50 productos, sin publicidad y herramientas avanzadas."
-                    : "Productos ilimitados y todas las funciones disponibles."}
+                {currentPlan ? getPlanFeatureLabels(currentPlan.features).join(" · ") : "No se pudo consultar la configuración del plan."}
               </span>
               {user.subscription !== "free" && (
                 <span className={s.planExpiry}>
@@ -300,7 +303,7 @@ export default function UserDashboard() {
             description={user.subscription === "free"
               ? "Pasá a Básico o Pro, elegí la duración y aprovechá el descuento por prepago."
               : user.subscription === "basic"
-                ? "Sumá meses a tu plan Básico o pasá a Pro para desbloquear todas las funciones."
+                ? "Sumá meses a tu plan o consultá las funciones disponibles en otros planes."
                 : "Elegí cuántos meses querés sumar a la vigencia de tu plan Pro."}
             onClose={() => setUpgradeOpen(false)}
           />
@@ -352,14 +355,14 @@ export default function UserDashboard() {
                     setQrMenuPos({ top: rect.bottom + 8, left: rect.left });
                     setQrMenuOpen(o => !o);
                   }}
-                  disabled={generatingQr}
+                  disabled={generatingQr || !canDownloadQr}
                   aria-haspopup="menu"
                   aria-expanded={qrMenuOpen}
                 >
                   <QrIcon />
                   {generatingQr ? "Generando..." : "Descargar QR"}
                 </button>
-                {qrMenuOpen && qrMenuPos && createPortal(
+                {canDownloadQr && qrMenuOpen && qrMenuPos && createPortal(
                   <div
                     className={s.qrMenu}
                     role="menu"

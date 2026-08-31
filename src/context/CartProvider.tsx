@@ -17,7 +17,7 @@ function readCart(slug: string): CartLine[] {
 // El carrito vive por local (clave localStorage "cart:<slug>"), no global:
 // así no se mezcla si el cliente navega de la carta de un negocio a la de
 // otro sin recargar la página.
-export function CartProvider({ slug, children }: { slug: string; children: ReactNode }) {
+export function CartProvider({ slug, enabled, children }: { slug: string; enabled: boolean; children: ReactNode }) {
   const [items, setItems] = useState<CartLine[]>(() => readCart(slug));
 
   // Si el slug cambia (navegación SPA de una carta a otra sin recarga
@@ -41,6 +41,7 @@ export function CartProvider({ slug, children }: { slug: string; children: React
   }, [slug, items]);
 
   const addItem = (line: Omit<CartLine, "quantity">, quantity = 1) => {
+    if (!enabled) return;
     setItems((prev) => {
       const key = lineKey(line.itemId, line.selectedOption);
       const existing = prev.find((l) => lineKey(l.itemId, l.selectedOption) === key);
@@ -59,6 +60,7 @@ export function CartProvider({ slug, children }: { slug: string; children: React
   };
 
   const updateQuantity = (itemId: string, selectedOption: string | undefined, quantity: number) => {
+    if (!enabled) return;
     if (quantity <= 0) {
       removeItem(itemId, selectedOption);
       return;
@@ -73,7 +75,7 @@ export function CartProvider({ slug, children }: { slug: string; children: React
   const totalPrice = useMemo(() => items.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0), [items]);
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice }}>
+    <CartContext.Provider value={{ enabled, items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice }}>
       {children}
     </CartContext.Provider>
   );

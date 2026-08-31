@@ -1,37 +1,53 @@
 # MenuDigital — Arquitectura de la aplicación
+> **Catálogo actualizado — 31-08-2026:** precios y features ya se leen de MongoDB
+> en el código local. Editor `/admin/plans`, checkout con versión y gating dinámico
+> conectados. Las revisiones anteriores son históricas; ver README y la guía del
+> catálogo para la validación actual. No se consultó Atlas ni se desplegó.
+
 
 Documentación técnica de los dos repositorios que componen **MenuDigital**, un
 SaaS de menús/cartas digitales para bares y restaurantes de Argentina. Describe
-cada archivo de código y cada función (los `.module.css` por componente no se
-documentan; `styles/globals.css` sí, por ser la fuente compartida de tokens,
+los archivos de código, sus responsabilidades y funciones principales (los
+`.module.css` por componente no se documentan; `styles/globals.css` sí, por ser la fuente compartida de tokens,
 keyframes y utilidades — ver [styles/](#styles)).
 
 - **Frontend** (`menu-digital-frontend`): React 19 + TypeScript + Vite. Deploy en Vercel.
 - **Backend** (`menu-digital-backend`): Node + Express 4 + Mongoose 7 (MongoDB Atlas). Deploy en Koyeb.
 - **Servicios externos**: Cloudinary (imágenes), MercadoPago (pagos).
 
-Modelo de negocio: el dueño elige `free`, `basic` o `pro` antes de completar el alta.
+Modelo de negocio: el dueño elige `free`, `basic` o `pro` antes del alta.
 Free crea la cuenta sin checkout; Basic/Pro crean un registro pendiente y pasan por
-MercadoPago antes de crear el `User`. Luego carga su menú y obtiene una carta pública
-en `menudigitalapp.com.ar/<slug>/menu`. Los planes pagos desbloquean features de forma
-escalonada.
+MercadoPago antes de crear el `User`. La carta vive en `menudigitalapp.com.ar/<slug>/menu`.
+Los beneficios de cada plan se definen explícitamente en MongoDB, sin herencia.
 
-> **Estado del cierre (22-08-2026):** los cambios fueron publicados en `master`
-> (`frontend 05cd9db`, `backend 0a6e662`). La suite backend pasa 53/53 y el frontend
-> pasa typecheck, lint y build. Falta confirmar ambos despliegues y ejecutar la prueba
-> end-to-end de MercadoPago documentada en `BLUEPRINT.md` §10.1 antes de continuar
-> con otro desarrollo.
+> **Actualización funcional 31-08-2026:** se retiraron dominio propio y reseñas
+> integradas de la oferta, los permisos y la interfaz. Se conservan dirección,
+> enlace a Maps por dirección y contacto/reservas por WhatsApp. Los campos antiguos
+> no se exponen en las respuestas de contacto del panel/carta ni se aceptan al editar.
+> No se ejecutó una migración de MongoDB ni se desplegaron estos cambios.
+> Validación de esta limpieza: 3/3 pruebas nuevas de contacto pasan; suite backend
+> 96/98, con los mismos dos fallos previos. Frontend lint/build pasan y typecheck
+> conserva sus errores previos. Se revisaron las pantallas afectadas y el guardado
+> de contacto en navegador local con API simulada, sin conexión a datos reales.
+
+> **Revisión 30-08-2026:** describe el checkout local, incluidos archivos todavía
+> sin integrar del catálogo MongoDB. Código presente no equivale a despliegue
+> confirmado. Backend: 93/95 tests pasan; frontend: lint/build pasan y typecheck
+> falla en `AdminPlans.tsx`. Ver [estado operativo](#estado-operativo-del-flujo-de-suscripciones--30-08-2026)
+> y [catálogo de planes](docs/PLAN_CATALOG_ROLLOUT.md). No se hicieron cambios de
+> código, pagos reales ni consultas a bases productivas en esta revisión.
 
 ---
 
 ## Índice
 
 - [Backend](#backend)
-  - [Entry point](#entry-point-srcappjs)
+  - [Entry point](#entry-point)
   - [config/](#config)
   - [models/](#models)
   - [middleware/](#middleware)
   - [controllers/](#controllers)
+  - [services/](#services)
   - [routes/](#routes)
   - [utils/](#utils)
 - [Frontend](#frontend)
@@ -52,36 +68,42 @@ escalonada.
 
 # Backend
 
-Estructura: `src/{app.js, config, models, middleware, controllers, routes, utils}`.
+Estructura: `src/{app.js, config, models, middleware, controllers, routes, services, utils}`.
 Todos los controllers capturan errores con `handleError` (nunca filtran stack
 traces al cliente).
 
-## Entry point — `src/app.js`
+## <a id="entry-point"></a>Entry point — `src/app.js`
 
 Arma la app Express y arranca el servidor.
 
-- Conecta a la base (`connectDB()`).
+- Valida entorno (`validateEnvironment()`), espera `connectDB()` e
+  `initializePlans()` antes de `app.listen`; falla el arranque con catálogo inválido.
 - `app.set("trust proxy", 1)` — necesario detrás del balanceador de Koyeb para que
   `req.ip` sea la IP real del cliente (lo usa el rate limiter).
 - Middlewares globales, en orden:
   - `helmet(...)` con `crossOriginResourcePolicy: "cross-origin"` (la API se consume
     desde otro origen: el frontend en Vercel).
-  - `cors(...)` con allowlist explícita (Vercel prod + `localhost:5173/3000`).
+  - `cors(...)` con allowlist exacta: `https://www.menudigitalapp.com.ar`,
+    `http://localhost:5173` y `http://localhost:3000`, sin barra final. No incluye
+    el apex ni el dominio antiguo de Vercel. También declara `app.options('*', cors())`.
   - `express.json()` + `express.urlencoded()`.
   - `express-mongo-sanitize` — **solo** en `/api/users|menus|items|admin|massive`
     (excluye `/api/payments` a propósito: el webhook de MercadoPago manda un query
     param `data.id` con punto, que el sanitizer eliminaría).
   - `apiLimiter` en `/api`.
-- Monta los routers: `/api/admin`, `/api/users`, `/api/menus`, `/api/items`,
-  `/api/massive`, `/api/payments`.
+- Monta `/api/admin/crm`, `/api/admin/payments` y `/api/admin/plans` antes de
+  `/api/admin`; también `/api/plans`, usuarios, menús, items, massive y pagos.
 - Rutas sueltas: `GET /ping` (health check con log), `GET /:businessName/menu`
-  (redirect legacy), `GET /` (status JSON).
+  (redirect legacy), `GET /` (status JSON). El redirect legacy apunta a
+  `/api/menus/public/:slug`, que no está definido en `menuRoutes.js`; la carta
+  vigente consulta `/api/users/:slug/menu`.
 - Handler 404 y, al final, el **error middleware** `(err, req, res, next)` que
   centraliza en `handleError` cualquier error no atrapado (ej: JSON malformado).
 
 ## config/
 
 ### `config/environment.js`
+
 - **`validateEnvironment()`** — se ejecuta al iniciar el backend y corta el proceso si
   falta una variable crítica de autenticación, altas pagas o MercadoPago. Exige
   `MP_ENV=test|production`, URLs HTTPS en producción y que `NODE_ENV`/`MP_ENV`
@@ -92,36 +114,25 @@ Arma la app Express y arranca el servidor.
 - **`.env.example`** — contrato versionado de variables sin credenciales reales.
 
 ### `config/db.js`
+
 - **`connectDB()`** — conecta Mongoose a `MONGODB_URI`. Antes fuerza los DNS a
   Google/Cloudflare (`dns.setServers(["8.8.8.8","1.1.1.1"])`) porque el resolver
   de c-ares bloquea las consultas SRV de Atlas. Si falla, corta el proceso.
 
 ### `config/plans.js`
-Fuente de verdad del sistema de planes. Exporta:
-- **`PLAN_MAP`** — mapea el `plan_id` que viaja en el pago de MercadoPago
-  (`basic/pro`) al valor interno de `User.subscription`. Hoy 1:1; se
-  mantiene como capa de validación (el webhook rechaza plan_ids desconocidos).
-- **`PLAN_ORDER`** = `["free","basic","pro"]`. El índice ES la jerarquía.
-- **`PLAN_FEATURES`** — features que desbloquea cada nivel (acumulativo).
-  La landing pública pertenece a Free; Basic elimina publicidad y suma Excel,
-  programación y PDF; Pro suma estadísticas, ilimitados y reseñas.
-- **`ITEM_LIMITS`**, **`FREE_ITEM_LIMIT`** y **`BASIC_ITEM_LIMIT`** — topes: Free 15,
-  Basic 50 y Pro sin límite; `getItemLimit(plan)` resuelve el valor efectivo.
-- **`TEMPLATE_MIN_PLAN`** — mapa `templateId → plan mínimo` (gating escalonado de
-  templates). Free: 1 diseño · Basic: 5 diseños totales · Pro: 15 diseños totales.
-- **`getFeaturesForPlan(plan)`** — devuelve todas las features de un plan y los
-  inferiores.
-- **`hasMinPlan(userPlan, requiredPlan)`** — `true` si el plan del user alcanza el
-  mínimo (compara índices en `PLAN_ORDER`).
+
+Reglas técnicas: `PLAN_MAP`, `PLAN_ORDER`, `BOOLEAN_FEATURES`, `TEMPLATE_IDS`,
+`isValidFeatures`, `getTemplateForFeatures` y `getEffectivePlan`.
+El orden solo gobierna upgrade/renovación; **no hay herencia de beneficios**.
+Las asignaciones, límites y diseños permitidos viven en `Plan.features`.
+Una suscripción vencida usa Free; un template retirado se presenta con el primer
+ID permitido sin modificar la selección persistida.
 
 ### `config/paymentPlans.js`
-Fuente única backend de las condiciones comerciales que se envían a MercadoPago:
-`PAYMENT_PLANS`, moneda ARS, períodos válidos, multiplicadores y
-`getCheckoutAmount(planId, months)`. Crear una preferencia toma el importe de acá;
-el webhook de pagos nuevos valida contra el snapshot de `PaymentCheckout`, no contra
-el precio vigente al momento de recibir la notificación. Los precios base actuales
-son Basic `$2.000` y Pro `$5.000`; el frontend espeja estos valores en la landing,
-el registro y el modal de upgrade.
+
+Semillas iniciales y helper de referencia para tests: Basic 29.999, Pro 49.999 ARS,
+períodos 1/3/6/12 con multiplicadores 1/2.7/5/9. No determina cobros runtime:
+las rutas cotizan con `services/planCatalog.js` desde MongoDB, sin fallback.
 
 ### `config/cloudinary.js`
 - Configura el SDK `cloudinary.v2` con las credenciales del `.env`.
@@ -141,17 +152,31 @@ Storage engine de Multer propio que sube directo a Cloudinary vía `upload_strea
     campos que consumen los controllers: `req.file.path`).
   - **`_removeFile(req, file, cb)`** — `destroy(file.filename)` para revertir subidas.
 
+
 ## models/
 
 ### `models/User.js`
+
 Schema del dueño de local. Campos: `username` (único), `password` (hasheado,
 `select:false`, min 8), `slug` (URL pública), `active`, `admin`, `subscription`
 (enum `free/basic/pro`, default `free`), `subscriptionExpiresAt` (fin de vigencia
 paga; null para free y cuentas legacy), `menu` (bool, si ya creó menú),
 `hasDelivery`, `template` (nº, default 1), `contactInfo` (objeto: businessName, mail,
-number, address, social, `googleReviewUrl` — link "Dejanos tu reseña" de Google Maps),
-`media` (pictures[], backgroundPicture), `acceptedTerms*`. `timestamps`. Incluye hook
-de hasheo de password con bcrypt.
+number, location, address, social,
+`reservationMessage`), `media` (pictures[], backgroundPicture), `acceptedTerms*` y
+`schedule` (horario del local por día: enabled/open/close, distinto de la
+programación de cada producto). `slug` tiene índice único sparse. `timestamps`,
+hook de hasheo con bcrypt y método `matchPassword`.
+
+### `models/Plan.js`
+
+Colección `plans`, un documento por `free/basic/pro`: `name` único/inmutable,
+`label`, `description`, `price`, `discountPrice`, moneda ARS, `periodMultipliers`,
+`features`, `updatedBy` y timestamps. Concurrencia optimista con `__v`.
+`features` es un objeto obligatorio idéntico en los tres planes: booleanos explícitos,
+`item_limit` positivo o null y `templateIds` no vacío de IDs 1–15 sin duplicados.
+Free cuesta cero; planes pagos positivos, promociones menores al precio regular.
+Ver [modelo completo y rollout](docs/PLAN_CATALOG_ROLLOUT.md).
 
 ### `models/Menu.js`
 Cada documento es una **sección o categoría** del menú de un local. Campos: `userID`
@@ -215,6 +240,8 @@ período, importe esperado, moneda y plan/vencimiento de origen. Después solo a
 el estado operativo (`creating/ready/superseded/failed/payment_received`) y se enlazan
 `preferenceId/initPoint`. No tiene TTL. Su `_id` viaja como `metadata.checkout_id` y
 permite demostrar qué ofreció el backend aunque los precios cambien más adelante.
+Incluye `planVersion` inmutable en nuevos checkouts (opcional para documentos legados).
+`preferenceExpiresAt` sigue pendiente en PAY-05.
 
 ### `models/PaymentTransaction.js`
 Historial **durable** de cada pago consultado a MercadoPago. `paymentID` es único y
@@ -238,9 +265,11 @@ No guarda el payload completo ni datos del comprador o de la tarjeta. Los campos
 metadata externa no usan enums de negocio: aun un pago con metadata inválida debe
 quedar auditado sin convertir el webhook en un ciclo permanente de respuestas 500.
 
+
 ## middleware/
 
 ### `middleware/auth.js`
+
 - **`protect(req,res,next)`** — exige `Authorization: Bearer <jwt>`. Verifica el token
   (`jwt.verify` con `algorithms:["HS256"]` fijado como defensa contra confusión de
   algoritmo), carga el user en `req.user` (sin password), rechaza si no existe o si la
@@ -248,28 +277,35 @@ quedar auditado sin convertir el webhook en un ciclo permanente de respuestas 50
   suscripción paga ya venció.
 - **`isAdmin(req,res,next)`** — 403 si `req.user.admin` no es true. Se usa después de
   `protect`.
-- **`requirePlan(minPlan)`** — factory: devuelve un middleware que corta con 403 si
-  `hasMinPlan(req.user.subscription, minPlan)` es false.
+- **`requireFeature(feature)`** consulta `getRequestPlan()` y exige el booleano
+  activo en MongoDB (403 si está desactivado; 503 ante catálogo indisponible).
 
 ### `middleware/rateLimiters.js`
+
 - **`authLimiter`** — 10 req / 15 min. Para login y registro (anti brute-force).
 - **`apiLimiter`** — 300 req / 15 min. Red de contención general en toda la API.
 
 ## controllers/
 
 ### `controllers/userController.js`
+
 Helpers internos:
+
 - **`trackView(userID)`** — suma 1 a la visita de hoy del local (upsert no bloqueante).
   El "hoy" se calcula en horario de Buenos Aires (`buenosAiresDateStr`).
 - **`trackItemView(userID, itemID)`** — mismo patrón que `trackView`, a nivel de
   producto (colección `ItemView`).
-- **`generateToken(id)`** — firma un JWT HS256 con el id, expira en `JWT_EXPIRES_IN`.
-- **`generateSlug(name)`** — normaliza un nombre a slug URL-friendly (saca acentos,
-  espacios→guiones, colapsa guiones).
+- Importa **`generateAuthToken`** de `utils/authToken.js` y **`generateSlug`**,
+  **`createUserWithUniqueSlug`** y **`updateUserWithUniqueSlug`** de `utils/slug.js`.
+- **`getContactInfo`** — limita lecturas y ediciones a los campos vigentes de contacto;
+  evita exponer o volver a guardar campos retirados de documentos/clientes antiguos.
+- **`getPublicItemForPlan`** — normaliza ofertas/disponibilidad según el plan
+  efectivo antes de exponer datos.
 - **`isWeakPassword(password)`** — `true` si tiene < 8 chars o está en un blocklist de
   contraseñas comunes.
 
 Endpoints:
+
 - **`newUser`** `POST /api/users/register` — valida tipos (anti NoSQL injection),
   términos aceptados, fuerza de password; crea el user (slug desde businessName o
   username), devuelve token.
@@ -277,43 +313,45 @@ Endpoints:
   devuelve la sesión completa (`slug`, plan/vencimiento y token), incluida la vía de
   recuperación manual después de un alta paga.
 - **`getAuthUser`** `GET /api/users/me` — datos del user autenticado + `itemCount` y
-  `categoryCount` (para el dashboard).
+  `categoryCount`, `features` efectivas y template permitido (para el dashboard).
 - **`fetchUserWithMenu`** `GET /api/users/:slug/menu` — carta **pública** por slug:
   arma el menú agrupado (secciones→categorías→items), filtra ocultos, y dispara
-  `trackView`. Para Basic+ combina el interruptor manual `available` con la programación
+  `trackView`. Si `programacion_productos` está activo, combina el interruptor manual `available` con la programación
   semanal del producto en horario de Buenos Aires; fuera de horario el item permanece
   visible como no disponible. Es lo que renderiza la carta pública.
 - **`fetchOwnMenu`** `GET /api/users/me/menu` — menú del dueño autenticado, **sin**
   filtrar ocultos (para gestionarlos en el editor) + objeto `limits`
-  (`itemCount`, `itemLimit`, `canImportExcel`, `canExportPdf`, `canScheduleItems`) para
+  (`itemCount`, `itemLimit`, `canEditMenu`, `canImportExcel`, `canExportPdf`, `canScheduleItems`, `canScheduleOffers`) para
   la UI de gating.
-- **`fetchStats`** `GET /api/users/me/stats` (plan pro+) — devuelve `totalViews` y la
+- **`fetchStats`** `GET /api/users/me/stats` (permiso `estadisticas`) — devuelve `totalViews` y la
   serie `last30Days` (30 puntos, rellenando días sin visitas con 0), con las fechas
   calculadas en horario de Buenos Aires.
 - **`trackItemViewEndpoint`** `POST /api/users/:slug/menu/items/:itemID/view` (público) —
   registra que se tocó un producto de la carta. Resuelve el dueño desde el **slug** (no
   confía en un userID del cliente) y valida que el item sea realmente de ese local antes
   de contarlo. Responde siempre `204` (fire-and-forget, nunca rompe la experiencia).
-- **`fetchItemStats`** `GET /api/users/me/item-stats` (plan pro+) — top 10 de productos
+- **`fetchItemStats`** `GET /api/users/me/item-stats` (permiso `estadisticas`) — top 10 de productos
   más vistos en los últimos 30 días (agregación sobre `ItemView` + join contra `Item`
   para título/imagen; un producto borrado se muestra como "(producto eliminado)").
-- **`fetchUser`** `GET /api/users/:slug` — datos públicos de un local (landing por
-  slug), disponible desde Basic; Free recibe 403 y el frontend deriva a la carta.
+- **`fetchUser`** `GET /api/users/:slug` — datos públicos de un local activo
+  (landing por slug), si `landing_page` está activa. Devuelve features y usa el template permitido
+  por el plan efectivo; la publicidad sigue `features.sin_publicidad`.
 - **`downloadMenuPdf`** `GET /api/users/:slug/menu/pdf` — genera el menú imprimible,
-  disponible desde Basic aunque la URL sea pública; excluye productos manualmente
+  requiere `features.menu_pdf` aunque la URL sea pública; excluye productos manualmente
   pausados o fuera de su horario programado.
-- **`editUser`** `PUT /api/users/me` — edita `contactInfo/hasDelivery/media` (whitelist;
-  `template` queda afuera a propósito, va por `useTemplate`). `googleReviewUrl` es el
-  link/Place ID de reseñas requieren Pro y el link debe empezar con `http(s)://`.
+- **`editUser`** `PUT /api/users/me` — edita `contactInfo/hasDelivery/media/schedule`
+  (whitelist; `template` va por `useTemplate`). Preserva los campos vigentes de
+  contacto omitidos en ediciones parciales y valida el horario del local.
 - **`uploadImage`** / **`uploadBackground`** — suben foto a la galería / de fondo del
   local (a Cloudinary).
 - **`removeImage`** / **`deleteBackground`** — sacan una foto de la galería / el fondo.
 - **`useTemplate`** `PATCH /api/users/template` — cambia el template; valida contra
-  `TEMPLATE_MIN_PLAN` (id conocido + plan suficiente). **Barrera real** del gating de
+  `TEMPLATE_IDS` y `features.templateIds` del catálogo. **Barrera real** del gating de
   templates. Si el template realmente cambió, loguea un evento de CRM (`logCrmEvent`).
 - **`setActive`** `PATCH /api/users/active` — el dueño activa/desactiva su propia cuenta.
 
 ### `controllers/menuController.js`
+
 - **`verifyOwnership(menuID, userID)`** — helper: 404 si no existe, 403 si el menú no es
   del user.
 - **`newMenu`** `POST /api/menus` — crea sección/categoría (code único por usuario);
@@ -328,12 +366,16 @@ Endpoints:
 - **`uploadImage`** `POST /api/menus/:menuID/upload-image` — foto de la categoría.
 
 ### `controllers/itemController.js`
+
 - **`verifyMenuOwnership(menuID, userID)`** — igual patrón que arriba.
 - **`newItem`** `POST /api/items` — crea producto; aplica el tope escalonado (Free 15,
   Basic 50, Pro ilimitado), protege la programación de ofertas y disponibilidad desde
   Basic, valida horarios/solapamientos y la unicidad de `code` **por usuario** (no global).
 - **`editItem`** `PUT /api/items/:itemID` — edita campos de contenido (whitelist);
   unicidad de code por usuario solo si cambia.
+  **Pendiente comprobado:** la whitelist no incluye `available` ni `hidden`, aunque
+  `MenuEditor.saveItem` los envía. Los PATCH específicos sí los manejan; dos tests
+  locales fallan por persistencia/validación de esos flags en el PUT.
 - **`moveItem`** `PATCH /api/items/:itemID/move` — mueve el item a otra categoría
   (verifica ownership de origen y destino).
 - **`uploadImage`** `POST /api/items/:itemID/upload-image` — foto del producto.
@@ -341,6 +383,7 @@ Endpoints:
 - **`deleteItem`** `DELETE /api/items/:itemID` — elimina el producto.
 
 ### `controllers/adminController.js` (rutas admin/CEO)
+
 - **`getAllUsers`** `GET /api/admin/allUsers` — lista todos los usuarios (sin password).
 - **`getUser`** `GET /api/admin/:userID` — un usuario por id.
 - **`setActiveUser`** `PATCH /api/admin/users/:userID/active` — activa/desactiva a
@@ -348,9 +391,23 @@ Endpoints:
   ("Cuenta activada/desactivada por el CEO").
 - **`getStats`** `GET /api/admin/stats` — métricas globales de la plataforma (usuarios
   activos/inactivos/con menú, totales de menús/secciones/categorías/items, 5 usuarios
-  recientes), todo en queries paralelas.
+  recientes), todo en queries paralelas. Los conteos de usuarios excluyen admins;
+  “con menú publicado” usa `User.menu`, no una comprobación en vivo de su contenido.
 
-### `controllers/massiveController.js` (importar/exportar Excel — plan basic+)
+### `controllers/adminPaymentController.js` (pagos admin, solo lectura)
+
+- **`listPayments`** `GET /api/admin/payments` — pagina de a 25 (máximo 100), filtra
+  por búsqueda, estado financiero, acreditación, operación y `userID`. Valida el
+  cliente, escapa búsquedas y lee exclusivamente `PaymentTransaction` local.
+- **`paymentToDTO`** — limita la respuesta a datos operativos y referencias de
+  usuario/pending/checkout; no expone credenciales, token de activación ni init point.
+- **`getSummary`** — cuenta aprobados, pendientes, fallidos, reembolsados, aplicados
+  y alertas; suma importes aprobados con plan aplicado. El resumen es global o por
+  cliente, no cambia con los filtros de la tabla ni normaliza a MRR. No consulta
+  MercadoPago ni ejecuta devoluciones, reintentos o acreditaciones manuales.
+
+### `controllers/massiveController.js` (importar/exportar Excel — feature `carga_masiva_excel`)
+
 - **`parseBool(val)`** — normaliza `"SI"/"NO"` a boolean.
 - **`styleHeader(row)`** — estiliza la fila de encabezado del Excel generado.
 - **`getTemplate`** `GET /api/massive/template` — genera y descarga el `.xlsx` con los
@@ -365,21 +422,43 @@ Endpoints:
   (categorías primero, después productos) e informa qué se creó/actualizó/falló.
 
 ### `controllers/crmController.js` (CRM interno — admin)
+
 Todas las rutas pasan por protect + isAdmin. `defaultProfile()` / `isValidId()` helpers,
 más `STAGE_LABEL`/`PLAN_LABEL` (etiquetas legibles para el Excel exportado).
+
 - **`listClients`** `GET /api/admin/crm/clients` — lista de clientes (locales) enriquecida
-  con su etapa/tags/próximo seguimiento (dos queries que se cruzan en memoria).
+  con etapa/tags/próximo seguimiento, plan/vencimiento, onboarding, último pago y
+  alertas. Usa consultas agrupadas a usuarios, perfiles, menús, productos y pagos,
+  sin una consulta por cliente. Devuelve `attentionSummary` para CRM y dashboard.
 - **`getClient`** `GET /api/admin/crm/clients/:userID` — detalle: datos del local + su
-  perfil de CRM (o default) + resumen de actividad (categorías/secciones/items).
+  perfil de CRM (o default), onboarding y resumen de actividad. Rechaza IDs inválidos
+  y cuentas admin. El onboarding se deriva de datos existentes, no es otra colección.
 - **`updateProfile`** `PATCH /.../:userID` — actualiza etapa/tags/nextFollowUp (upsert;
   valida la etapa y que el user exista).
 - **`addNote`** `POST /.../:userID/notes` — agrega una nota (autor = admin logueado).
-- **`deleteNote`** `DELETE /.../:userID/notes/:noteID` — borra una nota puntual.
+- **`deleteNote`** `DELETE /.../:userID/notes/:noteID` — elimina un subdocumento por
+  ID. La UI oculta el borrado de eventos, pero el endpoint no filtra `kind`; no
+  describir los eventos como inmutables a nivel servidor.
 - **`getOverdueCount`** `GET /api/admin/crm/overdue-count` — cantidad de clientes con
-  seguimiento vencido (`nextFollowUp` en el pasado). Endpoint liviano para el badge de
+  seguimiento anterior al día actual de Buenos Aires (hoy no cuenta como vencido).
+  Endpoint liviano para el badge de
   alerta del sidebar del panel.
 - **`exportClients`** `GET /api/admin/crm/export?stage=` — exporta el listado (opcional
   filtrado por etapa) a un `.xlsx` con ExcelJS (mismo patrón que el exportador de menús).
+Las alertas separan problemas de pago, plan vencido, vencimiento en 30 días, plan
+pago sin fecha, seguimiento vencido y onboarding incompleto. CRM conserva el plan
+almacenado y su vencimiento; no equivale al plan efectivo que expone la API del dueño.
+
+### `controllers/planController.js`
+
+`listPlans` devuelve catálogo con `Cache-Control: no-store`. `updatePlan` exige
+precio, promoción, nombre visible, descripción, objeto `features` completo y
+`version`; valida tipos/campos y atribuye el cambio al admin. Devuelve 409 ante
+versión vieja o carrera. Los routers están montados, con `protect + isAdmin`.
+Free permite editar beneficios pero conserva precio cero. Acepta un objeto opcional
+`periodMultipliers` con los cuatro factores; omitirlo conserva el mapa anterior.
+Valida tipos numéricos, claves exactas, el mes base en 1 y totales pagos positivos.
+No edita IDs ni agrega períodos.
 
 ### `controllers/paymentController.js` (MercadoPago)
 - **`verifyMpSignature(req)`** — valida la firma HMAC-SHA256 del header `x-signature`
@@ -420,20 +499,25 @@ más `STAGE_LABEL`/`PLAN_LABEL` (etiquetas legibles para el Excel exportado).
   revocar automáticamente un beneficio históricamente aplicado. Es la **única** vía
   legítima para cambiar/renovar un plan y registra el evento en el CRM.
 
+
 ## routes/
 
 Cada archivo define un `express.Router` y ata rutas → middlewares → controllers.
 
 - **`routes/userRoutes.js`** — `/register` y `/login` (con `authLimiter`); rutas privadas
-  `/me`, `/me/menu`, `/me/stats` y `/me/item-stats` (ambas requirePlan "pro"), `PUT /me`,
+  `/me`, `/me/menu`, `/me/stats` y `/me/item-stats` (ambas `requireFeature("estadisticas")`), `PUT /me`,
   uploads, `/template`, `/active`; y al final las públicas por slug
   `POST /:slug/menu/items/:itemID/view` (tracking por plato), `/:slug/menu` y `/:slug`
   (van últimas para no interceptar las rutas fijas).
 - **`routes/menuRoutes.js`** — CRUD de menús (todas `protect`).
 - **`routes/itemRoutes.js`** — CRUD de items (todas `protect`).
 - **`routes/adminRoutes.js`** — rutas admin (todas `protect + isAdmin`).
+- **`routes/adminPaymentRoutes.js`** — `GET /` bajo `/api/admin/payments`, protegido
+  por `protect + isAdmin`, montado antes del router admin genérico.
+- **`routes/planRoutes.js`** / **`routes/adminPlanRoutes.js`** — lectura pública y
+  lectura/edición admin montadas en `/api/plans` y `/api/admin/plans`.
 - **`routes/massiveRoutes.js`** — `template/preview/confirm`, todas gateadas con
-  `requirePlan("basic")`; multer en memoria con límite de 5MB.
+  `requireFeature("menu_editor")` y `requireFeature("carga_masiva_excel")`; multer en memoria con límite de 5MB.
 - **`routes/crmRoutes.js`** — CRM interno bajo `/api/admin/crm` (montado en app.js
   ANTES de `/api/admin` para que su prefijo matchee primero). Todas `protect + isAdmin`:
   `GET /overdue-count` y `GET /export` (de nombre fijo, van antes del param),
@@ -446,6 +530,25 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   `POST /crear-preferencia` (autenticado) valida plan/período, impide downgrades,
   crea el snapshot server-side y luego la preferencia de upgrade/renovación;
   `POST /webhook` crea la cuenta o acredita el cambio/renovación con vencimiento.
+  Crea clientes del SDK e idempotency keys por operación, comprueba que MP devuelva
+  id/init point y persiste el estado `ready` antes de redirigir. Registro envía
+  vencimiento explícito de preferencia; upgrade/renovación todavía no (PAY-05).
+  Las rutas inline de pagos tienen respuestas `{error}` y manejo propio; no todas
+  las respuestas de la API usan el formato `{message}` de los controllers.
+
+## services/
+
+### `services/planCatalog.js`
+
+- `initializePlans()` espera índices e inserta faltantes con `$setOnInsert`.
+  Completa solo documentos legados sin `features`, incrementando `__v`; preserva
+  precios/promociones y valida el catálogo antes del arranque.
+- `planToDTO()` / `listPlans()` exponen las features guardadas y los totales.
+- `getPlan()` / `getPlanForUser()` leen MongoDB y resuelven plan efectivo;
+  `getRequestPlan()` reutiliza la lectura solo dentro de la petición actual.
+- `getCheckoutQuote()` cotiza desde MongoDB para registro, upgrade y renovación.
+  Sin catálogo válido se bloquea el cobro, sin fallback. Las rutas validan
+  `planVersion` y responden 409 antes de escribir o solicitar una preferencia.
 
 ## utils/
 
@@ -464,6 +567,11 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   una programada requiere inicio y fin y solo se expone públicamente dentro del rango.
 - **`utils/itemAvailability.js`** — valida las franjas semanales de disponibilidad,
   detecta solapamientos y calcula el estado actual en horario de Buenos Aires.
+- **`utils/pdfBrowser.js`** — `getBrowser()` reutiliza Chrome headless por proceso,
+  recupera arranques fallidos/desconexiones y usa Puppeteer. Requiere el navegador
+  y sus dependencias del sistema en el deploy; los tests unitarios no prueban ese runtime.
+- **`utils/menuPdfTemplate.js`** — `buildMenuHTML()` genera HTML imprimible de
+  secciones/categorías/productos, escapa texto y omite items ocultos/no disponibles.
 - **`utils/pendingCredentials.js`** — cifra y autentica con AES-256-GCM la contraseña
   que debe sobrevivir hasta la aprobación del pago; también descifra registros legacy
   mientras sigan dentro de su TTL.
@@ -488,11 +596,13 @@ viven en `styles/globals.css` (ver [styles/](#styles)).
 ## Entry / bootstrap
 
 ### `main.tsx`
+
 Punto de entrada. Crea el `QueryClient` de React Query (staleTime 2min, retry 1, sin
 refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
 `StrictMode` + `QueryClientProvider`.
 
 ### `App.tsx`
+
 - **`App`** — envuelve la app en `BrowserRouter` → `NotificationProvider` →
   `AuthProvider` → `Suspense` → `AppRoutes` (todas las páginas se cargan lazy). El
   fallback de Suspense usa `FullScreenLoader`.
@@ -500,31 +610,37 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
 ## <a id="frontend-routes"></a>routes/
 
 ### `routes/AppRoutes.tsx`
+
 - **`AppRoutes`** — declara todas las rutas con `lazy()`:
   - Públicas: `/` (AdminHome = landing comercial), `/login`, `/register`,
     `/register/plans`, `/register/success`, `/terminos`, `/privacidad`, `/contacto`.
   - Admin (protegidas por `AdminRoute` + `AdminLayout`, el shell con sidebar/bottomnav):
-    `/admin` (CEODashboard), `/admin/crm` (CrmClients).
+    `/admin` (CEODashboard), `/admin/crm` (CrmClients), `/admin/payments` (AdminPayments).
+    `/admin/plans` (AdminPlans), disponible también en la navegación.
   - Dueño (protegidas por `UserRoute` + `DashboardLayout`): `/dashboard`,
     `/menu/editor`, `/user/editor`, `/estadisticas`.
   - Tenant público por slug (al final): `/:slug` (UserHome) y `/:slug/menu` (UserMenu).
 
 ### `routes/AdminRoutes.tsx`
+
 - **`AdminRoute`** — guard: muestra loader mientras carga auth; redirige a `/login` si no
   está logueado, o a `/dashboard` si no es admin; si es admin renderiza `<Outlet/>`.
 
 ### `routes/UserRoutes.tsx`
+
 - **`UserRoute`** — guard inverso: redirige a `/login` si no está logueado, o a `/admin`
   si es admin; si es dueño renderiza `<Outlet/>`.
 
 ## context/
 
 ### `context/AuthContext.tsx`
+
 - **`AuthContextType`** (interface) y **`AuthContext`** — el contexto de auth (user,
-  token, isLoading, login, `refreshUser`, logout, isAuthenticated). El tipo del user es `AuthUser`
+  token, isLoading, login, `completeLogin`, `refreshUser`, logout, isAuthenticated). El tipo del user es `AuthUser`
   (definido en `types`).
 
 ### `context/AuthProvider.tsx`
+
 - **`readAuthFromStorage()`** — lee token/user/expiry de localStorage; si el token venció
   o el JSON está corrupto, limpia y devuelve null.
 - **`AuthProvider`** — provee el contexto. Estado combinado (una sola lectura de
@@ -534,13 +650,17 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
     localStorage (expiry 7 días).
   - **`refreshUser()`** — relee `/users/me` y sincroniza plan/vencimiento en state y
     localStorage. Se usa al volver de MercadoPago para no conservar el plan anterior.
+  - **`completeLogin(data)`** — acepta la sesión entregada por el backend, también
+    desde `RegisterSuccess`, sin necesitar volver a enviar la contraseña temporal.
   - **`logout()`** — limpia state y localStorage.
 
 ### `context/useAuth.ts`
+
 - **`useAuth()`** — hook que devuelve el `AuthContext`; tira error si se usa fuera del
   `AuthProvider`.
 
 ### `context/NotificationContext.ts`, `NotificationProvider.tsx` y `useNotifications.ts`
+
 - Sistema global de feedback con mensajes `success`, `error` e `info`. El provider
   mantiene hasta cuatro avisos visibles, evita duplicados inmediatos, aplica tiempos
   de cierre según el tipo y limpia sus timers al desmontarse. Los avisos usan
@@ -549,35 +669,41 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
   dentro de `NotificationProvider`.
 
 ### `context/CartContext.tsx`
+
 - **`CartLine`** (interface: itemId, title, unitPrice, quantity, selectedOption?) y
   **`CartContextType`** / **`CartContext`** — el contexto del **carrito de la carta
   pública** (items, addItem, removeItem, updateQuantity, clearCart, totalItems,
   totalPrice). Dos variantes distintas del mismo producto son líneas separadas.
 
 ### `context/CartProvider.tsx`
+
 - **`lineKey(itemId, selectedOption)`** — clave única de línea (producto + variante).
 - **`readCart(slug)`** — lee el carrito de localStorage (tolerante a JSON corrupto).
-- **`CartProvider({slug, children})`** — provee el carrito. Persiste en localStorage
+- **`CartProvider({slug, enabled, children})`** — provee el carrito. Persiste en localStorage
   bajo `cart:<slug>` (un carrito **por local**, no global); si el slug cambia por
   navegación SPA recarga el carrito de ese local (ajuste de estado durante el render,
   sin efecto). Si localStorage no está disponible sigue funcionando en memoria.
 
 ### `context/useCart.ts`
+
 - **`useCart()`** — hook consumidor del `CartContext` (mismo patrón que `useAuth`).
 
 ## hooks/
 
 ### `hooks/useReveal.tsx`
+
 - **`useReveal<T>()`** — devuelve `{ref, revealed}`. Con un `IntersectionObserver`,
   marca `revealed=true` la primera vez que el elemento entra al viewport y deja de
   observar. Usado para scroll-reveal en la landing pública.
 
 ### `hooks/useFeedbackMessage.ts`
+
 - **`useFeedbackMessage(type, initialValue?)`** conserva un string para los banners
   inline existentes y publica cada valor no vacío en el sistema global. Se usa en
   formularios, editores, pagos y paneles para migrar feedback sin duplicar estado.
 
 ### `hooks/useAsyncAction.tsx`
+
 - **`useAsyncAction()`** — abstrae el boilerplate `setLoading/try/catch/setError` de las
   acciones async. Devuelve `{loading, error, success, setError, setSuccess, run,
   mountedRef}`. **`run(fn, opts)`** ejecuta la acción, maneja `ApiError` (mensajes
@@ -586,19 +712,28 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
   montar y se invalida en el cleanup para no pisar estado tras el desmontaje.
 
 ### `hooks/useTheme.ts`
+
 Tema claro/oscuro del **panel** (solo tokens `--admin-*`).
+
 - **`readTheme()`** — lee la preferencia de localStorage (default `"dark"`).
 - **`applyTheme(theme)`** — pone/saca `data-theme="light"` en `<html>`.
 - **`useTheme()`** — devuelve `{theme, toggle, setTheme}`; persiste en localStorage. La
   primera aplicación (anti-flash) la hace un script inline en `index.html`.
 
+### `hooks/usePlans.ts`
+
+React Query consulta `api/plans.ts` con `PLANS_QUERY_KEY`, `staleTime: 0` y refetch
+al montar. Lo consumen landing, registro, suscripciones, dashboard y paywalls.
+Un error se muestra con reintento; no hay copias de precios como fallback.
+
 ## lib/
 
 ### `lib/plans.ts`
-Espejo del sistema de planes del backend, para la UI.
-- **`PLAN_ORDER`**, **`PLAN_LABEL`** (nombres visibles), **`TEMPLATE_MIN_PLAN`** (mapa
-  template→plan), y **`planMeetsMin(userPlan, minPlan)`** (helper de gating para
-  candados/badges en el editor).
+
+`PLAN_ORDER`/`PLAN_LABEL` son identificadores, orden y etiquetas técnicas de UI.
+`FEATURE_LABELS`, `BOOLEAN_FEATURES` y `getPlanFeatureLabels()` convierten el objeto
+del catálogo en textos visibles, incluyendo límite y cantidad de diseños.
+No asignan permisos: el backend los resuelve desde MongoDB.
 
 ### `lib/whatsapp.ts`
 Helpers puros del **pedido por WhatsApp** (sin backend, sin gating por plan).
@@ -610,18 +745,32 @@ Helpers puros del **pedido por WhatsApp** (sin backend, sin gating por plan).
 - **`buildWaLink(number, message)`** — devuelve el link `https://wa.me/...?text=` (URL-
   encoded) o null si el número no sirve (el caller oculta el botón en ese caso).
 
+
+### `lib/offers.ts`
+
+`isOfferActive(item, now)` comprueba precio y rango temporal para mostrar ofertas
+en la carta y el modal. El backend resuelve el permiso y el dato público.
+
+### `lib/adminPayments.ts`
+
+Etiquetas financieras, formateo ARS/fecha y `humanizePaymentCode`, compartidos por
+Pagos, CRM y CEO.
+
 ## api/
 
 Capa de acceso a la API. Dos estilos coexisten: un cliente `axios` (`client.ts`) y un
 wrapper sobre `fetch` (`apiClient.ts`).
 
 ### `api/client.ts`
+
 - **`apiClient`** (axios instance) — baseURL desde `VITE_API_URL`. Interceptor de
   request que adjunta el JWT desde localStorage; interceptor de response que, ante 401,
   limpia la sesión y redirige a `/login`.
 
 ### `api/apiClient.ts`
+
 Wrapper tipado sobre `fetch`.
+
 - **`DEFAULT_MESSAGES`** — mensajes por tipo de error, en español.
 - **`class ApiError`** — error tipado (`type`, `status`, `details`) que viaja por la app.
 - **`classifyStatus(status)`** — mapea código HTTP → `ApiErrorType`.
@@ -631,36 +780,53 @@ Wrapper tipado sobre `fetch`.
 - (Exporta también `isCancelled` para distinguir cancelaciones intencionales.)
 
 ### `api/users.ts`
+
 Funciones tipadas por endpoint de usuario: **`register`**, **`login`**,
 **`fetchUserBySlug`**, **`getMe`**, **`updateMe`**, **`uploadUserImage`**,
 **`setTemplate`**, **`setActive`**.
 
 ### `api/menus.ts`
+
 **`fetchPublicMenu(slug)`**, **`createMenu`**, **`updateMenu`**, **`hideMenu`**,
 **`uploadMenuImage`**.
+`fetchPublicMenu` apunta a `/menus/public/:slug` y `hideMenu` a `PUT /menus/hide/:id`:
+son wrappers desalineados con las rutas actuales. La carta real usa
+`/users/:slug/menu` y el editor `PATCH /menus/:id/hidden`; no copiarlos como contratos.
 
 ### `api/items.ts`
+
 **`createItem`**, **`updateItem`**, **`moveItem`**, **`deleteItem`**,
 **`uploadItemImage`**, **`setItemHidden`**, **`setItemAvailable`**.
 
 ### `api/massive.ts`
+
 **`downloadMassiveTemplate`** (blob), **`previewMassiveImport(file)`**,
 **`confirmMassiveImport(file)`**, y **`triggerBlobDownload(blob, filename)`** (dispara la
 descarga en el navegador).
 
 ### `api/crm.ts`
+
 CRM interno (admin): **`listCrmClients`**, **`getCrmClient`**, **`updateCrmProfile`**,
 **`addCrmNote`**, **`deleteCrmNote`**, **`getCrmOverdueCount`** (conteo de seguimientos
 vencidos para el badge del sidebar) y **`exportCrmClients(stage?)`** (descarga el
 listado como blob `.xlsx`, respetando el filtro de etapa).
+Incluye **`setCrmClientActive`**, que usa el endpoint admin de estado de cuenta.
 
-### `api/index.ts`
-Barrel: re-exporta `users/menus/items`, el `apiClient` (axios) y
-`apiFetch/isCancelled/ApiError`.
+### `api/adminPayments.ts`
+
+**`listAdminPayments(params)`** — consulta paginada/filtrada al historial local,
+incluido `userID` para el detalle de un cliente. No modifica datos en MercadoPago.
+
+### `api/plans.ts` y `api/adminPlans.ts`
+
+Contrato `PlanDefinition`/`PlanBillingOption`; `parsePlanCatalog` valida tres planes,
+objeto `features`, versión y totales por período. `listAdminPlans` y `updateAdminPlan`
+consumen los endpoints protegidos montados. La UI no decide el importe de cobro.
 
 ## types/
 
 ### `types/index.ts`
+
 Tipos espejo de los schemas del backend y de las respuestas de la API. Incluye:
 `Subscription`, `ApiErrorType`, `ContactInfo`, `Media`, `User`, `AuthUser` (forma
 normalizada del user logueado en el contexto), `Menu`, `Item`, respuestas
@@ -669,70 +835,107 @@ agrupado (`Categoria`, `Seccion`, `MenuData`, `Tab`, `UserMenuResponse`), el men
 panel (`AdminItem/AdminCategoria/AdminSeccion/AdminMenuData`, con campos que solo usa el
 editor), `DashData`, `DayCount`, `StatsData`, la analítica por plato (`TopItemStat`,
 `ItemStatsData`), tipos de import masivo (`MassiveRowResult`, `MassivePreviewResponse`,
-`MassiveConfirmResponse`), de admin (`Plan`, `AdminStats`) y de CRM (`CrmStage`,
+`MassiveConfirmResponse`), de admin (`AdminStats`) y de CRM (`CrmStage`,
 `CrmNote` — con `kind: "note" | "event"` para distinguir notas manuales de eventos del
 sistema —, `CrmProfile`, `CrmClient`, `CrmClientDetail`). `ContactInfo` incluye
-`googleReviewUrl` (link de reseñas de Google Maps).
+datos del negocio, contacto, ubicación, redes y mensaje de reserva por WhatsApp.
+También incluye horarios (`DayKey`, `DayHours`, `Schedule`), programación de
+productos, vencimientos, DTOs `AdminPayment`/`AdminPaymentsResponse` y los tipos de
+onboarding/alertas CRM, `PlanFeatures` y `BooleanPlanFeature`. El DTO comercial `PlanDefinition` vive en `api/plans.ts`.
 
 ## components/
 
 ### `components/Common/`
+
 - **`ErrorBoundary.tsx`** — **`class ErrorBoundary`**: error boundary de React (único
   modo de atrapar errores de render). `getDerivedStateFromError`, `componentDidCatch`
   (loguea, hook para Sentry), `handleReload` y un fallback con botón "Recargar".
-- **`FullScreenLoader.tsx`** — **`FullScreenLoader`**: spinner a pantalla completa (guard
-  de rutas). Usa las clases globales `.pageLoaderScreen`/`.pageLoaderRing` (mismo loader
-  que el fallback de Suspense y las pantallas de carga del panel).
-- **`Spinner.tsx`** — **`Spinner({size})`**: spinner SVG inline para botones y overlays
+- **`BrandMark.tsx`** — imagen decorativa compartida desde
+  `public/brand/menu-digital-app-brand-mark.png`, clase global `md-brand-mark`.
+- **`FreePlanAd.tsx`** — publicidad reutilizable en la landing/carta Free, con marca
+  y CTA a `/`; estilos globales `t-free-plan-ad*`.
+- **`FullScreenLoader.tsx`** — **`FullScreenLoader({label})`**: contenedor
+  `.pageLoaderScreen` con `Spinner` de 36 px; guards y fallback de Suspense.
+- **`Spinner.tsx`** — **`Spinner({size, label})`**: spinner SVG inline para botones y overlays
   ("Guardando...", subiendo imagen, etc). Hereda color vía `currentColor` y gira con la
   clase global `.iconSpinner`. Antes estaba copiado idéntico en UserEditor y MenuEditor.
+  Si recibe `label` usa `role="status"`; si no, es decorativo. Algunas pantallas
+  aún usan directamente `.pageLoaderRing`: no toda carga está migrada al componente.
 - **`UpgradeModal.tsx`** — selector compartido de suscripción para dashboard y
   paywalls. Filtra upgrades/renovaciones válidos según plan actual, ofrece Basic/Pro y
-  períodos 1/3/6/12, calcula el total/ahorro informativo y envía sólo `planId/months`;
-  el backend vuelve a validar y calcular el precio real. CSS en su módulo homónimo.
+  períodos 1/3/6/12, muestra total/ahorro del catálogo y envía `planId/months/planVersion`;
+  filtra por función, template o límite requerido. Ante 409 recarga sin cobrar
+  automáticamente. El backend vuelve a consultar y validar el precio real. CSS en su módulo homónimo.
 
 ### `components/Admin/Home/AdminHome.tsx`
+
 Landing comercial pública (la home de `/`). Presenta la propuesta, precios y CTA a
-registrarse. Datos locales: `PLANS` (grilla Free/Basic/Pro con precio, features y
-badge) y `REVIEWS`. Las tarjetas viven en una sección inline de la landing —no hay
-modal de precios— y enlazan a `/register?plan=<id>`: Free muestra "Crear cuenta" y
+registrarse. Precios y beneficios vienen de `usePlans()`/MongoDB. Las tarjetas
+viven en una sección inline —no hay modal de precios— y enlazan a `/register?plan=<id>`: Free muestra "Crear cuenta" y
 Basic/Pro, "Pagar y crear cuenta". Los CTA generales desplazan hasta esa sección.
 Componente principal **`HomePage`** con hooks de animación (`useParallax`,
 `useReveal`, `useCounterOnView`, steam rings), `CustomCursor` y navegación mobile.
 
 ### `components/Admin/Panel/AdminLayout.tsx`
+
 Shell del **panel CEO** (sidebar desktop + bottom nav mobile + `<Outlet/>` para `/admin`
-y `/admin/crm`), mismo patrón que el `DashboardLayout` del dueño.
-- **`AdminLayout`** — nav items (Panel / CRM), `useTheme` (toggle claro/oscuro),
+y `/admin/crm`/`/admin/payments`), mismo patrón que el `DashboardLayout` del dueño.
+
+- **`AdminLayout`** — nav items (Panel / CRM / Pagos), `useTheme` (toggle claro/oscuro),
   `handleLogout`, y un **badge de alerta** en el ítem CRM con la cantidad de clientes
   con seguimiento vencido (`getCrmOverdueCount`, se refresca en cada cambio de ruta).
   Íconos: `GridIcon`, `UsersIcon`, `LogoutIcon`, `SunIcon`, `MoonIcon`.
 
 ### `components/Admin/Panel/CEODashboard.tsx`
-Panel interno del CEO (`/admin`). Helpers: `SUBSCRIPTION_LABEL`, `SUBSCRIPTION_COLOR`,
-`timeAgo(date)`. Componente **`CEODashboard`**: trae `/admin/stats` y `/admin/allUsers`,
-muestra KPIs, breakdown de suscripciones (free/basic/pro), buscador de
-clientes y toggle activar/desactivar. Sub-componente **`KpiCard`** (acentos vía CSS
-vars, theme-aware) y varios íconos SVG. La navegación/logout viven en `AdminLayout`; el
-`.module.css` define sus tokens locales (`--c-*`, glass, sombras) con un bloque
-`[data-theme="light"]` para el tema claro.
+
+Resumen ejecutivo interno (`/admin`). **`CEODashboard`** carga `/admin/stats`, CRM y
+pagos con `Promise.allSettled`: conserva indicadores disponibles si una fuente falla.
+Muestra cuentas, menús, productos, importe aprobado con plan aplicado, alertas de
+clientes/pagos, distribución de planes y cinco altas recientes. Los accesos llevan
+a CRM/Pagos; las altas enlazan a `/admin/crm?client=<id>`. No gestiona clientes aquí.
+El importe es acumulado del historial local, **no MRR ni saldo de MercadoPago**.
+La distribución de planes usa la suscripción almacenada del CRM, no el plan efectivo.
+`KpiCard`, `ModuleShortcut`, `AttentionRow` y helpers de presentación usan su CSS
+Module y tokens `--admin-*`; navegación/logout viven en `AdminLayout`.
 
 ### `components/Admin/Crm/CrmClients.tsx`
+
 **CRM interno** del CEO (`/admin/crm`). Helpers: `STAGE_META` (etiqueta+color por etapa),
 `STAGE_ORDER`, `fmtDate`, `isOverdue`, `timeAgo`, `dateInputValue`.
+
 - **`CrmClients`** — trae la lista (`listCrmClients`), la filtra por etapa (chips con
   contadores) y búsqueda, con **dos vistas alternables**: lista y **Kanban** (columnas
   por etapa, tarjetas arrastrables con drag & drop nativo que llaman a
   `updateCrmProfile` al soltarlas — `moveToStage`, optimista). Arriba, un **banner de
   seguimientos vencidos** (clickeable: filtra solo esos clientes) y un botón
   **"Exportar a Excel"** (`exportCrmClients`, respeta el filtro de etapa activo). Al
-  seleccionar un cliente abre el drawer.
+  seleccionar un cliente abre el drawer. La tabla 360 incluye contacto, estado,
+  plan/vencimiento, onboarding, último pago y alertas, con ordenamiento y bandeja
+  de atención. `?client=<id>` abre una ficha desde el dashboard.
 - **`ClientDrawer`** — panel lateral de detalle: trae `getCrmClient`, muestra perfil +
   actividad + link a la carta, y permite cambiar etapa, editar tags, setear el próximo
   seguimiento y gestionar el historial de **Actividad**: notas manuales mezcladas
   cronológicamente con los eventos automáticos del sistema (`kind:"event"` — estilo
   discreto, autor "Sistema", sin botón de borrar). Los cambios se guardan al backend y
-  se sincronizan con la fila del listado (optimista). Cierra con Escape.
+  se sincronizan con el listado. Incluye activación/desactivación con confirmación,
+  checklist de onboarding y consulta de pagos del cliente. Cierra con Escape.
+
+### `components/Admin/Payments/AdminPayments.tsx`
+
+Historial operativo (`/admin/payments`): búsqueda, filtros, paginación, resumen y
+detalle de IDs/validación/acreditación. Admite `?userID=<id>` y navega al CRM.
+Separa el estado financiero del estado del plan; solo consulta datos persistidos,
+sin pedir pagos a MP, devolver dinero ni modificar suscripciones.
+
+### `components/Admin/Plans/AdminPlans.tsx`
+
+Editor `/admin/plans` registrado en rutas y navegación CEO: nombres, descripciones,
+precios, multiplicadores por período, booleanos, límite y templates por plan.
+Free tiene precio fijo cero; el factor mensual es 1. La vista previa calcula con
+los factores editados, admite coma/punto decimal y deshacer los restaura.
+Guardado individual, deshacer, totales, conflicto 409 e invalidación de la query
+pública. Advierte que los cambios de beneficios afectan también a usuarios pagos
+existentes; los checkouts anteriores conservan su importe.
 
 ### `components/Login/Login.tsx`
 - **`Login`** — formulario de login. Usa `useAuth().login`, muestra errores, redirige
@@ -747,6 +950,9 @@ vars, theme-aware) y varios íconos SVG. La navegación/logout viven en `AdminLa
   `/register/success` en lugar de sobrescribir el alta pendiente.
 
 ### `components/Register/RegisterPlans.tsx`
+
+Consume precios, beneficios y períodos del catálogo; envía `planVersion`.
+Bloquea pagos ante catálogo inválido y exige reconfirmación tras un 409.
 - **`RegisterPlans`** — confirma el plan elegido (Basic por defecto si no vino uno
   válido) y ofrece períodos de 1/3/6/12 meses para planes pagos. Free llama a
   `POST /users/register`, inicia sesión y redirige al dashboard. Basic/Pro llaman a
@@ -769,12 +975,12 @@ vars, theme-aware) y varios íconos SVG. La navegación/logout viven en `AdminLa
   titleClass, showDeliveryRow, galleryRadius, btnLabel, useAvatar) para los 15 templates.
 - **`BusinessLandingPage`** — componente de ruta: valida el slug, hace fetch de
   `/users/:slug`, maneja loading/notFound, y renderiza `<Template>` con los tokens del
-  template elegido.
+  template elegido. Si `landing_page` está desactivada, redirige a la carta;
+  diferencia una caída temporal del servicio de un 404 y permite reintentar.
 - **`Template`** — layout unificado (hero con foto/overlay o header con avatar según
   `useAvatar`, título, badge de delivery, lista de contacto, galería bento, botón "Ver
   menú"). Setea `document.title`.
-- Sub-componentes: **`ContactList`** (chips de contacto con `useReveal`; incluye la fila
-  "Dejanos tu reseña en Google" si el dueño cargó `googleReviewUrl`), **`Gallery`**
+- Sub-componentes: **`ContactList`** (chips de contacto con `useReveal`, sin reseñas integradas), **`Gallery`**
   (galería bento con foto destacada), **`Loader`** (skeleton con la silueta real),
   **`NotFound`** (clases globales `.t-notfound*`, compartidas con la carta).
 - **`ImageViewer`** — lightbox a pantalla completa (se abre al tocar la foto de portada
@@ -792,11 +998,10 @@ variantes), `fmt(n)` (formato de precio AR), `offerPct(orig, offer)` (% de descu
   sticky** (`.mpSticky`): las tabs quedan pegadas exactamente debajo del header sin
   acoplar un `top:` fijo a una altura que cambia entre mobile y desktop; al cambiar de
   tab se vuelve al tope de la página (el inicio visible del contenido). Envuelve todo en
-  **`CartProvider`** (carrito por slug), renderiza el **`CartFab`** (botón flotante con
+  **`CartProvider`** (carrito por slug, habilitado por las features recibidas), renderiza el **`CartFab`** (botón flotante con
   badge de cantidad, solo si el carrito tiene algo), el **`CartDrawer`** — **dentro** del
-  contenedor `[data-template]`, porque los tokens `--t-*` solo existen ahí — y, si hay
-  `googleReviewUrl`, un **banner de reseñas** al final del listado ("¿Te gustó lo que
-  viste? Contanos en Google"). **Responsive**: columna única estilo mobile hasta 1024px;
+  contenedor `[data-template]`, porque los tokens `--t-*` solo existen ahí.
+  `features.pedido_whatsapp` controla el carrito y `sin_publicidad` los anuncios. **Responsive**: columna única estilo mobile hasta 1024px;
   de ahí en adelante el contenedor crece (~1080px) y cada categoría pasa a una **grilla
   de 2 columnas** (título ocupando ambas; `align-items:start` para que expandir
   variantes en una tarjeta no estire a su vecina).
@@ -842,7 +1047,7 @@ Home del panel (`/dashboard`). Layout de dos columnas en desktop.
 - **`useSpotlight(ref)`** — hook: luz que sigue al cursor en las cards.
 - **`UserDashboard`** — trae `/users/me`, muestra bienvenida, tarjeta "storefront" (URL
   pública, copiar link, ver página, descargar QR con `qrcode`+`jsPDF`), tarjeta **“Tu
-  plan”** (plan efectivo, vencimiento y CTA de upgrade/renovación), cards de navegación
+  plan”** (plan efectivo, beneficios del catálogo, vencimiento y CTA de suscripción), cards de navegación
   y la vista previa en vivo. Al volver con `?payment=success` reintenta `refreshUser`
   unos segundos por la posible carrera con el webhook. QR menu con portal.
 - **`SpotlightCard`** — card de navegación con el efecto spotlight.
@@ -861,24 +1066,26 @@ Editor del menú (`/menu/editor`). El componente más grande.
 - **`MenuEditorPage`** — estado del editor (menú, límites, vistas item/categoría/sección/
   massive-import, modales de borrado y de upgrade). Fetch a `/users/me/menu`, `refetch`,
   handlers CRUD de items/categorías/secciones, drag & drop, subida de imágenes directo a
-  Cloudinary, **exportar/importar Excel** y **exportar PDF** (gateados a Basic con
-  modal de upsell). El formulario del producto permite activar una programación semanal
-  Basic+ con varios rangos por día, incluso cruzando medianoche, y programar el inicio y
-  fin de una oferta con fecha y hora. Los paywalls abren `Common/UpgradeModal` con el
-  plan mínimo correspondiente.
+  Cloudinary, **exportar/importar Excel** y **exportar PDF**. Cada permiso llega
+  independientemente desde `/users/me/menu`; `canEditMenu` puede bloquear el editor.
+  La programación semanal/de ofertas depende de `programacion_productos`. El upsell
+  busca planes que ofrezcan la función o el límite requerido, sin topes hardcodeados.
+- Búsqueda local normalizada por título, descripción, código, categoría y sección;
+  formularios progresivos y validación accesible. Conserva navegación inferior y
+  controles de disponibilidad/oculto/recomendado. Dos regresiones previas de `editItem`
+  con `available`/`hidden` siguen pendientes; no equivalen a una prueba E2E del guardado.
 
 ### `components/User/Panel/UserEditor/UserEditor.tsx`
 "Mi negocio" (`/user/editor`). Tabs info / media / template.
-- `TEMPLATES` (los 15 con `minPlan`), `EMPTY_FORM`. Sub-componentes `Toggle` y
+- `TEMPLATES` (los 15 diseños implementados), `EMPTY_FORM`. Sub-componentes `Toggle` y
   `LockIcon`; el spinner inline viene de `Common/Spinner`.
-- **`UserEditorPage`** — edita datos de contacto (incluido el **link de reseñas de
-  Google Maps**, disponible en Pro y validado como `http(s)://`), delivery, galería
+- **`UserEditorPage`** — edita datos de contacto vigentes (sin reseñas), delivery, galería
   (subida múltiple a Cloudinary con progreso, drag & drop) y **selección de template**
-  con gating por plan (`planMeetsMin`): candado + badge del plan requerido y
-  `Common/UpgradeModal` configurado con el nivel mínimo del template.
+  con `features.templateIds`: candado y etiqueta del plan del catálogo que ofrece
+  el diseño; `Common/UpgradeModal` se filtra por template requerido.
 
 ### `components/User/Panel/Stats/UserStats.tsx`
-Estadísticas de visitas (`/estadisticas`, plan pro+).
+Estadísticas de visitas (`/estadisticas`, permiso `features.estadisticas`).
 - **`requestStats(token)`** — fetch puro (sin React) de `/users/me/stats`; devuelve
   `{kind:"locked"|"data"|"none"}`.
 - **`requestItemStats(token)`** — ídem para `/users/me/item-stats` (mismo gate de plan;
@@ -887,21 +1094,28 @@ Estadísticas de visitas (`/estadisticas`, plan pro+).
   (polling cada 45s solo con la pestaña visible + refresco al volver el foco). Muestra
   total y gráfico de los últimos 30 días, más la sección **"Productos más vistos"**
   (ranking top 10 con barra proporcional al más visto, solo si hay datos). Si el plan
-  no incluye stats (403), muestra paywall que abre `Common/UpgradeModal` para Pro.
+  no incluye stats (403), muestra paywall con planes que incluyan `estadisticas`;
+  no presupone que Pro la ofrezca.
+
 
 ## pages/
 
 ### `pages/Legal/`
+
 Páginas legales estáticas:
+
 - **`Terms.tsx`** — **`Terms`**: términos y condiciones.
 - **`Privacy.tsx`** — **`Privacy`**: política de privacidad.
 - **`Contact.tsx`** — **`Contact`**: formulario de contacto con validación local
-  (`FormState`, `validate()`, `handleChange`, `handleSubmit`).
+  (`FormState`, `validate()`, `handleChange`, `handleSubmit`). Abre un `mailto:`;
+  no hay endpoint de envío ni confirmación real de entrega de correo.
 
 ## <a id="utils-frontend"></a>Utils/
 
 ### `Utils/MassiveImport.tsx`
+
 Asistente de importación por Excel (se abre desde el MenuEditor).
+
 - Tipos `Resumen`/`Resultado` (derivados de las respuestas de la API), `Step`.
 - **`MassiveImport`** — flujo de 3 pasos (upload → preview → success): descarga de
   plantilla, drag & drop del archivo (valida .xlsx y ≤5MB), preview de cambios y
@@ -911,6 +1125,7 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
 ## <a id="styles"></a>styles/
 
 ### `styles/globals.css`
+
 Única hoja global; todo lo demás son CSS Modules por componente. La regla de la casa:
 **lo que se repite en 2+ módulos se centraliza acá**. Contiene:
 
@@ -936,6 +1151,9 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   `.t-notfound`/`.t-notfound-title`/`.t-notfound-sub` (estado "no encontrado" de las
   vistas públicas — colores fijos porque sin negocio no hay template del que heredar),
   `.grain` (textura), `.t-reveal`/`.t-reveal-in` (scroll-reveal con `useReveal`).
+- **Marca y navegación mobile**: `.md-brand-mark`, `.t-free-plan-ad*`,
+  `.admin-mobile-dock` y sus clases compartidas; los dos shells usan el mismo dock
+  responsive con espacio para safe area.
 - **Componentes de template `.t-*`** (hero, header con avatar, badges, info-rows,
   galería bento, botones, cards, stats) que consumen los tokens `--t-*` — el layout de
   `UserHome` se arma con estas clases.
@@ -949,13 +1167,14 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   mantiene al pasar a `RegisterPlans`. Free usa `POST /users/register`, inicia sesión
   y entra directo al dashboard. En un alta paga, `RegisterPlans` crea la preferencia
   y conserva el token opaco; al volver de MP, `RegisterSuccess` espera
-  `/payments/registro/estado`, ejecuta un único login cuando el webhook completa la
-  cuenta y redirige a `/dashboard`. Si se cierra la pestaña, el token persistido
+  `/payments/registro/estado`, entrega la sesión a `completeLogin` cuando el webhook
+  completa la cuenta y redirige a `/dashboard`. Si se cierra la pestaña, el token persistido
   permite reanudar esa activación sin repetir el pago. El JWT queda en localStorage
   (`AuthProvider`). Los guards `UserRoute`/`AdminRoute` protegen las rutas.
 - **Carga del menú**: el dueño usa `MenuEditor` → `/menus` y `/items` (CRUD). Las
-  imágenes van directo a Cloudinary. Los ocultos se ven en el editor pero no en la carta
-  pública.
+  imágenes de productos se suben directo a Cloudinary desde el editor; también
+  existen uploads autenticados vía Multer para negocio/categorías/productos. Los
+  ocultos se ven en el editor pero no en la carta pública.
 - **Carta pública**: visitante entra a `/:slug/menu` → `fetchUserWithMenu` arma el menú
   agrupado, filtra ocultos, calcula la disponibilidad semanal de cada producto en
   horario BA y registra la visita (`trackView`).
@@ -969,10 +1188,10 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   una preferencia antigua que implicaría downgrade no modifica la cuenta y queda para
   conciliación. El panel abre el
   `Common/UpgradeModal` compartido (plan + 1/3/6/12 meses) desde la tarjeta “Tu plan”
-  y desde cada paywall. El gating de features (límite de items, Excel, PDF, reseñas,
+  y desde cada paywall. El gating de features (límite de items, Excel, PDF,
   ofertas y disponibilidad programadas, stats y templates) se valida en el backend
-  (`requirePlan` / `TEMPLATE_MIN_PLAN`) y se refleja en la UI (`lib/plans.ts`). La
-  landing del local está incluida en Free y muestra publicidad en ese nivel.
+  (`requireFeature` / `Plan.features`) y se refleja en la UI desde el catálogo.
+  Landing, publicidad y pedidos siguen los booleanos efectivos recibidos.
 
 - **Validación de pagos**: `test/paymentWebhook.test.js` simula MercadoPago/Mongoose y
   cubre upgrades, renovaciones vigentes/vencidas, reintentos idempotentes, cobros
@@ -995,9 +1214,9 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   el botón "Pedir por WhatsApp" abre `wa.me` con el mensaje prearmado
   (`lib/whatsapp.ts`) al número del local. 100% client-side, sin backend, sin gating
   por plan (el teléfono ya es público vía el link `tel:` existente).
-- **Reseñas de Google** (Pro): el dueño carga `contactInfo.googleReviewUrl` en "Mi negocio";
-  la landing pública (`ContactList`) y la carta (banner al final del menú) muestran el
-  CTA "Dejanos tu reseña" solo si el campo está cargado y el plan vigente es Pro.
+  El agregado simple también depende de `hasDelivery`; el código de variantes no
+  aplica ese flag de forma uniforme. No equivale a un bloqueo por plan ni a gestión
+  persistida de pedidos, y merece regresión del flujo completo.
 - **Estadísticas**: cada visita incrementa `PageView` del día (BA), y cada tap sobre un
   producto incrementa `ItemView` (mismo esquema, a nivel plato). Los planes pro+ ven en
   `UserStats` la serie de 30 días con auto-refresh en tiempo real más el ranking de
@@ -1015,23 +1234,46 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   viven en `CrmProfile`, aislados del modelo User para no filtrarse por ningún endpoint
   público; solo se acceden vía `/api/admin/crm` (protect + isAdmin).
 
-### Estado operativo del flujo de suscripciones — 22-08-2026
+### Estado operativo del flujo de suscripciones — 30-08-2026
 
-- **Publicado en Git**: recuperación del alta paga y login final en frontend;
-  `PendingRegistration`, `PaymentCheckout`, `PaymentTransaction`, validación estricta
-  y aplicación transaccional en backend.
-- **Validado localmente**: 62 tests backend; frontend typecheck, lint y build; sin
-  errores de `git diff --check`.
+- **Implementado y conectado en código**: recuperación del alta paga y sesión final;
+  `PendingRegistration`, `PaymentCheckout`, `PaymentTransaction`, validación estricta,
+  aplicación transaccional, consulta admin de pagos y referencias desde CRM/CEO.
+- **Resultado histórico del 30-08-2026**: backend 95 tests, 93 pasan y 2 fallan en
+  `test/itemController.test.js` (PUT de flags `available`/`hidden`). Frontend lint y
+  build pasan; typecheck falla en `AdminPlans.tsx` por `getPlanFeatureLabel` ausente y
+  tipos derivados. No se arreglaron estos problemas al actualizar documentación.
 - **Hardening de ambiente**: el backend falla al arrancar si faltan variables críticas,
   exige firma de webhook y solo acredita pagos cuyo `live_mode` coincide con
   `MP_ENV`. En Koyeb deben quedar `NODE_ENV=production` y `MP_ENV=production`.
 - **Compatibilidad**: preferencias anteriores a `PaymentCheckout` se auditan como
   `legacy`; no pueden degradar plan o vigencia, aunque no permiten demostrar el
   importe original porque ese snapshot todavía no existía.
-- **Pendiente obligatorio**: confirmar deploy Vercel/Koyeb y completar un pago real
+- **Actualización 31-08-2026 del catálogo**: modelo, arranque, rutas, checkout,
+  features y UI integrados localmente; ver [modelo y rollout](docs/PLAN_CATALOG_ROLLOUT.md).
+  Los resultados del 30-08 citados arriba son históricos; ver README para validación actual.
+- **PAY-05**: falta expiración explícita en upgrade/renovación y snapshot de esa
+  fecha. Registro tiene siete días de checkout más tres días de margen del pending.
+  No usar TTL para borrar la evidencia durable ni descartar un pago aprobado solo
+  porque su webhook llegue tarde.
+- **Pendiente de verificación productiva**: confirmar deploy Vercel/Koyeb y un pago real
   con comprador distinto del vendedor, verificando preferencia, metadata,
   `PaymentCheckout`, `PaymentTransaction`, webhook, cuenta/plan/vencimiento, CRM,
   redirección y sincronización del dashboard.
-- **Pendiente operativo posterior**: definir el procedimiento o pantalla de
-  conciliación/reembolso para transacciones `not_applied` y la política automática
-  frente a reembolsos o contracargos.
+- **Pendiente operativo**: Pagos ya permite inspeccionar transacciones `not_applied`,
+  pero no conciliarlas mediante acciones ni devolver dinero. Falta definir ese
+  procedimiento y la política frente a reembolsos/contracargos.
+
+## Verificación y documentación relacionada
+
+- Frontend: `npm run typecheck`, `npm run lint`, `npm run build`.
+- Backend: `npm test` (`node --test`). Los archivos de tests cubren admin, pagos admin,
+  CRM, entorno, disponibilidad, edición de items, ofertas, rutas de pagos, webhook,
+  credenciales pendientes, catálogo, slug y auth. Mocks no prueban Atlas, transacciones
+  reales, configuración del proxy, Cloudinary ni Checkout Pro.
+- Desarrollo: proxy `/api` en `vite.config.ts`; producción: rewrite de API y SPA en
+  `vercel.json`. La aplicación mezcla URLs `/api` con `VITE_API_URL`; ambas deben
+  apuntar al mismo backend. No imprimir secretos al diagnosticar.
+- [README](README.md), [BLUEPRINT](BLUEPRINT.md), [Design QA](design-qa.md),
+  [catálogo](docs/PLAN_CATALOG_ROLLOUT.md) y
+  [dev log backend](../menu-digital-backend/DEVLOG-LUCAS.md).

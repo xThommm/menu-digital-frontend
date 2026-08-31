@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../../../context/useAuth";
 import { useNotifications } from "../../../../context/useNotifications";
 import type { StatsData, ItemStatsData } from "../../../../types";
+import { usePlans } from "../../../../hooks/usePlans";
+import { PLAN_ORDER } from "../../../../lib/plans";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import s from "./UserStats.module.css";
 
@@ -41,6 +43,8 @@ async function requestItemStats(token: string): Promise<ItemStatsResult> {
 
 export default function UserStats() {
   const { token, user, isLoading: authLoading } = useAuth();
+  const catalog = usePlans();
+  const statsPlan = catalog.isError ? undefined : catalog.data?.find(plan => plan.features.estadisticas && PLAN_ORDER.indexOf(plan.name) > PLAN_ORDER.indexOf(user?.subscription ?? "free"));
   const { error: notifyError } = useNotifications();
 
   const [stats, setStats]         = useState<StatsData | null>(null);
@@ -140,21 +144,22 @@ export default function UserStats() {
 
           <div className={s.lockCard}>
             <div className={s.lockIcon}><LockIcon /></div>
-            <p className={s.lockTitle}>Disponible desde el plan Pro</p>
+            <p className={s.lockTitle}>Estadísticas no incluidas en tu plan</p>
             <p className={s.lockDesc}>
               Mirá cuántas veces escanearon el QR de tu carta y seguí la tendencia día a día.
-              Con el plan Pro ($49.999) desbloqueás estadísticas de visitas.
+              {statsPlan && ` Disponibles con ${statsPlan.label} desde ${statsPlan.effectivePrice.toLocaleString("es-AR")} ARS por mes.`}
             </p>
             <button className={s.lockBtn} onClick={() => setUpgradeOpen(true)} type="button">
-              Mejorar a Pro
+              Consultar planes disponibles
             </button>
           </div>
           {upgradeOpen && (
             <UpgradeModal
               currentPlan={user?.subscription ?? "free"}
-              minPlan="pro"
+              minPlan="basic"
+              requiredFeature="estadisticas"
               title="Desbloqueá las estadísticas"
-              description="Con el plan Pro accedés a las visitas de tu carta y a los productos más vistos."
+              description="Consultá qué planes incluyen visitas de la carta y los productos más vistos."
               onClose={() => setUpgradeOpen(false)}
             />
           )}

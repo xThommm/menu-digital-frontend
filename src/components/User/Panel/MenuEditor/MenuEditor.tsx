@@ -477,6 +477,7 @@ export default function MenuEditorPage() {
   const [menuData,    setMenuData]    = useState<MenuData | null>(null);
   const [limits,      setLimits]      = useState<{
     itemCount: number;
+    canEditMenu: boolean;
     itemLimit: number | null;
     canImportExcel: boolean;
     canExportPdf: boolean;
@@ -498,13 +499,9 @@ export default function MenuEditorPage() {
   const [exporting, setExporting] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
 
-  const upgradePlan = upgradeReason === "items" && limits?.itemLimit === 50 ? "pro" : "basic";
-  // Compatibilidad durante despliegues escalonados: versiones anteriores del
-  // backend no enviaban `canExportPdf`. PDF y Excel requieren el mismo plan
-  // Basic, así que el permiso existente es un fallback seguro.
-  const canExportPdf = limits?.canExportPdf ?? limits?.canImportExcel ?? false;
-  const canScheduleItems = limits?.canScheduleItems ?? limits?.canImportExcel ?? false;
-  const canScheduleOffers = limits?.canScheduleOffers ?? limits?.canImportExcel ?? false;
+  const canExportPdf = limits?.canExportPdf === true;
+  const canScheduleItems = limits?.canScheduleItems === true;
+  const canScheduleOffers = limits?.canScheduleOffers === true;
 
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [dragOverCat, setDragOverCat] = useState<string | null>(null);
@@ -1163,6 +1160,10 @@ export default function MenuEditorPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  if (!loading && limits?.canEditMenu === false) {
+    return <main className={styles.me}><p>El editor de menú no está incluido en tu plan actual.</p></main>;
+  }
+
   return (
       <div className={styles.me}>
 
@@ -1427,7 +1428,7 @@ export default function MenuEditorPage() {
                     <span className={styles.sheetOptionText}>
                       <span className={styles.sheetOptionTitle}>
                         Importar desde Excel
-                        {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>BÁSICO</span>}
+                        {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>VER PLANES</span>}
                       </span>
                       <span className={styles.sheetOptionDesc}>Carga o actualiza en lote</span>
                     </span>
@@ -1448,7 +1449,7 @@ export default function MenuEditorPage() {
                     <span className={styles.sheetOptionText}>
                       <span className={styles.sheetOptionTitle}>
                         Exportar a Excel
-                        {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>BÁSICO</span>}
+                        {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>VER PLANES</span>}
                       </span>
                       <span className={styles.sheetOptionDesc}>Descargá tus categorías y productos actuales</span>
                     </span>
@@ -1469,7 +1470,7 @@ export default function MenuEditorPage() {
                     <span className={styles.sheetOptionText}>
                       <span className={styles.sheetOptionTitle}>
                         Exportar menú a PDF
-                        {!canExportPdf && <span className={styles.sheetOptionPro}>BÁSICO</span>}
+                        {!canExportPdf && <span className={styles.sheetOptionPro}>VER PLANES</span>}
                       </span>
                       <span className={styles.sheetOptionDesc}>Descargá una versión lista para imprimir</span>
                     </span>
@@ -1674,7 +1675,7 @@ export default function MenuEditorPage() {
                   <div>
                     <div className={styles.scheduleTitleRow}>
                       <p id="offer-schedule-title" className={styles.toggleLabel}>Programar oferta</p>
-                      {!canScheduleOffers && <span className={styles.schedulePlan}>BÁSICO</span>}
+                      {!canScheduleOffers && <span className={styles.schedulePlan}>VER PLANES</span>}
                     </div>
                     <p className={styles.toggleDesc}>Activá y desactivá el precio de oferta automáticamente.</p>
                   </div>
@@ -1796,7 +1797,7 @@ export default function MenuEditorPage() {
                   <div>
                     <div className={styles.scheduleTitleRow}>
                       <p id="item-schedule-title" className={styles.toggleLabel}>Programar disponibilidad</p>
-                      {!canScheduleItems && <span className={styles.schedulePlan}>BÁSICO</span>}
+                      {!canScheduleItems && <span className={styles.schedulePlan}>VER PLANES</span>}
                     </div>
                     <p className={styles.toggleDesc}>Mostrá el plato solo en días y horarios determinados.</p>
                   </div>
@@ -2158,27 +2159,11 @@ export default function MenuEditorPage() {
         {upgradeReason && (
           <UpgradeModal
             currentPlan={user?.subscription ?? "free"}
-            minPlan={upgradePlan}
-            title={upgradeReason === "items"
-                  ? `Llegaste al límite de ${limits?.itemLimit ?? 15} productos`
-                  : upgradeReason === "excel"
-                    ? "Importar y exportar en Excel es una función del plan Básico"
-                    : upgradeReason === "pdf"
-                      ? "Exportar el menú a PDF es una función del plan Básico"
-                      : upgradeReason === "schedule"
-                        ? "Programar la disponibilidad es una función del plan Básico"
-                        : "Programar ofertas es una función del plan Básico"}
-            description={upgradeReason === "items"
-                  ? limits?.itemLimit === 50
-                    ? "Con el plan Pro tenés productos ilimitados."
-                    : "Con el plan Básico podés cargar hasta 50 productos."
-                  : upgradeReason === "excel"
-                    ? "Con el plan Básico podés cargar, actualizar y exportar tu menú completo desde una planilla de Excel."
-                    : upgradeReason === "pdf"
-                      ? "Con el plan Básico podés descargar una versión imprimible de tu menú."
-                      : upgradeReason === "schedule"
-                        ? "Con el plan Básico podés definir varios horarios por día para cada producto."
-                        : "Con el plan Básico el precio de oferta se activa y finaliza automáticamente."}
+            minPlan="basic"
+            requiredFeature={upgradeReason === "excel" ? "carga_masiva_excel" : upgradeReason === "pdf" ? "menu_pdf" : upgradeReason === "items" ? undefined : "programacion_productos"}
+            minimumItems={upgradeReason === "items" ? (limits?.itemCount ?? totalItems) + 1 : undefined}
+            title={upgradeReason === "items" ? `Llegaste al límite de ${limits?.itemLimit ?? "tu plan"} productos` : "Esta función no está incluida en tu plan"}
+            description="Consultá los planes disponibles con esta capacidad. Los precios y beneficios corresponden al catálogo vigente."
             onClose={() => setUpgradeReason(null)}
           />
         )}

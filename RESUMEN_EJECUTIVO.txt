@@ -1,164 +1,153 @@
-# MenuDigital — Resumen ejecutivo
+# MenuDigital — Resumen ejecutivo y comercial
 
-**Actualizado:** 22 de agosto de 2026
+**Actualizado:** 31 de agosto de 2026
+**Web:** https://www.menudigitalapp.com.ar
+**Uso interno:** producto, planes, argumentos de venta y objetivos del negocio.
 
-## 1. Producto y propuesta
+## 1. Qué es MenuDigital
 
-MenuDigital es un servicio online argentino para bares, cafeterías y restaurantes independientes. Permite administrar desde el celular:
+MenuDigital es una plataforma argentina para bares, cafeterías y restaurantes que permite tener una carta digital con QR, una página del local y un carrito para preparar pedidos por WhatsApp. El dueño administra el contenido desde el celular o la computadora; el comensal abre un enlace, sin instalar una app ni crear una cuenta para ver la carta.
 
-- Menú o carta digital con código QR.
-- Página pública propia con imágenes y medios de contacto.
-- Productos, precios, variantes, ofertas y horarios.
-- Carrito que prepara el pedido y lo envía por WhatsApp.
-- Reseñas de Google, estadísticas y exportaciones según el plan.
+La propuesta es ayudar al local a presentar mejor sus productos, mantener los precios actualizados y facilitar el contacto y los pedidos. Buscamos ahorrar trabajo cotidiano y acompañar el crecimiento del negocio, sin garantizar aumentos de ventas.
 
-La propuesta no es vender solamente una carta QR, sino ayudar al local a verse profesional, actualizar precios rápidamente y generar más pedidos.
+El modelo es por suscripción: un plan Gratis y dos pagos, Básico (Basic) y Pro. **MenuDigital no cobra comisión por los pedidos que se coordinan por WhatsApp.**
 
-El producto está en producción en **menudigitalapp.com.ar** y apunta a dueños de locales con poco tiempo y conocimientos técnicos.
+## 2. A quién apuntamos y qué problemas resolvemos
 
-## 2. Funcionalidades actuales
+El cliente principal es el dueño de un local gastronómico independiente, con poco tiempo para herramientas complejas. Conviene priorizar locales que:
 
-- Cuentas y suscripciones Gratis, Basic y Pro.
-- Editor de menú, productos, imágenes, ofertas y disponibilidad.
-- Carta y landing pública, 15 diseños y QR descargable.
-- Carrito y pedidos por WhatsApp.
-- Importación/exportación por Excel y exportación PDF.
-- Estadísticas de visitas y productos más vistos.
-- Integración con reseñas de Google.
-- Cobro de suscripciones mediante MercadoPago.
-- Panel interno con indicadores y CRM para clientes y seguimientos.
+- Usan una carta impresa, una foto o un PDF difícil de mantener actualizado.
+- Cambian precios con frecuencia o necesitan mostrar promociones y disponibilidad.
+- Reciben consultas y pedidos por WhatsApp y quieren facilitar la elección de productos.
+- Buscan una presentación más cuidada para compartir en mesas, redes y mensajes.
 
-Actualmente el pedido por WhatsApp no se cobra dentro de MenuDigital: el carrito permanece en el dispositivo del comensal y sólo prepara el mensaje. MenuDigital no interviene en el pago ni almacena sus datos.
+La conversación comercial debe partir de un problema real del local. Un menú corto puede empezar en Gratis; una carta grande o necesidades específicas justifican un plan pago.
 
-## 3. Modelo de ingresos
+## 3. Qué puede hacer el local
 
-El modelo actual es **freemium por suscripción**, sin comisión sobre las ventas del local.
+- **Editar su carta:** organizar secciones y categorías; cargar productos con fotos, descripciones, precios y variantes; destacar recomendados, ocultar productos o marcarlos como no disponibles.
+- **Compartir su presencia digital:** mostrar una página con imágenes y datos de contacto, compartir el enlace y descargar su QR. La página está dentro de MenuDigital; no equivale a un dominio propio.
+- **Preparar pedidos por WhatsApp:** el comensal agrega productos, elige cantidades y variantes, y abre un mensaje con el detalle y el total. Debe enviarlo en WhatsApp; el local confirma disponibilidad, entrega y pago por ese canal.
+- **Ahorrar trabajo con Básico o Pro:** importar y exportar productos en Excel, descargar la carta en PDF, programar ofertas por fechas y disponibilidad por días y horarios.
+- **Consultar interés con Pro:** ver visitas a la carta y los productos más vistos de los últimos 30 días. Son métricas de consulta, no ventas ni pedidos confirmados.
 
-| Plan | Precio base | Características principales |
-|---|---:|---|
-| Gratis | $0 | Hasta 15 productos, menú, landing, QR y WhatsApp. Incluye publicidad de MenuDigital. |
-| Basic | $2.000/mes | Hasta 50 productos, sin publicidad, Excel, PDF, ofertas programadas y 5 diseños. |
-| Pro | $5.000/mes | Productos ilimitados, estadísticas, reseñas, 15 diseños y todo Basic. |
+## 4. Planes y diferencias
 
-Descuentos aproximados por pago anticipado:
+Esta tabla es una referencia de la configuración inicial. El catálogo vigente se administra en MongoDB desde Administración → Planes; confirmar allí precios, promociones y beneficios antes de cotizar. La integración está lista en código local, pendiente de publicación y validación con la base real.
 
-- 3 meses: 10%.
-- 6 meses: 17%.
-- 12 meses: 25%.
+| Función | Gratis | Básico / Basic | Pro |
+|---|---|---|---|
+| Precio por 1 mes | $0 | $29.999 | $49.999 |
+| Productos totales por cuenta | Hasta 15 | Hasta 50 | Ilimitados |
+| Editor, fotos, precios y variantes | Sí | Sí | Sí |
+| Página del local y QR descargable | Sí | Sí | Sí |
+| Carrito y mensaje por WhatsApp | Sí | Sí | Sí |
+| Publicidad de MenuDigital | Incluye | Sin publicidad | Sin publicidad |
+| Diseños disponibles en total | 1 | 5 | 15 |
+| Importación/exportación de productos en Excel | No | Sí | Sí |
+| Descarga de carta en PDF | No | Sí | Sí |
+| Ofertas y disponibilidad programadas | No | Sí | Sí |
+| Estadísticas de visitas y productos vistos | No | No | Sí |
 
-Los precios están en pesos argentinos y se revisan trimestralmente por inflación. Cada cambio debe actualizarse de forma coordinada para evitar diferencias entre el precio publicado y el cobrado.
+Los límites de productos cuentan toda la cuenta, no cada categoría. Los diseños son totales: Básico tiene 5 y Pro 15, no 5 o 15 adicionales.
 
-**Pendiente comercial:** el dominio propio está anunciado dentro de Pro, pero todavía no está implementado.
+**Cómo orientar la elección:**
 
-## 4. Proyección económica actualizada
+- **Gratis:** para empezar, conocer la herramienta o publicar una carta de hasta 15 productos aceptando la publicidad de MenuDigital. No es una prueba de Pro.
+- **Básico:** para una carta de hasta 50 productos, sin publicidad, con Excel, PDF y programación. También sirve si el local tiene pocos productos pero necesita esas funciones.
+- **Pro:** para superar los 50 productos o acceder a estadísticas y a los 15 diseños. Incluye todo Básico.
 
-### Supuestos de referencia
+## 5. Precios y pagos anticipados
 
-- Mezcla estimada: 70% de clientes Basic y 30% Pro.
-- Ingreso promedio de lista: **$2.900 mensuales por cliente pago**.
-- Previsión promedio por descuentos de prepago: 10%.
-- Ingreso promedio efectivo estimado: **$2.610 mensuales**.
-- Valores expresados en pesos constantes de agosto de 2026.
-- No incluyen comisiones, impuestos, devoluciones ni inflación futura.
+**Todos los importes están en pesos argentinos (ARS).** Estos son los precios publicados verificados al 31/08/2026:
 
-| Escenario a 24 meses | Clientes pagos | Ingreso mensual | Ingreso anualizado |
+| Período contratado | Básico: total a pagar | Pro: total a pagar | Ahorro frente a pagar mes a mes |
 |---|---:|---:|---:|
-| Piso | 300 | $783.000 | $9,396 millones |
-| Base | 600 | $1,566 millones | $18,792 millones |
-| Techo | 900 | $2,349 millones | $28,188 millones |
+| 1 mes | $29.999 | $49.999 | — |
+| 3 meses | $80.997 | $134.997 | Aproximadamente 10% |
+| 6 meses | $149.995 | $249.995 | Aproximadamente 16,67% |
+| 12 meses | $269.991 | $449.991 | 25% |
 
-Referencias adicionales:
+Los períodos de 3, 6 y 12 meses se pagan por adelantado. **La tabla muestra el total del período, no una cuota mensual.** Gratis permanece en $0 y no requiere un pago para comenzar.
 
-- Con una baja mensual del 3%, la permanencia media estimada es de aproximadamente 33 meses.
-- El ingreso bruto acumulado estimado por cliente sería cercano a **$87.000**.
-- Costo máximo orientativo de adquisición: un mes de ingreso promedio para canales asociados y hasta tres meses para publicidad paga.
-- El resultado neto debe recalcularse con comisiones de MercadoPago, impuestos, devoluciones, soporte, infraestructura y tipo de cambio reales.
-- Los costos tecnológicos estimados en USD deben convertirse mensualmente y compararse contra el margen de contribución, no contra la facturación bruta.
+Antes de cerrar una venta, revisar el plan, el período y el importe que muestra la contratación. Los precios pueden cambiar: no usar capturas antiguas ni prometer descuentos, cuotas o bonificaciones fuera de las condiciones habilitadas. Si el importe difiere de este documento, consultar con administración antes de cobrar o confirmar la oferta.
 
-## 5. Funcionamiento de las suscripciones
+## 6. Cómo se contrata y renueva
 
-- Gratis crea la cuenta inmediatamente.
-- Basic y Pro envían al cliente al checkout de MercadoPago.
-- La cuenta paga se crea o actualiza únicamente cuando MercadoPago confirma el pago.
-- Cada preferencia nueva conserva un snapshot durable de asociación, plan, período,
-  importe y moneda; cada pago conserva además su estado financiero y el resultado de
-  la acreditación.
-- Se admiten períodos de 1, 3, 6 y 12 meses, renovaciones y mejoras de plan.
-- Si la confirmación demora, el registro permanece pendiente y puede completarse más tarde.
-- Las contraseñas temporales quedan cifradas y se eliminan al finalizar el alta.
-- Un reintento del mismo pago no vuelve a sumar meses; dos pagos distintos sí
-  extienden la vigencia una vez cada uno. Un checkout viejo no degrada el plan ni
-  acorta un vencimiento posterior.
+1. El local se registra y elige un plan. Gratis permite crear la cuenta sin checkout.
+2. En Básico o Pro elige 1, 3, 6 o 12 meses y paga la suscripción mediante MercadoPago.
+3. El alta o cambio al plan pago se acredita cuando MercadoPago confirma el pago. Si queda pendiente, no prometer activación inmediata ni indicar que pague otra vez sin revisar el caso.
+4. Desde el panel se puede renovar o mejorar el plan. **No hay renovación automática ni débito mensual recurrente.**
 
-Los cambios están publicados en `master` (`frontend 05cd9db`, `backend 0a6e662`) y
-el cierre local reporta 53/53 tests backend más typecheck, lint y build frontend.
-Para cerrarlo falta confirmar los despliegues y validar en producción el recorrido
-completo: pago, confirmación, usuario, plan, vencimiento, acceso al panel y CRM.
+Al vencer una suscripción se aplican las funciones y límites del plan Gratis hasta que se renueve. Las consultas sobre cambios de plan, saldos, reintegros o condiciones especiales deben derivarse a administración; no prometer prorrateos ni compensaciones automáticas.
 
-## 6. Operación, datos y seguridad
+MercadoPago se usa para pagar la suscripción a MenuDigital. **El pago de la comida o bebida no se procesa dentro de la carta.**
 
-Servicios principales:
+## 7. Presentación y demostración comercial
 
-- **Vercel:** aplicación visible para usuarios y comensales.
-- **Koyeb:** operaciones internas y reglas del negocio.
-- **MongoDB Atlas:** base de datos.
-- **Cloudinary:** almacenamiento de imágenes.
-- **MercadoPago:** pagos.
+**Presentación breve sugerida:**
 
-Las funciones de cada plan se controlan en el servidor para impedir accesos no autorizados.
+“Con MenuDigital podés tener la carta de tu local en un QR y compartirla por redes o WhatsApp. Actualizás productos y precios desde el celular, y tus clientes pueden armar el pedido antes de escribirte. Podés empezar gratis o elegir un plan con más productos y herramientas, según lo que necesites.”
 
-- Se guardan datos del local, menú, estadísticas y relación comercial.
-- El CRM está separado y sólo es accesible para administración.
-- Existen Términos, Política de Privacidad y registro de aceptación con fecha y versión.
-- Hoy casi no se almacenan datos personales de comensales.
-- Las contraseñas están protegidas y las credenciales temporales de pago se cifran.
-- La base de datos provee copias de seguridad, pero falta formalizar y ensayar un procedimiento de restauración.
+**Recorrido recomendado para una demo:**
 
-El cobro futuro de pedidos podría incorporar nombre, teléfono y pago del comensal. Se propone conservar esos datos durante 90 días y permitir su borrado, sujeto a revisión legal previa.
+1. Preguntar cómo comparte la carta hoy, cuántos productos tiene y qué le cuesta mantener actualizado.
+2. Mostrar una carta de demostración: categorías, fotos, variantes y carrito.
+3. Mostrar el mensaje preparado para WhatsApp, sin enviarlo a un local real.
+4. Mostrar en una cuenta de demostración cómo se cambia un precio y se marca un producto como no disponible.
+5. Relacionar la necesidad detectada con el plan adecuado y explicar el precio total del período.
+6. Acordar el siguiente paso: registro, carga inicial o una nueva conversación. No modificar contenido de clientes durante la demo.
 
-## 7. Indicadores principales
+## 8. Respuestas a preguntas frecuentes
 
-- Ingresos mensuales y anuales.
-- Clientes pagos y mezcla Basic/Pro.
-- Conversión de Gratis a pago: objetivo inicial de 5–8% a 30 días.
-- Bajas mensuales: objetivo menor al 3%.
-- Costo de adquisición.
-- Locales pagos activos: objetivo mayor al 70%.
-- Nuevos usuarios que publican 5 productos en 72 horas: objetivo mayor al 40%.
-- Locales con al menos un pedido por WhatsApp por semana.
+- **“Ya tengo un QR.”** El QR es el acceso. La diferencia está en poder mantener una carta editable, mostrar productos y preparar pedidos sin reemplazar un PDF cada vez.
+- **“Ya vendo por WhatsApp.”** Podés seguir usando ese canal; MenuDigital ayuda a que el cliente llegue con los productos, cantidades y variantes elegidos.
+- **“¿Me cobran por cada pedido?”** MenuDigital no cobra comisión por los pedidos por WhatsApp. El costo del plan pago es la suscripción.
+- **“¿Necesito instalar algo?”** La carta y el panel se usan desde el navegador con conexión a internet. Para enviar el pedido se abre WhatsApp.
+- **“¿Me asegura más ventas?”** No. Facilita la presentación y el pedido; el resultado también depende de la oferta, la difusión y la atención del local.
+- **“¿Pro me da una web con mi dominio?”** Incluye una página dentro de MenuDigital. No incluye dominio propio del local.
 
-## 8. Próximas etapas
+## 9. Objetivos de MenuDigital
 
-1. Completar y monitorear las suscripciones; mejorar medición y alta de nuevos locales.
-2. Incorporar MercadoPago Connect para que cada local cobre pedidos en su cuenta y MenuDigital aplique un fee opcional estimado entre 1% y 3%.
-3. Crear un panel de pedidos, implementar dominio propio para Pro y mejorar posicionamiento en buscadores.
-4. Más adelante: roles para empleados, inteligencia artificial, reservas, fidelización y multi-sucursal.
+Queremos que los locales usen la herramienta en su operación diaria, mantengan la carta actualizada y encuentren valor suficiente para continuar. La venta debe acompañar una puesta en marcha real, no terminar en una cuenta vacía.
 
-El cobro de pedidos online es un cambio importante: MenuDigital pasaría de cobrar suscripciones propias a intervenir en operaciones comerciales de terceros. Antes de ofrecerlo de forma general se necesitan conciliación, controles adicionales y definiciones financieras y legales.
+Prioridades actuales:
 
-## 9. Definiciones financieras y legales prioritarias
+- Facilitar el registro, la primera carga de productos y la publicación del QR.
+- Consolidar la contratación y las renovaciones, con seguimiento de incidencias.
+- Conseguir clientes adecuados para cada plan y aprender de sus objeciones y necesidades.
+- Construir relaciones duraderas, recomendaciones y canales comerciales locales.
 
-1. Facturación de suscripciones y pagos anticipados.
-2. Tratamiento impositivo de descuentos, renovaciones, devoluciones y contracargos.
-3. Políticas de cancelación, reembolso y vencimiento.
-4. Revisión de Términos, Privacidad y consentimiento.
-5. Responsabilidades, facturación y tratamiento del futuro fee por pedidos.
-6. Conciliación mensual entre MercadoPago, planes activos y facturación.
-7. Actualización periódica del modelo financiero con precios, costos, impuestos y tipo de cambio reales.
+Metas internas de referencia del plan de negocio, **no resultados alcanzados ni cuotas individuales para vendedores**:
 
-## 10. Riesgos principales
+| Indicador | Objetivo |
+|---|---|
+| Activación inicial | Más del 40% de las cuentas nuevas publican al menos 5 productos en 72 horas |
+| Conversión de Gratis a pago | Entre 5% y 8% dentro de los primeros 30 días |
+| Locales pagos activos | Más del 70% con al menos una edición o 50 vistas de carta en 30 días |
+| Bajas mensuales de clientes pagos | Menos del 3% |
+| Captación a 24 meses | Escenario base de 600 locales pagos; rango hipotético de 300 a 900 |
 
-- Inflación y desactualización de precios.
-- Dependencia de MercadoPago y de una sola persona técnica.
-- Falta de monitoreo y procedimientos formales ante incidentes.
-- Abandono de clientes que no perciban resultados concretos.
-- Riesgos adicionales al procesar pagos de terceros.
-- Diferencia entre beneficios anunciados y funcionalidades pendientes, especialmente dominio propio.
+Estas metas requieren medición y revisión. No todas se calculan automáticamente hoy. Las visitas o la apertura de WhatsApp no prueban que se haya concretado una venta.
 
-## Síntesis
+## 10. Evolución prevista y límites de la oferta
 
-**MenuDigital es un producto comercial en producción que cobra suscripciones y ayuda a locales gastronómicos a digitalizar su venta. La siguiente etapa requiere consolidar la operación, medir resultados y ordenar el marco financiero y legal antes de procesar pedidos y dinero de terceros.**
+La visión es ampliar las herramientas comerciales del local. Se evalúan cobro online de pedidos, panel de pedidos, roles para empleados y mejoras de posicionamiento. Más adelante podrían incorporarse IA, reservas con agenda, fidelización y multi-sucursal.
+
+Dominio propio y reseñas integradas quedan fuera de la oferta actual, sin compromiso de implementación. Su retiro del código local fue definido el 31/08/2026; no se deben ofrecer aunque aparezcan en una versión publicada anterior a esta limpieza.
+
+**Son líneas de trabajo, sin fecha comercial comprometida ni inclusión garantizada en los planes actuales. No venderlas como disponibles.**
+
+Hoy no ofrecer MenuDigital como un sistema de caja, control de stock, facturación, gestión de cocina, logística de delivery o reemplazo integral del sistema del restaurante. El contacto para reservar por WhatsApp tampoco equivale a una agenda con disponibilidad y confirmación automática.
+
+## 11. Seguimiento comercial
+
+Registrar el nombre del local y contacto, cómo maneja su carta, cantidad aproximada de productos, necesidad principal, plan de interés, objeciones y próxima acción con fecha. El CRM es una herramienta interna de administración, no un beneficio incluido en los planes de los restaurantes.
+
+Derivar a administración problemas de pago o acceso, descuentos especiales, consultas de facturación y solicitudes de funciones pendientes. No comprometer desarrollos, soporte con tiempos garantizados ni servicios de carga de menú que no se hayan acordado.
 
 ---
 
-Fuentes: `ARCHITECTURE.md` y `BLUEPRINT.md`. Documento interno de referencia; no reemplaza asesoramiento contable, impositivo o legal profesional.
+**Control de actualización:** precios contrastados con la landing, el registro y el selector de plan publicados en https://www.menudigitalapp.com.ar el 31/08/2026; coinciden con la configuración de cobro del backend local. Totales calculados con sus reglas de 1, 3, 6 y 12 meses. No se realizó una compra real durante esta revisión.
+
+Funciones y límites contrastados con el código de ambos repositorios y `ARCHITECTURE.md`; objetivos tomados de `BLUEPRINT.md`. La revisión de código no certifica el funcionamiento de cada integración en producción. Actualizar este documento cuando cambien precios, beneficios o disponibilidad, y comprobar las funciones que se mostrarán antes de cada demo.

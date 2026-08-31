@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "../../../../context/useAuth";
 import { useFeedbackMessage } from "../../../../hooks/useFeedbackMessage";
 import type { Subscription, DayKey, DayHours, Schedule } from "../../../../types/index";
-import { planMeetsMin, PLAN_LABEL, TEMPLATE_MIN_PLAN } from "../../../../lib/plans";
+import { usePlans } from "../../../../hooks/usePlans";
 import Spinner from "../../../Common/Spinner";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import styles from "./UserEditor.module.css";
@@ -18,8 +18,6 @@ interface FormState {
   address: string;
   instagram: string;
   facebook: string;
-  googleReviewUrl: string;
-  googlePlaceId: string;
   hasDelivery: boolean;
   reservationMessage: string;
 }
@@ -31,8 +29,6 @@ const EMPTY_FORM: FormState = {
   address: "",
   instagram: "",
   facebook: "",
-  googleReviewUrl: "",
-  googlePlaceId: "",
   hasDelivery: false,
   reservationMessage: "",
 };
@@ -76,38 +72,30 @@ function normalizeSchedule(raw: unknown): Schedule {
   }, {} as Schedule);
 }
 
-// Templates de la carta pública, ordenados por plan (free → basic → pro) para que
-// la grilla del editor se lea como una progresión. `minPlan` es el plan mínimo
-// que desbloquea cada uno; espeja TEMPLATE_MIN_PLAN del backend (que es la
-// barrera real). `color`/`accent` son solo para el mini-preview de la tarjeta
-// y coinciden con los tokens --t-bg / --t-accent de globals.css.
+// Apariencia de los diseños implementados; sus permisos vienen del catálogo.
 interface TemplateOption {
   id: number;
   name: string;
   color: string;
   accent: string;
-  minPlan: Subscription;
 }
 
 const TEMPLATES: TemplateOption[] = [
-  // free
-  { id: 1,  name: "Clásico",    color: "#0b0a08", accent: "#c9a84c", minPlan: TEMPLATE_MIN_PLAN[1] },
-  // basic
-  { id: 2,  name: "Moderno",    color: "#0d1117", accent: "#58a6ff", minPlan: TEMPLATE_MIN_PLAN[2] },
-  { id: 3,  name: "Natural",    color: "#f2f6ef", accent: "#2e7d32", minPlan: TEMPLATE_MIN_PLAN[3] },
-  { id: 4,  name: "Rojo",       color: "#110606", accent: "#e05555", minPlan: TEMPLATE_MIN_PLAN[4] },
-  { id: 5,  name: "Minimal",    color: "#ffffff", accent: "#111111", minPlan: TEMPLATE_MIN_PLAN[5] },
-  // pro
-  { id: 6,  name: "Aurora",     color: "#efddc9", accent: "#a8703f", minPlan: TEMPLATE_MIN_PLAN[6] },
-  { id: 7,  name: "Noir Gold",  color: "#08070a", accent: "#d4af37", minPlan: TEMPLATE_MIN_PLAN[7] },
-  { id: 8,  name: "Coastal",    color: "#f4f8fb", accent: "#2a91c4", minPlan: TEMPLATE_MIN_PLAN[8] },
-  { id: 9,  name: "Charcoal",   color: "#1a1a1c", accent: "#ff6b5c", minPlan: TEMPLATE_MIN_PLAN[9] },
-  { id: 10, name: "Terracotta", color: "#f7ede3", accent: "#c2571f", minPlan: TEMPLATE_MIN_PLAN[10] },
-  { id: 11, name: "Lavender",   color: "#f6f3fa", accent: "#8256c4", minPlan: TEMPLATE_MIN_PLAN[11] },
-  { id: 12, name: "Forest",     color: "#0c1410", accent: "#86c397", minPlan: TEMPLATE_MIN_PLAN[12] },
-  { id: 13, name: "Platinum",   color: "#0a0b0d", accent: "#b8c2cf", minPlan: TEMPLATE_MIN_PLAN[13] },
-  { id: 14, name: "Ocean",      color: "#071b26", accent: "#36c2b4", minPlan: TEMPLATE_MIN_PLAN[14] },
-  { id: 15, name: "Rosé",       color: "#fff6f3", accent: "#b64f68", minPlan: TEMPLATE_MIN_PLAN[15] },
+  { id: 1,  name: "Clásico",    color: "#0b0a08", accent: "#c9a84c" },
+  { id: 2,  name: "Moderno",    color: "#0d1117", accent: "#58a6ff" },
+  { id: 3,  name: "Natural",    color: "#f2f6ef", accent: "#2e7d32" },
+  { id: 4,  name: "Rojo",       color: "#110606", accent: "#e05555" },
+  { id: 5,  name: "Minimal",    color: "#ffffff", accent: "#111111" },
+  { id: 6,  name: "Aurora",     color: "#efddc9", accent: "#a8703f" },
+  { id: 7,  name: "Noir Gold",  color: "#08070a", accent: "#d4af37" },
+  { id: 8,  name: "Coastal",    color: "#f4f8fb", accent: "#2a91c4" },
+  { id: 9,  name: "Charcoal",   color: "#1a1a1c", accent: "#ff6b5c" },
+  { id: 10, name: "Terracotta", color: "#f7ede3", accent: "#c2571f" },
+  { id: 11, name: "Lavender",   color: "#f6f3fa", accent: "#8256c4" },
+  { id: 12, name: "Forest",     color: "#0c1410", accent: "#86c397" },
+  { id: 13, name: "Platinum",   color: "#0a0b0d", accent: "#b8c2cf" },
+  { id: 14, name: "Ocean",      color: "#071b26", accent: "#36c2b4" },
+  { id: 15, name: "Rosé",       color: "#fff6f3", accent: "#b64f68" },
 ];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -146,6 +134,7 @@ function LockIcon({ size = 14 }: { size?: number }) {
 
 export default function UserEditorPage() {
   const { token } = useAuth();
+  const catalog = usePlans();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef   = useRef<HTMLInputElement>(null);
@@ -169,7 +158,8 @@ export default function UserEditorPage() {
   const [template,          setTemplate]   = useState(1);
   const [subscription,      setSubscription] = useState<Subscription>("free");
   const [lockedTemplate,    setLockedTemplate] = useState<typeof TEMPLATES[number] | null>(null);
-  const canUseReviews = planMeetsMin(subscription, "pro");
+
+  const currentPlan = catalog.isError ? undefined : catalog.data?.find(plan => plan.name === subscription);
 
   const [isDirty, setIsDirty]   = useState(false);
   const initialFormRef = useRef<FormState>(EMPTY_FORM);
@@ -247,8 +237,6 @@ export default function UserEditorPage() {
           address:      data.contactInfo?.address      || "",
           instagram:    data.contactInfo?.social?.instagram || "",
           facebook:     data.contactInfo?.social?.facebook  || "",
-          googleReviewUrl: data.contactInfo?.googleReviewUrl || "",
-          googlePlaceId: data.contactInfo?.googlePlaceId || "",
           hasDelivery:  data.hasDelivery ?? false,
           reservationMessage: data.contactInfo?.reservationMessage || "",
         };
@@ -281,11 +269,6 @@ export default function UserEditorPage() {
       setError("El teléfono no es válido.");
       return;
     }
-    const reviewUrl = form.googleReviewUrl.trim();
-    if (reviewUrl && !/^https?:\/\//i.test(reviewUrl)) {
-      setError("El link de reseñas debe empezar con http:// o https://");
-      return;
-    }
     for (const day of DAY_ORDER) {
       const d = schedule[day];
       if (d.enabled && d.open >= d.close) {
@@ -309,10 +292,6 @@ export default function UserEditorPage() {
               instagram: form.instagram.trim(),
               facebook:  form.facebook.trim(),
             },
-            ...(canUseReviews && {
-              googleReviewUrl: reviewUrl,
-              googlePlaceId: form.googlePlaceId.trim(),
-            }),
             reservationMessage: form.reservationMessage.trim(),
           },
           hasDelivery: form.hasDelivery,
@@ -359,7 +338,8 @@ export default function UserEditorPage() {
   // también lo valida (useTemplate en userController.js): esto es UX,
   // no la única barrera.
   const selectTemplate = (t: TemplateOption) => {
-    if (!planMeetsMin(subscription, t.minPlan)) {
+    if (!currentPlan || catalog.isFetching) return;
+    if (!currentPlan?.features.templateIds.includes(t.id)) {
       setLockedTemplate(t);
       return;
     }
@@ -791,44 +771,6 @@ export default function UserEditorPage() {
               </div>
             </div>
 
-            <div className={styles.field}>
-              <label htmlFor="googleReviewUrl">Link de reseñas de Google Maps</label>
-              <input
-                id="googleReviewUrl"
-                type="url"
-                placeholder="https://g.page/r/tu-negocio/review"
-                value={form.googleReviewUrl}
-                onChange={e => setForm(f => ({ ...f, googleReviewUrl: e.target.value }))}
-                disabled={!canUseReviews}
-              />
-              {!canUseReviews && (
-                <p className={styles.fieldHint}>Disponible con el plan Pro.</p>
-              )}
-            </div>
-
-            <div className={styles.field}>
-              <label htmlFor="googlePlaceId">ID de lugar de Google (Place ID)</label>
-              <input
-                id="googlePlaceId"
-                type="text"
-                placeholder="ChIJN1t_tDeuEmsRUsoyG83frY4"
-                value={form.googlePlaceId}
-                onChange={e => setForm(f => ({ ...f, googlePlaceId: e.target.value }))}
-                disabled={!canUseReviews}
-              />
-              <p className={styles.fieldHint}>
-                Necesario para mostrar el rating y la cantidad de reseñas reales en tu
-                carta. Buscalo con el{" "}
-                <a
-                  href="https://developers.google.com/maps/documentation/places/web-service/place-id"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Place ID Finder de Google
-                </a>.
-              </p>
-            </div>
-
             <div className={styles.toggleGroup}>
               <div className={styles.toggleRow}>
                 <div>
@@ -1064,14 +1006,18 @@ export default function UserEditorPage() {
             <p className={styles.templateDesc}>
               Elegí el estilo visual de tu carta pública. El cambio se aplica de inmediato.
             </p>
+            {catalog.isPending && <Spinner label="Cargando diseños del plan" />}
+            {catalog.isError && <div role="alert"><p>No se pudo consultar el catálogo.</p><button type="button" onClick={() => void catalog.refetch()} disabled={catalog.isFetching}>Reintentar</button></div>}
             <div className={styles.templateGrid}>
               {TEMPLATES.map(t => {
-                const isLocked = !planMeetsMin(subscription, t.minPlan);
+                const isLocked = !currentPlan?.features.templateIds.includes(t.id);
+                const offeredBy = catalog.data?.find(plan => plan.features.templateIds.includes(t.id));
                 return (
                   <button
                     key={t.id}
                     className={`${styles.templateCard} ${template === t.id ? styles.selected : ""} ${isLocked ? styles.locked : ""}`}
                     onClick={() => selectTemplate(t)}
+                    disabled={!currentPlan || catalog.isFetching}
                     aria-pressed={template === t.id}
                     type="button"
                   >
@@ -1092,9 +1038,8 @@ export default function UserEditorPage() {
                       <span className={styles.templateName}>{t.name}</span>
                       {template === t.id ? (
                         <span className={styles.templateActive}>Activo</span>
-                      ) : t.minPlan !== "free" ? (
-                        // Muestra el plan mínimo que desbloquea el template.
-                        <span className={styles.templatePro}>{PLAN_LABEL[t.minPlan]}</span>
+                      ) : isLocked ? (
+                        <span className={styles.templatePro}>{offeredBy?.label ?? "No disponible"}</span>
                       ) : null}
                     </div>
                   </button>
@@ -1110,9 +1055,10 @@ export default function UserEditorPage() {
       {lockedTemplate && (
         <UpgradeModal
           currentPlan={subscription}
-          minPlan={lockedTemplate.minPlan === "pro" ? "pro" : "basic"}
-          title={`${lockedTemplate.name} es un template ${PLAN_LABEL[lockedTemplate.minPlan]}`}
-          description={`Con el plan ${PLAN_LABEL[lockedTemplate.minPlan]} desbloqueás este estilo y todos los templates de ese nivel.`}
+          minPlan="basic"
+          requiredTemplateId={lockedTemplate.id}
+          title={`Desbloqueá ${lockedTemplate.name}`}
+          description="Estos planes incluyen el diseño elegido según el catálogo vigente."
           onClose={() => setLockedTemplate(null)}
         />
       )}

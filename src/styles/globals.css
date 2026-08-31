@@ -1084,11 +1084,10 @@ a:hover { opacity: 0.75; }
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   TEMPLATES 8-15 — todos disponibles en Pro.
+   TEMPLATES 8-15 — diseños implementados.
    Mismo sistema .t-* que el resto: solo cambian los tokens de color,
    ningún componente nuevo. El gating (qué plan desbloquea cada uno)
-   vive en TEMPLATE_MIN_PLAN, tanto en el backend (config/plans.js)
-   como en el front (src/lib/plans.ts).
+   vive en features.templateIds de cada documento de la colección plans.
      8 Coastal · 9 Charcoal · 10 Terracotta · 11 Lavender
      12 Forest · 13 Platinum · 14 Ocean · 15 Rosé
    ───────────────────────────────────────────────────────────────── */
@@ -1443,6 +1442,18 @@ a:hover { opacity: 0.75; }
   line-height: 1.5;
 }
 
+.t-notfound-retry {
+  min-height: var(--control-min-size);
+  margin-top: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--admin-gold);
+  border-radius: var(--radius-md);
+  background: var(--admin-gold);
+  color: var(--admin-gold-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
 /* ── Hero ── */
 .t-hero {
   position: relative;
@@ -1533,101 +1544,6 @@ a:hover { opacity: 0.75; }
   border-radius: var(--radius-sm);
   line-height: 1.6;
   white-space: nowrap;
-}
-
-/* ── Badge de rating de Google ──
-   Mismo lenguaje visual que .t-info-row (chip con superficie propia, hover
-   con leve corrimiento) pero jerárquicamente antes de la lista de contacto:
-   es una señal de confianza, no un dato de contacto más. Sin rating (Place
-   ID sin cargar o falló la consulta al backend) GoogleRatingBadge no
-   renderiza nada, así que estas reglas no necesitan cubrir un estado vacío. */
-.t-google-rating {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--t-text);
-  text-decoration: none;
-  background: var(--t-surface);
-  border: 0.5px solid var(--t-border-md);
-  border-radius: var(--radius-md);
-  padding: 0.6rem 0.85rem;
-  margin-bottom: var(--space-4);
-  transition:
-    border-color var(--transition),
-    background var(--transition),
-    transform var(--transition-spring);
-}
- 
-a.t-google-rating:hover {
-  border-color: color-mix(in srgb, var(--t-accent) 35%, var(--t-border));
-  background: var(--t-accent-soft, color-mix(in srgb, var(--t-accent) 6%, var(--t-surface)));
-  transform: translateX(2px);
-}
- 
-a.t-google-rating:active {
-  transform: translateX(2px) scale(0.985);
-  transition-duration: 0.08s;
-}
- 
-a.t-google-rating:focus-visible {
-  outline: 2px solid var(--t-accent);
-  outline-offset: 2px;
-}
- 
-.t-google-stars {
-  display: inline-flex;
-  align-items: center;
-  gap: 1px;
-  color: var(--t-accent);
-  flex-shrink: 0;
-}
- 
-.t-google-rating-value {
-  font-weight: 700;
-  color: var(--t-title);
-}
- 
-.t-google-rating-count {
-  color: var(--t-muted);
-}
- 
-.t-google-rating-source {
-  margin-left: auto;
-  padding-left: var(--space-2);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--t-muted);
-  opacity: 0.7;
-}
-
-/* ── Badge de ubicación en Google Maps ──
-   Reusa .t-google-rating como base (mismo look: chip con borde, hover con
-   corrimiento) y solo agrega lo específico: ícono de pin en vez de
-   estrellas, texto truncado a una línea (las direcciones largas no deben
-   romper el layout del badge) y la flechita de "abre afuera" pegada a la
-   derecha en vez del label "Google". */
-.t-google-map-icon {
-  display: flex;
-  align-items: center;
-  color: var(--t-accent);
-  flex-shrink: 0;
-}
- 
-.t-google-map-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
- 
-.t-google-map svg:last-child {
-  margin-left: auto;
-  flex-shrink: 0;
-  color: var(--t-muted);
-  opacity: 0.7;
 }
 
 /* ── Cuerpo ── */

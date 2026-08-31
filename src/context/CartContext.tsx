@@ -11,6 +11,7 @@ export interface CartLine {
 }
 
 export interface CartContextType {
+  enabled: boolean;
   items: CartLine[];
   addItem: (line: Omit<CartLine, "quantity">, quantity?: number) => void;
   removeItem: (itemId: string, selectedOption?: string) => void;

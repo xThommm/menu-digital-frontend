@@ -506,6 +506,7 @@
   </style>
 </head>
 <body>
+<aside>Actualización 31-08-2026: esta copia HTML es histórica. El catálogo de planes cambió; consultar <a href="ARCHITECTURE.md">ARCHITECTURE.md</a> y <a href="docs/PLAN_CATALOG_ROLLOUT.md">la guía del catálogo</a> para el estado local actual.</aside>
   <div class="read-progress" id="readProgress" aria-hidden="true"></div>
 
   <header class="topbar">
@@ -589,6 +590,10 @@
       <p class="result-line" id="resultLine" aria-live="polite"></p>
 
       <article class="doc-content" id="docContent">
+<p><strong>Actualización funcional 31-08-2026:</strong> dominio propio y reseñas integradas
+fueron retirados del código local y de la oferta. Se conserva Maps por dirección.
+Esta copia HTML incorpora esa limpieza; la documentación completa vigente está en
+<a href="ARCHITECTURE.md">ARCHITECTURE.md</a>. No implica despliegue ni migración de datos.</p>
         <h1 id="menudigital-arquitectura-de-la-aplicacion">MenuDigital — Arquitectura de la aplicación</h1>
 <p>Documentación técnica de los dos repositorios que componen <strong>MenuDigital</strong>, un
 SaaS de menús/cartas digitales para bares y restaurantes de Argentina. Describe
@@ -687,7 +692,7 @@ mantiene como capa de validación (el webhook rechaza plan_ids desconocidos).</l
 <li><strong><code>PLAN_ORDER</code></strong> = <code>[&quot;free&quot;,&quot;basic&quot;,&quot;pro&quot;]</code>. El índice ES la jerarquía.</li>
 <li><strong><code>PLAN_FEATURES</code></strong> — features que desbloquea cada nivel (acumulativo).
 La landing pública pertenece a Free; Basic elimina publicidad y suma Excel,
-programación y PDF; Pro suma estadísticas, ilimitados y reseñas.</li>
+programación y PDF; Pro suma estadísticas y productos ilimitados.</li>
 <li><strong><code>ITEM_LIMITS</code></strong>, <strong><code>FREE_ITEM_LIMIT</code></strong> y <strong><code>BASIC_ITEM_LIMIT</code></strong> — topes: Free 15,
 Basic 50 y Pro sin límite; <code>getItemLimit(plan)</code> resuelve el valor efectivo.</li>
 <li><strong><code>TEMPLATE_MIN_PLAN</code></strong> — mapa <code>templateId → plan mínimo</code> (gating escalonado de
@@ -727,7 +732,7 @@ campos que consumen los controllers: <code>req.file.path</code>).</li>
 (enum <code>free/basic/pro</code>, default <code>free</code>), <code>subscriptionExpiresAt</code> (fin de vigencia
 paga; null para free y cuentas legacy), <code>menu</code> (bool, si ya creó menú),
 <code>hasDelivery</code>, <code>template</code> (nº, default 1), <code>contactInfo</code> (objeto: businessName, mail,
-number, address, social, <code>googleReviewUrl</code> — link &quot;Dejanos tu reseña&quot; de Google Maps),
+number, location, address, social, reservationMessage),
 <code>media</code> (pictures[], backgroundPicture), <code>acceptedTerms*</code>. <code>timestamps</code>. Incluye hook
 de hasheo de password con bcrypt.</p>
 <h3 id="modelsmenu.js"><code>models/Menu.js</code></h3>
@@ -842,8 +847,8 @@ slug), disponible desde Basic; Free recibe 403 y el frontend deriva a la carta.<
 disponible desde Basic aunque la URL sea pública; excluye productos manualmente
 pausados o fuera de su horario programado.</li>
 <li><strong><code>editUser</code></strong> <code>PUT /api/users/me</code> — edita <code>contactInfo/hasDelivery/media</code> (whitelist;
-<code>template</code> queda afuera a propósito, va por <code>useTemplate</code>). <code>googleReviewUrl</code> es el
-link/Place ID de reseñas requieren Pro y el link debe empezar con <code>http(s)://</code>.</li>
+<code>template</code> queda afuera a propósito, va por <code>useTemplate</code>).
+Preserva campos vigentes de contacto omitidos en ediciones parciales y descarta campos retirados.</li>
 <li><strong><code>uploadImage</code></strong> / <strong><code>uploadBackground</code></strong> — suben foto a la galería / de fondo del
 local (a Cloudinary).</li>
 <li><strong><code>removeImage</code></strong> / <strong><code>deleteBackground</code></strong> — sacan una foto de la galería / el fondo.</li>
@@ -1185,7 +1190,7 @@ editor), <code>DashData</code>, <code>DayCount</code>, <code>StatsData</code>, l
 <code>MassiveConfirmResponse</code>), de admin (<code>Plan</code>, <code>AdminStats</code>) y de CRM (<code>CrmStage</code>,
 <code>CrmNote</code> — con <code>kind: &quot;note&quot; | &quot;event&quot;</code> para distinguir notas manuales de eventos del
 sistema —, <code>CrmProfile</code>, <code>CrmClient</code>, <code>CrmClientDetail</code>). <code>ContactInfo</code> incluye
-<code>googleReviewUrl</code> (link de reseñas de Google Maps).</p>
+datos del negocio, contacto, ubicación, redes y mensaje de reserva por WhatsApp.</p>
 <h2 id="components">components/</h2>
 <h3 id="componentscommon"><code>components/Common/</code></h3>
 <ul>
@@ -1284,8 +1289,7 @@ template elegido.</li>
 <li><strong><code>Template</code></strong> — layout unificado (hero con foto/overlay o header con avatar según
 <code>useAvatar</code>, título, badge de delivery, lista de contacto, galería bento, botón &quot;Ver
 menú&quot;). Setea <code>document.title</code>.</li>
-<li>Sub-componentes: <strong><code>ContactList</code></strong> (chips de contacto con <code>useReveal</code>; incluye la fila
-&quot;Dejanos tu reseña en Google&quot; si el dueño cargó <code>googleReviewUrl</code>), <strong><code>Gallery</code></strong>
+<li>Sub-componentes: <strong><code>ContactList</code></strong> (chips de contacto con <code>useReveal</code>), <strong><code>Gallery</code></strong>
 (galería bento con foto destacada), <strong><code>Loader</code></strong> (skeleton con la silueta real),
 <strong><code>NotFound</code></strong> (clases globales <code>.t-notfound*</code>, compartidas con la carta).</li>
 <li><strong><code>ImageViewer</code></strong> — lightbox a pantalla completa (se abre al tocar la foto de portada
@@ -1306,9 +1310,8 @@ acoplar un <code>top:</code> fijo a una altura que cambia entre mobile y desktop
 tab se vuelve al tope de la página (el inicio visible del contenido). Envuelve todo en
 <strong><code>CartProvider</code></strong> (carrito por slug), renderiza el <strong><code>CartFab</code></strong> (botón flotante con
 badge de cantidad, solo si el carrito tiene algo), el <strong><code>CartDrawer</code></strong> — <strong>dentro</strong> del
-contenedor <code>[data-template]</code>, porque los tokens <code>--t-*</code> solo existen ahí — y, si hay
-<code>googleReviewUrl</code>, un <strong>banner de reseñas</strong> al final del listado (&quot;¿Te gustó lo que
-viste? Contanos en Google&quot;). <strong>Responsive</strong>: columna única estilo mobile hasta 1024px;
+contenedor <code>[data-template]</code>, porque los tokens <code>--t-*</code> solo existen ahí.
+<strong>Responsive</strong>: columna única estilo mobile hasta 1024px;
 de ahí en adelante el contenedor crece (~1080px) y cada categoría pasa a una <strong>grilla
 de 2 columnas</strong> (título ocupando ambas; <code>align-items:start</code> para que expandir
 variantes en una tarjeta no estire a su vecina).</li>
@@ -1388,8 +1391,7 @@ plan mínimo correspondiente.</li>
 <ul>
 <li><code>TEMPLATES</code> (los 15 con <code>minPlan</code>), <code>EMPTY_FORM</code>. Sub-componentes <code>Toggle</code> y
 <code>LockIcon</code>; el spinner inline viene de <code>Common/Spinner</code>.</li>
-<li><strong><code>UserEditorPage</code></strong> — edita datos de contacto (incluido el <strong>link de reseñas de
-Google Maps</strong>, disponible en Pro y validado como <code>http(s)://</code>), delivery, galería
+<li><strong><code>UserEditorPage</code></strong> — edita datos de contacto, delivery, galería
 (subida múltiple a Cloudinary con progreso, drag &amp; drop) y <strong>selección de template</strong>
 con gating por plan (<code>planMeetsMin</code>): candado + badge del plan requerido y
 <code>Common/UpgradeModal</code> configurado con el nivel mínimo del template.</li>
@@ -1486,7 +1488,7 @@ desde el panel usa <code>POST /payments/crear-preferencia</code> sobre una cuent
 En ambos casos el <strong>webhook</strong> (<code>mpWebhook</code>) verifica el pago real antes de crear la
 cuenta o actualizar <code>User.subscription</code>/<code>subscriptionExpiresAt</code>. El panel abre el
 <code>Common/UpgradeModal</code> compartido (plan + 1/3/6/12 meses) desde la tarjeta “Tu plan”
-y desde cada paywall. El gating de features (límite de items, Excel, PDF, reseñas,
+y desde cada paywall. El gating de features (límite de items, Excel, PDF,
 ofertas y disponibilidad programadas, stats y templates) se valida en el backend
 (<code>requirePlan</code> / <code>TEMPLATE_MIN_PLAN</code>) y se refleja en la UI (<code>lib/plans.ts</code>). La
 landing del local está incluida en Free y muestra publicidad en ese nivel.</p>
@@ -1504,10 +1506,6 @@ No reemplaza la prueba real end-to-end pendiente.</p>
 el botón &quot;Pedir por WhatsApp&quot; abre <code>wa.me</code> con el mensaje prearmado
 (<code>lib/whatsapp.ts</code>) al número del local. 100% client-side, sin backend, sin gating
 por plan (el teléfono ya es público vía el link <code>tel:</code> existente).</p>
-</li>
-<li><p><strong>Reseñas de Google</strong> (Pro): el dueño carga <code>contactInfo.googleReviewUrl</code> en &quot;Mi negocio&quot;;
-la landing pública (<code>ContactList</code>) y la carta (banner al final del menú) muestran el
-CTA &quot;Dejanos tu reseña&quot; solo si el campo está cargado y el plan vigente es Pro.</p>
 </li>
 <li><p><strong>Estadísticas</strong>: cada visita incrementa <code>PageView</code> del día (BA), y cada tap sobre un
 producto incrementa <code>ItemView</code> (mismo esquema, a nivel plato). Los planes pro+ ven en

@@ -4,18 +4,32 @@ Frontend de **MenuDigital**, SaaS argentino de cartas digitales para bares y
 restaurantes. Está construido con React 19, TypeScript y Vite, y se despliega en
 Vercel.
 
+Revisión documental: **30-08-2026**, contra el código local de ambos repositorios.
+No implica que los cambios locales estén desplegados.
+
+Actualización **31-08-2026**: catálogo MongoDB conectado a precios, features,
+checkout y permisos. `/admin/plans` permite administrarlo. Dominio propio y reseñas
+integradas siguen fuera del alcance; Maps por dirección se mantiene.
+Estos cambios son locales: no se consultó Atlas ni se desplegó.
+
 La documentación completa está separada en:
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): arquitectura técnica y recorrido archivo por
   archivo de frontend y backend.
 - [BLUEPRINT.md](BLUEPRINT.md): producto, negocio, pricing, roadmap y criterios de
   aceptación.
+- [Catálogo de planes](docs/PLAN_CATALOG_ROLLOUT.md): modelo, comportamiento y
+  checklist de despliegue pendiente.
+- [Design QA](design-qa.md): evidencia histórica del editor y diferencias con el
+  código actual; no certifica una nueva prueba visual.
+- [Dev log del backend](../menu-digital-backend/DEVLOG-LUCAS.md): historial y estado
+  actual de la API (requiere ambos repositorios como carpetas hermanas).
 
 ## Aplicaciones incluidas
 
 - Landing comercial y registro (`/`, `/register`, `/register/plans`).
 - Panel del dueño (`/dashboard`, editor de menú, negocio y estadísticas).
-- Panel CEO y CRM interno (`/admin`, `/admin/crm`).
+- Panel CEO, CRM, pagos y planes (`/admin`, `/admin/crm`, `/admin/payments`, `/admin/plans`).
 - Landing y carta pública multi-tenant (`/:slug`, `/:slug/menu`).
 
 ## Planes y registro
@@ -32,18 +46,28 @@ el plan elegido mediante `?plan=<id>`:
 El gating de límites y funcionalidades se valida siempre en el backend. El frontend
 solo refleja el plan efectivo.
 
-> **PRÓXIMO PASO OBLIGATORIO — antes de cualquier otro desarrollo:** validar el
-> circuito completo con un pago real y una cuenta compradora distinta de la
-> vendedora: preferencia → Checkout Pro → webhook → `PaymentCheckout` /
-> `PaymentTransaction` → plan/vencimiento en MongoDB → regreso al dashboard. Los
-> cambios están publicados en `master`, pero falta confirmar los deploys y esta
-> prueba end-to-end todavía no fue realizada.
+La colección `plans` centraliza precios, promociones, períodos y `features`:
+booleanos, `item_limit` y `templateIds`, con la misma estructura en Free/Basic/Pro.
+El backend consulta MongoDB para cotizar y validar permisos; el frontend muestra
+ese catálogo, sin precios de respaldo ante un error. Las semillas iniciales son
+Free $0, Basic $29.999 y Pro $49.999 ARS, pero no reemplazan valores administrados.
+No hay renovación automática: se prepagan 1/3/6/12 meses.
 
-El flujo durable de suscripciones y su separación estricta entre pagos de prueba y
-producción están validados localmente con 62 tests backend más typecheck, lint y build
-frontend. Falta desplegar la revisión, configurar `NODE_ENV=production`,
-`MP_ENV=production` y el secreto del webhook en Koyeb, y realizar la validación real
-antes de considerarlo cerrado en producción.
+**Administración → Planes** permite editar precios, multiplicadores para 3/6/12
+meses, nombres, descripciones y beneficios. El factor de un mes es 1 y se cambia
+su importe mediante el precio mensual. Los cambios de beneficios alcanzan a los
+usuarios existentes en su próxima
+consulta. Los precios nuevos se aplican a nuevos checkouts; los anteriores conservan
+su snapshot. Una versión desactualizada se rechaza con 409 y exige reconfirmación.
+Ver el [modelo y guía del catálogo](docs/PLAN_CATALOG_ROLLOUT.md).
+
+Antes de liberar cambios de pagos, verificar deploys y configuración de ambiente,
+y validar con autorización el circuito preferencia → Checkout Pro → webhook
+firmado → `PaymentCheckout`/`PaymentTransaction` → plan/vencimiento → dashboard.
+Esta revisión no consultó Atlas, Koyeb ni Vercel ni realizó pagos reales. Sigue
+pendiente PAY-05: registro configura vencimiento de preferencia; upgrade/renovación
+todavía no lo hacen. El historial admin de pagos es de solo lectura, sin reembolsos
+ni acreditaciones manuales.
 
 Los usuarios existentes administran su suscripción desde la tarjeta **“Tu plan”** del
 dashboard. Free puede subir a Basic/Pro; Basic puede renovar o subir a Pro; Pro puede
@@ -53,17 +77,20 @@ sincroniza en `AuthContext` al volver de MercadoPago.
 
 ## Desarrollo local
 
-Requisitos: Node.js `^20.19.0` o `>=22.12.0`, y el backend ejecutándose en el
-puerto 5000.
+Requisitos: Node.js `^20.19.0` o `>=22.12.0` (contrato del Vite instalado), npm y el
+backend configurado según su `.env.example`, ejecutándose en el puerto 5000.
+Definir `VITE_API_URL=/api` en `.env` antes de iniciar el frontend. No
+versionar credenciales.
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-Vite proxifica `/api` hacia `http://localhost:5000`. Para consumir otro backend,
-definir `VITE_API_URL` con la base completa de la API, por ejemplo
-`https://servidor.example/api`.
+Vite proxifica `/api` hacia `http://localhost:5000`. `vercel.json` declara un
+rewrite de `/api` a Koyeb y un fallback SPA a `index.html`. Algunas pantallas usan
+`/api` directamente y otras `VITE_API_URL`: cambiar solo esa variable no redirige
+todas las peticiones. Para otro backend hay que alinear también proxy/rewrite.
 
 ## Verificaciones
 
@@ -72,6 +99,21 @@ npm run typecheck
 npm run lint
 npm run build
 ```
+
+Resultado de la integración local del 31-08-2026:
+
+- Frontend: `npm run typecheck`, `npm run lint` y `npm run build` **pasan**.
+- Backend: **117/119 tests pasan**; las 36 pruebas de catálogo, cotización y
+  gating dinámico pasan.
+- `git diff --check` pasa en ambos repositorios.
+- Dos regresiones previas de `editItem` sobre `available`/`hidden` siguen fuera de
+  este cambio; no fueron corregidas ni ocultadas.
+- Navegador con API simulada: edición de Pro, landing, registro, dashboard, totales por período,
+  conflicto de precio con reconfirmación, estadísticas desactivadas, template
+  retirado y recuperación tras un error de catálogo.
+  No prueba persistencia real ni producción.
+- No hay script de tests automatizados frontend. Falta E2E con backend real,
+  Atlas/MercadoPago y verificación de despliegue antes de publicar.
 
 ## Convenciones
 

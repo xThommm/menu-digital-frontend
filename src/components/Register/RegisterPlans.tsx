@@ -3,6 +3,9 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useNotifications } from "../../context/useNotifications";
 import { useFeedbackMessage } from "../../hooks/useFeedbackMessage";
+import { usePlans } from "../../hooks/usePlans";
+import { getPlanFeatureLabels } from "../../lib/plans";
+import Spinner from "../Common/Spinner";
 import styles from "./RegisterPlans.module.css";
 
 type PlanId = "free" | "basic" | "pro";
@@ -14,65 +17,6 @@ interface PendingRegister {
   contactInfo: { mail: string; businessName: string };
   registrationToken?: string;
 }
-
-const PLANS: {
-  id: PlanId;
-  name: string;
-  price: number;
-  description: string;
-  features: string[];
-  highlight?: boolean;
-}[] = [
-  {
-    id: "free",
-    name: "Gratis",
-    price: 0,
-    description: "Ideal para probar",
-    features: [
-      "Menú digital + editor",
-      "QR descargable",
-      "Landing page del local",
-      "Mensaje para delivery/take away por WhatsApp",
-      "Hasta 15 productos",
-      "Incluye publicidad de Menú Digital",
-    ],
-  },
-  {
-    id: "basic",
-    name: "Básico",
-    price: 29999,
-    description: "Para locales en crecimiento",
-    features: [
-      "Hasta 50 productos",
-      "Modificación masiva por Excel",
-      "Programación de productos",
-      "Exportar menú a PDF",
-      "5 diseños disponibles",
-    ],
-    highlight: true,
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: 49999,
-    description: "Máximo control",
-    features: [
-      "Todo lo del plan Básico",
-      "Productos ilimitados",
-      "Métricas de visitas y productos",
-      "Dominio propio",
-      "15 diseños disponibles",
-      "Reseñas integradas",
-    ],
-  },
-];
-
-const MONTH_OPTIONS = [
-  { value: 1, label: "1 mes", multiplier: 1 },
-  { value: 3, label: "3 meses", multiplier: 2.7 },
-  { value: 6, label: "6 meses", multiplier: 5 },
-  { value: 12, label: "12 meses", multiplier: 9 },
-];
 
 function formatPrice(n: number) {
   return new Intl.NumberFormat("es-AR", {
@@ -111,6 +55,7 @@ function readSelectedPlan(): PlanId {
 
 export default function RegisterPlansPage() {
   const navigate = useNavigate();
+  const catalog = usePlans();
   const { login } = useAuth();
   const { success: notifySuccess } = useNotifications();
   const paymentStatus = new URLSearchParams(window.location.search).get("payment");
@@ -141,14 +86,13 @@ export default function RegisterPlansPage() {
     }
   }, [hasStoredRegistrationToken, paymentStatus, pending, navigate, selectedPlan]);
 
-  const selected = PLANS.find((p) => p.id === selectedPlan)!;
-  const multiplier =
-    MONTH_OPTIONS.find((m) => m.value === months)?.multiplier ?? 1;
-  const totalPrice =
-    selectedPlan === "free" ? 0 : Math.round(selected.price * multiplier);
+  const selected = catalog.data?.find(plan => plan.name === selectedPlan);
+  const billingOption = selected?.billingOptions.find(option => option.months === months);
+  const totalPrice = billingOption?.total;
+  const ready = !!selected && !!billingOption && !catalog.isError && !catalog.isFetching;
 
   const handleContinue = async () => {
-    if (!pending) return;
+    if (!pending || !ready || !selected || isSubmitting) return;
     setError("");
     setIsSubmitting(true);
 
@@ -187,11 +131,13 @@ export default function RegisterPlansPage() {
             ...pending,
             planId: selectedPlan,
             months,
+            planVersion: selected.version,
           }),
         }
       );
       const data = await res.json();
       if (!res.ok) {
+        if (data.code === "PLAN_PRICE_CHANGED") await catalog.refetch();
         throw new Error(data.error || data.message || "Error al iniciar el pago");
       }
 
@@ -207,7 +153,7 @@ export default function RegisterPlansPage() {
       // Permite recuperar la activación después de una recarga o de cerrar
       // la pestaña, sin guardar la contraseña fuera de sessionStorage.
       localStorage.setItem("pendingRegistrationToken", data.registrationToken);
-      window.location.href = data.init_point;
+      window.location.assign(data.init_point);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Ocurrió un error");
       setIsSubmitting(false);
@@ -230,38 +176,40 @@ export default function RegisterPlansPage() {
           </p>
         </div>
 
+        {catalog.isPending && <Spinner label="Cargando planes" />}
+        {catalog.isError && <div className={styles.errorBanner} role="alert"><p>No se pudieron cargar los planes. Intentá nuevamente.</p><button type="button" onClick={() => void catalog.refetch()} disabled={catalog.isFetching}>Reintentar</button></div>}
         <div className={styles.plansGrid}>
-          {PLANS.map((plan) => (
+          {!catalog.isError && catalog.data?.map((plan) => (
             <button
-              key={plan.id}
+              key={plan.name}
               type="button"
               className={`${styles.planCard} ${
-                selectedPlan === plan.id ? styles.planSelected : ""
-              } ${plan.highlight ? styles.planHighlight : ""}`}
-              onClick={() => setSelectedPlan(plan.id)}
+                selectedPlan === plan.name ? styles.planSelected : ""
+              } ${(plan.name === "basic") ? styles.planHighlight : ""}`}
+              onClick={() => setSelectedPlan(plan.name)}
               disabled={isSubmitting}
-              aria-pressed={selectedPlan === plan.id}
+              aria-pressed={selectedPlan === plan.name}
             >
-              {plan.highlight && (
+              {(plan.name === "basic") && (
                 <span className={styles.badge}>Recomendado</span>
               )}
-              {selectedPlan === plan.id && (
+              {selectedPlan === plan.name && (
                 <span className={styles.selectionMark} aria-hidden>✓</span>
               )}
-              <div className={styles.planName}>{plan.name}</div>
+              <div className={styles.planName}>{plan.label}</div>
               <div className={styles.planPrice}>
                 {plan.price === 0 ? (
                   "Gratis"
                 ) : (
                   <>
-                    {formatPrice(plan.price)}
+                    {formatPrice(plan.effectivePrice)}
                     <span>/mes</span>
                   </>
                 )}
               </div>
               <p className={styles.planDesc}>{plan.description}</p>
               <ul className={styles.features}>
-                {plan.features.map((f) => (
+                {getPlanFeatureLabels(plan.features).map((f) => (
                   <li key={f}><span aria-hidden>→</span>{f}</li>
                 ))}
               </ul>
@@ -269,31 +217,31 @@ export default function RegisterPlansPage() {
           ))}
         </div>
 
-        {selectedPlan !== "free" && (
+        {selectedPlan !== "free" && ready && (
           <div className={styles.monthsSection}>
             <label className={styles.monthsLabel}>¿Por cuánto tiempo?</label>
             <div className={styles.monthsGrid}>
-              {MONTH_OPTIONS.map((opt) => (
+              {selected?.billingOptions.map((opt) => (
                 <button
-                  key={opt.value}
+                  key={opt.months}
                   type="button"
                   className={`${styles.monthBtn} ${
-                    months === opt.value ? styles.monthSelected : ""
+                    months === opt.months ? styles.monthSelected : ""
                   }`}
-                  onClick={() => setMonths(opt.value)}
+                  onClick={() => setMonths(opt.months)}
                   disabled={isSubmitting}
-                  aria-pressed={months === opt.value}
+                  aria-pressed={months === opt.months}
                 >
-                  {opt.label}
+                  {opt.months} {opt.months === 1 ? "mes" : "meses"}
                 </button>
               ))}
             </div>
             <div className={styles.total}>
               <span className={styles.totalLabel}>Total a pagar</span>
-              <strong>{formatPrice(totalPrice)}</strong>
-              {months > 1 && (
+              <strong>{formatPrice(totalPrice!)}</strong>
+              {(billingOption?.savings ?? 0) > 0 && (
                 <span className={styles.savings}>
-                  Ahorrás {formatPrice(selected.price * months - totalPrice)}
+                  Ahorrás {formatPrice(billingOption!.savings)}
                 </span>
               )}
             </div>
@@ -310,16 +258,17 @@ export default function RegisterPlansPage() {
           type="button"
           className={styles.submitBtn}
           onClick={handleContinue}
-          disabled={isSubmitting}
+          disabled={isSubmitting || !ready}
         >
           {isSubmitting
             ? "Procesando..."
+            : !ready ? "Esperando catálogo…"
             : selectedPlan === "free"
             ? "Crear cuenta gratis"
-            : `Pagar ${formatPrice(totalPrice)} y crear cuenta`}
+            : `Pagar ${formatPrice(totalPrice!)} y crear cuenta`}
         </button>
 
-        {selectedPlan !== "free" && (
+        {selectedPlan !== "free" && ready && (
           <p className={styles.secure}>Pago seguro · Tus datos están protegidos</p>
         )}
 

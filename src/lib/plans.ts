@@ -1,32 +1,38 @@
 // ──────────────────────────────────────────────
-// Helpers de planes en el frontend. Espejo del backend (config/plans.js):
-// la fuente de verdad del gating vive en el server, esto es para mostrar
-// candados/labels/upsell en la UI. Si cambia el backend, actualizar acá.
+// Identificadores y textos de UI. Los valores de precios y permisos vienen de la API.
 // ──────────────────────────────────────────────
-import type { Subscription } from "../types";
+import type { Subscription, PlanFeatures, BooleanPlanFeature } from "../types";
 
-// Orden de menor a mayor (igual que PLAN_ORDER del backend). El índice ES la
-// jerarquía: planMeetsMin() compara posiciones.
+// Orden técnico de upgrade/renovación, igual que PLAN_ORDER del backend.
+// Los beneficios se leen completos por plan, sin heredarlos de este orden.
 export const PLAN_ORDER: Subscription[] = ["free", "basic", "pro"];
 
-// Nombre visible de cada plan para la UI.
+// Etiquetas técnicas para estados históricos/sin catálogo; las ofertas usan label.
 export const PLAN_LABEL: Record<Subscription, string> = {
   free:    "Gratuito",
   basic:   "Básico",
   pro:     "Pro",
 };
 
-// ¿El plan del usuario alcanza el mínimo requerido?
-export function planMeetsMin(userPlan: Subscription, minPlan: Subscription): boolean {
-  return PLAN_ORDER.indexOf(userPlan) >= PLAN_ORDER.indexOf(minPlan);
-}
-
-// Plan mínimo requerido por cada template. Espeja TEMPLATE_MIN_PLAN del
-// backend (config/plans.js) — ese es el que realmente bloquea; esto decide
-// qué candado/etiqueta mostrar en el editor.
-export const TEMPLATE_MIN_PLAN: Record<number, Subscription> = {
-  1: "free",
-  2: "basic", 3: "basic", 4: "basic", 5: "basic",
-  6: "pro", 7: "pro", 8: "pro", 9: "pro", 10: "pro",
-  11: "pro", 12: "pro", 13: "pro", 14: "pro", 15: "pro",
+export const FEATURE_LABELS: Record<BooleanPlanFeature, string> = {
+  menu_editor: "Editor de menú",
+  qr: "QR descargable",
+  pedido_whatsapp: "Pedidos por WhatsApp",
+  landing_page: "Página del local",
+  sin_publicidad: "Sin publicidad",
+  carga_masiva_excel: "Importar y exportar por Excel",
+  programacion_productos: "Programar productos y ofertas",
+  menu_pdf: "Exportar menú a PDF",
+  estadisticas: "Estadísticas de visitas y productos",
 };
+
+export const BOOLEAN_FEATURES = Object.keys(FEATURE_LABELS) as BooleanPlanFeature[];
+
+export function getPlanFeatureLabels(features: PlanFeatures): string[] {
+  return [
+    features.item_limit === null ? "Productos ilimitados" : `Hasta ${features.item_limit} productos`,
+    ...BOOLEAN_FEATURES.filter(key => features[key]).map(key => FEATURE_LABELS[key]),
+    `${features.templateIds.length} ${features.templateIds.length === 1 ? "diseño disponible" : "diseños disponibles"}`,
+    ...(!features.sin_publicidad ? ["Incluye publicidad de MenuDigital"] : []),
+  ];
+}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../context/useAuth";
 import { useTheme } from "../../../../hooks/useTheme";
+import { usePlans } from "../../../../hooks/usePlans";
 import BrandMark from "../../../Common/BrandMark";
 import s from "./DashboardLayout.module.css";
 
@@ -13,6 +14,7 @@ const NAV_ITEMS = [
 ];
 
 export default function DashboardLayout() {
+  const catalog = usePlans();
   const { user, logout } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -96,12 +98,12 @@ export default function DashboardLayout() {
 
       {/* ── Contenido de la página activa ────────────────────────────────── */}
       <div className={`${s.content} admin-layout-content`}>
-        {user?.subscription === "free" && (
+        {!catalog.isError && catalog.data?.find(plan => plan.name === user?.subscription)?.features.sin_publicidad === false && (
           <aside className={s.freeBanner} aria-label="Publicidad de MenuDigital">
             <BrandMark className={s.freeBannerLogo} />
             <div className={s.freeBannerCopy}>
               <span className={s.freeBannerBrand}>Menú Digital</span>
-              <span className={s.freeBannerBadge}>Plan Free</span>
+              <span className={s.freeBannerBadge}>Tu menú digital</span>
               <span className={s.freeBannerText}>
                 Tu carta online, siempre lista para vender.
               </span>
