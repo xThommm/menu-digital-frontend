@@ -1,8 +1,9 @@
 # MenuDigital — Startup Blueprint v2
-> **Catálogo actualizado — 31-08-2026:** precios y features ya se leen de MongoDB
+> **Revisión vigente — 31-08-2026:** precios, multiplicadores y features se leen de MongoDB
 > en el código local. Editor `/admin/plans`, checkout con versión y gating dinámico
-> conectados. Las revisiones anteriores son históricas; ver README y la guía del
-> catálogo para la validación actual. No se consultó Atlas ni se desplegó.
+> conectados. Frontend typecheck/lint/build pasan; backend 117/119, con dos fallos
+> previos de `editItem`. Ver [README](README.md#verificaciones) y la
+> [guía del catálogo](PLAN_CATALOG_ROLLOUT.md). No se consultó Atlas ni se desplegó.
 
 
 > **Cómo leer este documento.** Es el plan integral de la startup: mercado, producto
@@ -14,7 +15,7 @@
 > archivo-por-archivo del código vive en [ARCHITECTURE.md](ARCHITECTURE.md) — acá no
 > se repite, se referencia.
 
-> **Revisión — 30-08-2026:** se contrastó cada sección con ambos repositorios.
+> **Antecedente histórico — 30-08-2026 (superado por la integración del 31-08):**
 > Precios locales: Basic $29.999 / Pro $49.999; catálogo MongoDB parcial, todavía
 > sin conectar a rutas ni checkout. Backend pasa 93/95 tests; frontend pasa lint/build
 > y falla typecheck en el nuevo módulo Planes. No se consultaron despliegues ni
@@ -59,7 +60,8 @@ mobile-first con importación/exportación por Excel.
 - **Estado**: producto en producción según el contexto del proyecto; código local
   React 19 + Express 4 + Mongoose 7, despliegue previsto en Vercel + Koyeb/Atlas.
   El origen web permitido en la API es `https://www.menudigitalapp.com.ar`.
-- **Modelo**: freemium por suscripción. Free ($0, hasta 15 productos) → Basic
+- **Modelo**: freemium por suscripción. Referencia de la configuración inicial:
+  Free ($0, hasta 15 productos) → Basic
   ($29.999/mes base, hasta 50 productos) → Pro ($49.999/mes base), con prepago
   1/3/6/12 meses. Sin renovación automática ni comisiones de MenuDigital por pedidos
   WhatsApp; no incluye las comisiones que MercadoPago cobre por la suscripción.
@@ -239,8 +241,10 @@ comerciales por nivel son la configuración inicial; no son una herencia técnic
 
 CRM incluye vista 360, onboarding calculado, alertas de pagos y vencimientos, y
 activación/desactivación con confirmación. El CEO muestra resumen y atajos, no otra
-pantalla completa de operación. **Catálogo editable de planes ⚠️**: hay modelo,
-servicio y UI locales, pero falta integración; ver [rollout](docs/PLAN_CATALOG_ROLLOUT.md).
+pantalla completa de operación. **Catálogo editable de planes ✅ en código local**:
+modelo, inicialización, rutas, checkout, permisos y UI están conectados. Falta
+desplegar y verificar persistencia y pagos con servicios reales; ver
+[rollout](PLAN_CATALOG_ROLLOUT.md).
 
 #### Módulos del roadmap 🔜 (ver §11)
 
@@ -252,7 +256,8 @@ M19 Multi-sucursal.
 
 Formato: historia → criterios (Given/When/Then abreviado). Las de módulos ✅ son la
 especificación de lo construido (sirven como base de regresión); las 🔜 definen lo
-próximo.
+próximo. Los ejemplos por plan usan las semillas iniciales; los permisos y límites
+efectivos siempre son los de `Plan.features`, sin herencia entre niveles.
 
 **HU-01 · Alta y primer menú (M1, M2)** ✅
 Como dueño, quiero registrarme y publicar mi primera carta en menos de 30 minutos.
@@ -263,8 +268,8 @@ Como dueño, quiero registrarme y publicar mi primera carta en menos de 30 minut
   y entra al panel. Con Basic/Pro hay checkout previo y activación por webhook.
 - Si no acepto términos, el backend rechaza el alta (400).
 - Al crear mi primer producto, la carta pública ya lo muestra sin pasos extra.
-- Con plan Free, el producto 16 es rechazado por el servidor (403) y la UI me ofrece
-  el upgrade.
+- Con `item_limit: 15`, el producto 16 es rechazado por el servidor (403); la UI
+  propone un plan cuyo catálogo ofrezca capacidad suficiente, si existe.
 
 **HU-02 · Editar precios rápido (M2)** ✅
 Como dueño, quiero cambiar precios desde el celular en segundos.
@@ -297,26 +302,28 @@ Como dueño, quiero ofrecer tamaños y ofertas con descuento visible.
   de variantes con precio y agregado individual.
 - Una oferta muestra precio nuevo + precio anterior tachado + badge "−N%"; el
   producto en oferta se agrega al precio de oferta como ítem simple.
-- Desde Basic, un rango con fecha y hora activa y desactiva la oferta automáticamente;
+- Con `programacion_productos` activo, un rango con fecha y hora activa y desactiva la oferta automáticamente;
   sin rango, el precio promocional permanece activo de forma manual.
 **HU-06 · Decidir con datos (M9)** ✅
-Como dueño Pro, quiero saber cuánto se mira mi carta y qué productos rinden.
+Como dueño con `estadisticas` activo, quiero saber cuánto se mira mi carta y qué productos rinden.
 
 - Veo visitas de los últimos 30 días (fechas en huso de Buenos Aires) con
   actualización automática (~45 s con pestaña visible).
 - Veo el top-10 de productos por vistas; un producto borrado figura como "(producto
   eliminado)".
-- Con plan insuficiente veo el paywall con upgrade directo (el 403 viene del server).
+- Sin el permiso veo el paywall (el 403 viene del servidor); ofrece los planes que
+  habiliten estadísticas en el catálogo, si existen.
 
 **HU-07 · Carga masiva (M10)** ✅
 Como dueño con menú grande, quiero actualizar todo en Excel.
 
 - Descargo la plantilla **con mis datos actuales**, la edito y al subirla veo un
   preview (crear/actualizar/errores por fila) antes de confirmar.
-- Errores ordinarios se reportan por fila; una importación que exceda el límite del
-  plan se rechaza antes de aplicar cambios.
-- Basic no puede confirmar una importación que deje más de 50 productos; Pro no
-  tiene límite.
+- Errores ordinarios se reportan por fila; una importación con altas que exceda
+  `item_limit` se rechaza antes de aplicar cambios. Editar productos existentes
+  sigue permitido aunque administración haya reducido el tope por debajo del total.
+- Excel exige `menu_editor` y `carga_masiva_excel`; el límite se obtiene del catálogo.
+  Las semillas asignan 50 a Basic y `null` (ilimitado) a Pro.
 
 **HU-08 · Cobrar suscripciones (M11)** ✅
 Como plataforma, quiero cobrar sin intervención manual.
@@ -325,8 +332,9 @@ Como plataforma, quiero cobrar sin intervención manual.
   `external_reference` y conserva un token opaco para consultar la activación. La
   contraseña temporal queda cifrada con AES-256-GCM hasta que el webhook crea el User.
 - Volver atrás, cerrar la pestaña o reintentar recupera el alta pendiente y
-  reutiliza la preferencia `ready` si conserva plan/período/importe/moneda. Cambiar
-  la selección crea otro `PaymentCheckout` y otra preferencia sin mutar el snapshot
+  reutiliza la preferencia `ready` si conserva plan/período/versión/importe/moneda
+  y tiene `preferenceId/initPoint`. Cambiar la selección o la versión del catálogo
+  crea otro `PaymentCheckout` y otra preferencia sin mutar el snapshot
   anterior; el checkout reemplazado queda marcado `superseded`.
 - Solo el webhook (firma HMAC verificada + consulta del pago real a la API de MP)
   crea la cuenta o cambia `User.subscription`. Cada pago queda primero en
@@ -346,8 +354,8 @@ Como plataforma, quiero cobrar sin intervención manual.
 - Las altas gratuitas y pagas generan slugs únicos legibles; las colisiones reciben
   sufijos incrementales y el backend reintenta las carreras contra el índice `unique`.
 - La suite backend cubre el webhook, el cifrado temporal y las colisiones de slug.
-- La revisión del 30-08-2026 reporta 93/95 tests backend; frontend lint/build pasan,
-  typecheck falla por el módulo Planes en desarrollo. No equivale a E2E productivo.
+- La revisión del 31-08-2026 reporta 117/119 tests backend; frontend typecheck,
+  lint y build pasan. Los dos fallos previos son de `editItem`; no equivale a E2E productivo.
 - **Pendientes:** E2E autorizado en el despliegue a liberar, publicación del catálogo
   y PAY-05 (vencimiento explícito de preferencias upgrade/renovación). No cambiar
   precios productivos solo para probar.
@@ -424,7 +432,7 @@ Dueño/CEO ──────────▶  ▼
                     Koyeb (Node + Express 4)
                     ├─ helmet · CORS allowlist · express-mongo-sanitize · rate limiters
                     ├─ JWT auth (HS256) · requireFeature · isAdmin
-                    ├─ Controllers (user/menu/item/admin/crm/massive/payment/adminPayment)
+                    ├─ Controllers (user/menu/item/admin/crm/massive/payment/adminPayment/plan)
                     └─ Webhook MercadoPago (HMAC verificado)
                        │
         ┌──────────────┼───────────────────┐
@@ -536,9 +544,12 @@ Membership { userId, organizationId, role: "owner"|"staff", invitedBy, createdAt
   primero el tier y la configuración real de Atlas. No hay evidencia local que
   garantice snapshots o retención productiva.
 - **Migraciones**: versionar y ensayar cambios de datos. El inicializador de `Plan`
-  existe localmente con `$setOnInsert`, pero no se ejecuta en el arranque actual.
+  se ejecuta antes de escuchar conexiones: crea planes faltantes con `$setOnInsert`
+  y completa únicamente `features` ausentes en documentos legados, incrementando
+  `__v`. Preserva precios, promociones y multiplicadores administrados; no repara
+  objetos parciales o inválidos silenciosamente. Falta ensayarlo con la base real.
 - **Retención**: `pageviews`/`itemviews` se conservan (son livianas y valen para
-  tendencias anuales); `AuditLog` con TTL.
+  tendencias anuales); `AuditLog` con TTL es una propuesta, no una colección actual.
 - **Datos personales**: existen credenciales, datos de contacto del dueño/local,
   aceptación de términos y notas CRM. El carrito actual no persiste comensales en
   backend. Una futura Order con nombre/teléfono requerirá definir consentimiento,
@@ -676,7 +687,7 @@ La tabla organiza deuda técnica; no afirma conformidad ni reemplaza un pentest.
 **Tipografías**: DM Sans (UI), Playfair Display (títulos de carta), Fraunces
 (display de auth/landing), DM Mono (datos/precios del panel CEO).
 
-**Los 15 templates** (producto, no solo estética — son el eje del gating):
+**Los 15 templates** (asignación de las semillas; los permisos vigentes están en `templateIds`):
 Free: Clásico · Basic agrega Moderno, Natural, Rojo y Minimal (5 totales) ·
 Pro agrega Aurora, Noir Gold, Coastal, Charcoal, Terracotta, Lavender, Forest,
 Platinum, Ocean y Rosé (15 totales; varios usan degradés y botones metálicos).
@@ -708,13 +719,16 @@ diferencias actuales están en [design-qa.md](design-qa.md).
 
 ## 10. Modelo de negocio
 
-### 10.1 Pricing del código local (ARS, 30-08-2026)
+### 10.1 Pricing de referencia de las semillas (ARS, revisión 31-08-2026)
+
+Precios y beneficios editables en MongoDB. Las tablas no son una lectura de Atlas
+ni garantizan que Pro herede Basic: cada plan guarda el objeto `features` completo.
 
 | Plan | Precio | Equivalente mensual | Desbloquea |
 |---|---|---|---|
 | **Gratis** | $0 | $0 | Menú/editor, landing, QR, pedido por WhatsApp, hasta 15 productos y publicidad |
 | **Basic** | $29.999/mes base | Según período | Hasta 50 productos, sin publicidad, Excel, programación, PDF y 5 diseños |
-| **Pro** | $49.999/mes base | Según período | Todo Basic + productos ilimitados, métricas y 15 diseños |
+| **Pro** | $49.999/mes base | Según período | En la semilla, beneficios de Basic + productos ilimitados, métricas y 15 diseños |
 
 Totales de referencia de las semillas iniciales (sin promociones; los vigentes
 se calculan con MongoDB en `getCheckoutQuote`):
@@ -726,7 +740,7 @@ se calculan con MongoDB en `getCheckoutQuote`):
 | 6 meses | 5 | $149.995 | $249.995 |
 | 12 meses | 9 | $269.991 | $449.991 |
 
-Mecánica de monetización: el **prepago largo se premia** (3 meses ≈10% off,
+Mecánica de monetización de las semillas: el **prepago largo se premia** (3 meses ≈10% off,
 6 meses ≈17% y 12 meses 25%); el plan Free hace marketing
 (publicidad de la plataforma en cartas gratuitas) y alimenta el pipeline del CRM.
 La selección nace en la landing y viaja por query string al registro; Free crea la
@@ -742,12 +756,15 @@ evento CRM, redirección y sincronización del dashboard. No modificar precios
 productivos únicamente para probar. Esta revisión no certifica que el E2E se haya
 realizado ni que estos precios estén desplegados.
 
-**Nota operativa**: precios y beneficios vigentes se administran en MongoDB desde
+**Nota operativa**: precios, multiplicadores y beneficios se administran en MongoDB desde
 `/admin/plans`; el frontend consume ese catálogo. Las tablas de este documento son
 una referencia de la configuración inicial, no una consulta en vivo. Los beneficios
-se aplican a todos los usuarios del plan en su siguiente consulta. Los precios
-nuevos afectan nuevos checkouts, sin reescribir snapshots anteriores. Falta publicar
-y validar el [rollout](docs/PLAN_CATALOG_ROLLOUT.md) con la base real.
+se aplican a todos los usuarios del plan en su siguiente consulta. Los precios y
+multiplicadores nuevos afectan nuevos checkouts, sin reescribir snapshots anteriores.
+`periodMultipliers` se guarda por plan: 1 mes permanece en `1`; los factores de
+3/6/12 meses son editables, positivos y como máximo iguales a esos meses. Guardar
+incrementa la versión y exige reconfirmar cotizaciones anteriores. Falta publicar
+y validar el [rollout](PLAN_CATALOG_ROLLOUT.md) con la base real.
 
 **PAY-05, independiente del catálogo:** el registro configura siete días de vigencia
 de preferencia y tres días extra de conservación del pending. Upgrade/renovación
@@ -997,11 +1014,12 @@ grandes: se intercalan como trabajo continuo.
   en backend. Frontend consume `api/plans.ts`/`usePlans`.
 - Gating: `requireFeature` y controllers consultan MongoDB; `config/plans.js`
   conserva orden, IDs, validadores y plan efectivo, sin asignaciones comerciales.
-- [Catálogo y rollout pendiente](docs/PLAN_CATALOG_ROLLOUT.md),
-  [Design QA](design-qa.md) y [dev log backend](../menu-digital-backend/DEVLOG-LUCAS.md).
+- [Catálogo y rollout pendiente](PLAN_CATALOG_ROLLOUT.md),
+  [Design QA](design-qa.md) y [dev log backend](../../menu-digital-backend/DEVLOG-LUCAS.md).
 
 ---
 
-*Versión 2 — revisión documental del 30 de agosto de 2026. Fuentes: código local,
-verificaciones ejecutadas y páginas primarias indicadas. Revisar al cambiar precios,
+*Versión 2 — revisión documental del 31 de agosto de 2026. Fuentes: código local,
+verificaciones ejecutadas y consultas web históricas fechadas el 30-08, no repetidas
+en esta revisión. Revisar al cambiar precios,
 integraciones o estado de despliegue, además del seguimiento trimestral del roadmap.*

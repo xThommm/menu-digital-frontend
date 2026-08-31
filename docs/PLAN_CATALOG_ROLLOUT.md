@@ -1,5 +1,8 @@
 # Catálogo de planes en MongoDB
 
+Guía operativa complementaria a README, ARCHITECTURE y BLUEPRINT; se conserva
+mientras sean necesarios el contrato del catálogo y sus controles de publicación.
+
 Actualización **31-08-2026**: integración local completa, pendiente de despliegue y
 verificación con Atlas/MercadoPago. No se modificaron datos productivos ni se
 hicieron pagos reales. Esta colección es un **cambio de arquitectura**.
@@ -130,10 +133,14 @@ Pruebas backend: cotización dinámica 1/3/6/12 meses, promociones, snapshots,
 versiones viejas, catálogo caído, modelo y permisos independientes. Persistencia
 simulada con mocks; no demuestra índices o migraciones reales en Atlas.
 
-La revisión de navegador utiliza una API aislada, controladores reales del
-catálogo y almacenamiento en memoria. Comprueba cambios guardados y reflejados
-en las pantallas sin tocar precios reales. Ver resultados y las dos regresiones
-previas de `editItem` en el [README](../README.md).
+La revisión previa de navegador usó una API aislada, controladores reales del
+catálogo y almacenamiento en memoria. Comprobó cambios de precios/features
+guardados y reflejados en las pantallas sin tocar precios reales. Del nuevo editor
+de multiplicadores se verificaron validación, deshacer y vista previa; falta repetir
+su guardado desde el navegador. La persistencia de esos factores, la respuesta de
+la API y los conflictos de versión se cubrieron con tests de backend.
+Esta revisión documental no repitió interacciones visuales. Ver resultados y las
+dos regresiones previas de `editItem` en el [README](README.md#verificaciones).
 
 ## Despliegue pendiente
 
@@ -152,5 +159,5 @@ upgrade/renovación aún no envían expiración explícita y `PaymentCheckout` n
 `preferenceExpiresAt`. No borrar auditoría con TTL ni rechazar un pago realmente
 aprobado solo porque su webhook llegó tarde.
 
-Contexto: [arquitectura](../ARCHITECTURE.md), [blueprint](../BLUEPRINT.md) y
+Contexto: [arquitectura](ARCHITECTURE.md), [blueprint](BLUEPRINT.md) y
 [dev log backend](../../menu-digital-backend/DEVLOG-LUCAS.md).

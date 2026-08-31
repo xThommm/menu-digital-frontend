@@ -4,7 +4,7 @@ Frontend de **MenuDigital**, SaaS argentino de cartas digitales para bares y
 restaurantes. Está construido con React 19, TypeScript y Vite, y se despliega en
 Vercel.
 
-Revisión documental: **30-08-2026**, contra el código local de ambos repositorios.
+Revisión documental: **31-08-2026**, contra el código local de ambos repositorios.
 No implica que los cambios locales estén desplegados.
 
 Actualización **31-08-2026**: catálogo MongoDB conectado a precios, features,
@@ -12,18 +12,39 @@ checkout y permisos. `/admin/plans` permite administrarlo. Dominio propio y rese
 integradas siguen fuera del alcance; Maps por dirección se mantiene.
 Estos cambios son locales: no se consultó Atlas ni se desplegó.
 
-La documentación completa está separada en:
+## Mapa de documentación
 
+Los cuatro documentos principales viven en `docs/` del frontend:
+
+- **Este README**: entrada al proyecto, desarrollo local y validación vigente.
 - [ARCHITECTURE.md](ARCHITECTURE.md): arquitectura técnica y recorrido archivo por
   archivo de frontend y backend.
 - [BLUEPRINT.md](BLUEPRINT.md): producto, negocio, pricing, roadmap y criterios de
   aceptación.
-- [Catálogo de planes](docs/PLAN_CATALOG_ROLLOUT.md): modelo, comportamiento y
+- [RESUMEN_EJECUTIVO.txt](RESUMEN_EJECUTIVO.txt): guía comercial para vendedores;
+  es un documento principal aunque su extensión sea `.txt`.
+
+Documentos complementarios, referenciados pero fuera de ese núcleo:
+
+- [Catálogo de planes](PLAN_CATALOG_ROLLOUT.md): guía operativa vigente, modelo y
   checklist de despliegue pendiente.
 - [Design QA](design-qa.md): evidencia histórica del editor y diferencias con el
   código actual; no certifica una nueva prueba visual.
-- [Dev log del backend](../menu-digital-backend/DEVLOG-LUCAS.md): historial y estado
-  actual de la API (requiere ambos repositorios como carpetas hermanas).
+- [Dev log del backend](../../menu-digital-backend/DEVLOG-LUCAS.md): historial
+  técnico con un resumen de estado local; requiere ambos repositorios como
+  carpetas hermanas.
+
+Fuera de Markdown, [ARCHITECTURE.html](ARCHITECTURE.html) es una copia histórica
+de la arquitectura y [REVISION_TECNICA_SEGURIDAD_Y_PENDIENTES.txt](REVISION_TECNICA_SEGURIDAD_Y_PENDIENTES.txt)
+conserva una auditoría del 27-08-2026. Son candidatos a archivo histórico, no fuentes
+del estado vigente. No se eliminaron ni movieron durante esta revisión.
+
+La aplicación, los scripts y el build no consumen estos documentos. Eso no implica
+que estén sin uso: sirven para desarrollo, operación o venta. Los tres Markdown
+complementarios tienen referencias desde la documentación principal. El informe
+técnico `.txt` no tenía referencias entrantes antes de incorporarlo a este índice.
+Las excepciones de `.gitignore` permiten versionar README y ARCHITECTURE en `docs/`.
+No hay README en la raíz; este archivo es la entrada documental actual.
 
 ## Aplicaciones incluidas
 
@@ -56,10 +77,10 @@ No hay renovación automática: se prepagan 1/3/6/12 meses.
 **Administración → Planes** permite editar precios, multiplicadores para 3/6/12
 meses, nombres, descripciones y beneficios. El factor de un mes es 1 y se cambia
 su importe mediante el precio mensual. Los cambios de beneficios alcanzan a los
-usuarios existentes en su próxima
-consulta. Los precios nuevos se aplican a nuevos checkouts; los anteriores conservan
-su snapshot. Una versión desactualizada se rechaza con 409 y exige reconfirmación.
-Ver el [modelo y guía del catálogo](docs/PLAN_CATALOG_ROLLOUT.md).
+usuarios existentes en su próxima consulta. Los precios nuevos se aplican a nuevos
+checkouts; los anteriores conservan su snapshot. Una versión desactualizada se
+rechaza con 409 y exige reconfirmación.
+Ver el [modelo y guía del catálogo](PLAN_CATALOG_ROLLOUT.md).
 
 Antes de liberar cambios de pagos, verificar deploys y configuración de ambiente,
 y validar con autorización el circuito preferencia → Checkout Pro → webhook
@@ -100,7 +121,7 @@ npm run lint
 npm run build
 ```
 
-Resultado de la integración local del 31-08-2026:
+Verificación técnica repetida el 31-08-2026 durante la revisión documental:
 
 - Frontend: `npm run typecheck`, `npm run lint` y `npm run build` **pasan**.
 - Backend: **117/119 tests pasan**; las 36 pruebas de catálogo, cotización y
@@ -108,10 +129,13 @@ Resultado de la integración local del 31-08-2026:
 - `git diff --check` pasa en ambos repositorios.
 - Dos regresiones previas de `editItem` sobre `available`/`hidden` siguen fuera de
   este cambio; no fueron corregidas ni ocultadas.
-- Navegador con API simulada: edición de Pro, landing, registro, dashboard, totales por período,
+- Navegador con API simulada durante la integración previa: edición de Pro, landing, registro, dashboard, totales por período,
   conflicto de precio con reconfirmación, estadísticas desactivadas, template
   retirado y recuperación tras un error de catálogo.
-  No prueba persistencia real ni producción.
+  No prueba persistencia real ni producción; esta revisión documental no repitió
+  esas interacciones. Para el nuevo editor de multiplicadores se comprobó validación,
+  deshacer y vista previa; el guardado se cubrió con tests de backend, sin completar
+  una nueva prueba de guardado desde el navegador.
 - No hay script de tests automatizados frontend. Falta E2E con backend real,
   Atlas/MercadoPago y verificación de despliegue antes de publicar.
 

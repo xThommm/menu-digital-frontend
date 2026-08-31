@@ -5,3 +5,7 @@ dist/
 test.md
 ARCHITECTURE.md
 README.md
+
+# Documentación principal trasladada a docs: debe seguir versionada.
+!/docs/ARCHITECTURE.md
+!/docs/README.md
