@@ -2,6 +2,13 @@ MENUDIGITAL
 REVISION TECNICA, CIBERSEGURIDAD Y PUNTOS PENDIENTES
 Fecha del relevamiento: 27 de agosto de 2026
 
+ESTADO DOCUMENTAL (31/08/2026): informe historico, fuera de los documentos
+principales. Conserva los hallazgos de la fecha del relevamiento; no certifica
+el estado actual ni implica que sus riesgos hayan sido resueltos. Para el estado
+local vigente consultar README.md, ARCHITECTURE.md y BLUEPRINT.md en esta carpeta,
+y el DEVLOG-LUCAS.md del backend. No se repitio la auditoria de seguridad en esta
+revision documental.
+
 ===============================================================================
 1. OBJETIVO Y ALCANCE
 ===============================================================================

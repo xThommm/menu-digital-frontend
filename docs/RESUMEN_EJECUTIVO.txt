@@ -25,6 +25,9 @@ La conversación comercial debe partir de un problema real del local. Un menú c
 
 ## 3. Qué puede hacer el local
 
+Las asignaciones por plan siguientes describen la configuración inicial. Confirmar
+las funciones habilitadas en el catálogo antes de ofrecerlas o mostrarlas en una demo.
+
 - **Editar su carta:** organizar secciones y categorías; cargar productos con fotos, descripciones, precios y variantes; destacar recomendados, ocultar productos o marcarlos como no disponibles.
 - **Compartir su presencia digital:** mostrar una página con imágenes y datos de contacto, compartir el enlace y descargar su QR. La página está dentro de MenuDigital; no equivale a un dominio propio.
 - **Preparar pedidos por WhatsApp:** el comensal agrega productos, elige cantidades y variantes, y abre un mensaje con el detalle y el total. Debe enviarlo en WhatsApp; el local confirma disponibilidad, entrega y pago por ese canal.
@@ -55,11 +58,12 @@ Los límites de productos cuentan toda la cuenta, no cada categoría. Los diseñ
 
 - **Gratis:** para empezar, conocer la herramienta o publicar una carta de hasta 15 productos aceptando la publicidad de MenuDigital. No es una prueba de Pro.
 - **Básico:** para una carta de hasta 50 productos, sin publicidad, con Excel, PDF y programación. También sirve si el local tiene pocos productos pero necesita esas funciones.
-- **Pro:** para superar los 50 productos o acceder a estadísticas y a los 15 diseños. Incluye todo Básico.
+- **Pro:** para superar los 50 productos o acceder a estadísticas y a los 15 diseños. En la configuración inicial incluye los beneficios de Básico; administración puede modificar cada plan por separado.
 
 ## 5. Precios y pagos anticipados
 
-**Todos los importes están en pesos argentinos (ARS).** Estos son los precios publicados verificados al 31/08/2026:
+**Todos los importes están en pesos argentinos (ARS).** Importes de referencia de
+la configuración inicial, sin promociones; no constituyen una consulta de precios en vivo:
 
 | Período contratado | Básico: total a pagar | Pro: total a pagar | Ahorro frente a pagar mes a mes |
 |---|---:|---:|---:|
@@ -69,6 +73,11 @@ Los límites de productos cuentan toda la cuenta, no cada categoría. Los diseñ
 | 12 meses | $269.991 | $449.991 | 25% |
 
 Los períodos de 3, 6 y 12 meses se pagan por adelantado. **La tabla muestra el total del período, no una cuota mensual.** Gratis permanece en $0 y no requiere un pago para comenzar.
+
+El total combina el precio mensual vigente (o la promoción) con el multiplicador
+guardado para ese plan y período, redondeado a pesos enteros. Los factores iniciales
+son 1; 2,7; 5 y 9 para 1/3/6/12 meses. Administración puede cambiar los de 3/6/12:
+el ahorro de esta tabla no es fijo ni debe prometerse sin consultar el catálogo.
 
 Antes de cerrar una venta, revisar el plan, el período y el importe que muestra la contratación. Los precios pueden cambiar: no usar capturas antiguas ni prometer descuentos, cuotas o bonificaciones fuera de las condiciones habilitadas. Si el importe difiere de este documento, consultar con administración antes de cobrar o confirmar la oferta.
 
@@ -148,6 +157,10 @@ Derivar a administración problemas de pago o acceso, descuentos especiales, con
 
 ---
 
-**Control de actualización:** precios contrastados con la landing, el registro y el selector de plan publicados en https://www.menudigitalapp.com.ar el 31/08/2026; coinciden con la configuración de cobro del backend local. Totales calculados con sus reglas de 1, 3, 6 y 12 meses. No se realizó una compra real durante esta revisión.
+**Control de actualización:** revisión documental del 31/08/2026 contra el código
+local y las semillas iniciales del catálogo. La versión anterior registró una
+comparación con la web publicada; en esta revisión no se volvió a consultar
+producción ni Atlas, ni se realizó una compra real. Los importes y beneficios
+editables deben confirmarse antes de cotizar; esta copia no se actualiza automáticamente.
 
 Funciones y límites contrastados con el código de ambos repositorios y `ARCHITECTURE.md`; objetivos tomados de `BLUEPRINT.md`. La revisión de código no certifica el funcionamiento de cada integración en producción. Actualizar este documento cuando cambien precios, beneficios o disponibilidad, y comprobar las funciones que se mostrarán antes de cada demo.

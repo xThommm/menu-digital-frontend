@@ -1,8 +1,9 @@
 # MenuDigital — Arquitectura de la aplicación
-> **Catálogo actualizado — 31-08-2026:** precios y features ya se leen de MongoDB
+> **Revisión vigente — 31-08-2026:** precios, multiplicadores y features se leen de MongoDB
 > en el código local. Editor `/admin/plans`, checkout con versión y gating dinámico
-> conectados. Las revisiones anteriores son históricas; ver README y la guía del
-> catálogo para la validación actual. No se consultó Atlas ni se desplegó.
+> conectados. Frontend typecheck/lint/build pasan; backend 117/119, con dos fallos
+> previos de `editItem`. Ver [README](README.md#verificaciones) y la
+> [guía del catálogo](PLAN_CATALOG_ROLLOUT.md). No se consultó Atlas ni se desplegó.
 
 
 Documentación técnica de los dos repositorios que componen **MenuDigital**, un
@@ -20,21 +21,21 @@ Free crea la cuenta sin checkout; Basic/Pro crean un registro pendiente y pasan 
 MercadoPago antes de crear el `User`. La carta vive en `menudigitalapp.com.ar/<slug>/menu`.
 Los beneficios de cada plan se definen explícitamente en MongoDB, sin herencia.
 
-> **Actualización funcional 31-08-2026:** se retiraron dominio propio y reseñas
+> **Etapa previa del 31-08-2026 — retiro de funciones:** se retiraron dominio propio y reseñas
 > integradas de la oferta, los permisos y la interfaz. Se conservan dirección,
 > enlace a Maps por dirección y contacto/reservas por WhatsApp. Los campos antiguos
 > no se exponen en las respuestas de contacto del panel/carta ni se aceptan al editar.
 > No se ejecutó una migración de MongoDB ni se desplegaron estos cambios.
-> Validación de esta limpieza: 3/3 pruebas nuevas de contacto pasan; suite backend
+> Validación histórica de esa limpieza, anterior a integrar el catálogo: 3/3 pruebas nuevas de contacto pasan; suite backend
 > 96/98, con los mismos dos fallos previos. Frontend lint/build pasan y typecheck
 > conserva sus errores previos. Se revisaron las pantallas afectadas y el guardado
 > de contacto en navegador local con API simulada, sin conexión a datos reales.
 
-> **Revisión 30-08-2026:** describe el checkout local, incluidos archivos todavía
+> **Antecedente histórico — 30-08-2026:** describía el checkout local, incluidos archivos entonces
 > sin integrar del catálogo MongoDB. Código presente no equivale a despliegue
 > confirmado. Backend: 93/95 tests pasan; frontend: lint/build pasan y typecheck
 > falla en `AdminPlans.tsx`. Ver [estado operativo](#estado-operativo-del-flujo-de-suscripciones--30-08-2026)
-> y [catálogo de planes](docs/PLAN_CATALOG_ROLLOUT.md). No se hicieron cambios de
+> y [catálogo de planes](PLAN_CATALOG_ROLLOUT.md). No se hicieron cambios de
 > código, pagos reales ni consultas a bases productivas en esta revisión.
 
 ---
@@ -122,7 +123,7 @@ Arma la app Express y arranca el servidor.
 ### `config/plans.js`
 
 Reglas técnicas: `PLAN_MAP`, `PLAN_ORDER`, `BOOLEAN_FEATURES`, `TEMPLATE_IDS`,
-`isValidFeatures`, `getTemplateForFeatures` y `getEffectivePlan`.
+`isValidFeatures`, `isValidPeriodMultipliers`, `getTemplateForFeatures` y `getEffectivePlan`.
 El orden solo gobierna upgrade/renovación; **no hay herencia de beneficios**.
 Las asignaciones, límites y diseños permitidos viven en `Plan.features`.
 Una suscripción vencida usa Free; un template retirado se presenta con el primer
@@ -176,7 +177,10 @@ Colección `plans`, un documento por `free/basic/pro`: `name` único/inmutable,
 `features` es un objeto obligatorio idéntico en los tres planes: booleanos explícitos,
 `item_limit` positivo o null y `templateIds` no vacío de IDs 1–15 sin duplicados.
 Free cuesta cero; planes pagos positivos, promociones menores al precio regular.
-Ver [modelo completo y rollout](docs/PLAN_CATALOG_ROLLOUT.md).
+`periodMultipliers` es un Map numérico con exactamente 1/3/6/12 meses: un mes vale
+1 y el resto debe ser positivo y no superar la cantidad de meses. Cada total pago
+debe redondear a al menos un peso; API y modelo validan estas restricciones.
+Ver [modelo completo y rollout](PLAN_CATALOG_ROLLOUT.md).
 
 ### `models/Menu.js`
 Cada documento es una **sección o categoría** del menú de un local. Campos: `userID`
@@ -219,8 +223,10 @@ Exporta también `STAGES`.
 Alta paga todavía no convertida en `User`. Guarda temporalmente los datos de
 registro, plan y período, junto con el hash de un token opaco de activación y
 el `preferenceId/initPoint` de MercadoPago y la referencia al `PaymentCheckout`.
-Un retry del mismo plan/período recupera y actualiza esa preferencia; si cambia la
-selección crea otro checkout con su propio snapshot y marca el anterior superseded.
+Un retry reutiliza la preferencia si el checkout está `ready`, conserva plan,
+período, versión del catálogo, importe y moneda, y tiene `preferenceId/initPoint`.
+Si esas condiciones cambian crea otro snapshot y marca el anterior `superseded`,
+incluso cuando solo cambió un multiplicador y la selección sigue siendo la misma.
 La contraseña temporal se cifra con AES-256-GCM en
 `passwordCiphertext/passwordIV/passwordAuthTag`; los tres campos son `select:false`
 y requieren un `PENDING_REGISTRATION_SECRET` estable de al menos 32 caracteres en
@@ -337,8 +343,8 @@ Endpoints:
   (landing por slug), si `landing_page` está activa. Devuelve features y usa el template permitido
   por el plan efectivo; la publicidad sigue `features.sin_publicidad`.
 - **`downloadMenuPdf`** `GET /api/users/:slug/menu/pdf` — genera el menú imprimible,
-  requiere `features.menu_pdf` aunque la URL sea pública; excluye productos manualmente
-  pausados o fuera de su horario programado.
+  requiere `features.menu_pdf` aunque la URL sea pública. Excluye productos
+  manualmente pausados; además aplica el horario si `programacion_productos` está activa.
 - **`editUser`** `PUT /api/users/me` — edita `contactInfo/hasDelivery/media/schedule`
   (whitelist; `template` va por `useTemplate`). Preserva los campos vigentes de
   contacto omitidos en ediciones parciales y valida el horario del local.
@@ -368,9 +374,10 @@ Endpoints:
 ### `controllers/itemController.js`
 
 - **`verifyMenuOwnership(menuID, userID)`** — igual patrón que arriba.
-- **`newItem`** `POST /api/items` — crea producto; aplica el tope escalonado (Free 15,
-  Basic 50, Pro ilimitado), protege la programación de ofertas y disponibilidad desde
-  Basic, valida horarios/solapamientos y la unicidad de `code` **por usuario** (no global).
+- **`newItem`** `POST /api/items` — crea producto; consulta `features.item_limit`
+  (`null` significa ilimitado) y exige `programacion_productos` para ofertas o
+  disponibilidad programadas. Valida horarios/solapamientos y la unicidad de `code`
+  **por usuario** (no global); los permisos no dependen del nombre del plan.
 - **`editItem`** `PUT /api/items/:itemID` — edita campos de contenido (whitelist);
   unicidad de code por usuario solo si cambia.
   **Pendiente comprobado:** la whitelist no incluye `available` ni `hidden`, aunque
@@ -509,8 +516,8 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   uploads, `/template`, `/active`; y al final las públicas por slug
   `POST /:slug/menu/items/:itemID/view` (tracking por plato), `/:slug/menu` y `/:slug`
   (van últimas para no interceptar las rutas fijas).
-- **`routes/menuRoutes.js`** — CRUD de menús (todas `protect`).
-- **`routes/itemRoutes.js`** — CRUD de items (todas `protect`).
+- **`routes/menuRoutes.js`** — CRUD de menús (todas `protect` + `requireFeature("menu_editor")`).
+- **`routes/itemRoutes.js`** — CRUD de items (todas `protect` + `requireFeature("menu_editor")`).
 - **`routes/adminRoutes.js`** — rutas admin (todas `protect + isAdmin`).
 - **`routes/adminPaymentRoutes.js`** — `GET /` bajo `/api/admin/payments`, protegido
   por `protect + isAdmin`, montado antes del router admin genérico.
@@ -525,7 +532,8 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   `POST /clients/:userID/notes`, `DELETE /clients/:userID/notes/:noteID`.
 - **`routes/paymentRoutes.js`** — usa la configuración central de precios y períodos.
   `POST /crear-preferencia-registro` crea o recupera el alta pendiente, persiste el
-  snapshot de checkout, reutiliza la preferencia si no cambió la selección y devuelve
+  snapshot de checkout, reutiliza una preferencia `ready` si coinciden selección,
+  versión, importe y moneda y existen `preferenceId/initPoint`, y devuelve
   `init_point` + token opaco; `POST /registro/estado` permite esperar al webhook;
   `POST /crear-preferencia` (autenticado) valida plan/período, impide downgrades,
   crea el snapshot server-side y luego la preferencia de upgrade/renovación;
@@ -542,8 +550,8 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
 
 - `initializePlans()` espera índices e inserta faltantes con `$setOnInsert`.
   Completa solo documentos legados sin `features`, incrementando `__v`; preserva
-  precios/promociones y valida el catálogo antes del arranque.
-- `planToDTO()` / `listPlans()` exponen las features guardadas y los totales.
+  precios/promociones/multiplicadores y valida el catálogo antes del arranque.
+- `planToDTO()` / `listPlans()` exponen las features, multiplicadores, versión y totales.
 - `getPlan()` / `getPlanForUser()` leen MongoDB y resuelven plan efectivo;
   `getRequestPlan()` reutiliza la lectura solo dentro de la petición actual.
 - `getCheckoutQuote()` cotiza desde MongoDB para registro, upgrade y renovación.
@@ -672,7 +680,7 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
 
 - **`CartLine`** (interface: itemId, title, unitPrice, quantity, selectedOption?) y
   **`CartContextType`** / **`CartContext`** — el contexto del **carrito de la carta
-  pública** (items, addItem, removeItem, updateQuantity, clearCart, totalItems,
+  pública** (enabled, items, addItem, removeItem, updateQuantity, clearCart, totalItems,
   totalPrice). Dos variantes distintas del mismo producto son líneas separadas.
 
 ### `context/CartProvider.tsx`
@@ -683,6 +691,8 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
   bajo `cart:<slug>` (un carrito **por local**, no global); si el slug cambia por
   navegación SPA recarga el carrito de ese local (ajuste de estado durante el render,
   sin efecto). Si localStorage no está disponible sigue funcionando en memoria.
+  `enabled` viene de `features.pedido_whatsapp`; si está desactivado, no permite
+  agregar productos ni cambiar cantidades, sin borrar el carrito guardado.
 
 ### `context/useCart.ts`
 
@@ -736,7 +746,8 @@ del catálogo en textos visibles, incluyendo límite y cantidad de diseños.
 No asignan permisos: el backend los resuelve desde MongoDB.
 
 ### `lib/whatsapp.ts`
-Helpers puros del **pedido por WhatsApp** (sin backend, sin gating por plan).
+Helpers puros del **pedido por WhatsApp**, sin backend de pedidos. El permiso
+`pedido_whatsapp` se aplica en la UI y en `CartProvider`, no dentro de estos helpers.
 - **`sanitizePhoneForWa(number)`** — convierte el teléfono guardado (dígitos locales
   sin código de país) al formato `54 9 <área><número>` que exige `wa.me` para celulares
   argentinos; saca un `0` inicial de discado si lo hubiera. Devuelve null si no hay número.
@@ -820,7 +831,9 @@ incluido `userID` para el detalle de un cliente. No modifica datos en MercadoPag
 ### `api/plans.ts` y `api/adminPlans.ts`
 
 Contrato `PlanDefinition`/`PlanBillingOption`; `parsePlanCatalog` valida tres planes,
-objeto `features`, versión y totales por período. `listAdminPlans` y `updateAdminPlan`
+objeto `features`, `periodMultipliers`, versión y totales por período; comprueba que
+cada opción de facturación coincida con el multiplicador guardado.
+`listAdminPlans` y `updateAdminPlan`
 consumen los endpoints protegidos montados. La UI no decide el importe de cobro.
 
 ## types/
@@ -852,8 +865,9 @@ onboarding/alertas CRM, `PlanFeatures` y `BooleanPlanFeature`. El DTO comercial 
   (loguea, hook para Sentry), `handleReload` y un fallback con botón "Recargar".
 - **`BrandMark.tsx`** — imagen decorativa compartida desde
   `public/brand/menu-digital-app-brand-mark.png`, clase global `md-brand-mark`.
-- **`FreePlanAd.tsx`** — publicidad reutilizable en la landing/carta Free, con marca
-  y CTA a `/`; estilos globales `t-free-plan-ad*`.
+- **`FreePlanAd.tsx`** — publicidad reutilizable en la landing/carta cuando
+  `features.sin_publicidad` no está activo, cualquiera sea el plan. Marca y CTA a
+  `/`; estilos globales `t-free-plan-ad*`.
 - **`FullScreenLoader.tsx`** — **`FullScreenLoader({label})`**: contenedor
   `.pageLoaderScreen` con `Spinner` de 36 px; guards y fallback de Suspense.
 - **`Spinner.tsx`** — **`Spinner({size, label})`**: spinner SVG inline para botones y overlays
@@ -879,9 +893,9 @@ Componente principal **`HomePage`** con hooks de animación (`useParallax`,
 ### `components/Admin/Panel/AdminLayout.tsx`
 
 Shell del **panel CEO** (sidebar desktop + bottom nav mobile + `<Outlet/>` para `/admin`
-y `/admin/crm`/`/admin/payments`), mismo patrón que el `DashboardLayout` del dueño.
+y `/admin/crm`/`/admin/payments`/`/admin/plans`), mismo patrón que el `DashboardLayout` del dueño.
 
-- **`AdminLayout`** — nav items (Panel / CRM / Pagos), `useTheme` (toggle claro/oscuro),
+- **`AdminLayout`** — nav items (Panel / CRM / Pagos / Planes), `useTheme` (toggle claro/oscuro),
   `handleLogout`, y un **badge de alerta** en el ítem CRM con la cantidad de clientes
   con seguimiento vencido (`getCrmOverdueCount`, se refresca en cada cambio de ruta).
   Íconos: `GridIcon`, `UsersIcon`, `LogoutIcon`, `SunIcon`, `MoonIcon`.
@@ -1176,8 +1190,8 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   existen uploads autenticados vía Multer para negocio/categorías/productos. Los
   ocultos se ven en el editor pero no en la carta pública.
 - **Carta pública**: visitante entra a `/:slug/menu` → `fetchUserWithMenu` arma el menú
-  agrupado, filtra ocultos, calcula la disponibilidad semanal de cada producto en
-  horario BA y registra la visita (`trackView`).
+  agrupado, filtra ocultos y calcula la disponibilidad semanal en horario BA solo
+  si `programacion_productos` está activa. Registra la visita (`trackView`).
 - **Planes y pagos**: hay dos entradas. El alta paga usa
   `POST /payments/crear-preferencia-registro` antes de que exista el usuario; el upsell
   desde el panel usa `POST /payments/crear-preferencia` sobre una cuenta autenticada.
@@ -1212,18 +1226,20 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   (`CartProvider`, persistido en localStorage por slug) tocando "+" en cada producto
   (con selección de variante si tiene opciones). El `CartDrawer` muestra el pedido y
   el botón "Pedir por WhatsApp" abre `wa.me` con el mensaje prearmado
-  (`lib/whatsapp.ts`) al número del local. 100% client-side, sin backend, sin gating
-  por plan (el teléfono ya es público vía el link `tel:` existente).
+  (`lib/whatsapp.ts`) al número del local. Es client-side, sin backend de pedidos:
+  la UI y `CartProvider` siguen `features.pedido_whatsapp` recibido del servidor.
+  Esto no impide contactar al teléfono público por fuera de MenuDigital.
   El agregado simple también depende de `hasDelivery`; el código de variantes no
-  aplica ese flag de forma uniforme. No equivale a un bloqueo por plan ni a gestión
-  persistida de pedidos, y merece regresión del flujo completo.
+  aplica ese flag de forma uniforme. Este pendiente es independiente del permiso
+  del catálogo; no hay gestión persistida de pedidos y falta regresión del flujo completo.
 - **Estadísticas**: cada visita incrementa `PageView` del día (BA), y cada tap sobre un
-  producto incrementa `ItemView` (mismo esquema, a nivel plato). Los planes pro+ ven en
+  producto incrementa `ItemView` (mismo esquema, a nivel plato). Con `estadisticas` activo se ve en
   `UserStats` la serie de 30 días con auto-refresh en tiempo real más el ranking de
   "Productos más vistos" (top 10 de la misma ventana).
-- **Import/export Excel** (plan basic+): `getTemplate` genera el `.xlsx`;
+- **Import/export Excel** (permisos `menu_editor` y `carga_masiva_excel`): `getTemplate` genera el `.xlsx`;
   `previewMassive`/`confirmMassive` procesan la reimportación fila por fila y rechazan
-  el archivo completo antes de mutar si supera el tope del plan.
+  el archivo completo antes de mutar si las altas superan `features.item_limit`.
+  Editar productos existentes sigue permitido aunque el total ya exceda un tope rebajado.
 - **CRM interno** (solo CEO/admin): desde `/admin/crm` se gestiona a los locales
   suscriptos como clientes (etapa del pipeline — en vista lista o Kanban con drag &
   drop —, tags, seguimiento, notas). El historial mezcla notas manuales con eventos
@@ -1250,7 +1266,7 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   `legacy`; no pueden degradar plan o vigencia, aunque no permiten demostrar el
   importe original porque ese snapshot todavía no existía.
 - **Actualización 31-08-2026 del catálogo**: modelo, arranque, rutas, checkout,
-  features y UI integrados localmente; ver [modelo y rollout](docs/PLAN_CATALOG_ROLLOUT.md).
+  features y UI integrados localmente; ver [modelo y rollout](PLAN_CATALOG_ROLLOUT.md).
   Los resultados del 30-08 citados arriba son históricos; ver README para validación actual.
 - **PAY-05**: falta expiración explícita en upgrade/renovación y snapshot de esa
   fecha. Registro tiene siete días de checkout más tres días de margen del pending.
@@ -1275,5 +1291,5 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   `vercel.json`. La aplicación mezcla URLs `/api` con `VITE_API_URL`; ambas deben
   apuntar al mismo backend. No imprimir secretos al diagnosticar.
 - [README](README.md), [BLUEPRINT](BLUEPRINT.md), [Design QA](design-qa.md),
-  [catálogo](docs/PLAN_CATALOG_ROLLOUT.md) y
-  [dev log backend](../menu-digital-backend/DEVLOG-LUCAS.md).
+  [catálogo](PLAN_CATALOG_ROLLOUT.md) y
+  [dev log backend](../../menu-digital-backend/DEVLOG-LUCAS.md).

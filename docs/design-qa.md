@@ -1,6 +1,7 @@
 # Design QA — Editor de menú, opción 3
 
-Revisión documental: **30-08-2026**. Este archivo conserva un reporte visual del
+Revisión documental: **31-08-2026**. Documento complementario histórico, fuera del
+núcleo README/ARCHITECTURE/BLUEPRINT/RESUMEN_EJECUTIVO. Conserva un reporte visual del
 29-08-2026; **no es una certificación del editor actual**. Se revisaron las rutas
 de evidencia y el código, sin abrir una nueva sesión de navegador ni repetir
 capturas, interacciones o pruebas de consola.
@@ -78,7 +79,7 @@ Se usaron dos regiones de implementación porque los controles táctiles accesib
 - La implementación requiere más scroll que el mock porque mantiene objetivos táctiles accesibles de 44–52 px.
 - La prueba visual usó datos locales temporales sobre el componente real; el fixture fue retirado del código final.
 
-## Contraste con el código local — 30-08-2026
+## Contraste con el código local — 31-08-2026
 
 Fuentes: `src/components/User/Panel/MenuEditor/MenuEditor.tsx` y su CSS Module;
 backend `src/controllers/itemController.js` y `test/itemController.test.js`.
@@ -103,10 +104,12 @@ backend `src/controllers/itemController.js` y `test/itemController.test.js`.
 - Probar errores, imágenes, descarte de cambios, navegación, foco y dock con el
   backend correspondiente; la evidencia anterior usó un fixture local.
 
-Validación técnica general actual: frontend lint/build pasan; typecheck falla en
-`AdminPlans.tsx` (módulo distinto). Backend 93/95 tests pasan; los dos fallos están
-relacionados con el guardado de estados indicado arriba. No se modificó código
-durante esta revisión documental.
+Validación técnica repetida el 31-08-2026: frontend typecheck, lint y build pasan.
+Backend: 117/119 tests pasan; persisten los dos fallos de `editItem` relacionados
+con el guardado de estados indicado arriba. El error de tipos de `AdminPlans.tsx`
+registrado el 30-08 ya no está presente. Estos resultados no revalidan el diseño
+visual ni la persistencia con una base real. No se modificó código funcional
+durante esta revisión documental. Ver [validación general](README.md#verificaciones).
 
 Resultado histórico: **passed**. Estado actual: **pendiente de revalidación**.
 
