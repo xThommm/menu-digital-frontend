@@ -89,17 +89,21 @@ export default function AdminSellers() {
   };
 
   const overview = useMemo(
-    () => (sellers.data || []).reduce(
-      (total, seller) => ({
-        clients: total.clients + seller.metrics.clientsTotal,
-        paidCurrent: total.paidCurrent + seller.metrics.paidCurrent,
-        newClients30d: total.newClients30d + seller.metrics.newClients30d,
-        expiring30d: total.expiring30d + seller.metrics.expiring30d,
-      }),
+  () =>
+    (sellers.data || []).reduce(
+      (total, seller) => {
+        const m = seller.metrics ?? emptySellerMetrics();
+        return {
+          clients: total.clients + m.clientsTotal,
+          paidCurrent: total.paidCurrent + m.paidCurrent,
+          newClients30d: total.newClients30d + m.newClients30d,
+          expiring30d: total.expiring30d + m.expiring30d,
+        };
+      },
       { clients: 0, paidCurrent: 0, newClients30d: 0, expiring30d: 0 },
     ),
-    [sellers.data],
-  );
+  [sellers.data],
+);
 
   const visibleSellers = useMemo(() => {
     const term = normalizeSearch(search);
@@ -110,11 +114,14 @@ export default function AdminSellers() {
     return [...filtered].sort((a, b) => {
       if (sort === "name") return a.name.localeCompare(b.name, "es-AR");
       if (sort === "recent") {
-        return (Date.parse(b.metrics.lastClientAt || "") || 0) -
-          (Date.parse(a.metrics.lastClientAt || "") || 0);
+        const lastClientAtA = Date.parse(a.metrics?.lastClientAt || "") || 0;
+        const lastClientAtB = Date.parse(b.metrics?.lastClientAt || "") || 0;
+        return lastClientAtB - lastClientAtA;
       }
-      return b.metrics.clientsTotal - a.metrics.clientsTotal ||
-        a.name.localeCompare(b.name, "es-AR");
+      return (
+  (b.metrics?.clientsTotal ?? 0) - (a.metrics?.clientsTotal ?? 0) ||
+  a.name.localeCompare(b.name, "es-AR")
+        );
     });
   }, [search, sellers.data, sort]);
 
