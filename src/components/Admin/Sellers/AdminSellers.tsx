@@ -344,6 +344,9 @@ function SellerCard({
   seller: SellerSummary;
   onUpdated: (seller: Seller) => void;
 }) {
+
+  const metrics = seller.metrics ?? emptySellerMetrics();
+
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [name, setName] = useState(seller.name);
@@ -509,37 +512,37 @@ function SellerCard({
       )}
 
       <section className={s.metrics} aria-label={`Métricas de ${seller.name}`}>
-        <SellerMetric label="Clientes vendidos" value={seller.metrics.clientsTotal} />
-        <SellerMetric label="Planes pagos vigentes" value={seller.metrics.paidCurrent} />
-        <SellerMetric label="Altas últimos 30 días" value={seller.metrics.newClients30d} />
-        <SellerMetric
-          label="Última alta"
-          value={formatPaymentDate(seller.metrics.lastClientAt)}
-        />
-      </section>
+  <SellerMetric label="Clientes vendidos" value={metrics.clientsTotal} />
+  <SellerMetric label="Planes pagos vigentes" value={metrics.paidCurrent} />
+  <SellerMetric label="Altas últimos 30 días" value={metrics.newClients30d} />
+  <SellerMetric
+    label="Última alta"
+    value={formatPaymentDate(metrics.lastClientAt)}
+  />
+</section>
 
-      <div className={s.operationalSummary}>
-        <span>Basic: <strong>{seller.metrics.plans.basic}</strong></span>
-        <span>Pro: <strong>{seller.metrics.plans.pro}</strong></span>
-        <span>Cuentas activas: <strong>{seller.metrics.activeAccounts}</strong></span>
-        <span>Con menú: <strong>{seller.metrics.withMenu}</strong></span>
-        <span className={seller.metrics.expiring30d > 0 ? s.attention : undefined}>
-          Vencen en 30 días: <strong>{seller.metrics.expiring30d}</strong>
-        </span>
-        <span className={seller.metrics.expired > 0 ? s.attention : undefined}>
-          Vencidos: <strong>{seller.metrics.expired}</strong>
-        </span>
-      </div>
+<div className={s.operationalSummary}>
+  <span>Basic: <strong>{metrics.plans.basic}</strong></span>
+  <span>Pro: <strong>{metrics.plans.pro}</strong></span>
+  <span>Cuentas activas: <strong>{metrics.activeAccounts}</strong></span>
+  <span>Con menú: <strong>{metrics.withMenu}</strong></span>
+  <span className={metrics.expiring30d > 0 ? s.attention : undefined}>
+    Vencen en 30 días: <strong>{metrics.expiring30d}</strong>
+  </span>
+  <span className={metrics.expired > 0 ? s.attention : undefined}>
+    Vencidos: <strong>{metrics.expired}</strong>
+  </span>
+</div>
 
-      <button
-        className={s.detailsButton}
-        type="button"
-        aria-expanded={expanded}
-        aria-controls={clientsPanelID}
-        onClick={() => setExpanded((current) => !current)}
-      >
-        {expanded ? "Ocultar clientes" : `Ver clientes (${seller.metrics.clientsTotal})`}
-      </button>
+<button
+  className={s.detailsButton}
+  type="button"
+  aria-expanded={expanded}
+  aria-controls={clientsPanelID}
+  onClick={() => setExpanded((current) => !current)}
+>
+  {expanded ? "Ocultar clientes" : `Ver clientes (${metrics.clientsTotal})`}
+</button>
 
       {expanded && (
         <section id={clientsPanelID} className={s.clientsPanel} aria-label={`Clientes de ${seller.name}`}>
