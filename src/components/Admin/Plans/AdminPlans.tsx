@@ -111,9 +111,9 @@ function PlanCard({ plan, onUpdated }: { plan: PlanDefinition; onUpdated: (plan:
   const parsedMultipliers = Object.fromEntries(plan.billingOptions.map(({ months }) => (
     [months, parseMultiplier(periodMultipliers[months])]
   ))) as Record<PlanBillingOption["months"], number | null>;
-  const draftPrice = free ? 0 : parsedDiscount ?? parsedPrice;
+  const lowestDraftPrice = free ? 0 : parsedDiscount ?? parsedPrice;
   const invalidMultipliers = !isPeriodMultipliers(parsedMultipliers)
-    || (!free && draftPrice !== null && Object.values(parsedMultipliers).some(multiplier => Math.round(draftPrice * multiplier) < 1));
+    || (!free && lowestDraftPrice !== null && Object.values(parsedMultipliers).some(multiplier => Math.round(lowestDraftPrice * multiplier) < 1));
   const invalidDraft = !label.trim() || label.trim().length > 60
     || !description.trim() || description.trim().length > 280 || !isPlanFeatures(features)
     || invalidMultipliers
@@ -137,7 +137,7 @@ function PlanCard({ plan, onUpdated }: { plan: PlanDefinition; onUpdated: (plan:
     if (invalidDraft || parsedPrice === null || !isPeriodMultipliers(parsedMultipliers)) {
       setValidationError(invalidMultipliers
         ? "Revisá los multiplicadores: 1 mes debe valer 1; los demás deben ser mayores a cero y no superar la cantidad de meses. Cada período pago debe costar al menos un peso."
-        : "Revisá los textos, precios, límite positivo o ilimitado y al menos un diseño. El promocional debe ser menor al regular, o quedar vacío.");
+        : "Revisá los textos, precios, límite positivo o ilimitado y al menos un diseño. El precio con código debe ser menor al regular, o quedar vacío.");
       return;
     }
     submitting.current = true;
@@ -218,8 +218,11 @@ function PlanCard({ plan, onUpdated }: { plan: PlanDefinition; onUpdated: (plan:
       ) : <>
         <p className={s.description}>{plan.description}</p>
         <p className={s.currentPrice}>
-          {formatPaymentAmount(plan.effectivePrice, plan.currency)} <span>ARS / mes vigente</span>
+          {formatPaymentAmount(plan.price, plan.currency)} <span>ARS / mes regular</span>
         </p>
+        {plan.discountPrice !== null && <p className={s.description}>
+          {formatPaymentAmount(plan.discountPrice, plan.currency)} ARS / mes con código de vendedor
+        </p>}
       </>}
 
       {
@@ -239,14 +242,14 @@ function PlanCard({ plan, onUpdated }: { plan: PlanDefinition; onUpdated: (plan:
                 onChange={(event) => { setPrice(event.target.value); setValidationError(""); }} />
             </label>
             <label htmlFor={`${plan.name}-discount`}>
-              Precio promocional mensual (ARS)
+              Precio mensual con código de vendedor (ARS)
               <input id={`${plan.name}-discount`} type="text" inputMode="numeric" value={discountPrice}
-                disabled={busy || free} placeholder="Sin promoción" aria-describedby={`${hintID}${validationError ? ` ${errorID}` : ""}`}
+                disabled={busy || free} placeholder="Sin descuento por vendedor" aria-describedby={`${hintID}${validationError ? ` ${errorID}` : ""}`}
                 aria-invalid={validationError ? true : undefined}
                 onChange={(event) => { setDiscountPrice(event.target.value); setValidationError(""); }} />
             </label>
           </div>
-          <p className={s.hint} id={hintID}>Pesos enteros, sin separadores de miles. Dejá el promocional vacío para quitar la promoción.</p>
+          <p className={s.hint} id={hintID}>Pesos enteros, sin separadores de miles. El descuento solo se aplica a altas con un código de vendedor válido; dejalo vacío para cobrar siempre el precio regular.</p>
           <fieldset className={s.featureFields} disabled={busy}>
             <legend>Multiplicadores por período</legend>
             <div className={s.fields}>
@@ -261,7 +264,7 @@ function PlanCard({ plan, onUpdated }: { plan: PlanDefinition; onUpdated: (plan:
                 </label>
               ))}
             </div>
-            <p className={s.hint} id={periodsHintID}>Total = precio mensual vigente × multiplicador. Un mes conserva el valor 1; para cambiarlo, editá el precio mensual. Los otros valores admiten coma o punto decimal y no pueden superar la cantidad de meses.</p>
+            <p className={s.hint} id={periodsHintID}>Total = precio mensual correspondiente × multiplicador. Un mes conserva el valor 1; los otros valores admiten coma o punto decimal y no pueden superar la cantidad de meses.</p>
           </fieldset>
           <fieldset className={s.featureFields} disabled={busy}>
             <legend>Funciones incluidas</legend>
@@ -294,26 +297,29 @@ function PlanCard({ plan, onUpdated }: { plan: PlanDefinition; onUpdated: (plan:
 
           <div className={s.preview}>
             <h3>{dirty ? "Vista previa · sin guardar" : "Totales publicados"}</h3>
-            {invalidDraft || draftPrice === null || parsedPrice === null ? (
+            {invalidDraft || parsedPrice === null ? (
               <p className={s.hint}>Completá precios y multiplicadores válidos para ver los totales por período.</p>
             ) : (
               <div className={s.tableScroll}>
                 <table>
                   <caption className={s.tableCaption}>Pago único en ARS por período de {plan.label}</caption>
-                  <thead><tr><th scope="col">Período</th><th scope="col">Total a cobrar</th><th scope="col">Ahorro total</th></tr></thead>
+                  <thead><tr><th scope="col">Período</th><th scope="col">Total regular</th><th scope="col">Con código</th><th scope="col">Ahorro máximo</th></tr></thead>
                   <tbody>{plan.billingOptions.map((option) => {
-                    const total = dirty ? Math.round(draftPrice * parsedMultipliers[option.months]!) : option.total;
-                    const savings = dirty ? parsedPrice * option.months - total : option.savings;
+                    const multiplier = parsedMultipliers[option.months]!;
+                    const regularTotal = Math.round(parsedPrice * multiplier);
+                    const sellerTotal = parsedDiscount === null ? null : Math.round(parsedDiscount * multiplier);
+                    const savings = parsedPrice * option.months - (sellerTotal ?? regularTotal);
                     return <tr key={option.months}>
                       <th scope="row">{option.months} {option.months === 1 ? "mes" : "meses"}</th>
-                      <td>{formatPaymentAmount(total, plan.currency)}</td>
+                      <td>{formatPaymentAmount(regularTotal, plan.currency)}</td>
+                      <td>{sellerTotal === null ? "—" : formatPaymentAmount(sellerTotal, plan.currency)}</td>
                       <td>{formatPaymentAmount(savings, plan.currency)}</td>
                     </tr>;
                   })}</tbody>
                 </table>
               </div>
             )}
-            <p className={s.hint}>El descuento por período se aplica sobre el promocional, si existe. El ahorro compara contra el precio regular × meses. Sin renovación automática.</p>
+            <p className={s.hint}>El precio con código solo corresponde a altas asociadas a un vendedor. Altas sin código, upgrades y renovaciones usan el total regular. Sin renovación automática.</p>
           </div>
 
           <div className={s.actions}>
