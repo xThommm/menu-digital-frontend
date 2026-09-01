@@ -400,7 +400,9 @@ function MenuSkeleton() {
   return (
     <div className={styles.mp} aria-hidden="true">
       <div className={styles.mpSticky}>
+        
         <div className={styles.mpHeader}>
+          
           <div className={`${styles.skelBox} ${styles.skelBack}`} />
           <div className={styles.mpHeaderInfo}>
             <div className={`${styles.skelBox} ${styles.skelTitle}`} />
@@ -437,6 +439,7 @@ function MenuSkeleton() {
 
   return (
     <CartProvider slug={slug ?? ""} enabled={user.features?.pedido_whatsapp === true}>
+          {user.features?.sin_publicidad !== true && <FreePlanAd />}                    
       <div className={styles.mp} data-template={user.template ?? 1}>
 
         {/* ── Cabecera + tabs (un solo bloque sticky — ver .mpSticky) ── */}
@@ -478,6 +481,7 @@ function MenuSkeleton() {
               ))}
             </nav>
           )}
+
         </div>
 
         {/* ── Contenido del tab activo ── */}
@@ -516,8 +520,6 @@ function MenuSkeleton() {
           )}
 
         </main>
-
-        {user.features?.sin_publicidad !== true && <FreePlanAd />}
 
         {user.features?.pedido_whatsapp && <CartFab onClick={() => setCartOpen(true)} />}
 

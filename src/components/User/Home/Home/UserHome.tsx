@@ -323,6 +323,7 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
 
   return (
     <div className="t-wrap" data-template={template}>
+      {user.features?.sin_publicidad !== true && <FreePlanAd />}
       {tokens.useAvatar ? (
         <div className="t-header">
           <div
@@ -392,7 +393,6 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
           {tokens.btnLabel}
         </button>
       </div>
-      {user.features?.sin_publicidad !== true && <FreePlanAd />}
       {viewerOpen && (
   <ImageViewer
     images={galleryImages}
