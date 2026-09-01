@@ -18,6 +18,7 @@ export interface PlanDefinition {
   description: string;
   price: number;
   discountPrice: number | null;
+  // Precio público/default. discountPrice requiere un código de vendedor válido.
   effectivePrice: number;
   currency: "ARS";
   features: PlanFeatures;
@@ -85,7 +86,7 @@ function isPlanDefinition(value: unknown): value is PlanDefinition {
     && (!isAmount(value.discountPrice) || value.discountPrice <= 0 || value.discountPrice >= value.price)) {
     return false;
   }
-  if (value.effectivePrice !== (value.discountPrice ?? value.price)
+  if (value.effectivePrice !== value.price
     || (value.name === "free" ? value.price !== 0 || value.discountPrice !== null : value.price === 0)) {
     return false;
   }

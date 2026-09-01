@@ -347,8 +347,12 @@ export default function RegisterPlansPage() {
                           : plan.price,
                       )}
                       <span>/mes</span>
-                      <br />
-                     <span>Antes {formatPrice(plan.price)}</span>
+                      {appliedSellerCode && plan.discountPrice !== null && (
+                        <>
+                          <br />
+                          <span>Antes {formatPrice(plan.price)}</span>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -423,8 +427,9 @@ export default function RegisterPlansPage() {
             </div>
             {appliedSellerCode && (
               <p className={styles.sellerSuccess} role="status">
-                Código {appliedSellerCode} aplicado · precio promocional y 7
-                días de regalo
+                Código {appliedSellerCode} aplicado · {selected?.discountPrice != null
+                  ? "precio con vendedor y 7 días de regalo"
+                  : "7 días de regalo"}
               </p>
             )}
             {sellerCodeError && (
