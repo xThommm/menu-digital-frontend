@@ -1,9 +1,10 @@
 # MenuDigital — Arquitectura de la aplicación
-> **Revisión vigente — 31-08-2026:** precios, multiplicadores y features se leen de MongoDB
-> en el código local. Editor `/admin/plans`, checkout con versión y gating dinámico
-> conectados. Frontend typecheck/lint/build pasan; backend 117/119, con dos fallos
-> previos de `editItem`. Ver [README](README.md#verificaciones) y la
-> [guía del catálogo](PLAN_CATALOG_ROLLOUT.md). No se consultó Atlas ni se desplegó.
+> **Revisión vigente — 01-09-2026:** catálogo y gating siguen conectados. El nuevo
+> módulo de vendedores y códigos está montado y su vista administra métricas y
+> clientes atribuidos. La regresión del webhook de cuentas existentes fue corregida
+> y sus 44 pruebas pasan; backend 120/125 y pruebas de vendedores 6/6. Frontend pasa
+> typecheck, lint y build. Ver [README](README.md#verificaciones).
+> No se consultó Atlas ni se desplegó.
 
 
 Documentación técnica de los dos repositorios que componen **MenuDigital**, un
@@ -31,12 +32,8 @@ Los beneficios de cada plan se definen explícitamente en MongoDB, sin herencia.
 > conserva sus errores previos. Se revisaron las pantallas afectadas y el guardado
 > de contacto en navegador local con API simulada, sin conexión a datos reales.
 
-> **Antecedente histórico — 30-08-2026:** describía el checkout local, incluidos archivos entonces
-> sin integrar del catálogo MongoDB. Código presente no equivale a despliegue
-> confirmado. Backend: 93/95 tests pasan; frontend: lint/build pasan y typecheck
-> falla en `AdminPlans.tsx`. Ver [estado operativo](#estado-operativo-del-flujo-de-suscripciones--30-08-2026)
-> y [catálogo de planes](PLAN_CATALOG_ROLLOUT.md). No se hicieron cambios de
-> código, pagos reales ni consultas a bases productivas en esta revisión.
+> **Antecedente histórico — 30-08-2026:** el catálogo todavía estaba sin integrar.
+> Ese estado quedó superado por la conexión local del 31-08; no equivale a despliegue.
 
 ---
 
@@ -70,8 +67,9 @@ Los beneficios de cada plan se definen explícitamente en MongoDB, sin herencia.
 # Backend
 
 Estructura: `src/{app.js, config, models, middleware, controllers, routes, services, utils}`.
-Todos los controllers capturan errores con `handleError` (nunca filtran stack
-traces al cliente).
+La convención es capturar errores con `handleError` y no filtrar internals;
+`sellerController.js` ya fue alineado y conserva respuestas específicas solo para
+validación, duplicados y recursos inexistentes.
 
 ## <a id="entry-point"></a>Entry point — `src/app.js`
 
@@ -92,8 +90,9 @@ Arma la app Express y arranca el servidor.
     (excluye `/api/payments` a propósito: el webhook de MercadoPago manda un query
     param `data.id` con punto, que el sanitizer eliminaría).
   - `apiLimiter` en `/api`.
-- Monta `/api/admin/crm`, `/api/admin/payments` y `/api/admin/plans` antes de
-  `/api/admin`; también `/api/plans`, usuarios, menús, items, massive y pagos.
+- Monta `/api/admin/crm`, `/api/admin/payments`, `/api/admin/plans` y
+  `/api/admin/sellers` antes de `/api/admin`; también `/api/plans`, usuarios,
+  menús, items, massive y pagos.
 - Rutas sueltas: `GET /ping` (health check con log), `GET /:businessName/menu`
   (redirect legacy), `GET /` (status JSON). El redirect legacy apunta a
   `/api/menus/public/:slug`, que no está definido en `menuRoutes.js`; la carta
@@ -167,7 +166,8 @@ number, location, address, social,
 `reservationMessage`), `media` (pictures[], backgroundPicture), `acceptedTerms*` y
 `schedule` (horario del local por día: enabled/open/close, distinto de la
 programación de cada producto). `slug` tiene índice único sparse. `timestamps`,
-hook de hasheo con bcrypt y método `matchPassword`.
+hook de hasheo con bcrypt y método `matchPassword`. `sellerID` referencia al
+vendedor atribuido durante un alta paga con código; es null para el resto.
 
 ### `models/Plan.js`
 
@@ -180,7 +180,16 @@ Free cuesta cero; planes pagos positivos, promociones menores al precio regular.
 `periodMultipliers` es un Map numérico con exactamente 1/3/6/12 meses: un mes vale
 1 y el resto debe ser positivo y no superar la cantidad de meses. Cada total pago
 debe redondear a al menos un peso; API y modelo validan estas restricciones.
-Ver [modelo completo y rollout](PLAN_CATALOG_ROLLOUT.md).
+La semántica de `discountPrice` quedó inconsistente desde el cambio de vendedores:
+el DTO público lo expone como `effectivePrice`, pero upgrade/renovación cotizan
+`price`; el alta paga solo lo aplica con un código válido. Es un bloqueo de release.
+
+### `models/Seller.js`
+
+Colección global de vendedores: `name`, `dni` y `code` obligatorios, únicos y con
+trim; timestamps. El código se genera con formato `AAA-999` en el controller. No
+hay estado activo/inactivo ni borrado lógico. `PendingRegistration` y `User`
+referencian el `_id`; MongoDB no impide que un borrado deje referencias históricas.
 
 ### `models/Menu.js`
 Cada documento es una **sección o categoría** del menú de un local. Campos: `userID`
@@ -221,7 +230,8 @@ Exporta también `STAGES`.
 
 ### `models/PendingRegistration.js`
 Alta paga todavía no convertida en `User`. Guarda temporalmente los datos de
-registro, plan y período, junto con el hash de un token opaco de activación y
+registro, plan y período, junto con el hash de un token opaco de activación,
+`sellerID` opcional y
 el `preferenceId/initPoint` de MercadoPago y la referencia al `PaymentCheckout`.
 Un retry reutiliza la preferencia si el checkout está `ready`, conserva plan,
 período, versión del catálogo, importe y moneda, y tiene `preferenceId/initPoint`.
@@ -456,6 +466,19 @@ Las alertas separan problemas de pago, plan vencido, vencimiento en 30 días, pl
 pago sin fecha, seguimiento vencido y onboarding incompleto. CRM conserva el plan
 almacenado y su vencimiento; no equivale al plan efectivo que expone la API del dueño.
 
+### `controllers/sellerController.js`
+
+CRUD admin de vendedores: lista ordenada por creación, detalle por ID, alta,
+edición y eliminación. Nombre, DNI y código tienen unicidad en MongoDB; el alta
+genera el código aleatorio `AAA-999` y reintenta si colisiona. Listado y detalle
+consultan los `User` atribuidos en lote, excluyen admins y calculan en servidor plan
+efectivo, totales, cuentas activas, altas y vencimientos a 30 días, Basic/Pro, menú
+creado y última alta. El detalle expone un DTO acotado sin mail, teléfono ni otros
+datos de contacto; la UI enlaza al CRM/Pagos para operar cada cliente. Usa
+`handleError` sin filtrar internals. Pendientes de hardening: no valida
+formato/longitud de nombre y DNI en el servidor con el mismo rigor que la UI y el
+borrado físico puede dejar referencias desde `User`.
+
 ### `controllers/planController.js`
 
 `listPlans` devuelve catálogo con `Cache-Control: no-store`. `updatePlan` exige
@@ -506,6 +529,13 @@ No edita IDs ni agrega períodos.
   revocar automáticamente un beneficio históricamente aplicado. Es la **única** vía
   legítima para cambiar/renovar un plan y registra el evento en el CRM.
 
+  **Corrección del 01-09-2026 — Punto 1:** se retiraron de
+  `applyExistingUserEntitlement` las referencias fuera de alcance a `pending` y
+  `paidMonths`; las ramas existentes vuelven a calcular recuperación, renovación o
+  upgrade con `months`. `paymentWebhook.test.js` pasa 44/44. Sigue separado el Punto
+  2: en el alta paga se persiste `sellerID`, pero `subscriptionExpiresAt` se calcula
+  solo con los meses comprados y no agrega los siete días prometidos.
+
 
 ## routes/
 
@@ -523,6 +553,9 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   por `protect + isAdmin`, montado antes del router admin genérico.
 - **`routes/planRoutes.js`** / **`routes/adminPlanRoutes.js`** — lectura pública y
   lectura/edición admin montadas en `/api/plans` y `/api/admin/plans`.
+- **`routes/sellerRoutes.js`** — CRUD bajo `/api/admin/sellers`, siempre con
+  `protect + isAdmin`. La validación pública del código vive inline en
+  `paymentRoutes.js`.
 - **`routes/massiveRoutes.js`** — `template/preview/confirm`, todas gateadas con
   `requireFeature("menu_editor")` y `requireFeature("carga_masiva_excel")`; multer en memoria con límite de 5MB.
 - **`routes/crmRoutes.js`** — CRM interno bajo `/api/admin/crm` (montado en app.js
@@ -531,8 +564,10 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   `GET /clients`, `GET /clients/:userID`, `PATCH /clients/:userID`,
   `POST /clients/:userID/notes`, `DELETE /clients/:userID/notes/:noteID`.
 - **`routes/paymentRoutes.js`** — usa la configuración central de precios y períodos.
+  `POST /validate-seller-code` valida públicamente el formato y existencia del código;
   `POST /crear-preferencia-registro` crea o recupera el alta pendiente, persiste el
-  snapshot de checkout, reutiliza una preferencia `ready` si coinciden selección,
+  snapshot de checkout y, con código válido, usa `discountPrice ?? price` y enlaza
+  `sellerID`. Reutiliza una preferencia `ready` si coinciden selección,
   versión, importe y moneda y existen `preferenceId/initPoint`, y devuelve
   `init_point` + token opaco; `POST /registro/estado` permite esperar al webhook;
   `POST /crear-preferencia` (autenticado) valida plan/período, impide downgrades,
@@ -542,7 +577,10 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   id/init point y persiste el estado `ready` antes de redirigir. Registro envía
   vencimiento explícito de preferencia; upgrade/renovación todavía no (PAY-05).
   Las rutas inline de pagos tienen respuestas `{error}` y manejo propio; no todas
-  las respuestas de la API usan el formato `{message}` de los controllers.
+  las respuestas de la API usan el formato `{message}` de los controllers. La
+  búsqueda del vendedor está duplicada en el alta y `sameSeller` se calcula después
+  de sobrescribir `pending.sellerID`, por lo que hoy no demuestra que la atribución
+  original coincida al decidir reutilizar un checkout.
 
 ## services/
 
@@ -554,8 +592,12 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
 - `planToDTO()` / `listPlans()` exponen las features, multiplicadores, versión y totales.
 - `getPlan()` / `getPlanForUser()` leen MongoDB y resuelven plan efectivo;
   `getRequestPlan()` reutiliza la lectura solo dentro de la petición actual.
-- `getCheckoutQuote()` cotiza desde MongoDB para registro, upgrade y renovación.
-  Sin catálogo válido se bloquea el cobro, sin fallback. Las rutas validan
+- `getCheckoutQuote()` cotiza desde MongoDB. El flag opcional
+  `withSellerDiscount` selecciona promoción, pero ninguna ruta lo usa: registro
+  recalcula inline y upgrade/renovación toman lista. A la vez, `planToDTO()` calcula
+  `effectivePrice`/`billingOptions` con promoción para todos los consumidores. Esta
+  divergencia explica dos pruebas fallidas y puede mostrar un total distinto del que
+  crea el backend. Sin catálogo válido se bloquea el cobro, sin fallback. Las rutas validan
   `planVersion` y responden 409 antes de escribir o solicitar una preferencia.
 
 ## utils/
@@ -624,7 +666,8 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
     `/register/plans`, `/register/success`, `/terminos`, `/privacidad`, `/contacto`.
   - Admin (protegidas por `AdminRoute` + `AdminLayout`, el shell con sidebar/bottomnav):
     `/admin` (CEODashboard), `/admin/crm` (CrmClients), `/admin/payments` (AdminPayments).
-    `/admin/plans` (AdminPlans), disponible también en la navegación.
+    `/admin/plans` (AdminPlans) y `/admin/sellers` (AdminSellers), disponibles
+    también en la navegación.
   - Dueño (protegidas por `UserRoute` + `DashboardLayout`): `/dashboard`,
     `/menu/editor`, `/user/editor`, `/estadisticas`.
   - Tenant público por slug (al final): `/:slug` (UserHome) y `/:slug/menu` (UserMenu).
@@ -836,6 +879,13 @@ cada opción de facturación coincida con el multiplicador guardado.
 `listAdminPlans` y `updateAdminPlan`
 consumen los endpoints protegidos montados. La UI no decide el importe de cobro.
 
+### `api/adminSellers.ts`
+
+Cliente axios tipado para `GET/POST /admin/sellers` y
+`GET/PUT /admin/sellers/:id`. La lista recibe identidad, timestamps y métricas; el
+detalle suma clientes con plan efectivo, estado, menú, alta y vencimiento. Alta y
+edición conservan su DTO básico. La UI no expone el DELETE que sí existe en backend.
+
 ## types/
 
 ### `types/index.ts`
@@ -893,9 +943,9 @@ Componente principal **`HomePage`** con hooks de animación (`useParallax`,
 ### `components/Admin/Panel/AdminLayout.tsx`
 
 Shell del **panel CEO** (sidebar desktop + bottom nav mobile + `<Outlet/>` para `/admin`
-y `/admin/crm`/`/admin/payments`/`/admin/plans`), mismo patrón que el `DashboardLayout` del dueño.
+y `/admin/crm`/`/admin/payments`/`/admin/plans`/`/admin/sellers`), mismo patrón que el `DashboardLayout` del dueño.
 
-- **`AdminLayout`** — nav items (Panel / CRM / Pagos / Planes), `useTheme` (toggle claro/oscuro),
+- **`AdminLayout`** — nav items (Panel / CRM / Pagos / Planes / Vendedores), `useTheme` (toggle claro/oscuro),
   `handleLogout`, y un **badge de alerta** en el ítem CRM con la cantidad de clientes
   con seguimiento vencido (`getCrmOverdueCount`, se refresca en cada cambio de ruta).
   Íconos: `GridIcon`, `UsersIcon`, `LogoutIcon`, `SunIcon`, `MoonIcon`.
@@ -951,6 +1001,17 @@ Guardado individual, deshacer, totales, conflicto 409 e invalidación de la quer
 pública. Advierte que los cambios de beneficios afectan también a usuarios pagos
 existentes; los checkouts anteriores conservan su importe.
 
+### `components/Admin/Sellers/AdminSellers.tsx`
+
+ABM parcial de `/admin/sellers`: React Query carga la lista; formularios separados
+crean y editan nombre/DNI; el código generado se muestra como inmutable. Normaliza
+el DNI a ocho dígitos en frontend, informa 409 y actualiza el caché sin recargar.
+Agrega resumen global, búsqueda por nombre/código/DNI, orden por clientes/última
+alta/nombre y copia del código. Cada tarjeta muestra métricas actuales y carga bajo
+demanda el detalle responsive de clientes, con acceso directo a su ficha CRM y a
+Pagos. No ofrece eliminación, paginación ni activación/desactivación. Los estilos
+viven en su CSS Module; los íconos del shell requieren `lucide-react`.
+
 ### `components/Login/Login.tsx`
 - **`Login`** — formulario de login. Usa `useAuth().login`, muestra errores, redirige
   según rol al entrar. Toggle de ver/ocultar contraseña, "recordarme".
@@ -973,6 +1034,11 @@ Bloquea pagos ante catálogo inválido y exige reconfirmación tras un 409.
   `POST /payments/crear-preferencia-registro`, guardan el token opaco y redirigen al
   checkout de MercadoPago. Si ya no existen los datos de la pestaña pero sobrevive
   el token persistido, reanuda la pantalla de activación en vez de iniciar otro pago.
+  Para Basic/Pro acepta un código opcional `AAA-999`, lo valida contra
+  `/payments/validate-seller-code` y muestra `discountPrice ?? price`. El backend lo
+  vuelve a validar antes de cotizar. La pantalla afirma “precio promocional y 7 días
+  de regalo”, pero la rama vigente del webhook no suma esos días; además muestra
+  “Antes” incluso sin código. Ambos puntos requieren corrección antes de liberar.
 
 ### `components/Register/RegisterSuccess.tsx`
 - **`RegisterSuccess`** — pantalla de retorno del alta paga. Consulta
@@ -1207,6 +1273,17 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   (`requireFeature` / `Plan.features`) y se refleja en la UI desde el catálogo.
   Landing, publicidad y pedidos siguen los booleanos efectivos recibidos.
 
+- **Vendedor y código promocional**: el CEO administra vendedores en
+  `/admin/sellers`. Un alta Basic/Pro puede validar un código público; el backend
+  vuelve a consultar `Seller`, cotiza el precio promocional si existe y conserva
+  `sellerID` hasta el `User`. La administración deriva de esa referencia los clientes
+  vendidos y su estado operativo actual; no presenta ingresos/comisiones históricas
+  porque Checkout/Transaction no guardan un snapshot inmutable del vendedor. Las
+  métricas tienen 6/6 pruebas focalizadas. El responsable del producto informó E2E
+  exitoso del alta y los siete días en el despliegue probado; no se repitió en esta
+  intervención. La semántica promocional todavía difiere entre DTO,
+  upgrade/renovación y alta.
+
 - **Validación de pagos**: `test/paymentWebhook.test.js` simula MercadoPago/Mongoose y
   cubre upgrades, renovaciones vigentes/vencidas, reintentos idempotentes, cobros
   distintos que acumulan exactamente una vez, validación de checkout/importe/moneda,
@@ -1250,29 +1327,35 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   viven en `CrmProfile`, aislados del modelo User para no filtrarse por ningún endpoint
   público; solo se acceden vía `/api/admin/crm` (protect + isAdmin).
 
-### Estado operativo del flujo de suscripciones — 30-08-2026
+### Estado operativo del flujo de suscripciones — 01-09-2026
 
 - **Implementado y conectado en código**: recuperación del alta paga y sesión final;
-  `PendingRegistration`, `PaymentCheckout`, `PaymentTransaction`, validación estricta,
-  aplicación transaccional, consulta admin de pagos y referencias desde CRM/CEO.
-- **Resultado histórico del 30-08-2026**: backend 95 tests, 93 pasan y 2 fallan en
-  `test/itemController.test.js` (PUT de flags `available`/`hidden`). Frontend lint y
-  build pasan; typecheck falla en `AdminPlans.tsx` por `getPlanFeatureLabel` ausente y
-  tipos derivados. No se arreglaron estos problemas al actualizar documentación.
+  `PendingRegistration`, `PaymentCheckout`, `PaymentTransaction`, catálogo dinámico,
+  consulta admin de pagos y referencias desde CRM/CEO. Vendedores/códigos también
+  tienen modelos, rutas y UI conectados, pero el estado actual no es liberable.
+- **Resultado actual**: backend 125 tests, 120 pasan y 5 fallan. Dos son de
+  `editItem`; tres esperan la promoción histórica al cotizar. La corrección del
+  Punto 1 recuperó las diez pruebas del webhook: el
+  archivo específico del webhook en **44/44**. La vista/métricas de vendedores tiene
+  **6/6**; no existe una prueba automatizada local específica del bonus.
+- **Frontend actual**: typecheck, lint y build pasan después de restaurar localmente
+  `lucide-react` con la versión ya fijada en package y lockfile, sin cambios
+  rastreados de dependencias.
 - **Hardening de ambiente**: el backend falla al arrancar si faltan variables críticas,
   exige firma de webhook y solo acredita pagos cuyo `live_mode` coincide con
   `MP_ENV`. En Koyeb deben quedar `NODE_ENV=production` y `MP_ENV=production`.
 - **Compatibilidad**: preferencias anteriores a `PaymentCheckout` se auditan como
   `legacy`; no pueden degradar plan o vigencia, aunque no permiten demostrar el
   importe original porque ese snapshot todavía no existía.
-- **Actualización 31-08-2026 del catálogo**: modelo, arranque, rutas, checkout,
-  features y UI integrados localmente; ver [modelo y rollout](PLAN_CATALOG_ROLLOUT.md).
-  Los resultados del 30-08 citados arriba son históricos; ver README para validación actual.
+- **Catálogo**: modelo, arranque, rutas, checkout, features y UI están integrados
+  localmente, pero la nueva distinción entre precio de lista y promocional no está
+  alineada entre todos los consumidores y rompió pruebas existentes.
 - **PAY-05**: falta expiración explícita en upgrade/renovación y snapshot de esa
   fecha. Registro tiene siete días de checkout más tres días de margen del pending.
   No usar TTL para borrar la evidencia durable ni descartar un pago aprobado solo
   porque su webhook llegue tarde.
-- **Pendiente de verificación productiva**: confirmar deploy Vercel/Koyeb y un pago real
+- **Pendiente de verificación productiva**: primero recuperar las suites; luego
+  confirmar deploy Vercel/Koyeb y un pago real
   con comprador distinto del vendedor, verificando preferencia, metadata,
   `PaymentCheckout`, `PaymentTransaction`, webhook, cuenta/plan/vencimiento, CRM,
   redirección y sincronización del dashboard.
@@ -1290,6 +1373,5 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
 - Desarrollo: proxy `/api` en `vite.config.ts`; producción: rewrite de API y SPA en
   `vercel.json`. La aplicación mezcla URLs `/api` con `VITE_API_URL`; ambas deben
   apuntar al mismo backend. No imprimir secretos al diagnosticar.
-- [README](README.md), [BLUEPRINT](BLUEPRINT.md), [Design QA](design-qa.md),
-  [catálogo](PLAN_CATALOG_ROLLOUT.md) y
+- [README](README.md), [BLUEPRINT](BLUEPRINT.md) y
   [dev log backend](../../menu-digital-backend/DEVLOG-LUCAS.md).
