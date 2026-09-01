@@ -1,10 +1,11 @@
 # MenuDigital — Arquitectura de la aplicación
 > **Revisión vigente — 01-09-2026:** catálogo y gating siguen conectados. El nuevo
 > módulo de vendedores y códigos está montado y su vista administra métricas y
-> clientes atribuidos. La regresión del webhook de cuentas existentes fue corregida
-> y sus 44 pruebas pasan; backend 120/125 y pruebas de vendedores 6/6. Frontend pasa
-> typecheck, lint y build. Ver [README](README.md#verificaciones).
-> No se consultó Atlas ni se desplegó.
+> clientes atribuidos. `discountPrice` se aplica únicamente al alta paga con un
+> `sellerID` validado y `editItem` ya persiste/valida sus tres flags. Backend pasa
+> 126/126; frontend pasa typecheck, lint y build. PAY-05 y los bloqueos de seguridad
+> detallados abajo siguen pendientes. Ver [README](README.md#verificaciones).
+> No se consultó Atlas ni se desplegó, y tampoco se ejecutó un E2E real.
 
 
 Documentación técnica de los dos repositorios que componen **MenuDigital**, un
@@ -180,9 +181,10 @@ Free cuesta cero; planes pagos positivos, promociones menores al precio regular.
 `periodMultipliers` es un Map numérico con exactamente 1/3/6/12 meses: un mes vale
 1 y el resto debe ser positivo y no superar la cantidad de meses. Cada total pago
 debe redondear a al menos un peso; API y modelo validan estas restricciones.
-La semántica de `discountPrice` quedó inconsistente desde el cambio de vendedores:
-el DTO público lo expone como `effectivePrice`, pero upgrade/renovación cotizan
-`price`; el alta paga solo lo aplica con un código válido. Es un bloqueo de release.
+El DTO público expone `effectivePrice` y los totales de catálogo con `price`.
+`discountPrice` queda disponible para que exclusivamente el alta paga con un código
+que resuelve a `sellerID` cotice el valor de vendedor; upgrade y renovación usan
+precio regular.
 
 ### `models/Seller.js`
 
@@ -204,6 +206,8 @@ con fecha y hora de vigencia de la oferta), `options` (Map string→number, ej v
 tamaño), `image`, `available`, `availabilitySchedule` (programación semanal
 `enabled` + hasta 4 rangos `{from,to}` por día), `isExtra`, `recommended`, `hidden`, `apt` (objeto
 libre: alérgenos, calorías...). `timestamps`.
+**Pendiente de validación:** `price` no tiene un mínimo en el schema y actualmente
+acepta valores negativos; debe bloquearse antes de producción.
 
 ### `models/PageView.js`
 Agregado **diario** de visitas a la carta pública (una fila por local por día, con un
@@ -257,7 +261,9 @@ el estado operativo (`creating/ready/superseded/failed/payment_received`) y se e
 `preferenceId/initPoint`. No tiene TTL. Su `_id` viaja como `metadata.checkout_id` y
 permite demostrar qué ofreció el backend aunque los precios cambien más adelante.
 Incluye `planVersion` inmutable en nuevos checkouts (opcional para documentos legados).
-`preferenceExpiresAt` sigue pendiente en PAY-05.
+PAY-05 sigue pendiente: el modelo no guarda `preferenceStartsAt` ni
+`preferenceExpiresAt`, por lo que no conserva una ventana inmutable de siete días
+para la preferencia.
 
 ### `models/PaymentTransaction.js`
 Historial **durable** de cada pago consultado a MercadoPago. `paymentID` es único y
@@ -389,10 +395,9 @@ Endpoints:
   disponibilidad programadas. Valida horarios/solapamientos y la unicidad de `code`
   **por usuario** (no global); los permisos no dependen del nombre del plan.
 - **`editItem`** `PUT /api/items/:itemID` — edita campos de contenido (whitelist);
-  unicidad de code por usuario solo si cambia.
-  **Pendiente comprobado:** la whitelist no incluye `available` ni `hidden`, aunque
-  `MenuEditor.saveItem` los envía. Los PATCH específicos sí los manejan; dos tests
-  locales fallan por persistencia/validación de esos flags en el PUT.
+  unicidad de code por usuario solo si cambia. La whitelist incluye `available`,
+  `hidden` y `recommended`, exige booleanos y los persiste en el mismo guardado del
+  formulario. Los PATCH específicos se mantienen para los toggles aislados.
 - **`moveItem`** `PATCH /api/items/:itemID/move` — mueve el item a otra categoría
   (verifica ownership de origen y destino).
 - **`uploadImage`** `POST /api/items/:itemID/upload-image` — foto del producto.
@@ -529,12 +534,12 @@ No edita IDs ni agrega períodos.
   revocar automáticamente un beneficio históricamente aplicado. Es la **única** vía
   legítima para cambiar/renovar un plan y registra el evento en el CRM.
 
-  **Corrección del 01-09-2026 — Punto 1:** se retiraron de
+  **Correcciones del 01-09-2026:** se retiraron de
   `applyExistingUserEntitlement` las referencias fuera de alcance a `pending` y
   `paidMonths`; las ramas existentes vuelven a calcular recuperación, renovación o
-  upgrade con `months`. `paymentWebhook.test.js` pasa 44/44. Sigue separado el Punto
-  2: en el alta paga se persiste `sellerID`, pero `subscriptionExpiresAt` se calcula
-  solo con los meses comprados y no agrega los siete días prometidos.
+  upgrade con `months`. Además, un alta con `sellerID` crea el usuario atribuido y
+  suma los siete días de vendedor. Ambas rutas tienen cobertura automatizada local;
+  la suite backend completa pasa 126/126, sin equivaler a un E2E real.
 
 
 ## routes/
@@ -575,12 +580,15 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   `POST /webhook` crea la cuenta o acredita el cambio/renovación con vencimiento.
   Crea clientes del SDK e idempotency keys por operación, comprueba que MP devuelva
   id/init point y persiste el estado `ready` antes de redirigir. Registro envía
-  vencimiento explícito de preferencia; upgrade/renovación todavía no (PAY-05).
+  fechas explícitas de inicio/vencimiento, pero cada retry vuelve a calcular
+  `now + 7 días` y puede actualizar una preferencia reutilizada. El checkout no
+  conserva esas fechas y upgrade/renovación todavía no envían expiración explícita
+  (PAY-05).
   Las rutas inline de pagos tienen respuestas `{error}` y manejo propio; no todas
-  las respuestas de la API usan el formato `{message}` de los controllers. La
-  búsqueda del vendedor está duplicada en el alta y `sameSeller` se calcula después
-  de sobrescribir `pending.sellerID`, por lo que hoy no demuestra que la atribución
-  original coincida al decidir reutilizar un checkout.
+  las respuestas de la API usan el formato `{message}` de los controllers. El alta
+  paga valida `acceptedTerms` por truthiness, por lo que un valor no booleano como
+  `"false"` puede pasar, y solo exige ocho caracteres de contraseña sin aplicar el
+  blocklist de `isWeakPassword` usado por el alta Free. Ambos son bloqueos de release.
 
 ## services/
 
@@ -589,16 +597,16 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
 - `initializePlans()` espera índices e inserta faltantes con `$setOnInsert`.
   Completa solo documentos legados sin `features`, incrementando `__v`; preserva
   precios/promociones/multiplicadores y valida el catálogo antes del arranque.
-- `planToDTO()` / `listPlans()` exponen las features, multiplicadores, versión y totales.
+- `planToDTO()` / `listPlans()` exponen las features, multiplicadores, versión y
+  totales regulares; `effectivePrice` coincide con `price`.
 - `getPlan()` / `getPlanForUser()` leen MongoDB y resuelven plan efectivo;
   `getRequestPlan()` reutiliza la lectura solo dentro de la petición actual.
 - `getCheckoutQuote()` cotiza desde MongoDB. El flag opcional
-  `withSellerDiscount` selecciona promoción, pero ninguna ruta lo usa: registro
-  recalcula inline y upgrade/renovación toman lista. A la vez, `planToDTO()` calcula
-  `effectivePrice`/`billingOptions` con promoción para todos los consumidores. Esta
-  divergencia explica dos pruebas fallidas y puede mostrar un total distinto del que
-  crea el backend. Sin catálogo válido se bloquea el cobro, sin fallback. Las rutas validan
-  `planVersion` y responden 409 antes de escribir o solicitar una preferencia.
+  `withSellerDiscount` usa `discountPrice ?? price`; solo
+  `crear-preferencia-registro` lo activa después de resolver un vendedor válido.
+  Upgrade y renovación toman precio regular. Sin catálogo válido se bloquea el
+  cobro, sin fallback. Las rutas validan `planVersion` y responden 409 antes de
+  escribir o solicitar una preferencia.
 
 ## utils/
 
@@ -622,6 +630,9 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   y sus dependencias del sistema en el deploy; los tests unitarios no prueban ese runtime.
 - **`utils/menuPdfTemplate.js`** — `buildMenuHTML()` genera HTML imprimible de
   secciones/categorías/productos, escapa texto y omite items ocultos/no disponibles.
+  **Bloqueo de seguridad:** `Item.image` puede contener un valor arbitrario y se
+  inserta sin validar ni escapar dentro de `<img src>`. Al renderizar con Puppeteer
+  permite inyección de atributo y solicitudes salientes controladas (SSRF).
 - **`utils/pendingCredentials.js`** — cifra y autentica con AES-256-GCM la contraseña
   que debe sobrevivir hasta la aprobación del pago; también descifra registros legacy
   mientras sigan dentro de su TTL.
@@ -1035,10 +1046,10 @@ Bloquea pagos ante catálogo inválido y exige reconfirmación tras un 409.
   checkout de MercadoPago. Si ya no existen los datos de la pestaña pero sobrevive
   el token persistido, reanuda la pantalla de activación en vez de iniciar otro pago.
   Para Basic/Pro acepta un código opcional `AAA-999`, lo valida contra
-  `/payments/validate-seller-code` y muestra `discountPrice ?? price`. El backend lo
-  vuelve a validar antes de cotizar. La pantalla afirma “precio promocional y 7 días
-  de regalo”, pero la rama vigente del webhook no suma esos días; además muestra
-  “Antes” incluso sin código. Ambos puntos requieren corrección antes de liberar.
+  `/payments/validate-seller-code` y solo entonces muestra `discountPrice ?? price`
+  y el precio anterior. Sin código aplicado muestra el precio regular. El backend
+  vuelve a resolver el vendedor antes de cotizar y el webhook suma siete días al
+  usuario creado con `sellerID`; hay cobertura local, no E2E real.
 
 ### `components/Register/RegisterSuccess.tsx`
 - **`RegisterSuccess`** — pantalla de retorno del alta paga. Consulta
@@ -1152,8 +1163,9 @@ Editor del menú (`/menu/editor`). El componente más grande.
   busca planes que ofrezcan la función o el límite requerido, sin topes hardcodeados.
 - Búsqueda local normalizada por título, descripción, código, categoría y sección;
   formularios progresivos y validación accesible. Conserva navegación inferior y
-  controles de disponibilidad/oculto/recomendado. Dos regresiones previas de `editItem`
-  con `available`/`hidden` siguen pendientes; no equivalen a una prueba E2E del guardado.
+  controles de disponibilidad/oculto/recomendado. `editItem` ya persiste los tres
+  booleanos y rechaza valores no booleanos; la cobertura automatizada no equivale a
+  una prueba E2E del guardado.
 
 ### `components/User/Panel/UserEditor/UserEditor.tsx`
 "Mi negocio" (`/user/editor`). Tabs info / media / template.
@@ -1281,8 +1293,8 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   porque Checkout/Transaction no guardan un snapshot inmutable del vendedor. Las
   métricas tienen 6/6 pruebas focalizadas. El responsable del producto informó E2E
   exitoso del alta y los siete días en el despliegue probado; no se repitió en esta
-  intervención. La semántica promocional todavía difiere entre DTO,
-  upgrade/renovación y alta.
+  intervención ni valida el Git actual. El DTO, upgrade y renovación conservan el
+  precio regular; solo el alta con `sellerID` usa `discountPrice`.
 
 - **Validación de pagos**: `test/paymentWebhook.test.js` simula MercadoPago/Mongoose y
   cubre upgrades, renovaciones vigentes/vencidas, reintentos idempotentes, cobros
@@ -1333,11 +1345,9 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   `PendingRegistration`, `PaymentCheckout`, `PaymentTransaction`, catálogo dinámico,
   consulta admin de pagos y referencias desde CRM/CEO. Vendedores/códigos también
   tienen modelos, rutas y UI conectados, pero el estado actual no es liberable.
-- **Resultado actual**: backend 125 tests, 120 pasan y 5 fallan. Dos son de
-  `editItem`; tres esperan la promoción histórica al cotizar. La corrección del
-  Punto 1 recuperó las diez pruebas del webhook: el
-  archivo específico del webhook en **44/44**. La vista/métricas de vendedores tiene
-  **6/6**; no existe una prueba automatizada local específica del bonus.
+- **Resultado actual**: `npm test` pasa **126/126**. La suite cubre la cotización con
+  y sin vendedor, upgrade/renovación con precio regular, los flags de `editItem` y
+  el alta con `sellerID` más siete días. Son pruebas locales con mocks donde aplica.
 - **Frontend actual**: typecheck, lint y build pasan después de restaurar localmente
   `lucide-react` con la versión ya fijada en package y lockfile, sin cambios
   rastreados de dependencias.
@@ -1348,25 +1358,33 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   `legacy`; no pueden degradar plan o vigencia, aunque no permiten demostrar el
   importe original porque ese snapshot todavía no existía.
 - **Catálogo**: modelo, arranque, rutas, checkout, features y UI están integrados
-  localmente, pero la nueva distinción entre precio de lista y promocional no está
-  alineada entre todos los consumidores y rompió pruebas existentes.
-- **PAY-05**: falta expiración explícita en upgrade/renovación y snapshot de esa
-  fecha. Registro tiene siete días de checkout más tres días de margen del pending.
-  No usar TTL para borrar la evidencia durable ni descartar un pago aprobado solo
-  porque su webhook llegue tarde.
-- **Pendiente de verificación productiva**: primero recuperar las suites; luego
+  localmente. El precio regular alimenta el DTO, landing, upgrade y renovación;
+  `discountPrice` se reserva al alta que resuelve un `sellerID` válido.
+- **PAY-05**: `PaymentCheckout` no guarda inicio/vencimiento de la preferencia. En
+  registro cada retry recalcula siete días y puede extender una preferencia
+  reutilizada; upgrade/renovación no envían expiración explícita. No usar TTL para
+  borrar la evidencia durable ni descartar un pago aprobado solo porque su webhook
+  llegue tarde.
+- **Bloqueos de producción**: la plantilla PDF inserta `Item.image` sin validar ni
+  escapar (inyección/SSRF en Chrome headless); el alta paga no exige
+  `acceptedTerms === true` ni aplica el blocklist de contraseñas; `Item.price` acepta
+  negativos. `npm audit` reporta 8 vulnerabilidades frontend (7 altas, 1 moderada)
+  y 4 de runtime backend (2 altas, 1 moderada, 1 baja).
+- **Pendiente de verificación productiva**: después de corregir esos bloqueos,
   confirmar deploy Vercel/Koyeb y un pago real
   con comprador distinto del vendedor, verificando preferencia, metadata,
   `PaymentCheckout`, `PaymentTransaction`, webhook, cuenta/plan/vencimiento, CRM,
-  redirección y sincronización del dashboard.
+  redirección y sincronización del dashboard. También falta validar Cloudinary en
+  su ambiente real.
 - **Pendiente operativo**: Pagos ya permite inspeccionar transacciones `not_applied`,
   pero no conciliarlas mediante acciones ni devolver dinero. Falta definir ese
   procedimiento y la política frente a reembolsos/contracargos.
 
 ## Verificación y documentación relacionada
 
-- Frontend: `npm run typecheck`, `npm run lint`, `npm run build`.
-- Backend: `npm test` (`node --test`). Los archivos de tests cubren admin, pagos admin,
+- Frontend: `npm run typecheck`, `npm run lint`, `npm run build` (los tres pasan al
+  01-09-2026; no existe una suite automatizada frontend configurada).
+- Backend: `npm test` (`node --test`) pasa 126/126. Los archivos de tests cubren admin, pagos admin,
   CRM, entorno, disponibilidad, edición de items, ofertas, rutas de pagos, webhook,
   credenciales pendientes, catálogo, slug y auth. Mocks no prueban Atlas, transacciones
   reales, configuración del proxy, Cloudinary ni Checkout Pro.
