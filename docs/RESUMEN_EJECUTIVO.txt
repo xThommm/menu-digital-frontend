@@ -1,6 +1,6 @@
 # MenuDigital — Resumen ejecutivo y comercial
 
-**Actualizado:** 31 de agosto de 2026
+**Actualizado:** 1 de septiembre de 2026
 **Web:** https://www.menudigitalapp.com.ar
 **Uso interno:** producto, planes, argumentos de venta y objetivos del negocio.
 
@@ -36,7 +36,7 @@ las funciones habilitadas en el catálogo antes de ofrecerlas o mostrarlas en un
 
 ## 4. Planes y diferencias
 
-Esta tabla es una referencia de la configuración inicial. El catálogo vigente se administra en MongoDB desde Administración → Planes; confirmar allí precios, promociones y beneficios antes de cotizar. La integración está lista en código local, pendiente de publicación y validación con la base real.
+Esta tabla es una referencia de la configuración inicial. El catálogo vigente se administra en MongoDB desde Administración → Planes; confirmar allí precios, promociones y beneficios antes de cotizar. La integración está lista y validada localmente, pero sigue pendiente de publicación y comprobación con la base real.
 
 | Función | Gratis | Básico / Basic | Pro |
 |---|---|---|---|
@@ -81,6 +81,8 @@ el ahorro de esta tabla no es fijo ni debe prometerse sin consultar el catálogo
 
 Antes de cerrar una venta, revisar el plan, el período y el importe que muestra la contratación. Los precios pueden cambiar: no usar capturas antiguas ni prometer descuentos, cuotas o bonificaciones fuera de las condiciones habilitadas. Si el importe difiere de este documento, consultar con administración antes de cobrar o confirmar la oferta.
 
+Un precio de vendedor se aplica únicamente al **alta paga** iniciada con un código válido que el sistema vincula a un vendedor registrado. En ese caso usa el precio especial configurado para el plan —o el precio de lista si no existe— y la acreditación suma siete días adicionales. Sin un vendedor válido, y también en renovaciones o mejoras de plan, rige el precio normal del catálogo. Este comportamiento tiene pruebas locales, pero no se comprobó con una compra real ni con el despliegue actual; nunca prometerlo fuera del importe mostrado por el checkout.
+
 ## 6. Cómo se contrata y renueva
 
 1. El local se registra y elige un plan. Gratis permite crear la cuenta sin checkout.
@@ -124,6 +126,7 @@ Prioridades actuales:
 
 - Facilitar el registro, la primera carga de productos y la publicación del QR.
 - Consolidar la contratación y las renovaciones, con seguimiento de incidencias.
+- Cerrar las validaciones técnicas y de seguridad pendientes antes de una nueva publicación; las pruebas locales no certifican producción.
 - Conseguir clientes adecuados para cada plan y aprender de sus objeciones y necesidades.
 - Construir relaciones duraderas, recomendaciones y canales comerciales locales.
 
@@ -157,10 +160,12 @@ Derivar a administración problemas de pago o acceso, descuentos especiales, con
 
 ---
 
-**Control de actualización:** revisión documental del 31/08/2026 contra el código
-local y las semillas iniciales del catálogo. La versión anterior registró una
-comparación con la web publicada; en esta revisión no se volvió a consultar
-producción ni Atlas, ni se realizó una compra real. Los importes y beneficios
-editables deben confirmarse antes de cotizar; esta copia no se actualiza automáticamente.
+**Control de actualización:** revisión documental del 01/09/2026 contra el código
+local y las semillas iniciales del catálogo. Backend pasa 126/126 pruebas; frontend
+pasa typecheck, lint y build. La auditoría también encontró pendientes de seguridad,
+dependencias y vencimiento de preferencias que deben resolverse antes de otra salida.
+No se consultó producción ni Atlas, no se desplegó y no se realizó una compra real.
+Los importes y beneficios editables deben confirmarse antes de cotizar; esta copia no
+se actualiza automáticamente.
 
 Funciones y límites contrastados con el código de ambos repositorios y `ARCHITECTURE.md`; objetivos tomados de `BLUEPRINT.md`. La revisión de código no certifica el funcionamiento de cada integración en producción. Actualizar este documento cuando cambien precios, beneficios o disponibilidad, y comprobar las funciones que se mostrarán antes de cada demo.

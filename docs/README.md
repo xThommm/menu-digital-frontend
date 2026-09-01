@@ -8,10 +8,12 @@ Revisión documental: **01-09-2026**, contra el código local de ambos repositor
 No implica que los cambios locales estén desplegados.
 
 Actualización **01-09-2026**: el catálogo MongoDB continúa conectado a precios,
-features, checkout y permisos. `/admin/sellers` ahora suma métricas comerciales y
-detalle operativo de los clientes atribuidos. El responsable del producto informó
-que el alta paga con siete días adicionales ya pasó una prueba E2E en el despliegue
-evaluado; esta intervención no repitió ese pago ni desplegó cambios.
+features, checkout y permisos. El descuento de `discountPrice` queda reservado al
+alta paga cuyo código resuelve un `sellerID`; sin vendedor se conserva el precio de
+lista. `editItem` ya persiste y valida `available`, `hidden` y `recommended`. La
+suite backend pasa **126/126** y el frontend pasa typecheck, lint y build. Esta
+intervención no realizó un E2E real con MercadoPago, Atlas o Cloudinary ni verificó
+los deploys.
 
 ## Mapa de documentación
 
@@ -78,8 +80,9 @@ rechaza con 409 y exige reconfirmación.
 
 **Administración → Vendedores** lista, crea y edita vendedores con nombre y DNI
 únicos; el backend genera un código `AAA-999`. En el alta paga el código se valida
-de nuevo en servidor, aplica `discountPrice ?? price` y guarda `sellerID` en el
-registro pendiente y en el usuario creado. La vista muestra clientes vendidos,
+de nuevo en servidor: solo si resuelve un vendedor aplica `discountPrice ?? price`
+y guarda `sellerID` en el registro pendiente y en el usuario creado. Sin `sellerID`
+usa el precio regular. La vista muestra clientes vendidos,
 planes pagos vigentes, altas recientes, vencimientos próximos, distribución
 Basic/Pro, menú creado y última alta. El detalle de cada vendedor lista sus clientes
 y enlaza sus fichas de CRM y pagos. No calcula comisiones, conversión ni facturación
@@ -91,9 +94,11 @@ y validar con autorización el circuito preferencia → Checkout Pro → webhook
 firmado → `PaymentCheckout`/`PaymentTransaction` → plan/vencimiento → dashboard.
 Esta intervención no consultó Atlas, Koyeb ni Vercel ni realizó pagos reales. El E2E
 del alta y sus siete días fue informado por el responsable del producto, no
-reproducido acá. Sigue pendiente PAY-05: registro configura vencimiento de
-preferencia; upgrade/renovación todavía no lo hacen. El historial admin de pagos es
-de solo lectura, sin reembolsos ni acreditaciones manuales.
+reproducido acá ni tomado como validación del Git actual. Sigue pendiente PAY-05:
+el checkout no conserva una ventana inmutable de siete días y los reintentos de
+registro pueden recalcularla; upgrade/renovación tampoco envían la expiración
+explícita. El historial admin de pagos es de solo lectura, sin reembolsos ni
+acreditaciones manuales.
 
 Los usuarios existentes administran su suscripción desde la tarjeta **“Tu plan”** del
 dashboard. Free puede subir a Basic/Pro; Basic puede renovar o subir a Pro; Pro puede
@@ -131,12 +136,14 @@ Resultado reproducido el 01-09-2026:
 - Frontend: `npm run typecheck`, `npm run lint` y `npm run build` pasan. Para
   completar la validación se restauró en `node_modules` la versión de `lucide-react`
   ya declarada en `package.json` y lockfile, sin cambios rastreados de dependencias.
-- Backend: **120/125 tests pasan; 5 fallan**. `paymentWebhook.test.js` pasa 44/44
-  después de restaurar el cálculo de upgrades/renovaciones. Los cinco pendientes
-  son dos regresiones de `editItem` y tres diferencias de promoción/cotización.
+- Backend: `npm test` pasa **126/126**. La cotización usa precio regular para
+  catálogo, upgrade y renovación, y reserva `discountPrice` al alta con vendedor
+  validado. `editItem` persiste y exige booleanos en `available`, `hidden` y
+  `recommended`.
 - `sellerController.test.js` pasa **6/6**: métricas, plan efectivo, ventanas de 30
-  días, DTO acotado, agrupación, lista vacía, 404 y error genérico. El flujo de pago
-  con código y bonus todavía no tiene una prueba automatizada local dedicada.
+  días, DTO acotado, agrupación, lista vacía, 404 y error genérico. La cotización
+  con código y los siete días adicionales del webhook tienen cobertura automatizada
+  local, pero no sustituyen el E2E real.
 - `git diff --check` pasa en ambos repositorios.
 - Navegador con API simulada durante la integración previa: edición de Pro, landing, registro, dashboard, totales por período,
   conflicto de precio con reconfirmación, estadísticas desactivadas, template
@@ -145,9 +152,26 @@ Resultado reproducido el 01-09-2026:
   esas interacciones. Para el nuevo editor de multiplicadores se comprobó validación,
   deshacer y vista previa; el guardado se cubrió con tests de backend, sin completar
   una nueva prueba de guardado desde el navegador.
-- No hay script de tests automatizados frontend. Antes de publicar hay que recuperar
-  la suite local, validar una instalación limpia y recién después ejecutar E2E con
-  backend real, Atlas/MercadoPago y verificación de despliegue.
+- No hay script de tests automatizados frontend. Antes de publicar hay que incorporar
+  esa cobertura, validar una instalación limpia y recién después ejecutar E2E con
+  backend real, Atlas/MercadoPago/Cloudinary y verificación de despliegue.
+
+### Bloqueos de producción detectados
+
+Aunque las verificaciones locales pasan, el estado auditado no es un candidato de
+producción hasta corregir y volver a validar estos puntos:
+
+- `Item.image` admite valores arbitrarios y la plantilla PDF los inserta en HTML sin
+  validar ni escapar el atributo. El Chrome headless puede ejecutar una inyección de
+  atributo o solicitar una URL controlada (SSRF).
+- El alta paga comprueba `acceptedTerms` por truthiness y solo exige longitud mínima
+  de contraseña; no aplica la validación estricta y el bloqueo de contraseñas comunes
+  del alta Free.
+- El modelo de productos acepta precios negativos.
+- La auditoría de dependencias reporta 8 vulnerabilidades en frontend (7 altas y 1
+  moderada) y 4 de runtime en backend (2 altas, 1 moderada y 1 baja).
+- PAY-05 sigue pendiente y no se hizo E2E real de pagos ni verificación de los
+  despliegues.
 
 ## Convenciones
 
