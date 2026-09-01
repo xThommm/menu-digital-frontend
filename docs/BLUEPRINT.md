@@ -1,9 +1,10 @@
 # MenuDigital — Startup Blueprint v2
-> **Revisión vigente — 31-08-2026:** precios, multiplicadores y features se leen de MongoDB
-> en el código local. Editor `/admin/plans`, checkout con versión y gating dinámico
-> conectados. Frontend typecheck/lint/build pasan; backend 117/119, con dos fallos
-> previos de `editItem`. Ver [README](README.md#verificaciones) y la
-> [guía del catálogo](PLAN_CATALOG_ROLLOUT.md). No se consultó Atlas ni se desplegó.
+> **Revisión vigente — 01-09-2026:** precios, multiplicadores y features se leen de
+> MongoDB en el código local. El módulo de vendedores/códigos está conectado y su
+> vista operativa incluye métricas y clientes atribuidos. La regresión del webhook
+> fue corregida: 44/44 pruebas focalizadas; backend 120/125 y vendedores 6/6.
+> Frontend pasa typecheck, lint y build. Ver
+> [README](README.md#verificaciones). No se consultó Atlas ni se desplegó.
 
 
 > **Cómo leer este documento.** Es el plan integral de la startup: mercado, producto
@@ -234,17 +235,17 @@ comerciales por nivel son la configuración inicial; no son una herencia técnic
 | M9 | **Estadísticas** | Visitas diarias (30 días, tiempo real con polling), ranking top-10 de productos más vistos | `estadisticas` |
 | M10 | **Import/Export Excel** | Plantilla generada con datos actuales, preview de cambios, confirmación fila a fila | `menu_editor` + `carga_masiva_excel` |
 | M10b | **Exportación PDF** | Menú imprimible generado desde la carta vigente | `menu_pdf` |
-| M11 | **Suscripciones** ✅ | Checkout MercadoPago, alta automática, upgrades/renovaciones 1/3/6/12 meses, vencimiento visible, historial durable, validación del checkout original, webhook firmado/idempotente y separación estricta test/producción por `live_mode` | — |
+| M11 | **Suscripciones** ⚠️ | Checkout MercadoPago, alta automática, upgrades/renovaciones 1/3/6/12 meses, historial durable y validación del checkout original; webhook 44/44, E2E de alta+bonus informado por el responsable, promoción/PAY-05 pendientes | — |
 | M12 | **Panel CEO + CRM interno** | KPIs de la plataforma, gestión de clientes (pipeline kanban, notas, eventos automáticos, seguimientos vencidos, export Excel) | Solo admin |
 | M12c | **Planes admin** | Precios, promociones, multiplicadores por período, textos, funciones, límites y diseños desde MongoDB; guardado con versión | Solo admin |
 | M12b | **Pagos admin** | Historial local paginado, filtros, detalle de validación/acreditación y resumen por cliente; no realiza reembolsos | Solo admin |
+| M12d | **Vendedores y códigos** ⚠️ | CRUD admin, código opcional en alta paga, atribución al usuario, métricas por vendedor y detalle operativo enlazado a CRM/Pagos; el contrato promocional sigue pendiente | Solo admin para CRUD/métricas; validación pública del código |
 
 CRM incluye vista 360, onboarding calculado, alertas de pagos y vencimientos, y
 activación/desactivación con confirmación. El CEO muestra resumen y atajos, no otra
 pantalla completa de operación. **Catálogo editable de planes ✅ en código local**:
 modelo, inicialización, rutas, checkout, permisos y UI están conectados. Falta
-desplegar y verificar persistencia y pagos con servicios reales; ver
-[rollout](PLAN_CATALOG_ROLLOUT.md).
+recuperar las suites, desplegar y verificar persistencia y pagos con servicios reales.
 
 #### Módulos del roadmap 🔜 (ver §11)
 
@@ -325,8 +326,13 @@ Como dueño con menú grande, quiero actualizar todo en Excel.
 - Excel exige `menu_editor` y `carga_masiva_excel`; el límite se obtiene del catálogo.
   Las semillas asignan 50 a Basic y `null` (ilimitado) a Pro.
 
-**HU-08 · Cobrar suscripciones (M11)** ✅
+**HU-08 · Cobrar suscripciones (M11)** ⚠️
 Como plataforma, quiero cobrar sin intervención manual.
+
+Los criterios siguientes describen el contrato esperado. El webhook vuelve a pasar
+44/44. El responsable del producto informó que el alta y los siete días adicionales
+pasaron E2E en el despliegue probado; esta intervención no repitió ese pago. El
+contrato promocional y PAY-05 siguen abiertos.
 
 - Un alta paga crea un `PendingRegistration`; el checkout usa su id como
   `external_reference` y conserva un token opaco para consultar la activación. La
@@ -353,12 +359,36 @@ Como plataforma, quiero cobrar sin intervención manual.
 - El alta o cambio de plan queda logueado como evento en el CRM.
 - Las altas gratuitas y pagas generan slugs únicos legibles; las colisiones reciben
   sufijos incrementales y el backend reintenta las carreras contra el índice `unique`.
-- La suite backend cubre el webhook, el cifrado temporal y las colisiones de slug.
-- La revisión del 31-08-2026 reporta 117/119 tests backend; frontend typecheck,
-  lint y build pasan. Los dos fallos previos son de `editItem`; no equivale a E2E productivo.
-- **Pendientes:** E2E autorizado en el despliegue a liberar, publicación del catálogo
-  y PAY-05 (vencimiento explícito de preferencias upgrade/renovación). No cambiar
-  precios productivos solo para probar.
+- La suite backend cubre el webhook, el cifrado temporal y las colisiones de slug;
+  la regresión de cuentas existentes fue corregida y el archivo del webhook pasa 44/44.
+- La revisión del 01-09-2026 reporta 120/125 tests backend. Los cinco fallos restantes
+  son dos de `editItem` y tres del contrato de promociones. Lint frontend pasa;
+  typecheck y build también pasan tras restaurar la dependencia ya fijada en el
+  lockfile. Esto no reproduce el E2E informado.
+- **Pendientes:** reconciliar la revisión desplegada del E2E con este worktree antes
+  de otro cambio de pagos, alinear promociones, publicar/validar el catálogo y
+  completar PAY-05 (vencimiento explícito de preferencias upgrade/renovación). No
+  cambiar precios productivos solo para probar.
+
+**HU-10 · Atribuir altas a vendedores (M12d)** ⚠️
+Como CEO, quiero identificar qué vendedor originó un alta paga y aplicar su oferta.
+
+- El admin puede listar, crear y editar vendedores; nombre y DNI son únicos y el
+  backend genera un código `AAA-999`.
+- Registro valida el código en servidor, calcula el checkout con
+  `discountPrice ?? price` y conserva `sellerID` en pending y User.
+- La lista muestra clientes vendidos, planes vigentes, altas/vencimientos a 30 días,
+  cuentas activas, menú creado, Basic/Pro y última alta. Permite buscar, ordenar y
+  copiar el código.
+- El detalle se carga bajo demanda y muestra negocio, usuario, plan efectivo,
+  estado, alta, vencimiento y accesos a CRM/Pagos, sin duplicar mail/teléfono.
+- Las métricas se resuelven server-side desde `User.sellerID`, excluyen admins y
+  pasan 6/6 pruebas focalizadas. No se muestran conversión, comisiones ni ingresos
+  históricos porque no existe snapshot inmutable del vendedor en Checkout/Transaction.
+- El responsable informó E2E exitoso del alta y los siete días en el despliegue
+  probado. Siguen pendientes la prueba automatizada local del bonus, la ambigüedad
+  de atribución al reutilizar un checkout y la semántica promocional diferente entre
+  alta y upgrade/renovación.
 
 **HU-09 · Gestionar clientes (M12)** ✅
 Como CEO, quiero operar la cartera desde un solo lugar.
@@ -432,7 +462,7 @@ Dueño/CEO ──────────▶  ▼
                     Koyeb (Node + Express 4)
                     ├─ helmet · CORS allowlist · express-mongo-sanitize · rate limiters
                     ├─ JWT auth (HS256) · requireFeature · isAdmin
-                    ├─ Controllers (user/menu/item/admin/crm/massive/payment/adminPayment/plan)
+                    ├─ Controllers (user/menu/item/admin/crm/massive/payment/adminPayment/plan/seller)
                     └─ Webhook MercadoPago (HMAC verificado)
                        │
         ┌──────────────┼───────────────────┐
@@ -496,11 +526,15 @@ Dueño/CEO ──────────▶  ▼
 | `pendingregistrations` | Altas pagas todavía no convertidas en User; conserva plan/período, token opaco hasheado y estado | `activationTokenHash` único sparse; TTL por `expiresAt` |
 | `paymentcheckouts` | Snapshot durable e inmutable de asociación, plan, período, importe y moneda antes de abrir MercadoPago | `preferenceId` único sparse; `{userID, createdAt}`; `{pendingRegistrationID, createdAt}`; sin TTL |
 | `paymenttransactions` | Historial financiero y resultado interno de cada pago/webhook, incluidos vencimientos antes/después y validación del checkout | `paymentID` único; `{userID, createdAt}`; `{pendingRegistrationID, createdAt}`; sin TTL |
+| `sellers` | Vendedores internos con nombre, DNI y código de referencia | `name`, `dni` y `code` únicos |
 
 `Plan` (`plans`) centraliza precios/promociones, multiplicadores y `features`
 (booleanos, `item_limit` y `templateIds`), con `name` único, `updatedBy`, timestamps
  y versión `__v`. El arranque espera su inicialización y validación; no se consultó
 Atlas. Cada plan define sus beneficios completos, sin herencia acumulativa.
+`pendingregistrations` y `users` pueden guardar `sellerID`; no existe borrado lógico
+del vendedor ni snapshot del código/nombre en `PaymentCheckout` o
+`PaymentTransaction`.
 
 Convenciones vigentes: fechas de métricas como string `YYYY-MM-DD` en huso BA
 (upserts atómicos sin líos de timezone); `userID` denormalizado en `itemviews` para
@@ -565,9 +599,9 @@ Membership { userId, organizationId, role: "owner"|"staff", invitedBy, createdAt
   7 días).
 - Autorización en capas: `protect` (identidad) → `isAdmin` (rol) →
   `requireFeature(feature)` (gating comercial) → ownership check en el controller (recurso).
-- Errores: los controllers usan `{message}` con `handleError`; las rutas inline
-  de pagos conservan también `{error}`. El frontend debe contemplar ambos formatos;
-  no asumir un contrato uniforme todavía.
+- Errores: la convención es `{message}` con `handleError`; las rutas inline de pagos
+  conservan también `{error}`. `sellerController.js` ya usa `handleError` y no
+  devuelve `error.message`/`keyValue` al cliente.
 - Rate limits: 10 req/15 min en auth; 300 req/15 min general.
 - Endpoints públicos de tracking responden `204` incondicional (fire-and-forget, no
   filtran existencia de recursos).
@@ -582,9 +616,10 @@ Membership { userId, organizationId, role: "owner"|"staff", invitedBy, createdAt
 | Analítica dueño | `GET /users/me/stats` · `GET /users/me/item-stats` (permiso `estadisticas`) |
 | Excel | `GET /massive/template` · `POST /massive/preview` · `POST /massive/confirm` (permisos `menu_editor` y `carga_masiva_excel`) |
 | PDF | `GET /users/:slug/menu/pdf` (público, valida `menu_pdf` del local) |
-| Pagos | `POST /payments/crear-preferencia` · `POST /payments/crear-preferencia-registro` · `POST /payments/registro/estado` · `POST /payments/webhook` |
+| Pagos | `POST /payments/crear-preferencia` · `POST /payments/crear-preferencia-registro` · `POST /payments/validate-seller-code` · `POST /payments/registro/estado` · `POST /payments/webhook` |
 | Admin/CRM | `GET /admin/stats` · `GET /admin/allUsers` · `PATCH /admin/users/:id/active` · `/admin/crm/*` (clients, notes, overdue-count, export) |
 | Pagos admin | `GET /admin/payments` con filtros/paginación y `userID` opcional; solo lectura |
+| Vendedores admin | `GET /admin/sellers` con métricas · `GET /admin/sellers/:id` con clientes · `POST /admin/sellers` · `PUT/DELETE /admin/sellers/:id` |
 
 `GET /plans`, `GET /admin/plans` y `PATCH /admin/plans/:name` están montados
 bajo `/api` en el código local; solo la lectura pública no requiere admin.
@@ -618,8 +653,8 @@ ahí sí `/api/v1` congelada + API keys por local.
 | Autorización | `protect`/`isAdmin`/`requireFeature` y ownership por recurso; límites, templates, Excel, PDF, programación y estadísticas se validan server-side. Esto no equivale a una auditoría integral anti-IDOR |
 | Inyección | `express-mongo-sanitize` (scoped, excluye el webhook MP a propósito) + validación de tipos en login/registro (rechaza payloads no-string) |
 | Abuso | `authLimiter` 10/15 min (anti fuerza bruta) + `apiLimiter` 300/15 min; límites de upload (imágenes 8 MB, Excel 5 MB en memoria) |
-| Pagos | HMAC-SHA256, consulta real a MP, validación `live_mode`/`MP_ENV`, snapshot de checkout y auditoría antes de acreditar. Persistencia transaccional e idempotencia; catálogo integrado localmente, PAY-05 y despliegue pendientes |
-| Fugas de información | `handleError` loguea server-side y responde genérico (sin stack traces/rutas); password con `select:false` |
+| Pagos | HMAC-SHA256, consulta real a MP, validación `live_mode`/`MP_ENV`, snapshot de checkout y auditoría antes de acreditar. Persistencia transaccional e idempotencia vuelven a pasar 44/44 pruebas; E2E de alta+bonus informado por el responsable, promoción/PAY-05 y reconciliación del deploy siguen pendientes |
+| Fugas de información | `handleError` responde genérico y password usa `select:false`; el detalle de vendedor omite mail, teléfono y otros datos de contacto y deriva la operación a CRM/Pagos protegidos |
 | Contenido | Contacto limitado a campos vigentes al leer/editar; subidas restringidas por formato y transformadas en Cloudinary |
 | Dependencias | Cloudinary v2 con storage propio y override `uuid` en ExcelJS presentes; no se ejecutó una auditoría de vulnerabilidades actual en esta revisión documental |
 
@@ -703,8 +738,8 @@ inline y usa un CTA propio por plan, evitando un modal adicional en el embudo.
 `src/styles/globals.css`; lo específico queda en su CSS Module. No es una garantía
 de ausencia de duplicados: conviven `Spinner` y loaders directos `pageLoaderRing`.
 Marca (`BrandMark`), publicidad Free y dock mobile son patrones compartidos.
-El editor incorpora secciones progresivas y búsqueda; su QA histórico y las
-diferencias actuales están en [design-qa.md](design-qa.md).
+El editor incorpora secciones progresivas y búsqueda. No se repitió una prueba
+visual del flujo completo durante esta revisión documental.
 
 ### 9.3 Deuda y evolución de UX 🔜
 
@@ -749,12 +784,14 @@ cuenta sin checkout, mientras Basic/Pro confirman período antes de abrir Mercad
 **Control de liberación pendiente:** antes de dar por cerrado el flujo productivo,
 confirmar los despliegues de Vercel/Koyeb, `NODE_ENV=production`/`MP_ENV=production`,
 URLs y secreto del webhook. Validar un pago real solo con autorización e importe
-acordado, usando comprador distinto del vendedor.
+acordado, usando una cuenta compradora distinta de la cuenta vendedora de
+MercadoPago (no confundir con el nuevo modelo interno `Seller`).
 Verificar preferencia, monto, moneda, `checkout_id`, webhook, `PaymentCheckout`,
 `PaymentTransaction`, plan y `subscriptionExpiresAt`, estado `completed` del alta,
 evento CRM, redirección y sincronización del dashboard. No modificar precios
-productivos únicamente para probar. Esta revisión no certifica que el E2E se haya
-realizado ni que estos precios estén desplegados.
+productivos únicamente para probar. El responsable del producto informó que el E2E
+del alta paga y sus siete días adicionales fue exitoso; esta revisión no lo repitió
+ni certifica que la revisión local coincida con el commit desplegado.
 
 **Nota operativa**: precios, multiplicadores y beneficios se administran en MongoDB desde
 `/admin/plans`; el frontend consume ese catálogo. Las tablas de este documento son
@@ -764,7 +801,16 @@ multiplicadores nuevos afectan nuevos checkouts, sin reescribir snapshots anteri
 `periodMultipliers` se guarda por plan: 1 mes permanece en `1`; los factores de
 3/6/12 meses son editables, positivos y como máximo iguales a esos meses. Guardar
 incrementa la versión y exige reconfirmar cotizaciones anteriores. Falta publicar
-y validar el [rollout](PLAN_CATALOG_ROLLOUT.md) con la base real.
+y validar el catálogo con la base real.
+
+**Código de vendedor — control pendiente del contrato comercial:** el alta Basic/Pro sin código usa
+`price`; con código válido usa `discountPrice ?? price`. El `sellerID` queda en el
+pending y en el User. Sin embargo, el DTO público todavía convierte
+`discountPrice` en `effectivePrice` para landing/upgrade, mientras el checkout de
+upgrade/renovación cobra lista. El E2E del alta y los siete días fue informado como
+exitoso por el responsable, pero no tiene una prueba automatizada local dedicada y
+la revisión desplegada debe reconciliarse con este worktree antes de otro cambio de
+pagos. Alinear además el contrato de precio y sus pruebas.
 
 **PAY-05, independiente del catálogo:** el registro configura siete días de vigencia
 de preferencia y tres días extra de conservación del pending. Upgrade/renovación
@@ -819,9 +865,10 @@ Cadencia trimestral propuesta; fechas e hitos deben reconfirmarse según capacid
 Carrito, WhatsApp y analítica por plato están implementados; no se volvió
 a verificar su despliegue en esta revisión.
 
-**Pendientes inmediatos de la base actual (sin sustituir el roadmap):** cerrar
-regresiones locales, publicar y validar el catálogo, completar PAY-05 y registrar evidencia
-del E2E. El módulo Pagos ya consulta el historial, pero no ejecuta conciliaciones
+**Pendientes inmediatos de la base actual (sin sustituir el roadmap):** reconciliar
+la revisión del E2E informado con el worktree, cerrar el contrato de
+códigos/promociones y las demás regresiones locales, publicar y validar el catálogo,
+completar PAY-05 y conservar la evidencia operativa del E2E. El módulo Pagos ya consulta el historial, pero no ejecuta conciliaciones
 ni reembolsos. Nuevas colecciones, servicios externos y flujos de pagos requieren
 decisión explícita de arquitectura; las propuestas siguientes no son autorización
 para implementarlas ni compromisos comerciales.
@@ -936,7 +983,7 @@ Antes de tomar nuevas iniciativas, resolver o aceptar explícitamente:
 
 - Despliegue y verificación real del catálogo integrado localmente.
 - Persistencia/validación de flags del formulario de productos (2 tests fallidos).
-- PAY-05 y evidencia de E2E del flujo de suscripciones.
+- PAY-05 y reconciliación del E2E informado con la revisión local/desplegada.
 - Revalidación visual del editor; su registro histórico no refleja el código actual.
 
 | # | Iniciativa | R | I | C | E | RICE | Fase |
@@ -1014,8 +1061,8 @@ grandes: se intercalan como trabajo continuo.
   en backend. Frontend consume `api/plans.ts`/`usePlans`.
 - Gating: `requireFeature` y controllers consultan MongoDB; `config/plans.js`
   conserva orden, IDs, validadores y plan efectivo, sin asignaciones comerciales.
-- [Catálogo y rollout pendiente](PLAN_CATALOG_ROLLOUT.md),
-  [Design QA](design-qa.md) y [dev log backend](../../menu-digital-backend/DEVLOG-LUCAS.md).
+- [Arquitectura técnica](ARCHITECTURE.md), [README](README.md) y
+  [dev log backend](../../menu-digital-backend/DEVLOG-LUCAS.md).
 
 ---
 

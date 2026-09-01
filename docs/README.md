@@ -4,17 +4,18 @@ Frontend de **MenuDigital**, SaaS argentino de cartas digitales para bares y
 restaurantes. Está construido con React 19, TypeScript y Vite, y se despliega en
 Vercel.
 
-Revisión documental: **31-08-2026**, contra el código local de ambos repositorios.
+Revisión documental: **01-09-2026**, contra el código local de ambos repositorios.
 No implica que los cambios locales estén desplegados.
 
-Actualización **31-08-2026**: catálogo MongoDB conectado a precios, features,
-checkout y permisos. `/admin/plans` permite administrarlo. Dominio propio y reseñas
-integradas siguen fuera del alcance; Maps por dirección se mantiene.
-Estos cambios son locales: no se consultó Atlas ni se desplegó.
+Actualización **01-09-2026**: el catálogo MongoDB continúa conectado a precios,
+features, checkout y permisos. `/admin/sellers` ahora suma métricas comerciales y
+detalle operativo de los clientes atribuidos. El responsable del producto informó
+que el alta paga con siete días adicionales ya pasó una prueba E2E en el despliegue
+evaluado; esta intervención no repitió ese pago ni desplegó cambios.
 
 ## Mapa de documentación
 
-Los cuatro documentos principales viven en `docs/` del frontend:
+Los documentos principales vigentes viven en `docs/` del frontend:
 
 - **Este README**: entrada al proyecto, desarrollo local y validación vigente.
 - [ARCHITECTURE.md](ARCHITECTURE.md): arquitectura técnica y recorrido archivo por
@@ -24,25 +25,18 @@ Los cuatro documentos principales viven en `docs/` del frontend:
 - [RESUMEN_EJECUTIVO.txt](RESUMEN_EJECUTIVO.txt): guía comercial para vendedores;
   es un documento principal aunque su extensión sea `.txt`.
 
-Documentos complementarios, referenciados pero fuera de ese núcleo:
-
-- [Catálogo de planes](PLAN_CATALOG_ROLLOUT.md): guía operativa vigente, modelo y
-  checklist de despliegue pendiente.
-- [Design QA](design-qa.md): evidencia histórica del editor y diferencias con el
-  código actual; no certifica una nueva prueba visual.
-- [Dev log del backend](../../menu-digital-backend/DEVLOG-LUCAS.md): historial
+Como documento complementario se mantiene el
+[dev log del backend](../../menu-digital-backend/DEVLOG-LUCAS.md): historial
   técnico con un resumen de estado local; requiere ambos repositorios como
   carpetas hermanas.
 
 Fuera de Markdown, [ARCHITECTURE.html](ARCHITECTURE.html) es una copia histórica
-de la arquitectura y [REVISION_TECNICA_SEGURIDAD_Y_PENDIENTES.txt](REVISION_TECNICA_SEGURIDAD_Y_PENDIENTES.txt)
-conserva una auditoría del 27-08-2026. Son candidatos a archivo histórico, no fuentes
-del estado vigente. No se eliminaron ni movieron durante esta revisión.
+de la arquitectura, no la fuente del estado vigente. `PLAN_CATALOG_ROLLOUT.md`,
+`design-qa.md` y `REVISION_TECNICA_SEGURIDAD_Y_PENDIENTES.txt` están eliminados en
+el working tree y no se restauraron durante esta revisión.
 
 La aplicación, los scripts y el build no consumen estos documentos. Eso no implica
-que estén sin uso: sirven para desarrollo, operación o venta. Los tres Markdown
-complementarios tienen referencias desde la documentación principal. El informe
-técnico `.txt` no tenía referencias entrantes antes de incorporarlo a este índice.
+que estén sin uso: sirven para desarrollo, operación o venta.
 Las excepciones de `.gitignore` permiten versionar README y ARCHITECTURE en `docs/`.
 No hay README en la raíz; este archivo es la entrada documental actual.
 
@@ -50,7 +44,8 @@ No hay README en la raíz; este archivo es la entrada documental actual.
 
 - Landing comercial y registro (`/`, `/register`, `/register/plans`).
 - Panel del dueño (`/dashboard`, editor de menú, negocio y estadísticas).
-- Panel CEO, CRM, pagos y planes (`/admin`, `/admin/crm`, `/admin/payments`, `/admin/plans`).
+- Panel CEO, CRM, pagos, planes y vendedores (`/admin`, `/admin/crm`,
+  `/admin/payments`, `/admin/plans`, `/admin/sellers`).
 - Landing y carta pública multi-tenant (`/:slug`, `/:slug/menu`).
 
 ## Planes y registro
@@ -80,15 +75,25 @@ su importe mediante el precio mensual. Los cambios de beneficios alcanzan a los
 usuarios existentes en su próxima consulta. Los precios nuevos se aplican a nuevos
 checkouts; los anteriores conservan su snapshot. Una versión desactualizada se
 rechaza con 409 y exige reconfirmación.
-Ver el [modelo y guía del catálogo](PLAN_CATALOG_ROLLOUT.md).
+
+**Administración → Vendedores** lista, crea y edita vendedores con nombre y DNI
+únicos; el backend genera un código `AAA-999`. En el alta paga el código se valida
+de nuevo en servidor, aplica `discountPrice ?? price` y guarda `sellerID` en el
+registro pendiente y en el usuario creado. La vista muestra clientes vendidos,
+planes pagos vigentes, altas recientes, vencimientos próximos, distribución
+Basic/Pro, menú creado y última alta. El detalle de cada vendedor lista sus clientes
+y enlaza sus fichas de CRM y pagos. No calcula comisiones, conversión ni facturación
+histórica: el checkout/transacción todavía no conserva un snapshot inmutable del
+vendedor que permita auditarlas.
 
 Antes de liberar cambios de pagos, verificar deploys y configuración de ambiente,
 y validar con autorización el circuito preferencia → Checkout Pro → webhook
 firmado → `PaymentCheckout`/`PaymentTransaction` → plan/vencimiento → dashboard.
-Esta revisión no consultó Atlas, Koyeb ni Vercel ni realizó pagos reales. Sigue
-pendiente PAY-05: registro configura vencimiento de preferencia; upgrade/renovación
-todavía no lo hacen. El historial admin de pagos es de solo lectura, sin reembolsos
-ni acreditaciones manuales.
+Esta intervención no consultó Atlas, Koyeb ni Vercel ni realizó pagos reales. El E2E
+del alta y sus siete días fue informado por el responsable del producto, no
+reproducido acá. Sigue pendiente PAY-05: registro configura vencimiento de
+preferencia; upgrade/renovación todavía no lo hacen. El historial admin de pagos es
+de solo lectura, sin reembolsos ni acreditaciones manuales.
 
 Los usuarios existentes administran su suscripción desde la tarjeta **“Tu plan”** del
 dashboard. Free puede subir a Basic/Pro; Basic puede renovar o subir a Pro; Pro puede
@@ -121,14 +126,18 @@ npm run lint
 npm run build
 ```
 
-Verificación técnica repetida el 31-08-2026 durante la revisión documental:
+Resultado reproducido el 01-09-2026:
 
-- Frontend: `npm run typecheck`, `npm run lint` y `npm run build` **pasan**.
-- Backend: **117/119 tests pasan**; las 36 pruebas de catálogo, cotización y
-  gating dinámico pasan.
+- Frontend: `npm run typecheck`, `npm run lint` y `npm run build` pasan. Para
+  completar la validación se restauró en `node_modules` la versión de `lucide-react`
+  ya declarada en `package.json` y lockfile, sin cambios rastreados de dependencias.
+- Backend: **120/125 tests pasan; 5 fallan**. `paymentWebhook.test.js` pasa 44/44
+  después de restaurar el cálculo de upgrades/renovaciones. Los cinco pendientes
+  son dos regresiones de `editItem` y tres diferencias de promoción/cotización.
+- `sellerController.test.js` pasa **6/6**: métricas, plan efectivo, ventanas de 30
+  días, DTO acotado, agrupación, lista vacía, 404 y error genérico. El flujo de pago
+  con código y bonus todavía no tiene una prueba automatizada local dedicada.
 - `git diff --check` pasa en ambos repositorios.
-- Dos regresiones previas de `editItem` sobre `available`/`hidden` siguen fuera de
-  este cambio; no fueron corregidas ni ocultadas.
 - Navegador con API simulada durante la integración previa: edición de Pro, landing, registro, dashboard, totales por período,
   conflicto de precio con reconfirmación, estadísticas desactivadas, template
   retirado y recuperación tras un error de catálogo.
@@ -136,8 +145,9 @@ Verificación técnica repetida el 31-08-2026 durante la revisión documental:
   esas interacciones. Para el nuevo editor de multiplicadores se comprobó validación,
   deshacer y vista previa; el guardado se cubrió con tests de backend, sin completar
   una nueva prueba de guardado desde el navegador.
-- No hay script de tests automatizados frontend. Falta E2E con backend real,
-  Atlas/MercadoPago y verificación de despliegue antes de publicar.
+- No hay script de tests automatizados frontend. Antes de publicar hay que recuperar
+  la suite local, validar una instalación limpia y recién después ejecutar E2E con
+  backend real, Atlas/MercadoPago y verificación de despliegue.
 
 ## Convenciones
 

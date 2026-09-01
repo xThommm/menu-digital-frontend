@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import type { Subscription } from "../types";
 
 export interface Seller {
   _id: string;
@@ -14,8 +15,55 @@ export interface SellerPayload {
   dni: string;
 }
 
-export async function listAdminSellers(signal?: AbortSignal): Promise<Seller[]> {
-  const response = await apiClient.get<Seller[]>("/admin/sellers", { signal, timeout: 10000 });
+export interface SellerMetrics {
+  clientsTotal: number;
+  activeAccounts: number;
+  paidCurrent: number;
+  newClients30d: number;
+  expiring30d: number;
+  expired: number;
+  withMenu: number;
+  plans: {
+    basic: number;
+    pro: number;
+  };
+  lastClientAt: string | null;
+}
+
+export interface SellerSummary extends Seller {
+  metrics: SellerMetrics;
+}
+
+export interface SellerClient {
+  _id: string;
+  username: string;
+  businessName: string;
+  slug: string | null;
+  active: boolean;
+  menu: boolean;
+  subscription: Subscription;
+  effectiveSubscription: Subscription;
+  subscriptionExpiresAt: string | null;
+  createdAt: string;
+}
+
+export interface SellerDetail extends SellerSummary {
+  clients: SellerClient[];
+}
+
+export async function listAdminSellers(signal?: AbortSignal): Promise<SellerSummary[]> {
+  const response = await apiClient.get<SellerSummary[]>("/admin/sellers", {
+    signal,
+    timeout: 10000,
+  });
+  return response.data;
+}
+
+export async function getAdminSeller(id: string, signal?: AbortSignal): Promise<SellerDetail> {
+  const response = await apiClient.get<SellerDetail>(`/admin/sellers/${id}`, {
+    signal,
+    timeout: 10000,
+  });
   return response.data;
 }
 
