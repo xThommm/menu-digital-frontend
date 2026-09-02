@@ -160,10 +160,11 @@ Derivar a administración problemas de pago o acceso, descuentos especiales, con
 
 ---
 
-**Control de actualización:** revisión documental del 01/09/2026 contra el código
-local y las semillas iniciales del catálogo. Backend pasa 126/126 pruebas; frontend
-pasa typecheck, lint y build. La auditoría también encontró pendientes de seguridad,
-dependencias y vencimiento de preferencias que deben resolverse antes de otra salida.
+**Control de actualización:** revisión documental del 02/09/2026 contra el código
+local y las semillas iniciales del catálogo. Backend pasa 135/135 pruebas; frontend
+pasó typecheck, lint y build en la revisión previa. PAY-05 quedó cubierto localmente;
+persisten pendientes de seguridad, dependencias y validación productiva antes de
+otra salida.
 No se consultó producción ni Atlas, no se desplegó y no se realizó una compra real.
 Los importes y beneficios editables deben confirmarse antes de cotizar; esta copia no
 se actualiza automáticamente.

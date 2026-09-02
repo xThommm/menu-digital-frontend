@@ -4,16 +4,17 @@ Frontend de **MenuDigital**, SaaS argentino de cartas digitales para bares y
 restaurantes. Está construido con React 19, TypeScript y Vite, y se despliega en
 Vercel.
 
-Revisión documental: **01-09-2026**, contra el código local de ambos repositorios.
+Revisión documental: **02-09-2026**, contra el código local de ambos repositorios.
 No implica que los cambios locales estén desplegados.
 
-Actualización **01-09-2026**: el catálogo MongoDB continúa conectado a precios,
+Actualización **02-09-2026**: el catálogo MongoDB continúa conectado a precios,
 features, checkout y permisos. El descuento de `discountPrice` queda reservado al
 alta paga cuyo código resuelve un `sellerID`; sin vendedor se conserva el precio de
 lista. `editItem` ya persiste y valida `available`, `hidden` y `recommended`. La
-suite backend pasa **126/126** y el frontend pasa typecheck, lint y build. Esta
-intervención no realizó un E2E real con MercadoPago, Atlas o Cloudinary ni verificó
-los deploys.
+expiración inmutable de PAY-05 quedó implementada localmente. La suite backend pasa
+**135/135** y el frontend había pasado typecheck, lint y build en la revisión previa.
+Esta intervención no realizó un E2E real con MercadoPago, Atlas o Cloudinary ni
+verificó los deploys.
 
 ## Mapa de documentación
 
@@ -94,11 +95,12 @@ y validar con autorización el circuito preferencia → Checkout Pro → webhook
 firmado → `PaymentCheckout`/`PaymentTransaction` → plan/vencimiento → dashboard.
 Esta intervención no consultó Atlas, Koyeb ni Vercel ni realizó pagos reales. El E2E
 del alta y sus siete días fue informado por el responsable del producto, no
-reproducido acá ni tomado como validación del Git actual. Sigue pendiente PAY-05:
-el checkout no conserva una ventana inmutable de siete días y los reintentos de
-registro pueden recalcularla; upgrade/renovación tampoco envían la expiración
-explícita. El historial admin de pagos es de solo lectura, sin reembolsos ni
-acreditaciones manuales.
+reproducido acá ni tomado como validación del Git actual. PAY-05 quedó resuelto en
+el código local: cada checkout nuevo conserva una ventana inmutable de siete días,
+registro/upgrade/renovación envían esas fechas y un retry válido reutiliza el enlace
+sin actualizar MercadoPago. Checkouts vencidos o legacy se reemplazan sin borrar la
+auditoría y un pago aprobado tardío sigue acreditándose. El historial admin de pagos
+es de solo lectura, sin reembolsos ni acreditaciones manuales.
 
 Los usuarios existentes administran su suscripción desde la tarjeta **“Tu plan”** del
 dashboard. Free puede subir a Basic/Pro; Basic puede renovar o subir a Pro; Pro puede
@@ -131,12 +133,13 @@ npm run lint
 npm run build
 ```
 
-Resultado reproducido el 01-09-2026:
+Resultados locales acumulados:
 
-- Frontend: `npm run typecheck`, `npm run lint` y `npm run build` pasan. Para
+- Frontend, reproducido el 01-09-2026: `npm run typecheck`, `npm run lint` y
+  `npm run build` pasan. Para
   completar la validación se restauró en `node_modules` la versión de `lucide-react`
   ya declarada en `package.json` y lockfile, sin cambios rastreados de dependencias.
-- Backend: `npm test` pasa **126/126**. La cotización usa precio regular para
+- Backend, reproducido el 02-09-2026: `npm test` pasa **135/135**. La cotización usa precio regular para
   catálogo, upgrade y renovación, y reserva `discountPrice` al alta con vendedor
   validado. `editItem` persiste y exige booleanos en `available`, `hidden` y
   `recommended`.
@@ -167,11 +170,10 @@ producción hasta corregir y volver a validar estos puntos:
 - El alta paga comprueba `acceptedTerms` por truthiness y solo exige longitud mínima
   de contraseña; no aplica la validación estricta y el bloqueo de contraseñas comunes
   del alta Free.
-- El modelo de productos acepta precios negativos.
 - La auditoría de dependencias reporta 8 vulnerabilidades en frontend (7 altas y 1
   moderada) y 4 de runtime en backend (2 altas, 1 moderada y 1 baja).
-- PAY-05 sigue pendiente y no se hizo E2E real de pagos ni verificación de los
-  despliegues.
+- PAY-05 tiene cobertura local, pero no se hizo E2E real de pagos ni verificación
+  de los despliegues.
 
 ## Convenciones
 
