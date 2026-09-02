@@ -1,12 +1,12 @@
 # MenuDigital — Startup Blueprint v2
-> **Revisión vigente — 01-09-2026:** precios, multiplicadores y features se leen de
+> **Revisión vigente — 02-09-2026:** precios, multiplicadores y features se leen de
 > MongoDB en el código local. En un alta paga, solo un código válido que resuelve a
 > `sellerID` habilita `discountPrice ?? price`; catálogo público, upgrades y
 > renovaciones usan `price`. `editItem` ya persiste sus flags y el bonus del vendedor
-> tiene cobertura automatizada. Backend pasa 126/126; frontend pasa typecheck, lint y
-> build. PAY-05 sigue ausente del Git actual y la auditoría detectó bloqueos de
-> seguridad antes de producción (§8). No se ejecutó un E2E real, no se consultó Atlas
-> ni se desplegó. Ver [README](README.md#verificaciones).
+> tiene cobertura automatizada. Backend pasa 135/135; frontend pasó typecheck, lint y
+> build en la revisión previa. PAY-05 quedó implementado localmente y la auditoría
+> mantiene bloqueos de seguridad antes de producción (§8). No se ejecutó un E2E real,
+> no se consultó Atlas ni se desplegó. Ver [README](README.md#verificaciones).
 
 
 > **Cómo leer este documento.** Es el plan integral de la startup: mercado, producto
@@ -237,7 +237,7 @@ comerciales por nivel son la configuración inicial; no son una herencia técnic
 | M9 | **Estadísticas** | Visitas diarias (30 días, tiempo real con polling), ranking top-10 de productos más vistos | `estadisticas` |
 | M10 | **Import/Export Excel** | Plantilla generada con datos actuales, preview de cambios, confirmación fila a fila | `menu_editor` + `carga_masiva_excel` |
 | M10b | **Exportación PDF** | Menú imprimible generado desde la carta vigente | `menu_pdf` |
-| M11 | **Suscripciones** ⚠️ | Checkout MercadoPago, alta automática, upgrades/renovaciones 1/3/6/12 meses, historial durable y validación del checkout original; webhook y bonus del vendedor cubiertos por pruebas, PAY-05, E2E real y deploy pendientes | — |
+| M11 | **Suscripciones** ⚠️ | Checkout MercadoPago, alta automática, upgrades/renovaciones 1/3/6/12 meses, historial durable, expiración PAY-05 y validación del checkout original; webhook, expiración y bonus del vendedor cubiertos localmente, con E2E real y deploy pendientes | — |
 | M12 | **Panel CEO + CRM interno** | KPIs de la plataforma, gestión de clientes (pipeline kanban, notas, eventos automáticos, seguimientos vencidos, export Excel) | Solo admin |
 | M12c | **Planes admin** | Precios, promociones, multiplicadores por período, textos, funciones, límites y diseños desde MongoDB; guardado con versión | Solo admin |
 | M12b | **Pagos admin** | Historial local paginado, filtros, detalle de validación/acreditación y resumen por cliente; no realiza reembolsos | Solo admin |
@@ -331,19 +331,19 @@ Como dueño con menú grande, quiero actualizar todo en Excel.
 **HU-08 · Cobrar suscripciones (M11)** ⚠️
 Como plataforma, quiero cobrar sin intervención manual.
 
-Los criterios siguientes describen el contrato esperado. La suite backend pasa
-126/126 y cubre el webhook y los siete días adicionales del vendedor. No se ejecutó
-un pago real ni se verificó el despliegue; PAY-05 sigue abierto en el Git actual.
+Los criterios siguientes describen el contrato local. La suite backend pasa 135/135
+y cubre el webhook, PAY-05 y los siete días adicionales del vendedor. No se ejecutó
+un pago real ni se verificó el despliegue.
 
 - Un alta paga crea un `PendingRegistration`; el checkout usa su id como
   `external_reference` y conserva un token opaco para consultar la activación. La
   contraseña temporal queda cifrada con AES-256-GCM hasta que el webhook crea el User.
 - Volver atrás, cerrar la pestaña o reintentar puede recuperar el alta pendiente y
-  reutilizar la preferencia `ready` si conserva plan/período/versión/importe/moneda
-  y tiene `preferenceId/initPoint`. Sin PAY-05, el registro recalcula la ventana de
-  siete días al reintentar y no conserva su vencimiento como snapshot inmutable.
-  Cambiar la selección o la versión del catálogo crea otro `PaymentCheckout`; el
-  checkout reemplazado queda marcado `superseded`.
+  reutilizar la preferencia `ready` si conserva plan/período/versión/importe/moneda,
+  enlaces y una ventana vigente de siete días. Ese retry devuelve el enlace guardado
+  sin actualizar MP. Cambiar la selección, vencer la ventana o detectar un snapshot
+  legacy/inconsistente crea otro `PaymentCheckout`; el reemplazado queda
+  `superseded` sin perder auditoría.
 - Solo el webhook (firma HMAC verificada + consulta del pago real a la API de MP)
   crea la cuenta o cambia `User.subscription`. Cada pago queda primero en
   `PaymentTransaction`; los checkouts nuevos deben coincidir en asociación,
@@ -361,12 +361,12 @@ un pago real ni se verificó el despliegue; PAY-05 sigue abierto en el Git actua
 - El alta o cambio de plan queda logueado como evento en el CRM.
 - Las altas gratuitas y pagas generan slugs únicos legibles; las colisiones reciben
   sufijos incrementales y el backend reintenta las carreras contra el índice `unique`.
-- La suite backend cubre webhook, bonus del vendedor, cifrado temporal, colisiones
-  de slug y el contrato de precios; el total vigente es 126/126.
+- La suite backend cubre webhook, PAY-05, bonus del vendedor, cifrado temporal,
+  colisiones de slug y el contrato de precios; el total vigente es 135/135.
 - Lint, typecheck y build frontend pasan. Estas verificaciones son locales y no
   sustituyen un E2E con MercadoPago, Atlas y los despliegues reales.
-- **Pendientes:** publicar/validar el catálogo, completar PAY-05 con vencimiento
-  inmutable y explícito para todas las preferencias y ejecutar el E2E autorizado.
+- **Pendientes:** publicar/validar los cambios y ejecutar el E2E autorizado con
+  MercadoPago, Atlas y los despliegues reales.
   No cambiar precios productivos solo para probar.
 
 **HU-10 · Atribuir altas a vendedores (M12d)** ⚠️
@@ -653,7 +653,7 @@ ahí sí `/api/v1` congelada + API keys por local.
 | Autorización | `protect`/`isAdmin`/`requireFeature` y ownership por recurso; límites, templates, Excel, PDF, programación y estadísticas se validan server-side. Esto no equivale a una auditoría integral anti-IDOR |
 | Inyección | `express-mongo-sanitize` (scoped, excluye el webhook MP a propósito) + validación de tipos en login/registro. `Item.image` admite texto arbitrario y el PDF lo inserta sin escape en un `<img>`: bloqueo de inyección/SSRF pendiente |
 | Abuso | `authLimiter` 10/15 min (anti fuerza bruta) + `apiLimiter` 300/15 min; límites de upload (imágenes 8 MB, Excel 5 MB en memoria) |
-| Pagos | HMAC-SHA256, consulta real a MP, validación `live_mode`/`MP_ENV`, snapshot de checkout y auditoría antes de acreditar. Persistencia, idempotencia y bonus del vendedor tienen cobertura local dentro de las 126/126 pruebas; PAY-05, E2E real y deploy siguen pendientes |
+| Pagos | HMAC-SHA256, consulta real a MP, validación `live_mode`/`MP_ENV`, snapshot de checkout y auditoría antes de acreditar. Persistencia, idempotencia, PAY-05 y bonus del vendedor tienen cobertura local dentro de las 135/135 pruebas; E2E real y deploy siguen pendientes |
 | Fugas de información | `handleError` responde genérico y password usa `select:false`; el detalle de vendedor omite mail, teléfono y otros datos de contacto y deriva la operación a CRM/Pagos protegidos |
 | Contenido | Contacto limitado a campos vigentes al leer/editar; falta restringir `Item.image` a orígenes/formato seguros antes de renderizar el PDF |
 | Dependencias | Auditoría npm del 01-09-2026: frontend 8 vulnerabilidades (7 altas, 1 moderada); backend 4 de runtime (2 altas, 1 moderada, 1 baja). Existen actualizaciones compatibles propuestas, todavía no aplicadas |
@@ -664,8 +664,8 @@ correos, tokens, cabeceras Authorization ni URLs completas de checkout en diagn�
 
 **Bloqueos antes de una nueva salida a producción:** cerrar la inyección/SSRF del
 PDF, exigir `acceptedTerms === true` y la misma política de contraseña en el alta
-paga, rechazar precios negativos en el backend, resolver las vulnerabilidades npm
-y completar PAY-05. La suite verde no reemplaza estas correcciones ni el E2E real.
+paga y resolver las vulnerabilidades npm. La suite verde no reemplaza estas
+correcciones ni el E2E real.
 
 ### 8.2 Mapa de riesgos OWASP usado por el proyecto → controles y pendientes
 
@@ -674,7 +674,7 @@ y completar PAY-05. La suite verde no reemplaza estas correcciones ni el E2E rea
 | A01 Broken Access Control | Capas de autorización/ownership; falta revisión integral y AuditLog. La API de borrar notas CRM no distingue eventos |
 | A02 Cryptographic Failures | bcrypt/JWT y AES-256-GCM para altas pendientes; tokens MP por local son roadmap |
 | A03 Injection | Sanitización parcial; `Item.image` llega sin escape al HTML del PDF y habilita inyección de atributos/eventos |
-| A04 Insecure Design | Gating y snapshot server-side presentes; el backend todavía acepta precios negativos y PAY-05 no conserva vencimientos inmutables |
+| A04 Insecure Design | Gating, snapshot server-side y expiración inmutable presentes; falta validación E2E del flujo desplegado |
 | A05 Security Misconfiguration | helmet/CORS/trust proxy en código; configuración remota no comprobada |
 | A06 Vulnerable Components | Auditoría vigente: frontend 8 (7 altas, 1 moderada) y backend runtime 4 (2 altas, 1 moderada, 1 baja); remediación y gate automático pendientes |
 | A07 Auth Failures | Rate limit y política estricta en alta gratuita; el alta paga acepta valores truthy en términos y contraseñas comunes de longitud suficiente |
@@ -689,9 +689,9 @@ La tabla organiza deuda técnica; no afirma conformidad ni reemplaza un pentest.
 1. Sanear y restringir `Item.image`; escapar el template y aislar las solicitudes del
    render PDF antes del próximo deploy.
 2. Unificar validación del alta paga (`acceptedTerms === true` y política de
-   contraseña) y rechazar precios negativos server-side.
+   contraseña).
 3. Actualizar dependencias vulnerables y agregar `npm audit` como gate de CI.
-4. Completar PAY-05 y ejecutar el E2E autorizado con MercadoPago/Atlas/deploy reales.
+4. Ejecutar el E2E autorizado de PAY-05 con MercadoPago/Atlas/deploy reales.
 5. **Con M13 (dinero de terceros)**: `ENCRYPTION_KEY` + cifrado de tokens MP,
    idempotencia estricta de webhooks, AuditLog de acciones de cobro.
 6. Sentry + alertas de uptime (detección antes que el cliente).
@@ -821,12 +821,13 @@ El webhook acredita siete días adicionales una sola vez al alta atribuida y esa
 conducta tiene cobertura automatizada. Falta comprobar el flujo completo con un pago
 real y el deploy; no prometer ni aplicar manualmente el descuento fuera del checkout.
 
-**PAY-05, independiente del catálogo y faltante en el Git actual:**
-`PaymentCheckout` no guarda `preferenceStartsAt`/`preferenceExpiresAt` y
-upgrade/renovación no envían expiración explícita. El registro calcula siete días,
-pero un reintento puede volver a mover esa ventana. Sigue pendiente una fecha
-server-side inmutable, sin TTL de auditoría, con pruebas de pagos aprobados cerca del
-límite y webhooks tardíos. No confundirlo con `subscriptionExpiresAt`, que sí existe.
+**PAY-05, completo localmente e independiente del catálogo:**
+`PaymentCheckout` guarda `preferenceStartsAt/preferenceExpiresAt` como snapshot
+inmutable sin TTL. Registro, upgrade y renovación envían esa misma ventana de siete
+días. Un retry válido no actualiza MP; uno vencido, legacy o inconsistente crea otro
+checkout y conserva el anterior. Pagos aprobados tardíos y checkouts `superseded`
+siguen acreditándose. Falta validarlo con MercadoPago/Atlas/deploy reales. No
+confundir este vencimiento con `subscriptionExpiresAt`.
 
 ### 10.2 Unit economics (supuestos explícitos, base 2026)
 
@@ -876,7 +877,7 @@ a verificar su despliegue en esta revisión.
 
 **Pendientes inmediatos de la base actual (sin sustituir el roadmap):** corregir los
 bloqueos de seguridad y validación de §8, actualizar las dependencias vulnerables,
-publicar y validar el catálogo, completar PAY-05 y ejecutar/conservar la evidencia
+publicar y validar los cambios y ejecutar/conservar la evidencia
 operativa del E2E real. El módulo Pagos ya consulta el historial, pero no ejecuta conciliaciones
 ni reembolsos. Nuevas colecciones, servicios externos y flujos de pagos requieren
 decisión explícita de arquitectura; las propuestas siguientes no son autorización
@@ -991,9 +992,9 @@ Estos puntajes son estimaciones internas, no mediciones recalculadas desde clien
 Antes de tomar nuevas iniciativas, resolver o aceptar explícitamente:
 
 - Despliegue y verificación real del catálogo integrado localmente.
-- Inyección/SSRF del PDF, validaciones laxas del alta paga y precios negativos.
+- Inyección/SSRF del PDF y validaciones laxas del alta paga.
 - Remediación de dependencias vulnerables en frontend y backend.
-- PAY-05 y E2E real con la revisión local/desplegada.
+- E2E real de PAY-05 con la revisión local/desplegada.
 - Revalidación visual del editor; su registro histórico no refleja el código actual.
 
 | # | Iniciativa | R | I | C | E | RICE | Fase |

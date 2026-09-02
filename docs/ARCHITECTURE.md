@@ -1,10 +1,11 @@
 # MenuDigital — Arquitectura de la aplicación
-> **Revisión vigente — 01-09-2026:** catálogo y gating siguen conectados. El nuevo
+> **Revisión vigente — 02-09-2026:** catálogo y gating siguen conectados. El nuevo
 > módulo de vendedores y códigos está montado y su vista administra métricas y
 > clientes atribuidos. `discountPrice` se aplica únicamente al alta paga con un
 > `sellerID` validado y `editItem` ya persiste/valida sus tres flags. Backend pasa
-> 126/126; frontend pasa typecheck, lint y build. PAY-05 y los bloqueos de seguridad
-> detallados abajo siguen pendientes. Ver [README](README.md#verificaciones).
+> 135/135; frontend pasó typecheck, lint y build en la revisión previa. PAY-05 quedó
+> implementado localmente; los bloqueos de seguridad detallados abajo y el E2E real
+> siguen pendientes. Ver [README](README.md#verificaciones).
 > No se consultó Atlas ni se desplegó, y tampoco se ejecutó un E2E real.
 
 
@@ -132,8 +133,9 @@ ID permitido sin modificar la selección persistida.
 ### `config/paymentPlans.js`
 
 Semillas iniciales y helper de referencia para tests: Basic 29.999, Pro 49.999 ARS,
-períodos 1/3/6/12 con multiplicadores 1/2.7/5/9. No determina cobros runtime:
-las rutas cotizan con `services/planCatalog.js` desde MongoDB, sin fallback.
+períodos 1/3/6/12 con multiplicadores 1/2.7/5/9. `getCheckoutExpiration()` centraliza
+la ventana de siete días usada por todos los checkouts. Los importes runtime se
+cotizan con `services/planCatalog.js` desde MongoDB, sin fallback.
 
 ### `config/cloudinary.js`
 - Configura el SDK `cloudinary.v2` con las credenciales del `.env`.
@@ -206,8 +208,8 @@ con fecha y hora de vigencia de la oferta), `options` (Map string→number, ej v
 tamaño), `image`, `available`, `availabilitySchedule` (programación semanal
 `enabled` + hasta 4 rangos `{from,to}` por día), `isExtra`, `recommended`, `hidden`, `apt` (objeto
 libre: alérgenos, calorías...). `timestamps`.
-**Pendiente de validación:** `price` no tiene un mínimo en el schema y actualmente
-acepta valores negativos; debe bloquearse antes de producción.
+`price` admite null para productos sin precio y rechaza valores negativos en modelo
+y controllers de creación/edición.
 
 ### `models/PageView.js`
 Agregado **diario** de visitas a la carta pública (una fila por local por día, con un
@@ -237,9 +239,10 @@ Alta paga todavía no convertida en `User`. Guarda temporalmente los datos de
 registro, plan y período, junto con el hash de un token opaco de activación,
 `sellerID` opcional y
 el `preferenceId/initPoint` de MercadoPago y la referencia al `PaymentCheckout`.
-Un retry reutiliza la preferencia si el checkout está `ready`, conserva plan,
-período, versión del catálogo, importe y moneda, y tiene `preferenceId/initPoint`.
-Si esas condiciones cambian crea otro snapshot y marca el anterior `superseded`,
+Un retry reutiliza la preferencia si el checkout está `ready`, vigente, conserva una
+ventana exacta de siete días, plan, período, versión, importe, moneda y los mismos
+`preferenceId/initPoint`. Devuelve el enlace guardado sin actualizar MercadoPago.
+Si alguna condición falla crea otro snapshot y marca el anterior `superseded`,
 incluso cuando solo cambió un multiplicador y la selección sigue siendo la misma.
 La contraseña temporal se cifra con AES-256-GCM en
 `passwordCiphertext/passwordIV/passwordAuthTag`; los tres campos son `select:false`
@@ -260,10 +263,10 @@ período, importe esperado, moneda y plan/vencimiento de origen. Después solo a
 el estado operativo (`creating/ready/superseded/failed/payment_received`) y se enlazan
 `preferenceId/initPoint`. No tiene TTL. Su `_id` viaja como `metadata.checkout_id` y
 permite demostrar qué ofreció el backend aunque los precios cambien más adelante.
-Incluye `planVersion` inmutable en nuevos checkouts (opcional para documentos legados).
-PAY-05 sigue pendiente: el modelo no guarda `preferenceStartsAt` ni
-`preferenceExpiresAt`, por lo que no conserva una ventana inmutable de siete días
-para la preferencia.
+Incluye `planVersion` inmutable en nuevos checkouts (opcional para documentos legados)
+y `preferenceStartsAt/preferenceExpiresAt` inmutables y obligatorios para documentos
+nuevos. Los snapshots legacy sin esas fechas siguen siendo legibles y se reemplazan
+si el usuario solicita otra preferencia. No tiene TTL de auditoría.
 
 ### `models/PaymentTransaction.js`
 Historial **durable** de cada pago consultado a MercadoPago. `paymentID` es único y
@@ -539,7 +542,7 @@ No edita IDs ni agrega períodos.
   `paidMonths`; las ramas existentes vuelven a calcular recuperación, renovación o
   upgrade con `months`. Además, un alta con `sellerID` crea el usuario atribuido y
   suma los siete días de vendedor. Ambas rutas tienen cobertura automatizada local;
-  la suite backend completa pasa 126/126, sin equivaler a un E2E real.
+  la suite backend completa pasa 135/135, sin equivaler a un E2E real.
 
 
 ## routes/
@@ -572,18 +575,19 @@ Cada archivo define un `express.Router` y ata rutas → middlewares → controll
   `POST /validate-seller-code` valida públicamente el formato y existencia del código;
   `POST /crear-preferencia-registro` crea o recupera el alta pendiente, persiste el
   snapshot de checkout y, con código válido, usa `discountPrice ?? price` y enlaza
-  `sellerID`. Reutiliza una preferencia `ready` si coinciden selección,
-  versión, importe y moneda y existen `preferenceId/initPoint`, y devuelve
-  `init_point` + token opaco; `POST /registro/estado` permite esperar al webhook;
+  `sellerID`. Reutiliza una preferencia `ready` únicamente si coinciden selección,
+  versión, importe, moneda, enlaces y la ventana inmutable sigue vigente; devuelve
+  `init_point` + token opaco sin llamar otra vez a MP. Checkouts vencidos, legacy o
+  inconsistentes se reemplazan y el anterior queda `superseded`;
+  `POST /registro/estado` permite esperar al webhook;
   `POST /crear-preferencia` (autenticado) valida plan/período, impide downgrades,
   crea el snapshot server-side y luego la preferencia de upgrade/renovación;
   `POST /webhook` crea la cuenta o acredita el cambio/renovación con vencimiento.
   Crea clientes del SDK e idempotency keys por operación, comprueba que MP devuelva
-  id/init point y persiste el estado `ready` antes de redirigir. Registro envía
-  fechas explícitas de inicio/vencimiento, pero cada retry vuelve a calcular
-  `now + 7 días` y puede actualizar una preferencia reutilizada. El checkout no
-  conserva esas fechas y upgrade/renovación todavía no envían expiración explícita
-  (PAY-05).
+  id/init point y persiste el estado `ready` antes de redirigir. Registro, upgrade y
+  renovación envían `expires`, `expiration_date_from`, `expiration_date_to` y
+  `date_of_expiration` usando exactamente las fechas persistidas. El webhook no
+  rechaza un pago aprobado por vencimiento o por estado `superseded`.
   Las rutas inline de pagos tienen respuestas `{error}` y manejo propio; no todas
   las respuestas de la API usan el formato `{message}` de los controllers. El alta
   paga valida `acceptedTerms` por truthiness, por lo que un valor no booleano como
@@ -1339,13 +1343,13 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   viven en `CrmProfile`, aislados del modelo User para no filtrarse por ningún endpoint
   público; solo se acceden vía `/api/admin/crm` (protect + isAdmin).
 
-### Estado operativo del flujo de suscripciones — 01-09-2026
+### Estado operativo del flujo de suscripciones — 02-09-2026
 
 - **Implementado y conectado en código**: recuperación del alta paga y sesión final;
   `PendingRegistration`, `PaymentCheckout`, `PaymentTransaction`, catálogo dinámico,
   consulta admin de pagos y referencias desde CRM/CEO. Vendedores/códigos también
   tienen modelos, rutas y UI conectados, pero el estado actual no es liberable.
-- **Resultado actual**: `npm test` pasa **126/126**. La suite cubre la cotización con
+- **Resultado actual**: `npm test` pasa **135/135**. La suite cubre la cotización con
   y sin vendedor, upgrade/renovación con precio regular, los flags de `editItem` y
   el alta con `sellerID` más siete días. Son pruebas locales con mocks donde aplica.
 - **Frontend actual**: typecheck, lint y build pasan después de restaurar localmente
@@ -1360,15 +1364,15 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
 - **Catálogo**: modelo, arranque, rutas, checkout, features y UI están integrados
   localmente. El precio regular alimenta el DTO, landing, upgrade y renovación;
   `discountPrice` se reserva al alta que resuelve un `sellerID` válido.
-- **PAY-05**: `PaymentCheckout` no guarda inicio/vencimiento de la preferencia. En
-  registro cada retry recalcula siete días y puede extender una preferencia
-  reutilizada; upgrade/renovación no envían expiración explícita. No usar TTL para
-  borrar la evidencia durable ni descartar un pago aprobado solo porque su webhook
-  llegue tarde.
+- **PAY-05 localmente completo**: `PaymentCheckout` guarda la ventana inmutable de
+  siete días; registro, upgrade y renovación usan esas fechas. Los retries válidos
+  no actualizan MP y los inválidos crean otro snapshot conservando el anterior. La
+  cobertura confirma acreditación de pagos aprobados tardíos y checkouts
+  `superseded`. No usa TTL de auditoría.
 - **Bloqueos de producción**: la plantilla PDF inserta `Item.image` sin validar ni
   escapar (inyección/SSRF en Chrome headless); el alta paga no exige
-  `acceptedTerms === true` ni aplica el blocklist de contraseñas; `Item.price` acepta
-  negativos. `npm audit` reporta 8 vulnerabilidades frontend (7 altas, 1 moderada)
+  `acceptedTerms === true` ni aplica el blocklist de contraseñas. `npm audit`
+  reporta 8 vulnerabilidades frontend (7 altas, 1 moderada)
   y 4 de runtime backend (2 altas, 1 moderada, 1 baja).
 - **Pendiente de verificación productiva**: después de corregir esos bloqueos,
   confirmar deploy Vercel/Koyeb y un pago real
@@ -1384,7 +1388,7 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
 
 - Frontend: `npm run typecheck`, `npm run lint`, `npm run build` (los tres pasan al
   01-09-2026; no existe una suite automatizada frontend configurada).
-- Backend: `npm test` (`node --test`) pasa 126/126. Los archivos de tests cubren admin, pagos admin,
+- Backend: `npm test` (`node --test`) pasa 135/135. Los archivos de tests cubren admin, pagos admin,
   CRM, entorno, disponibilidad, edición de items, ofertas, rutas de pagos, webhook,
   credenciales pendientes, catálogo, slug y auth. Mocks no prueban Atlas, transacciones
   reales, configuración del proxy, Cloudinary ni Checkout Pro.
