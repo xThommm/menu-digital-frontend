@@ -44,10 +44,16 @@
     align-items: start;
   }
 
-  .mpCatTitle {
-    grid-column: 1 / -1;
-    margin-bottom: 0; /* el row-gap de la grilla ya separa */
-  }
+  /* CATEGORÍA – más presencia */
+.mpCatTitle {
+  font-size: 0.75rem;           /* sube un poco */
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  color: var(--t-accent);
+  margin-bottom: 1rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--t-accent) 25%, var(--t-border));
+}
 
   .itemCard {
     margin-bottom: 0; /* idem: gap en vez de margin */
@@ -81,8 +87,8 @@
 .mpHeader {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.875rem 1rem;
+  gap: 0.875rem;
+  padding: 0.1rem 1.125rem;
   border-bottom: 0.5px solid var(--t-border-md);
   animation: t-fadeUp 0.35s ease both;
   backdrop-filter: blur(12px);
@@ -189,13 +195,13 @@
 
 .mpTab {
   flex-shrink: 0;
-  padding: 0.75rem 1.125rem;
+  padding: 0.875rem 1.25rem;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
-  font-weight: 400;
+  font-size: 0.875rem;
+  font-weight: 500;
   color: var(--t-muted);
   cursor: pointer;
   white-space: nowrap;
@@ -219,7 +225,7 @@
 
 .mpTab.active {
   color: var(--t-accent);
-  font-weight: 500;
+  font-weight: 650;
   border-bottom-color: var(--t-accent);
 }
 
@@ -251,16 +257,15 @@
   margin-bottom: 2rem;
 }
 
+/* CATEGORÍA – más presencia */
 .mpCatTitle {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 0.75rem;           /* sube un poco */
+  font-weight: 650;
+  letter-spacing: 0.14em;
   color: var(--t-accent);
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 0.5px solid var(--t-border);
-  line-height: 1;
+  margin-bottom: 1rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--t-accent) 25%, var(--t-border));
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -293,9 +298,11 @@
 }
 
 .itemCard:hover {
-  border-color: var(--t-border-md);
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--t-accent) 10%, transparent);
-  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--t-accent) 35%, var(--t-border));
+  box-shadow:
+    0 8px 24px color-mix(in srgb, var(--t-accent) 12%, transparent),
+    0 2px 6px color-mix(in srgb, var(--t-text) 6%, transparent);
+  transform: translateY(-2px);
 }
 
 .itemCard:active {

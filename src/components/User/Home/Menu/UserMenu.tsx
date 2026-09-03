@@ -169,9 +169,121 @@ export default function MenuPage() {
     0
   );
 
+  return (
+    <CartProvider slug={slug ?? ""} enabled={user.features?.pedido_whatsapp === true}>
+          {user.features?.sin_publicidad !== true && <FreePlanAd />}                    
+      <div className={styles.mp} data-template={user.template ?? 1}>
 
-  // ── Botón flotante del carrito ────────────────────────────────────────────────
+        {/* ── Cabecera + tabs (un solo bloque sticky — ver .mpSticky) ── */}
+        <div className={styles.mpSticky}>
+          <header className={styles.mpHeader}>
+            {user.features?.landing_page && <button className={styles.mpBack} onClick={goBack} aria-label="Volver al inicio del local">
+              <BackIcon />
+            </button>}
+            <div className={styles.mpHeaderInfo}>
+              <h1 className={styles.mpName}>{info.businessName || "Menú"}</h1>
+              <div className={styles.mpMeta}>
+                {info.address     && <span><PinIcon /> {info.address}</span>}
+                {user.hasDelivery && <span><DeliveryIcon /> Delivery</span>}
+              </div>
+            </div>
+          </header>
 
+          {/* Tabs (solo si hay más de una) */}
+          {tabs.length > 1 && (
+            <nav className={styles.mpTabs} role="tablist" aria-label="Secciones del menú">
+              {tabs.map((tab, i) => (
+                hasVisibleItems(tab) && (
+                  <button
+                    key={i}
+                    ref={el => { tabRefs.current[i] = el; }}
+                    id={`mp-tab-${i}`}
+                    role="tab"
+                    type="button"
+                    tabIndex={activeTab === i ? 0 : -1}
+                    aria-selected={activeTab === i}
+                    aria-controls="mp-tabpanel"
+                    className={`${styles.mpTab} ${activeTab === i ? styles.active : ""}`}
+                    onClick={() => handleTabChange(i)}
+                    onKeyDown={e => handleTabKeyDown(e, i)}
+                  >
+                    {tab.label}
+                  </button>
+                )
+              ))}
+            </nav>
+          )}
+
+        </div>
+
+        {/* ── Contenido del tab activo ── */}
+        {/* key=activeTab fuerza re-animación de entrada al cambiar de tab. */}
+        <main
+          id="mp-tabpanel"
+          role="tabpanel"
+          aria-labelledby={`mp-tab-${activeTab}`}
+          className={styles.mpContent}
+          key={activeTab}
+        >
+          {totalItems === 0 ? (
+            <p className={styles.mpCatEmpty}>Esta sección no tiene productos disponibles por ahora.</p>
+          ) : (
+            currentTab.categorias.map(cat => {
+              const visibleItems = cat.items.filter(it => !it.hidden);
+              if (visibleItems.length === 0) return null;
+
+              return (
+                <section key={cat._id} className={styles.mpCat}>
+                  <h2 className={styles.mpCatTitle}>{cat.title}</h2>
+                  {visibleItems.map((item, idx) => (
+                    <ItemCard
+                      key={item._id}
+                      item={item}
+                      index={idx}
+                      slug={slug ?? ""}
+                      hasDelivery={user.hasDelivery === true}
+                      onOpenPreview={() =>
+                        setPreviewIndex(visibleTabItems.findIndex(i => i._id === item._id))
+                      }
+                    />
+                  ))}
+                </section>
+              );
+            })
+          )}
+
+        </main>
+
+        {user.features?.pedido_whatsapp && <CartFab onClick={() => setCartOpen(true)} />}
+
+        {/* Dentro de .mp a propósito: el drawer usa los tokens --t-* del
+            template activo, que solo existen dentro de este contenedor. */}
+        {user.features?.pedido_whatsapp && <CartDrawer
+          open={cartOpen}
+          onClose={() => setCartOpen(false)}
+          businessName={info.businessName || "el local"}
+          whatsappNumber={info.number}
+        />}
+
+        {previewIndex !== null && (
+          <ItemPreviewModal
+            items={visibleTabItems}
+            index={previewIndex}
+            onClose={() => setPreviewIndex(null)}
+            hasDelivery={user.hasDelivery && user.features?.pedido_whatsapp === true}
+            onNavigate={setPreviewIndex}
+          />
+        )}
+      </div>
+    </CartProvider>
+  );
+}
+
+// ── Componentes de nivel de módulo (fuera de MenuPage a propósito: así
+// React no los remonta en cada render del padre y conservan su estado
+// interno entre renders) ────────────────────────────────────────────────
+
+// ── Botón flotante del carrito ────────────────────────────────────────────────
 function CartFab({ onClick }: { onClick: () => void }) {
   const { totalItems } = useCart();
   if (totalItems === 0) return null;
@@ -188,12 +300,14 @@ function CartFab({ onClick }: { onClick: () => void }) {
 function ItemCard({
   item,
   index,
-  slug, 
+  slug,
+  hasDelivery,
   onOpenPreview,
 }: {
   item: Item;
   index: number;
   slug: string;
+  hasDelivery: boolean;
   onOpenPreview: () => void;
 }) {
 
@@ -326,7 +440,7 @@ function ItemCard({
             <span className={styles.itemUnavail}>No disponible</span>
           )}
 
-          {(!hasOptions || isOnOffer) && item.available && activePrice != null && user?.hasDelivery && (
+          {(!hasOptions || isOnOffer) && item.available && activePrice != null && hasDelivery && (
             <AddControl
               qty={qtyOf(undefined)}
               onAdd={handleAddSimple}
@@ -436,117 +550,6 @@ function MenuSkeleton() {
     </div>
   );
 }
-
-  return (
-    <CartProvider slug={slug ?? ""} enabled={user.features?.pedido_whatsapp === true}>
-          {user.features?.sin_publicidad !== true && <FreePlanAd />}                    
-      <div className={styles.mp} data-template={user.template ?? 1}>
-
-        {/* ── Cabecera + tabs (un solo bloque sticky — ver .mpSticky) ── */}
-        <div className={styles.mpSticky}>
-          <header className={styles.mpHeader}>
-            {user.features?.landing_page && <button className={styles.mpBack} onClick={goBack} aria-label="Volver al inicio del local">
-              <BackIcon />
-            </button>}
-            <div className={styles.mpHeaderInfo}>
-              <h1 className={styles.mpName}>{info.businessName || "Menú"}</h1>
-              <div className={styles.mpMeta}>
-                {info.address     && <span><PinIcon /> {info.address}</span>}
-                {user.hasDelivery && <span><DeliveryIcon /> Delivery</span>}
-              </div>
-            </div>
-          </header>
-
-          {/* Tabs (solo si hay más de una) */}
-          {tabs.length > 1 && (
-            <nav className={styles.mpTabs} role="tablist" aria-label="Secciones del menú">
-              {tabs.map((tab, i) => (
-                hasVisibleItems(tab) && (
-                  <button
-                    key={i}
-                    ref={el => { tabRefs.current[i] = el; }}
-                    id={`mp-tab-${i}`}
-                    role="tab"
-                    type="button"
-                    tabIndex={activeTab === i ? 0 : -1}
-                    aria-selected={activeTab === i}
-                    aria-controls="mp-tabpanel"
-                    className={`${styles.mpTab} ${activeTab === i ? styles.active : ""}`}
-                    onClick={() => handleTabChange(i)}
-                    onKeyDown={e => handleTabKeyDown(e, i)}
-                  >
-                    {tab.label}
-                  </button>
-                )
-              ))}
-            </nav>
-          )}
-
-        </div>
-
-        {/* ── Contenido del tab activo ── */}
-        {/* key=activeTab fuerza re-animación de entrada al cambiar de tab. */}
-        <main
-          id="mp-tabpanel"
-          role="tabpanel"
-          aria-labelledby={`mp-tab-${activeTab}`}
-          className={styles.mpContent}
-          key={activeTab}
-        >
-          {totalItems === 0 ? (
-            <p className={styles.mpCatEmpty}>Esta sección no tiene productos disponibles por ahora.</p>
-          ) : (
-            currentTab.categorias.map(cat => {
-              const visibleItems = cat.items.filter(it => !it.hidden);
-              if (visibleItems.length === 0) return null;
-
-              return (
-                <section key={cat._id} className={styles.mpCat}>
-                  <h2 className={styles.mpCatTitle}>{cat.title}</h2>
-                  {visibleItems.map((item, idx) => (
-                    <ItemCard
-                      key={item._id}
-                      item={item}
-                      index={idx}
-                      slug={slug ?? ""}
-                      onOpenPreview={() =>
-                        setPreviewIndex(visibleTabItems.findIndex(i => i._id === item._id))
-                      }
-                    />
-                  ))}
-                </section>
-              );
-            })
-          )}
-
-        </main>
-
-        {user.features?.pedido_whatsapp && <CartFab onClick={() => setCartOpen(true)} />}
-
-        {/* Dentro de .mp a propósito: el drawer usa los tokens --t-* del
-            template activo, que solo existen dentro de este contenedor. */}
-        {user.features?.pedido_whatsapp && <CartDrawer
-          open={cartOpen}
-          onClose={() => setCartOpen(false)}
-          businessName={info.businessName || "el local"}
-          whatsappNumber={info.number}
-        />}
-
-        {previewIndex !== null && (
-          <ItemPreviewModal
-            items={visibleTabItems}
-            index={previewIndex}
-            onClose={() => setPreviewIndex(null)}
-            hasDelivery={user.hasDelivery && user.features?.pedido_whatsapp === true}
-            onNavigate={setPreviewIndex}
-          />
-        )}
-      </div>
-    </CartProvider>
-  );
-}
-
-
 
 // ── Íconos ────────────────────────────────────────────────────────────────────
 
