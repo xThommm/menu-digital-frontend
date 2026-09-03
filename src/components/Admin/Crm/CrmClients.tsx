@@ -114,7 +114,35 @@ const dateInputValue = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
 const planExpiryLabel = (subscription: CrmClient["subscription"], iso: string | null) => {
   if (subscription === "free") return "Sin vencimiento";
   if (!iso) return "Sin fecha registrada";
-  return `${new Date(iso).getTime() < Date.now() ? "Venció" : "Vence"} ${fmtDate(iso)}`;
+  const expiryMs = new Date(iso).getTime();
+  if (!Number.isFinite(expiryMs)) return "Fecha inválida — revisar";
+  return `${expiryMs <= Date.now() ? "Venció" : "Vence"} ${fmtDate(iso)}`;
+};
+
+type SubscriptionView = {
+  subscription: CrmClient["subscription"];
+  effectiveSubscription?: CrmClient["effectiveSubscription"];
+  subscriptionStatus?: CrmClient["subscriptionStatus"];
+  subscriptionExpiresAt?: string | null;
+};
+
+// El backend entrega el plan efectivo. El fallback mantiene el CRM correcto
+// durante un despliegue escalonado y para respuestas cacheadas antiguas.
+const effectiveSubscriptionFor = (record: SubscriptionView): CrmClient["subscription"] => {
+  if (record.effectiveSubscription) return record.effectiveSubscription;
+  if (record.subscription === "free") return "free";
+  if (record.subscriptionStatus === "expired") return "free";
+  if (!record.subscriptionExpiresAt) return record.subscription;
+  const expiryMs = new Date(record.subscriptionExpiresAt).getTime();
+  return !Number.isFinite(expiryMs) || expiryMs <= Date.now() ? "free" : record.subscription;
+};
+
+const planBadgeLabel = (record: SubscriptionView) => {
+  const effective = effectiveSubscriptionFor(record);
+  if (effective === "free" && record.subscription !== "free") {
+    return `Gratis · ${PLAN_LABEL[record.subscription]} vencido`;
+  }
+  return PLAN_LABEL[effective];
 };
 
 // Compatibilidad durante un despliegue escalonado: si todavía responde el
@@ -122,11 +150,19 @@ const planExpiryLabel = (subscription: CrmClient["subscription"], iso: string | 
 // deducirse del contrato viejo. Las demás señales siguen siendo del servidor.
 const normalizeAttention = (clients: CrmClient[]) => clients.map((client) => {
   if (client.attention) return client;
+  const attention: CrmAttentionCode[] = [];
+  if (client.subscription !== "free") {
+    const effective = effectiveSubscriptionFor(client);
+    if (effective === "free") attention.push("subscription_expired");
+    else if (!client.subscriptionExpiresAt) attention.push("subscription_missing_expiry");
+    else if (new Date(client.subscriptionExpiresAt).getTime() <= Date.now() + 30 * 86_400_000) {
+      attention.push("subscription_expiring");
+    }
+  }
+  if (isOverdue(client.nextFollowUp)) attention.push("follow_up_overdue");
   return {
     ...client,
-    attention: isOverdue(client.nextFollowUp)
-      ? ["follow_up_overdue" as const]
-      : [],
+    attention,
   };
 });
 
@@ -233,7 +269,7 @@ export default function CrmClients() {
 
   const filtered = clients.filter((c) => {
     if (stageFilter !== "all" && c.stage !== stageFilter) return false;
-    if (planFilter !== "all" && c.subscription !== planFilter) return false;
+    if (planFilter !== "all" && effectiveSubscriptionFor(c) !== planFilter) return false;
     if (accountFilter === "active" && !c.active) return false;
     if (accountFilter === "inactive" && c.active) return false;
     if (attentionFilter !== "all" && !(c.attention || []).includes(attentionFilter)) return false;
@@ -495,7 +531,7 @@ export default function CrmClients() {
                           {c.businessName || `@${c.username}`}
                         </span>
                         <span className={s.kanbanCardMeta}>
-                          <span className={`${s.planBadge} ${s[`plan_${c.subscription}`]}`}>{PLAN_LABEL[c.subscription]}</span>
+                          <span className={`${s.planBadge} ${s[`plan_${effectiveSubscriptionFor(c)}`]}`}>{planBadgeLabel(c)}</span>
                           {!c.active && <span className={s.inactiveTag}>Inactivo</span>}
                         </span>
                         {c.nextFollowUp && (
@@ -628,7 +664,7 @@ function ClientTableRow({ client, onOpen }: { client: CrmClient; onOpen: (userID
       </td>
       <td>
         <div className={s.tablePlan}>
-          <span className={`${s.planBadge} ${s[`plan_${client.subscription}`]}`}>{PLAN_LABEL[client.subscription]}</span>
+          <span className={`${s.planBadge} ${s[`plan_${effectiveSubscriptionFor(client)}`]}`}>{planBadgeLabel(client)}</span>
           <small>{planExpiryLabel(client.subscription, client.subscriptionExpiresAt || null)}</small>
         </div>
       </td>
@@ -928,7 +964,7 @@ function ClientDrawer({
                 <div className={s.metaGrid}>
                   <div className={s.metaItem}>
                     <span className={s.metaLabel}>Plan</span>
-                    <span className={`${s.planBadge} ${s[`plan_${u.subscription}`]}`}>{PLAN_LABEL[u.subscription]}</span>
+                    <span className={`${s.planBadge} ${s[`plan_${effectiveSubscriptionFor(u)}`]}`}>{planBadgeLabel(u)}</span>
                   </div>
                   <div className={s.metaItem}>
                     <span className={s.metaLabel}>Estado</span>

@@ -32,6 +32,17 @@ function timeAgo(dateStr: string) {
   return `Hace ${years} ${years === 1 ? "año" : "años"}`;
 }
 
+// El CRM ya entrega el plan efectivo. El fallback cubre respuestas antiguas
+// para que una suscripción vencida nunca vuelva a contarse como paga en el
+// resumen ejecutivo.
+function effectivePlanForClient(client: CrmClient): Subscription {
+  if (client.effectiveSubscription) return client.effectiveSubscription;
+  if (client.subscription === "free" || client.subscriptionStatus === "expired") return "free";
+  if (!client.subscriptionExpiresAt) return client.subscription;
+  const expiresAt = new Date(client.subscriptionExpiresAt).getTime();
+  return !Number.isFinite(expiresAt) || expiresAt <= Date.now() ? "free" : client.subscription;
+}
+
 export default function CEODashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -86,7 +97,7 @@ export default function CEODashboard() {
       && createdAt.getFullYear() === now.getFullYear();
   }).length;
   const planBreakdown = clients.reduce<Record<Subscription, number>>((totals, client) => {
-    totals[client.subscription] += 1;
+    totals[effectivePlanForClient(client)] += 1;
     return totals;
   }, { free: 0, basic: 0, pro: 0 });
   const publishedPercent = stats && stats.usuarios.total > 0
@@ -253,8 +264,8 @@ export default function CEODashboard() {
                     <strong>{client.businessName || "Sin nombre comercial"}</strong>
                     <small>@{client.username} · {client.slug || "sin slug"}</small>
                   </span>
-                  <span className={`${s.planPill} ${s[`plan_${client.subscription}`]}`}>
-                    {PLAN_LABEL[client.subscription]}
+                  <span className={`${s.planPill} ${s[`plan_${effectivePlanForClient(client)}`]}`}>
+                    {PLAN_LABEL[effectivePlanForClient(client)]}
                   </span>
                   <span className={`${s.accountStatus} ${client.active ? s.accountActive : s.accountInactive}`}>
                     {client.active ? "Activo" : "Inactivo"}

@@ -1,6 +1,32 @@
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AuthContext } from "./AuthContext";
 import type { AuthResponse, AuthUser } from '../types';
+
+type AuthUserPayload = {
+  _id: string
+  username: string
+  admin: boolean
+  slug: string
+  subscription?: AuthUser["subscription"]
+  subscriptionExpiresAt?: string | null
+  subscriptionStatus?: AuthUser["subscriptionStatus"]
+  previousSubscription?: AuthUser["previousSubscription"]
+  downgradeReason?: AuthUser["downgradeReason"]
+  downgradedAt?: string | null
+}
+
+const toAuthUser = (data: AuthUserPayload): AuthUser => ({
+  id: data._id,
+  name: data.username,
+  role: data.admin ? "admin" : "user",
+  slug: data.slug,
+  subscription: data.subscription ?? "free",
+  subscriptionExpiresAt: data.subscriptionExpiresAt ?? null,
+  subscriptionStatus: data.subscriptionStatus,
+  previousSubscription: data.previousSubscription ?? null,
+  downgradeReason: data.downgradeReason ?? null,
+  downgradedAt: data.downgradedAt ?? null,
+});
 
 
 function readAuthFromStorage(): { user: AuthUser | null; token: string | null } {
@@ -36,14 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setToken = (t: string | null)   => setAuth(prev => ({ ...prev, token: t }));
 
   const completeLogin = useCallback((data: AuthResponse): AuthUser => {
-    const loggedUser: AuthUser = {
-      id: data._id,
-      name: data.username,
-      role: data.admin ? "admin" : "user",
-      slug: data.slug,
-      subscription: data.subscription ?? "free",
-      subscriptionExpiresAt: data.subscriptionExpiresAt ?? null,
-    };
+    const loggedUser = toAuthUser(data);
 
     setAuth({ token: data.token, user: loggedUser });
     localStorage.setItem("token", data.token);
@@ -60,20 +79,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (!response.ok) return null;
 
-    const data = await response.json();
-    const refreshedUser: AuthUser = {
-      id: data._id,
-      name: data.username,
-      role: data.admin ? "admin" : "user",
-      slug: data.slug,
-      subscription: data.subscription ?? "free",
-      subscriptionExpiresAt: data.subscriptionExpiresAt ?? null,
-    };
+    const data = await response.json() as AuthUserPayload;
+    const refreshedUser = toAuthUser(data);
 
     setAuth(prev => ({ ...prev, user: refreshedUser }));
     localStorage.setItem("user", JSON.stringify(refreshedUser));
     return refreshedUser;
   }, [token]);
+
+  // La expiración se resuelve en el servidor en cada request. Este refresco
+  // mantiene la sesión alineada sin exigir que el usuario cierre y vuelva a
+  // abrir el panel justo cuando vence el plan: sincroniza al entrar, al volver
+  // a la pestaña y en el instante de vencimiento (con chequeos diarios para
+  // fechas muy lejanas). Las cuentas legacy sin fecha no generan timers.
+  useEffect(() => {
+    if (!token) return;
+
+    let cancelled = false;
+    let expiryTimer: number | undefined;
+    const maxTimerDelay = 24 * 60 * 60 * 1000;
+
+    const sync = () => {
+      if (!cancelled) void refreshUser().catch(() => {});
+    };
+
+    const expiresAt = user?.subscriptionExpiresAt
+      ? new Date(user.subscriptionExpiresAt).getTime()
+      : Number.NaN;
+    if (user?.subscription !== "free" && Number.isFinite(expiresAt)) {
+      const scheduleExpiryCheck = () => {
+        if (cancelled) return;
+        const remaining = expiresAt - Date.now();
+        if (remaining <= 0) {
+          sync();
+          return;
+        }
+        expiryTimer = window.setTimeout(scheduleExpiryCheck, Math.min(remaining + 100, maxTimerDelay));
+      };
+      scheduleExpiryCheck();
+    }
+
+    const onFocus = () => sync();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") sync();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    sync();
+
+    return () => {
+      cancelled = true;
+      if (expiryTimer !== undefined) window.clearTimeout(expiryTimer);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [refreshUser, token, user?.subscription, user?.subscriptionExpiresAt, user?.subscriptionStatus]);
 
   // ✅ Parámetro `username` no choca con ningún estado
   const login = async (username: string, password: string): Promise<AuthUser> => {

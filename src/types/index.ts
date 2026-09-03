@@ -7,6 +7,8 @@
 // Niveles de plan. Espejo de PLAN_ORDER en el backend (config/plans.js).
 // "free" es el piso (sin pagar); basic/pro son los pagos.
 export type Subscription = "free" | "basic" | "pro"
+export type SubscriptionStatus = "free" | "active" | "expired"
+export type DowngradeReason = "subscription_expired"
 
 // Contrato del catálogo MongoDB. Los valores vienen de la API, nunca del nombre del plan.
 export interface PlanFeatures {
@@ -115,6 +117,11 @@ export interface AuthUser {
   slug: string
   subscription: Subscription
   subscriptionExpiresAt?: string | null
+  // Opcionales para tolerar sesiones guardadas y despliegues escalonados.
+  subscriptionStatus?: SubscriptionStatus
+  previousSubscription?: Exclude<Subscription, "free"> | null
+  downgradeReason?: DowngradeReason | null
+  downgradedAt?: string | null
 }
 
 export interface Menu {
@@ -168,6 +175,10 @@ export interface AuthResponse {
   slug: string
   subscription: Subscription
   subscriptionExpiresAt?: string | null
+  subscriptionStatus?: SubscriptionStatus
+  previousSubscription?: Exclude<Subscription, "free"> | null
+  downgradeReason?: DowngradeReason | null
+  downgradedAt?: string | null
   token: string
 }
 
@@ -382,6 +393,11 @@ export interface CrmClient {
   businessName: string
   slug: string
   subscription: Subscription
+  effectiveSubscription?: Subscription
+  subscriptionStatus?: SubscriptionStatus
+  previousSubscription?: Exclude<Subscription, "free"> | null
+  downgradeReason?: DowngradeReason | null
+  downgradedAt?: string | null
   subscriptionExpiresAt?: string | null
   active: boolean
   createdAt: string
@@ -416,6 +432,11 @@ export interface CrmClientDetailUser {
   username: string
   slug: string
   subscription: Subscription
+  effectiveSubscription?: Subscription
+  subscriptionStatus?: SubscriptionStatus
+  previousSubscription?: Exclude<Subscription, "free"> | null
+  downgradeReason?: DowngradeReason | null
+  downgradedAt?: string | null
   subscriptionExpiresAt: string | null
   active: boolean
   hasDelivery: boolean

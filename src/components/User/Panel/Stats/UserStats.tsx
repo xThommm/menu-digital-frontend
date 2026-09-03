@@ -3,7 +3,7 @@ import { useAuth } from "../../../../context/useAuth";
 import { useNotifications } from "../../../../context/useNotifications";
 import type { StatsData, ItemStatsData } from "../../../../types";
 import { usePlans } from "../../../../hooks/usePlans";
-import { PLAN_ORDER } from "../../../../lib/plans";
+import { isSubscriptionExpired, PLAN_ORDER } from "../../../../lib/plans";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import s from "./UserStats.module.css";
 
@@ -44,7 +44,16 @@ async function requestItemStats(token: string): Promise<ItemStatsResult> {
 export default function UserStats() {
   const { token, user, isLoading: authLoading } = useAuth();
   const catalog = usePlans();
-  const statsPlan = catalog.isError ? undefined : catalog.data?.find(plan => plan.features.estadisticas && PLAN_ORDER.indexOf(plan.name) > PLAN_ORDER.indexOf(user?.subscription ?? "free"));
+  const effectiveSubscription = user && isSubscriptionExpired(
+    user.subscription,
+    user.subscriptionExpiresAt,
+    user.subscriptionStatus,
+  )
+    ? "free"
+    : (user?.subscription ?? "free");
+  const statsPlan = catalog.isError
+    ? undefined
+    : catalog.data?.find(plan => plan.features.estadisticas && PLAN_ORDER.indexOf(plan.name) > PLAN_ORDER.indexOf(effectiveSubscription));
   const { error: notifyError } = useNotifications();
 
   const [stats, setStats]         = useState<StatsData | null>(null);
@@ -155,7 +164,7 @@ export default function UserStats() {
           </div>
           {upgradeOpen && (
             <UpgradeModal
-              currentPlan={user?.subscription ?? "free"}
+              currentPlan={effectiveSubscription}
               minPlan="basic"
               requiredFeature="estadisticas"
               title="Desbloqueá las estadísticas"

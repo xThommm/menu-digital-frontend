@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../context/useAuth";
 import { useTheme } from "../../../../hooks/useTheme";
 import { usePlans } from "../../../../hooks/usePlans";
+import { isSubscriptionExpired, PLAN_LABEL } from "../../../../lib/plans";
 import BrandMark from "../../../Common/BrandMark";
 import s from "./DashboardLayout.module.css";
 
@@ -48,6 +49,18 @@ export default function DashboardLayout() {
   // Etiqueta del toggle: describe la ACCIÓN (a qué tema cambia), no el estado
   // actual — más claro para lectores de pantalla.
   const themeLabel = theme === "dark" ? "Activar tema claro" : "Activar tema oscuro";
+  const subscriptionExpired = user
+    ? isSubscriptionExpired(user.subscription, user.subscriptionExpiresAt, user.subscriptionStatus)
+    : false;
+  const effectiveSubscription = subscriptionExpired ? "free" : user?.subscription;
+  const previousPlanLabel = user?.previousSubscription
+    ? PLAN_LABEL[user.previousSubscription]
+    : null;
+  const previousPlanText = previousPlanLabel ? `plan ${previousPlanLabel}` : "plan pago";
+  const downgradeDate = user?.downgradedAt || user?.subscriptionExpiresAt;
+  const downgradeDateLabel = downgradeDate && Number.isFinite(new Date(downgradeDate).getTime())
+    ? new Date(downgradeDate).toLocaleDateString("es-AR")
+    : "";
 
   return (
     <div className={s.layoutRoot}>
@@ -98,8 +111,19 @@ export default function DashboardLayout() {
 
       {/* ── Contenido de la página activa ────────────────────────────────── */}
       <div className={`${s.content} admin-layout-content`}>
-        {!catalog.isError && catalog.data?.find(plan => plan.name === user?.subscription)?.features.sin_publicidad === false && (
-          <aside className={s.freeBanner} aria-label="Publicidad de MenuDigital">
+        {subscriptionExpired && (
+          <aside className={s.expiryBanner} role="status" aria-live="polite">
+            <div className={s.expiryBannerCopy}>
+              <strong>Tu {previousPlanText} venció{downgradeDateLabel ? ` el ${downgradeDateLabel}` : ""}.</strong>
+              <span>Tu cuenta pasó a Gratis y las funciones incluidas en {previousPlanText} quedaron deshabilitadas.</span>
+            </div>
+            <button type="button" className={s.expiryBannerAction} onClick={() => navigate("/dashboard")}>
+              Renovar plan
+            </button>
+          </aside>
+        )}
+        {!catalog.isError && catalog.data?.find(plan => plan.name === effectiveSubscription)?.features.sin_publicidad === false && (
+          <aside className={`${s.freeBanner} ${subscriptionExpired ? s.freeBannerAfterExpiry : ""}`} aria-label="Publicidad de MenuDigital">
             <BrandMark className={s.freeBannerLogo} />
             <div className={s.freeBannerCopy}>
               <span className={s.freeBannerBrand}>Menú Digital</span>

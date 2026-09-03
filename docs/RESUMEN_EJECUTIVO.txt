@@ -40,8 +40,8 @@ Esta tabla es una referencia de la configuración inicial. El catálogo vigente 
 
 | Función | Gratis | Básico / Basic | Pro |
 |---|---|---|---|
-| Precio por 1 mes | $0 | $29.999 | $49.999 |
-| Productos totales por cuenta | Hasta 15 | Hasta 50 | Ilimitados |
+| Precio por 1 mes | $0 | $49.999 | $69.999 |
+| Productos totales por cuenta | Hasta 7 | Hasta 50 | Ilimitados |
 | Editor, fotos, precios y variantes | Sí | Sí | Sí |
 | Página del local y QR descargable | Sí | Sí | Sí |
 | Carrito y mensaje por WhatsApp | Sí | Sí | Sí |

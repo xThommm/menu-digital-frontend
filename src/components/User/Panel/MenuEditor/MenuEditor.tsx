@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, memo, useMemo } from "react";
 import { useAuth } from "../../../../context/useAuth";
 import { useNotifications } from "../../../../context/useNotifications";
+import { isSubscriptionExpired } from "../../../../lib/plans";
 import { useFeedbackMessage } from "../../../../hooks/useFeedbackMessage";
 import MassiveImport from "../../../../Utils/MassiveImport";
 import type {
@@ -473,6 +474,13 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
 export default function MenuEditorPage() {
   const { token, user } = useAuth();
   const { success: notifySuccess } = useNotifications();
+  const effectiveSubscription = user && isSubscriptionExpired(
+    user.subscription,
+    user.subscriptionExpiresAt,
+    user.subscriptionStatus,
+  )
+    ? "free"
+    : (user?.subscription ?? "free");
 
   const [menuData,    setMenuData]    = useState<MenuData | null>(null);
   const [limits,      setLimits]      = useState<{
@@ -2158,7 +2166,7 @@ export default function MenuEditorPage() {
         {/* ══ MODAL DE UPGRADE (límite de productos / importador Excel) ══ */}
         {upgradeReason && (
           <UpgradeModal
-            currentPlan={user?.subscription ?? "free"}
+            currentPlan={effectiveSubscription}
             minPlan="basic"
             requiredFeature={upgradeReason === "excel" ? "carga_masiva_excel" : upgradeReason === "pdf" ? "menu_pdf" : upgradeReason === "items" ? undefined : "programacion_productos"}
             minimumItems={upgradeReason === "items" ? (limits?.itemCount ?? totalItems) + 1 : undefined}

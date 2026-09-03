@@ -5,7 +5,7 @@ import QRCode from "qrcode";
 import { jsPDF } from "jspdf";
 import { useAuth } from "../../../../context/useAuth";
 import { useNotifications } from "../../../../context/useNotifications";
-import { getPlanFeatureLabels, PLAN_LABEL } from "../../../../lib/plans";
+import { getPlanFeatureLabels, isSubscriptionExpired, PLAN_LABEL } from "../../../../lib/plans";
 import type { DashData } from "../../../../types";
 import { usePlans } from "../../../../hooks/usePlans";
 import UpgradeModal from "../../../Common/UpgradeModal";
@@ -32,14 +32,28 @@ function useSpotlight(ref: React.RefObject<HTMLElement>) {
 export default function UserDashboard() {
   const { token, user, isLoading, refreshUser } = useAuth();
   const catalog = usePlans();
-  const currentPlan = catalog.isError ? undefined : catalog.data?.find(plan => plan.name === user?.subscription);
-  const canDownloadQr = currentPlan?.features.qr === true;
   const {
     success: notifySuccess,
     error: notifyError,
     info: notifyInfo,
   } = useNotifications();
   const navigate = useNavigate();
+  const subscriptionExpired = user
+    ? isSubscriptionExpired(user.subscription, user.subscriptionExpiresAt, user.subscriptionStatus)
+    : false;
+  const previousPlanLabel = user?.previousSubscription
+    ? PLAN_LABEL[user.previousSubscription]
+    : null;
+  const previousPlanText = previousPlanLabel ? `plan ${previousPlanLabel}` : "plan pago";
+  const downgradeDate = user?.downgradedAt || user?.subscriptionExpiresAt;
+  const downgradeDateLabel = downgradeDate && Number.isFinite(new Date(downgradeDate).getTime())
+    ? new Date(downgradeDate).toLocaleDateString("es-AR")
+    : "";
+  const effectiveSubscription = subscriptionExpired ? "free" : (user?.subscription ?? "free");
+  const currentPlan = catalog.isError
+    ? undefined
+    : catalog.data?.find(plan => plan.name === effectiveSubscription);
+  const canDownloadQr = currentPlan?.features.qr === true;
 
   const [data, setData]     = useState<DashData | null>(null);
   const [copied, setCopied] = useState(false);
@@ -269,14 +283,24 @@ export default function UserDashboard() {
 
         {/* Plan actual + acceso explícito al flujo de upgrade. */}
         {user && (
-          <div className={`${s.planCard} ${user.subscription === "pro" ? s.planCardPro : ""}`}>
+          <div className={`${s.planCard} ${effectiveSubscription === "pro" ? s.planCardPro : ""}`}>
             <div className={s.planInfo}>
               <span className={s.planLabel}>Tu plan</span>
               <strong className={s.planName}>{currentPlan?.label ?? PLAN_LABEL[user.subscription]}</strong>
               <span className={s.planDescription}>
-                {currentPlan ? getPlanFeatureLabels(currentPlan.features).join(" · ") : "No se pudo consultar la configuración del plan."}
+                {subscriptionExpired
+                  ? `Tu ${previousPlanText} venció. Ahora tenés las funciones del plan Gratis.`
+                  : currentPlan
+                    ? getPlanFeatureLabels(currentPlan.features).join(" · ")
+                    : "No se pudo consultar la configuración del plan."}
               </span>
-              {user.subscription !== "free" && (
+              {subscriptionExpired ? (
+                <span className={s.planExpiry}>
+                  {downgradeDateLabel
+                    ? `${previousPlanText} venció el ${downgradeDateLabel}. Tu cuenta fue degradada a Gratis.`
+                    : `Tu ${previousPlanText} venció y tu cuenta fue degradada a Gratis.`}
+                </span>
+              ) : user.subscription !== "free" && (
                 <span className={s.planExpiry}>
                   {user.subscriptionExpiresAt
                     ? `Vigente hasta el ${new Date(user.subscriptionExpiresAt).toLocaleDateString("es-AR")}`
@@ -285,7 +309,9 @@ export default function UserDashboard() {
               )}
             </div>
             <button className={s.planUpgradeBtn} type="button" onClick={() => setUpgradeOpen(true)}>
-              {user.subscription === "free"
+              {subscriptionExpired
+                ? "Renovar plan"
+                : user.subscription === "free"
                 ? "Mejorar plan"
                 : user.subscription === "basic"
                   ? "Renovar o pasar a Pro"
@@ -296,11 +322,13 @@ export default function UserDashboard() {
 
         {upgradeOpen && user && (
           <UpgradeModal
-            currentPlan={user.subscription}
-            minPlan={user.subscription === "free" ? "basic" : user.subscription}
-            allowCurrentPlan={user.subscription !== "free"}
-            title={user.subscription === "free" ? "Elegí el plan para tu negocio" : "Renová o mejorá tu plan"}
-            description={user.subscription === "free"
+            currentPlan={effectiveSubscription || "free"}
+            minPlan={effectiveSubscription === "free" ? "basic" : effectiveSubscription}
+            allowCurrentPlan={effectiveSubscription !== "free" && !subscriptionExpired}
+            title={subscriptionExpired || user.subscription === "free" ? "Elegí el plan para tu negocio" : "Renová o mejorá tu plan"}
+            description={subscriptionExpired
+              ? `Tu ${previousPlanText} venció. Elegí un plan para recuperar sus funciones y continuar trabajando.`
+              : user.subscription === "free"
               ? "Pasá a Básico o Pro, elegí la duración y aprovechá el descuento por prepago."
               : user.subscription === "basic"
                 ? "Sumá meses a tu plan o consultá las funciones disponibles en otros planes."

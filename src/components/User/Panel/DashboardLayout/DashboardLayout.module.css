@@ -125,6 +125,53 @@
   min-width: 0;
 }
 
+/* ── Aviso de downgrade por vencimiento ── */
+.expiryBanner {
+  position: sticky;
+  top: 0;
+  z-index: 16;
+  min-height: 62px;
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 0.5px solid var(--admin-red-border);
+  background: var(--admin-red-bg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+}
+
+.expiryBannerCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  color: var(--admin-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.expiryBannerCopy strong {
+  color: var(--admin-red-text);
+  font-weight: 700;
+}
+
+.expiryBannerAction {
+  flex: 0 0 auto;
+  min-height: var(--control-min-size);
+  padding: 0 var(--space-4);
+  border: 0.5px solid var(--admin-red-border);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-bg-raised);
+  color: var(--admin-red-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.expiryBannerAction:hover {
+  background: var(--admin-bg-raised-2);
+}
+
 /* ── Publicidad del plan gratuito ── */
 .freeBanner {
   position: sticky;
@@ -139,6 +186,10 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-6);
+}
+
+.freeBannerAfterExpiry {
+  top: 62px;
 }
 
 .freeBannerLogo {
@@ -190,6 +241,29 @@
   .freeBanner {
     min-height: 68px;
     padding: var(--space-2) var(--space-4);
+  }
+
+  .expiryBanner {
+    min-height: 86px;
+    padding: var(--space-3) var(--space-4);
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .expiryBannerCopy {
+    font-size: var(--text-xs);
+    line-height: 1.35;
+  }
+
+  .expiryBannerAction {
+    min-height: 34px;
+    padding: 0 var(--space-3);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+  }
+
+  .freeBannerAfterExpiry {
+    top: 86px;
   }
 
   .freeBannerLogo {
