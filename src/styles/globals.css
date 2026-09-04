@@ -1421,8 +1421,16 @@ a:hover { opacity: 0.75; }
     align-items: stretch;
     gap: 0.85rem;
     padding: 0.9rem 1rem;
-    margin: 0.6rem 0.75rem;
-    width: auto;
+    /* Antes quedaba como una tarjeta flotante (margen a los costados +
+       esquinas redondeadas), desconectada del resto de la carta que va de
+       borde a borde. De borde a borde y pegada arriba se lee como una franja
+       fija de la página, no como un anuncio que se puede ignorar — a
+       propósito: a un usuario Free le tiene que costar sacarse esto de
+       encima, es lo que empuja a pasar a un plan pago. */
+    margin: 0;
+    width: 100%;
+    border-radius: 0;
+    border-width: 0 0 1px;
   }
 
   .t-free-plan-ad-content {
