@@ -670,6 +670,8 @@ useEffect(() => {
               <Link to="/privacidad">Privacidad</Link>
               <Link to="/contacto">Contacto</Link>
               <Link to="/contacto">Soporte</Link>
+              <Link to="/arrepentimiento">Botón de Arrepentimiento</Link>
+              <Link to="/baja">Botón de Baja de Servicio</Link>
             </div>
             <div className={styles.footCopy}>© 2026 Menú Digital. Hecho en Argentina 🇦🇷</div>
           </div>

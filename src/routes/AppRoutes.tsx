@@ -12,6 +12,8 @@ const RegisterSuccess = lazy(() => import("../components/Register/RegisterSucces
 const Terms   = lazy(() => import("../../src/pages/Legal/Terms"));
 const Privacy = lazy(() => import("../../src/pages/Legal/Privacy"));
 const Contact = lazy(() => import("../../src/pages/Legal/Contact"));
+const Arrepentimiento = lazy(() => import("../../src/pages/Legal/Regret"));
+const Baja = lazy(() => import("../../src/pages/Legal/Unsubscribe"));
 
 // CEO / Admin interno
 const AdminHome    = lazy(() => import("../../src/components/Admin/Home/AdminHome"));
@@ -45,7 +47,8 @@ export default function AppRoutes() {
       <Route path="/terminos"  element={<Terms />} />
       <Route path="/privacidad" element={<Privacy />} />
       <Route path="/contacto"  element={<Contact />} />
-
+      <Route path="/arrepentimiento" element={<Arrepentimiento />} />
+      <Route path="/baja" element={<Baja />} />
       {/* Rutas protegidas — solo admins (CEOs), con sidebar/bottomnav persistente */}
       <Route element={<AdminRoute />}>
         <Route element={<AdminLayout />}>

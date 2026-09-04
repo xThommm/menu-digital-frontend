@@ -218,6 +218,8 @@ export default function Privacy() {
             <Link to="/terminos">Términos</Link>
             <Link to="/privacidad">Privacidad</Link>
             <Link to="/contacto">Contacto</Link>
+            <Link to="/arrepentimiento">Botón de Arrepentimiento</Link>
+            <Link to="/baja">Botón de Baja de Servicio</Link>
           </div>
           <span className={styles.footCopy}>© 2026 MenuDigitalApp. Hecho en Argentina 🇦🇷</span>
         </div>
