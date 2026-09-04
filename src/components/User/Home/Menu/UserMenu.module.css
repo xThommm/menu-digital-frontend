@@ -77,10 +77,14 @@
 
 /* Header + tabs comparten un único wrapper sticky: las tabs quedan
    pegadas exactamente debajo del header sin acoplar un top: fijo
-   (antes top: 57px) a una altura que cambia entre mobile y desktop. */
+   (antes top: 57px) a una altura que cambia entre mobile y desktop.
+   --free-ad-h (seteada por FreePlanAd, 0px si no está montado) corre este
+   sticky justo debajo del banner de publicidad en vez de competir con él
+   por el mismo top:0 — antes el banner (z-index más alto) tapaba el
+   header entero al scrollear. */
 .mpSticky {
   position: sticky;
-  top: 0;
+  top: var(--free-ad-h, 0px);
   z-index: 20;
 }
 
