@@ -14,6 +14,8 @@ type FormErrors = {
   form?: string;
 };
 
+type Step = "form" | "confirm" | "success";
+
 export default function Arrepentimiento() {
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -26,8 +28,15 @@ export default function Arrepentimiento() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [step, setStep] = useState<Step>("form");
   const [codigo, setCodigo] = useState("");
+
+  // ── Paso 2: confirmación por código ──
+  const [requestId, setRequestId] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState("");
+  const [confirming, setConfirming] = useState(false);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -90,8 +99,9 @@ export default function Arrepentimiento() {
         return;
       }
 
-      setCodigo(data.codigo);
-      setSuccess(true);
+      setRequestId(data.requestId);
+      setMaskedEmail(data.maskedEmail || "");
+      setStep("confirm");
     } catch {
       setErrors({
         form: "Ocurrió un error al enviar la solicitud. Intentá de nuevo o escribinos a menudigitalappsoporte@gmail.com",
@@ -99,6 +109,46 @@ export default function Arrepentimiento() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConfirm = async (e: FormEvent) => {
+    e.preventDefault();
+
+    if (!/^\d{6}$/.test(code.trim())) {
+      setCodeError("Ingresá el código de 6 dígitos que te enviamos por email.");
+      return;
+    }
+
+    setConfirming(true);
+    setCodeError("");
+
+    try {
+      const res = await fetch("/api/payments/arrepentimiento/confirmar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, code: code.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setCodeError(data.message || "No se pudo confirmar el arrepentimiento.");
+        return;
+      }
+
+      setCodigo(data.codigo);
+      setStep("success");
+    } catch {
+      setCodeError("Ocurrió un error al confirmar. Intentá de nuevo o escribinos a menudigitalappsoporte@gmail.com");
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const volverAlFormulario = () => {
+    setStep("form");
+    setCode("");
+    setCodeError("");
   };
 
   return (
@@ -154,6 +204,7 @@ export default function Arrepentimiento() {
             <ul className={styles.list}>
               <li>El plazo de 10 días corridos se cuenta desde la aprobación del pago por Mercado Pago.</li>
               <li>No es necesario justificar el motivo del arrepentimiento.</li>
+              <li>Por seguridad, te vamos a pedir que confirmes con un código que mandamos al email de la cuenta.</li>
               <li>El reembolso se realiza por el mismo medio de pago utilizado.</li>
               <li>
                 Este derecho no aplica cuando el servicio ya haya sido utilizado de manera
@@ -169,7 +220,7 @@ export default function Arrepentimiento() {
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Solicitar arrepentimiento</h2>
 
-            {success ? (
+            {step === "success" ? (
               <div className={styles.successBox}>
                 <div className={styles.successIcon}>✓</div>
                 <h3 className={styles.successTitle}>Solicitud recibida</h3>
@@ -187,6 +238,61 @@ export default function Arrepentimiento() {
                 <Link to="/" className={styles.btnPrimary} style={{ marginTop: "1rem", textDecoration: "none" }}>
                   Volver al inicio
                 </Link>
+              </div>
+            ) : step === "confirm" ? (
+              <div className={styles.formWrap}>
+                <form className={styles.form} onSubmit={handleConfirm} noValidate>
+                  {codeError && <div className={styles.errorBox}>{codeError}</div>}
+
+                  <p className={styles.successText} style={{ marginBottom: "0.5rem" }}>
+                    Te enviamos un código de 6 dígitos a{" "}
+                    <strong>{maskedEmail || "tu email"}</strong>. Ingresalo para confirmar el
+                    arrepentimiento y procesar el reembolso.
+                  </p>
+
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="code">
+                      Código de confirmación
+                    </label>
+                    <input
+                      id="code"
+                      name="code"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      className={`${styles.input} ${codeError ? styles.inputError : ""}`}
+                      placeholder="123456"
+                      value={code}
+                      onChange={(e) => {
+                        setCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                        setCodeError("");
+                      }}
+                      disabled={confirming}
+                      autoComplete="one-time-code"
+                    />
+                  </div>
+
+                  <button type="submit" className={styles.btnPrimary} disabled={confirming}>
+                    {confirming ? (
+                      <>
+                        <span className="btnSpinnerDark" />
+                        Confirmando...
+                      </>
+                    ) : (
+                      "Confirmar arrepentimiento"
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    className={styles.link}
+                    style={{ background: "none", border: "none", cursor: "pointer", marginTop: "0.75rem" }}
+                    onClick={volverAlFormulario}
+                    disabled={confirming}
+                  >
+                    ¿No te llegó el código? Volver a intentar
+                  </button>
+                </form>
               </div>
             ) : (
               <div className={styles.formWrap}>

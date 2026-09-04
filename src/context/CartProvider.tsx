@@ -5,10 +5,25 @@ import { CartContext, type CartLine } from "./CartContext";
 // del mismo producto son líneas separadas en el carrito).
 const lineKey = (itemId: string, selectedOption?: string) => `${itemId}::${selectedOption ?? ""}`;
 
+// Valida forma antes de confiar en lo leído de localStorage: un carrito
+// viejo de una versión anterior del schema (o datos corruptos) no debe
+// colar valores no numéricos que después rompen totalPrice en silencio.
+function isValidCartLine(value: unknown): value is CartLine {
+  if (!value || typeof value !== "object") return false;
+  const l = value as Record<string, unknown>;
+  return typeof l.itemId === "string" && l.itemId.length > 0
+    && typeof l.title === "string"
+    && typeof l.unitPrice === "number" && Number.isFinite(l.unitPrice)
+    && typeof l.quantity === "number" && Number.isFinite(l.quantity) && l.quantity > 0
+    && (l.selectedOption === undefined || typeof l.selectedOption === "string");
+}
+
 function readCart(slug: string): CartLine[] {
   try {
     const raw = localStorage.getItem(`cart:${slug}`);
-    return raw ? (JSON.parse(raw) as CartLine[]) : [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter(isValidCartLine) : [];
   } catch {
     return [];
   }
@@ -47,7 +62,7 @@ export function CartProvider({ slug, enabled, children }: { slug: string; enable
       const existing = prev.find((l) => lineKey(l.itemId, l.selectedOption) === key);
       if (existing) {
         return prev.map((l) =>
-          lineKey(l.itemId, l.selectedOption) === key ? { ...l, quantity: l.quantity + quantity } : l
+          lineKey(l.itemId, l.selectedOption) === key ? { ...line, quantity: l.quantity + quantity } : l
         );
       }
       return [...prev, { ...line, quantity }];

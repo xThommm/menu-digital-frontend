@@ -276,6 +276,7 @@ export interface DashData {
   template: number
   itemCount: number
   categoryCount: number
+  backgroundPicture: string | null
 }
 
 export interface DayCount {

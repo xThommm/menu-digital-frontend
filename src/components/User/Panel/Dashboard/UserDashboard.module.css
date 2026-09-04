@@ -18,12 +18,55 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   BIENVENIDA
+   BIENVENIDA / HERO
+   Usa la foto de portada real del negocio (media.backgroundPicture) de
+   fondo cuando existe — mismo tipo de overlay que UserHome.module.css
+   (.overlayT1) pero armado con tokens --admin-* en vez de --t-*, porque
+   este es el panel, no el storefront público. Sin foto, cae al mismo
+   degradé --admin-bg-raised → --admin-bg-surface que ya usaba .planCard,
+   así nunca se ve "vacío" ni rompe con el resto del panel.
    ═══════════════════════════════════════════════════════════════ */
-.welcome {
-  margin-bottom: var(--space-6);
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  min-height: 148px;
+  margin-bottom: var(--space-4);
+  padding: var(--space-6);
+  border: 0.5px solid var(--admin-border-warm);
+  border-radius: var(--admin-radius-2xl);
+  background: linear-gradient(135deg, var(--admin-bg-raised), var(--admin-bg-surface));
+  background-size: cover;
+  background-position: center;
+  box-shadow: var(--admin-shadow-card-rest);
   animation: fadeUp 0.45s var(--ease-out) both;
   animation-delay: 0.05s;
+}
+
+/* Overlay más agresivo que el de UserHome (0.30/0.75/0.96 vs. 0.16/0.50/0.84
+   allá): ese hero mide varios cientos de px y el texto cae recién al final
+   del degradé; este mide ~148px con el contenido pegado abajo por
+   align-items:flex-end, así que el texto vive en una franja mucho más
+   angosta y necesita quedar legible sin importar qué tan clara sea la foto
+   que suba el negocio (mesada blanca, plato claro, etc). */
+.heroOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--admin-bg-base) 30%, transparent) 0%,
+    color-mix(in srgb, var(--admin-bg-base) 75%, transparent) 55%,
+    color-mix(in srgb, var(--admin-bg-base) 96%, transparent) 100%
+  );
+}
+
+.heroContent {
+  position: relative;
+  z-index: 1;
 }
 
 .welcomeEyebrow {
@@ -302,14 +345,18 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--admin-bg-elevated);
   font-size: var(--text-xs);
   color: var(--admin-text-muted);
-  line-height: 1;
+  line-height: 1.4;
 }
 
 .statPill strong {
   color: var(--admin-text-warm);
-  font-weight: 600;
+  font-weight: 700;
+  font-size: var(--text-sm);
 }
 
 .statPillIcon {

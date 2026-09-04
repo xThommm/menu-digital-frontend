@@ -13,6 +13,8 @@ type BajaErrors = {
   form?: string;
 };
 
+type Step = "form" | "confirm" | "success";
+
 export default function Baja() {
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -24,8 +26,15 @@ export default function Baja() {
   });
   const [errors, setErrors] = useState<BajaErrors>({});
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [step, setStep] = useState<Step>("form");
   const [codigo, setCodigo] = useState("");
+
+  // ── Paso 2: confirmación por código ──
+  const [requestId, setRequestId] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState("");
+  const [confirming, setConfirming] = useState(false);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -84,8 +93,9 @@ export default function Baja() {
         return;
       }
 
-      setCodigo(data.codigo);
-      setSuccess(true);
+      setRequestId(data.requestId);
+      setMaskedEmail(data.maskedEmail || "");
+      setStep("confirm");
     } catch {
       setErrors({
         form: "Ocurrió un error al enviar la solicitud. Intentá de nuevo o escribinos a menudigitalappsoporte@gmail.com",
@@ -93,6 +103,46 @@ export default function Baja() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConfirm = async (e: FormEvent) => {
+    e.preventDefault();
+
+    if (!/^\d{6}$/.test(code.trim())) {
+      setCodeError("Ingresá el código de 6 dígitos que te enviamos por email.");
+      return;
+    }
+
+    setConfirming(true);
+    setCodeError("");
+
+    try {
+      const res = await fetch("/api/payments/baja/confirmar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, code: code.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setCodeError(data.message || "No se pudo confirmar la baja.");
+        return;
+      }
+
+      setCodigo(data.codigo);
+      setStep("success");
+    } catch {
+      setCodeError("Ocurrió un error al confirmar. Intentá de nuevo o escribinos a menudigitalappsoporte@gmail.com");
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const volverAlFormulario = () => {
+    setStep("form");
+    setCode("");
+    setCodeError("");
   };
 
   return (
@@ -149,6 +199,7 @@ export default function Baja() {
             <h2 className={styles.sectionTitle}>Importante</h2>
             <ul className={styles.list}>
               <li>La baja puede solicitarse en cualquier momento.</li>
+              <li>Por seguridad, te vamos a pedir que confirmes con un código que mandamos al email de la cuenta.</li>
               <li>Tu cuenta pasa al plan Gratis al confirmarse la solicitud.</li>
               <li>No se reembolsa el período ya pagado (salvo ejercicio del derecho de arrepentimiento).</li>
               <li>El contenido de tu menú se conserva; solo se aplican los límites del plan Gratis.</li>
@@ -160,7 +211,7 @@ export default function Baja() {
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Solicitar baja del servicio</h2>
 
-            {success ? (
+            {step === "success" ? (
               <div className={styles.successBox}>
                 <div className={styles.successIcon}>✓</div>
                 <h3 className={styles.successTitle}>Baja registrada</h3>
@@ -182,6 +233,60 @@ export default function Baja() {
                 >
                   Volver al inicio
                 </Link>
+              </div>
+            ) : step === "confirm" ? (
+              <div className={styles.formWrap}>
+                <form className={styles.form} onSubmit={handleConfirm} noValidate>
+                  {codeError && <div className={styles.errorBox}>{codeError}</div>}
+
+                  <p className={styles.successText} style={{ marginBottom: "0.5rem" }}>
+                    Te enviamos un código de 6 dígitos a{" "}
+                    <strong>{maskedEmail || "tu email"}</strong>. Ingresalo para confirmar la baja.
+                  </p>
+
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="code">
+                      Código de confirmación
+                    </label>
+                    <input
+                      id="code"
+                      name="code"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      className={`${styles.input} ${codeError ? styles.inputError : ""}`}
+                      placeholder="123456"
+                      value={code}
+                      onChange={(e) => {
+                        setCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                        setCodeError("");
+                      }}
+                      disabled={confirming}
+                      autoComplete="one-time-code"
+                    />
+                  </div>
+
+                  <button type="submit" className={styles.btnPrimary} disabled={confirming}>
+                    {confirming ? (
+                      <>
+                        <span className="btnSpinnerDark" />
+                        Confirmando...
+                      </>
+                    ) : (
+                      "Confirmar baja del servicio"
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    className={styles.link}
+                    style={{ background: "none", border: "none", cursor: "pointer", marginTop: "0.75rem" }}
+                    onClick={volverAlFormulario}
+                    disabled={confirming}
+                  >
+                    ¿No te llegó el código? Volver a intentar
+                  </button>
+                </form>
               </div>
             ) : (
               <div className={styles.formWrap}>
@@ -238,7 +343,7 @@ export default function Baja() {
                         Procesando...
                       </>
                     ) : (
-                      "Confirmar baja del servicio"
+                      "Solicitar baja del servicio"
                     )}
                   </button>
                 </form>

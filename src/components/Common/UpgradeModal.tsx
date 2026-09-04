@@ -36,7 +36,7 @@ export default function UpgradeModal({
   requiredFeature, requiredTemplateId, minimumItems,
   onClose,
 }: UpgradeModalProps) {
-  const { token } = useAuth();
+  const { token, logout } = useAuth();
   const catalog = usePlans();
   const availablePlans = useMemo(
     () => (catalog.isError ? [] : catalog.data ?? []).filter(plan => plan.name !== "free"
@@ -72,7 +72,20 @@ export default function UpgradeModal({
         },
         body: JSON.stringify({ planId: selected.name, months, planVersion: selected.version }),
       });
-      const data = await res.json();
+
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+
+      let data: { init_point?: string; code?: string; error?: string; message?: string };
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error("Ocurrió un error inesperado. Intentá de nuevo en unos minutos.");
+      }
+
       if (!res.ok || !data.init_point) {
         if (data.code === "PLAN_PRICE_CHANGED") await catalog.refetch();
         throw new Error(data.error || data.message || "No se pudo iniciar el pago.");
@@ -86,7 +99,7 @@ export default function UpgradeModal({
 
   return (
     <div className={styles.overlay} onClick={() => !submitting && onClose()} role="dialog" aria-modal="true" aria-labelledby="upgrade-title">
-      <div className={styles.modal} onClick={event => event.stopPropagation()}>
+      <div className={`${styles.modal} grain`} onClick={event => event.stopPropagation()}>
         <p className={styles.eyebrow}>{selected?.name === currentPlan ? "Renovar plan" : "Mejorar plan"}</p>
         <h2 id="upgrade-title" className={styles.title}>{title}</h2>
         <p className={styles.description}>{description}</p>

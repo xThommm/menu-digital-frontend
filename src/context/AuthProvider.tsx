@@ -71,12 +71,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return loggedUser;
   }, []);
 
+  const logout = useCallback(() => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("tokenExpiry");
+  }, []);
+
   const refreshUser = useCallback(async (): Promise<AuthUser | null> => {
     if (!token) return null;
 
     const response = await fetch(`${import.meta.env.VITE_API_URL}/users/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (response.status === 401) {
+      logout();
+      return null;
+    }
     if (!response.ok) return null;
 
     const data = await response.json() as AuthUserPayload;
@@ -85,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuth(prev => ({ ...prev, user: refreshedUser }));
     localStorage.setItem("user", JSON.stringify(refreshedUser));
     return refreshedUser;
-  }, [token]);
+  }, [token, logout]);
 
   // La expiración se resuelve en el servidor en cada request. Este refresco
   // mantiene la sesión alineada sin exigir que el usuario cierre y vuelva a
@@ -165,14 +177,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("tokenExpiry");
   };
 
   return (

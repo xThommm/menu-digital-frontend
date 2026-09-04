@@ -13,6 +13,7 @@ import s from "./UserStats.module.css";
 // dependencia de efectos. Los efectos hacen el setState después del await.
 type StatsResult =
   | { kind: "locked" }               // 403 — el plan del usuario no incluye stats
+  | { kind: "unauthorized" }         // 401 — token vencido/revocado
   | { kind: "data"; data: StatsData } // 200 — datos ok
   | { kind: "none" };                // otro estado — no tocamos nada
 
@@ -20,6 +21,7 @@ async function requestStats(token: string): Promise<StatsResult> {
   const res = await fetch("/api/users/me/stats", {
     headers: { Authorization: `Bearer ${token}` },
   });
+  if (res.status === 401) return { kind: "unauthorized" };
   if (res.status === 403) return { kind: "locked" };
   if (res.ok) return { kind: "data", data: await res.json() };
   return { kind: "none" };
@@ -28,6 +30,7 @@ async function requestStats(token: string): Promise<StatsResult> {
 // Mismo patrón que requestStats, para el endpoint de "platos más vistos"
 // (mismo gate de plan — si /me/stats no está bloqueado, este tampoco).
 type ItemStatsResult =
+  | { kind: "unauthorized" }
   | { kind: "data"; data: ItemStatsData }
   | { kind: "none" };
 
@@ -35,6 +38,7 @@ async function requestItemStats(token: string): Promise<ItemStatsResult> {
   const res = await fetch("/api/users/me/item-stats", {
     headers: { Authorization: `Bearer ${token}` },
   });
+  if (res.status === 401) return { kind: "unauthorized" };
   if (res.ok) return { kind: "data", data: await res.json() };
   return { kind: "none" };
 }
@@ -42,7 +46,7 @@ async function requestItemStats(token: string): Promise<ItemStatsResult> {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function UserStats() {
-  const { token, user, isLoading: authLoading } = useAuth();
+  const { token, user, isLoading: authLoading, logout } = useAuth();
   const catalog = usePlans();
   const effectiveSubscription = user && isSubscriptionExpired(
     user.subscription,
@@ -72,6 +76,7 @@ export default function UserStats() {
       try {
         const r = await requestStats(token);
         if (cancelled) return;
+        if (r.kind === "unauthorized") { logout(); window.location.href = "/login"; return; }
         if (r.kind === "locked") { setLocked(true); return; }
         if (r.kind === "data") setStats(r.data);
         // Mismo gate de plan que /me/stats — si esa no está bloqueada, esta
@@ -89,7 +94,7 @@ export default function UserStats() {
     };
     run();
     return () => { cancelled = true; };
-  }, [authLoading, token, notifyError]);
+  }, [authLoading, token, notifyError, logout]);
 
   // "Tiempo real": las visitas se registran en el backend en el momento
   // (upsert por cada vista de la carta), así que refrescando periódicamente
@@ -104,6 +109,7 @@ export default function UserStats() {
     const refresh = async () => {
       try {
         const r = await requestStats(token);
+        if (r.kind === "unauthorized") { logout(); window.location.href = "/login"; return; }
         if (r.kind === "locked") setLocked(true);
         else if (r.kind === "data") setStats(r.data);
       } catch {
@@ -132,7 +138,7 @@ export default function UserStats() {
       stopPolling();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [authLoading, token, locked]);
+  }, [authLoading, token, locked, logout]);
 
   if (loading) {
     return (

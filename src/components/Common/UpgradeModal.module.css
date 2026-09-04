@@ -18,7 +18,8 @@
   border-radius: var(--admin-radius-lg);
   color: var(--admin-text-primary);
   background: var(--admin-bg-elevated);
-  box-shadow: var(--admin-shadow-card);
+  box-shadow: var(--admin-shadow-modal);
+  animation: scaleIn 0.26s var(--admin-transition-spring) both;
 }
 
 .eyebrow, .label { color: var(--admin-gold); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -38,23 +39,80 @@
   color: var(--admin-text-secondary);
   background: var(--admin-bg-base);
   cursor: pointer;
+  transition: border-color var(--admin-transition), background var(--admin-transition), color var(--admin-transition), box-shadow var(--admin-transition);
+}
+.option:hover:not(:disabled), .month:hover:not(:disabled) {
+  border-color: var(--admin-border-gold-mid);
+  color: var(--admin-text-primary);
 }
 .option { display: flex; flex-direction: column; gap: 3px; padding: var(--space-3); text-align: left; }
 .option span { font-size: 0.78rem; }
 .month { padding: var(--space-3) var(--space-2); font-weight: 600; }
-.selected { border-color: var(--admin-gold); color: var(--admin-text-primary); box-shadow: 0 0 0 1px var(--admin-gold); }
+.selected {
+  border-color: var(--admin-gold);
+  color: var(--admin-text-primary);
+  background: var(--admin-gold-glow);
+  box-shadow: 0 0 0 1px var(--admin-gold);
+}
 
-.total { display: grid; grid-template-columns: 1fr auto; gap: 3px var(--space-3); align-items: end; margin-top: var(--space-5); padding: var(--space-4); border-radius: var(--admin-radius-md); background: var(--admin-bg-base); }
+.total {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px var(--space-3);
+  align-items: end;
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--admin-border-gold-soft);
+  border-radius: var(--admin-radius-md);
+  background:
+    radial-gradient(ellipse 120% 100% at 100% 0%, var(--admin-gold-glow), transparent 60%),
+    var(--admin-bg-base);
+}
 .total span { color: var(--admin-text-secondary); }
 .total strong { font-size: 1.35rem; }
 .total small { grid-column: 1 / -1; color: var(--admin-success-core); }
 .validity { margin: var(--space-3) 0 0; color: var(--admin-text-muted); font-size: 0.78rem; }
-.benefits { display: grid; gap: var(--space-1); padding-left: var(--space-4); margin-block: var(--space-4); color: var(--admin-text-secondary); font-size: var(--text-xs); line-height: 1.5; }
+.benefits {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  margin-block: var(--space-4);
+  list-style: none;
+  color: var(--admin-text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+.benefits li { display: flex; align-items: flex-start; gap: var(--space-2); }
+.benefits li::before {
+  content: "✓";
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--admin-gold-glow);
+  color: var(--admin-gold);
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+}
 .error { margin: var(--space-3) 0 0; color: var(--admin-danger-core); font-size: 0.85rem; }
 .actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-5); }
-.cancel, .pay { min-height: var(--control-min-size); padding: 0 var(--space-4); border-radius: var(--admin-radius-md); font-weight: 700; cursor: pointer; }
+.cancel, .pay {
+  min-height: var(--control-min-size);
+  padding: 0 var(--space-4);
+  border-radius: var(--admin-radius-md);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--admin-transition), border-color var(--admin-transition), color var(--admin-transition), box-shadow var(--admin-transition), transform var(--admin-transition-spring);
+}
 .cancel { border: 1px solid var(--admin-border-default); color: var(--admin-text-secondary); background: transparent; }
+.cancel:hover:not(:disabled) { border-color: var(--admin-border-gold-mid); color: var(--admin-text-primary); background: var(--admin-bg-raised); }
 .pay { display: inline-flex; align-items: center; gap: var(--space-2); border: 0; color: var(--admin-gold-ink); background: var(--admin-gold); }
+.pay:hover:not(:disabled) { background: var(--admin-gold-hover); box-shadow: var(--admin-shadow-action-btn-hover); transform: translateY(-1px); }
+.pay:active:not(:disabled) { transform: translateY(0); }
 .cancel:disabled, .pay:disabled, .option:disabled, .month:disabled { cursor: not-allowed; opacity: 0.6; }
 
 @media (max-width: 560px) {

@@ -30,7 +30,7 @@ function useSpotlight(ref: React.RefObject<HTMLElement>) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function UserDashboard() {
-  const { token, user, isLoading, refreshUser } = useAuth();
+  const { token, user, isLoading, refreshUser, logout } = useAuth();
   const catalog = usePlans();
   const {
     success: notifySuccess,
@@ -129,6 +129,11 @@ export default function UserDashboard() {
         const res = await fetch("/api/users/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (res.status === 401) {
+          logout();
+          window.location.href = "/login";
+          return;
+        }
         if (!res.ok) throw new Error("No se pudo cargar el resumen del negocio.");
         const json = await res.json();
         if (cancelled) return;
@@ -139,6 +144,7 @@ export default function UserDashboard() {
           template:      json.template ?? 1,
           itemCount:     json.itemCount ?? 0,
           categoryCount: json.categoryCount ?? 0,
+          backgroundPicture: json.media?.backgroundPicture || null,
         });
       } catch {
         if (!cancelled) {
@@ -148,7 +154,7 @@ export default function UserDashboard() {
     };
     load();
     return () => { cancelled = true; };
-  }, [token, isLoading, notifyError]);
+  }, [token, isLoading, notifyError, logout]);
 
   const publicUrl = data?.slug
     ? `${window.location.origin}/${data.slug}`
@@ -275,10 +281,18 @@ export default function UserDashboard() {
       <main className={s.main}>
       <div className={s.leftCol}>
 
-        {/* Bienvenida */}
-        <div className={s.welcome}>
-          <p className={s.welcomeEyebrow}>Bienvenido!</p>
-          <h1 className={s.welcomeTitle}>{displayName}</h1>
+        {/* Bienvenida — con la foto de portada real del negocio si existe,
+            mismo patrón de overlay que usa la landing pública (UserHome).
+            Sin foto, cae al fondo con degradé que ya usaba .planCard. */}
+        <div
+          className={s.hero}
+          style={data?.backgroundPicture ? { backgroundImage: `url(${data.backgroundPicture})` } : undefined}
+        >
+          <div className={s.heroOverlay} />
+          <div className={s.heroContent}>
+            <p className={s.welcomeEyebrow}>Bienvenido!</p>
+            <h1 className={s.welcomeTitle}>{displayName}</h1>
+          </div>
         </div>
 
         {/* Plan actual + acceso explícito al flujo de upgrade. */}
@@ -291,7 +305,12 @@ export default function UserDashboard() {
                 {subscriptionExpired
                   ? `Tu ${previousPlanText} venció. Ahora tenés las funciones del plan Gratis.`
                   : currentPlan
-                    ? getPlanFeatureLabels(currentPlan.features).join(" · ")
+                    ? currentPlan.name === "pro"
+                      // Pro es el tope: listar las 11 funciones que ya tiene no vende
+                      // nada (no hay a qué upgradear) y satura la pantalla que más se
+                      // usa día a día — alcanza con confirmar que no le falta nada.
+                      ? "Tenés acceso a todas las funciones de Menú Digital."
+                      : getPlanFeatureLabels(currentPlan.features).join(" · ")
                     : "No se pudo consultar la configuración del plan."}
               </span>
               {subscriptionExpired ? (
