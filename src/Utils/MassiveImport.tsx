@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
-import { useAuth } from "../context/useAuth";
+import { isAxiosError } from "axios";
 import { useNotifications } from "../context/useNotifications";
 import { useAsyncAction } from "../hooks/useAsyncAction";
+import { downloadMassiveTemplate, previewMassiveImport, confirmMassiveImport, triggerBlobDownload } from "../api/massive";
 import type { MassiveRowResult, MassivePreviewResponse, MassiveConfirmResponse } from "../types";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
@@ -19,7 +20,6 @@ interface MassiveImportProps {
 
 // ── Componente ─────────────────────────────────────────────────────────────────
 export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps) {
-  const { token } = useAuth();
   const { success: notifySuccess, error: notifyError } = useNotifications();
   const { loading, error, setError, run } = useAsyncAction();
 
@@ -33,22 +33,16 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const authHeaders = { Authorization: `Bearer ${token}` };
-
   // ── Descarga el template desde el backend ──────────────────────────────────
+  // Vía apiClient (axios), no fetch a mano: así el interceptor global de 401
+  // (src/api/client.ts) desloguea y redirige solo si la sesión venció, en vez
+  // de mostrar "no se pudo descargar" sin explicar por qué.
   const downloadTemplate = async () => {
     if (downloading) return;
     setDownloading(true);
     try {
-      const res = await fetch("/api/massive/template", { headers: authHeaders });
-      if (!res.ok) throw new Error();
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
-      a.download = "menu-digital-plantilla.xlsx";
-      a.click();
-      URL.revokeObjectURL(url);
+      const blob = await downloadMassiveTemplate();
+      triggerBlobDownload(blob, "menu-digital-plantilla.xlsx");
       notifySuccess("Plantilla descargada.");
     } catch {
       notifyError("No se pudo descargar la plantilla.");
@@ -79,12 +73,12 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
     if (!file) return;
     setValidationError("");
     const data = await run(async () => {
-      const form = new FormData();
-      form.append("archivo", file);
-      const res  = await fetch("/api/massive/preview", { method: "POST", headers: authHeaders, body: form });
-      const response = await res.json() as MassivePreviewResponse & { message?: string };
-      if (!res.ok) throw new Error(response.message || "Error al procesar el archivo.");
-      return response;
+      try {
+        return await previewMassiveImport(file);
+      } catch (cause) {
+        const serverMessage = isAxiosError<{ message?: string }>(cause) ? cause.response?.data?.message : null;
+        throw new Error(serverMessage || "Error al procesar el archivo.", { cause });
+      }
     }, { successMessage: "Archivo procesado. Revisá los cambios." });
     if (!data) return;
     setResumen(data.resumen);
@@ -95,12 +89,12 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
   const confirm = async () => {
     if (!file) return;
     const data = await run(async () => {
-      const form = new FormData();
-      form.append("archivo", file);
-      const res  = await fetch("/api/massive/confirm", { method: "POST", headers: authHeaders, body: form });
-      const response = await res.json() as MassiveConfirmResponse & { message?: string };
-      if (!res.ok) throw new Error(response.message || "Error al confirmar la importación.");
-      return response;
+      try {
+        return await confirmMassiveImport(file);
+      } catch (cause) {
+        const serverMessage = isAxiosError<{ message?: string }>(cause) ? cause.response?.data?.message : null;
+        throw new Error(serverMessage || "Error al confirmar la importación.", { cause });
+      }
     }, { successMessage: "Importación completada." });
     if (!data) return;
     setResultado(data.resultado);

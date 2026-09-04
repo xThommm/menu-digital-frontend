@@ -78,13 +78,22 @@ export default function RegisterSuccessPage() {
             body: JSON.stringify({ registrationToken }),
           }
         );
-        const data = await response.json() as {
+        let data: {
           status?: "pending" | "completed" | "failed";
           paymentStatus?: string | null;
           paymentStatusDetail?: string | null;
           auth?: AuthResponse;
           message?: string;
         };
+        try {
+          data = await response.json();
+        } catch {
+          // Body no-JSON (ej. 502/504 con HTML): mismo mensaje fijo que ya se
+          // usa para reintentos por caída del servidor, en vez de dejar que
+          // el texto crudo del parser llegue a scheduleRetry/setError.
+          scheduleRetry("No pudimos verificar la activación. Volvé a intentarlo.");
+          return;
+        }
         if (cancelled) return;
 
         if (!response.ok) {

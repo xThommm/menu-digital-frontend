@@ -43,7 +43,9 @@ export default function AdminLayout() {
     let cancelled = false;
     getCrmOverdueCount()
       .then((count) => { if (!cancelled) setOverdueCount(count); })
-      .catch(() => {});
+      // Badge secundario, no amerita un banner de error — pero se loguea para
+      // no perder por completo la falla (antes el catch quedaba mudo).
+      .catch((err) => { if (!cancelled) console.error("No se pudo cargar el contador de seguimientos vencidos:", err); });
     return () => { cancelled = true; };
   }, [location.pathname]);
 

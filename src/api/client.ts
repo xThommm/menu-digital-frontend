@@ -24,8 +24,9 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      // El AuthContext reacciona al storage event si está en otra tab,
-      // pero en la misma tab la recarga forzada es la opción más simple
+      localStorage.removeItem('tokenExpiry')
+      // No hay sincronización entre pestañas (no se escucha el evento
+      // `storage`): esta redirección solo limpia la sesión de esta pestaña.
       window.location.href = '/login'
     }
     return Promise.reject(error)

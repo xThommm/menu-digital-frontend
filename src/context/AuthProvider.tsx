@@ -29,6 +29,22 @@ const toAuthUser = (data: AuthUserPayload): AuthUser => ({
 });
 
 
+// Decodifica el payload del JWT (sin validar la firma — de eso ya se encarga
+// el backend en cada request) para leer su expiración real, en vez de asumir
+// un plazo fijo que puede desincronizarse de JWT_EXPIRES_IN.
+function decodeJwtExpiry(token: string): number | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, "=");
+    const { exp } = JSON.parse(atob(padded)) as { exp?: number };
+    return typeof exp === "number" ? exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
 function readAuthFromStorage(): { user: AuthUser | null; token: string | null } {
   const savedToken = localStorage.getItem("token");
   const savedUser  = localStorage.getItem("user");
@@ -67,7 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuth({ token: data.token, user: loggedUser });
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(loggedUser));
-    localStorage.setItem("tokenExpiry", String(Date.now() + 1000 * 60 * 60 * 24 * 7));
+    // Fallback a 7 días solo si el token no trae `exp` decodificable — no
+    // debería pasar con los JWT que emite este backend.
+    const expiresAt = decodeJwtExpiry(data.token) ?? Date.now() + 1000 * 60 * 60 * 24 * 7;
+    localStorage.setItem("tokenExpiry", String(expiresAt));
     return loggedUser;
   }, []);
 

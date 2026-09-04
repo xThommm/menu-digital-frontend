@@ -472,7 +472,7 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
 // ── Componente principal ───────────────────────────────────────────────────────
 
 export default function MenuEditorPage() {
-  const { token, user } = useAuth();
+  const { token, user, logout } = useAuth();
   const { success: notifySuccess } = useNotifications();
   const effectiveSubscription = user && isSubscriptionExpired(
     user.subscription,
@@ -540,6 +540,28 @@ export default function MenuEditorPage() {
     Authorization: `Bearer ${token}`,
   }), [token]);
 
+  // Único punto de manejo de respuesta para los fetch() directos de esta
+  // pantalla (antes cada llamada repetía su propia variante de "if (!res.ok)
+  // throw", sin chequear 401 ni parsear el body con cuidado). Con sesión
+  // vencida, desloguea y manda a login en vez de mostrar un error de
+  // "no se pudo guardar" que no explica nada. Si no es 401, devuelve el
+  // body ya parseado (objeto vacío si la respuesta no es JSON — evita que
+  // un 502/504 con HTML explote el res.json() y muestre el error crudo) y
+  // tira un Error con el mensaje real del backend cuando `res.ok` es falso.
+  const parseApiResponse = useCallback(async (res: Response, fallback: string) => {
+    const data: Record<string, unknown> = await res.json().catch(() => ({}));
+    if (res.status === 401) {
+      logout();
+      window.location.href = "/login";
+      throw new Error("Sesión vencida");
+    }
+    if (!res.ok) {
+      const message = typeof data.message === "string" && data.message ? data.message : fallback;
+      throw new Error(message);
+    }
+    return data;
+  }, [logout]);
+
   // ── Auto-clear error banner ─────────────────────────────────────────────────
 
   useEffect(() => {
@@ -557,40 +579,40 @@ export default function MenuEditorPage() {
         // pública, incluye secciones/categorías/items ocultos para que se
         // puedan gestionar (reactivar) desde el editor.
         const menuRes  = await fetch("/api/users/me/menu", { headers: { Authorization: `Bearer ${token}` } });
-        if (!menuRes.ok) throw new Error();
-        const menuJson = await menuRes.json();
-        setMenuData(menuJson.menu);
-        setLimits(menuJson.limits ?? null);
-      } catch {
-        setError("No se pudo cargar el menú. Intentá recargar la página.");
+        const menuJson = await parseApiResponse(menuRes, "No se pudo cargar el menú. Intentá recargar la página.");
+        setMenuData(menuJson.menu as MenuData);
+        setLimits((menuJson.limits as typeof limits) ?? null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "No se pudo cargar el menú. Intentá recargar la página.");
       } finally {
         setLoading(false);
       }
     };
     fetchMenu();
-  }, [token, setError]);
+  }, [token, setError, parseApiResponse]);
 
   // ── Refresca el menú desde el backend ──────────────────────────────────────
 
   const refetch = useCallback(async () => {
     try {
       const menuRes  = await fetch("/api/users/me/menu", { headers: { Authorization: `Bearer ${token}` } });
-      const menuJson = await menuRes.json();
-      setMenuData(menuJson.menu);
-      setLimits(menuJson.limits ?? null);
+      const menuJson = await parseApiResponse(menuRes, "No se pudo actualizar el menú.");
+      const menu = menuJson.menu as MenuData;
+      setMenuData(menu);
+      setLimits((menuJson.limits as typeof limits) ?? null);
 
       if (activeCategoria) {
         const todas = [
-          ...(menuJson.menu.sinSeccion ?? []),
-          ...(menuJson.menu.secciones ?? []).flatMap((s: Seccion) => s.categorias),
+          ...(menu.sinSeccion ?? []),
+          ...(menu.secciones ?? []).flatMap((s: Seccion) => s.categorias),
         ];
         const actualizada = todas.find((c: Categoria) => c._id === activeCategoria._id);
         if (actualizada) setActiveCategoria(actualizada);
       }
-    } catch {
-      setError("No se pudo actualizar el menú.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo actualizar el menú.");
     }
-  }, [token, activeCategoria, setError]);
+  }, [token, activeCategoria, setError, parseApiResponse]);
 
   // ── Acordeón ──────────────────────────────────────────────────────────────
 
@@ -694,12 +716,18 @@ export default function MenuEditorPage() {
       formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
 
       const res  = await fetch(CLOUDINARY_UPLOAD_URL, { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok || !data.secure_url) throw new Error();
+      // Cloudinary, no nuestro backend: su formato de error es {error:{message}},
+      // no {message} — y un 401 acá es un preset/cloud mal configurado, no la
+      // sesión del usuario, así que no pasa por parseApiResponse.
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.secure_url) {
+        const cloudinaryMessage = typeof data?.error?.message === "string" ? data.error.message : null;
+        throw new Error(cloudinaryMessage ?? "No se pudo subir la imagen.");
+      }
 
       setItemForm(f => ({ ...f, image: data.secure_url }));
-    } catch {
-      setError("No se pudo subir la imagen.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo subir la imagen.");
     } finally {
       setImageUploading(false);
     }
@@ -824,6 +852,11 @@ export default function MenuEditorPage() {
       const method = activeItem ? "PUT" : "POST";
       const res    = await fetch(url, { method, headers: authHeaders, body: JSON.stringify(body) });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
       if (res.status === 403) {
         // Puede pasar aunque el front ya bloqueó el botón: otra pestaña/
         // dispositivo pudo haber usado el último lugar mientras tanto.
@@ -855,8 +888,13 @@ export default function MenuEditorPage() {
       ? `/api/items/${deleteModal.id}`
       : `/api/menus/${deleteModal.id}`;
     const res = await fetch(url, { method: "DELETE", headers: authHeaders });
+    if (res.status === 401) {
+      logout();
+      window.location.href = "/login";
+      return;
+    }
     if (!res.ok) {
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       throw new Error(data.message || "No se pudo eliminar.");
     }
     await refetch();
@@ -894,13 +932,21 @@ export default function MenuEditorPage() {
         method: "PATCH", headers: authHeaders,
         body: JSON.stringify({ available: !item.available }),
       });
-      if (!res.ok) throw new Error();
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "No se pudo cambiar la disponibilidad.");
+      }
       notifySuccess(item.available ? "Producto pausado." : "Producto activado.");
-    } catch {
-      setError("No se pudo cambiar la disponibilidad.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cambiar la disponibilidad.");
       await refetch(); // Revertir
     }
-  }, [authHeaders, refetch, notifySuccess, setError]);
+  }, [authHeaders, refetch, notifySuccess, setError, logout]);
 
   // ── Drag & Drop ────────────────────────────────────────────────────────────
 
@@ -928,15 +974,23 @@ export default function MenuEditorPage() {
         method: "PATCH", headers: authHeaders,
         body: JSON.stringify({ menuID: targetMenuID }),
       });
-      if (!res.ok) throw new Error();
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "No se pudo mover el producto.");
+      }
       await refetch();
       notifySuccess("Producto movido.");
-    } catch {
-      setError("No se pudo mover el producto.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo mover el producto.");
     } finally {
       setDraggedItem(null);
     }
-  }, [authHeaders, refetch, notifySuccess, setError]);
+  }, [authHeaders, refetch, notifySuccess, setError, logout]);
 
   const handleDragEnd = useCallback(() => {
     setDraggedItem(null);
@@ -973,12 +1027,20 @@ export default function MenuEditorPage() {
           body: JSON.stringify({ title: categoriaForm.title.trim(), description: categoriaForm.description, code: categoriaForm.code, sectionID: categoriaForm.seccionID || null, section: false }),
         });
       }
-      if (!res.ok) throw new Error();
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "No se pudo guardar la categoría.");
+      }
       await refetch();
       notifySuccess(categoriaForm.editingId ? "Categoría actualizada." : "Categoría creada.");
       setView("menu");
-    } catch {
-      setError("No se pudo guardar la categoría.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar la categoría.");
     } finally {
       setSaving(false);
     }
@@ -1014,12 +1076,20 @@ export default function MenuEditorPage() {
           body: JSON.stringify({ title: seccionForm.title.trim(), code: seccionForm.code, section: true }),
         });
       }
-      if (!res.ok) throw new Error();
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "No se pudo guardar la sección.");
+      }
       await refetch();
       notifySuccess(seccionForm.editingId ? "Sección actualizada." : "Sección creada.");
       setView("menu");
-    } catch {
-      setError("No se pudo guardar la sección.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar la sección.");
     } finally {
       setSaving(false);
     }
@@ -1036,7 +1106,15 @@ export default function MenuEditorPage() {
     setExporting(true); setError("");
     try {
       const res = await fetch("/api/massive/template", { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) throw new Error();
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "No se pudo exportar el menú. Intentá de nuevo.");
+      }
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
@@ -1045,20 +1123,25 @@ export default function MenuEditorPage() {
       a.click();
       URL.revokeObjectURL(url);
       notifySuccess("Menú exportado a Excel.");
-    } catch {
-      setError("No se pudo exportar el menú. Intentá de nuevo.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo exportar el menú. Intentá de nuevo.");
     } finally {
       setExporting(false);
     }
-  }, [token, limits, notifySuccess, setError]);
+  }, [token, limits, notifySuccess, setError, logout]);
 
   const exportMenuPdf = async () => {
     if (!canExportPdf) { setUpgradeReason("pdf"); return; }
     if (!user?.slug) { setError("No se encontró el enlace público de tu menú."); return; }
     setExportingPdf(true); setError("");
     try {
+      // Endpoint público (carta del menú, no requiere sesión) — un 401 acá no
+      // aplica, así que no dispara logout.
       const res = await fetch(`/api/users/${user.slug}/menu/pdf`);
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "No se pudo exportar el menú a PDF. Intentá de nuevo.");
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -1067,8 +1150,8 @@ export default function MenuEditorPage() {
       a.click();
       URL.revokeObjectURL(url);
       notifySuccess("Menú exportado a PDF.");
-    } catch {
-      setError("No se pudo exportar el menú a PDF. Intentá de nuevo.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo exportar el menú a PDF. Intentá de nuevo.");
     } finally {
       setExportingPdf(false);
     }

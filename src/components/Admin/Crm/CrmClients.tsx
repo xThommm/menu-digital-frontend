@@ -29,6 +29,7 @@ import {
 } from "../../../lib/adminPayments";
 import { PLAN_LABEL } from "../../../lib/plans";
 import { sanitizePhoneForWa } from "../../../lib/whatsapp";
+import { extractServerMessage } from "../../../lib/apiErrors";
 import s from "./CrmClients.module.css";
 
 // ── Metadata de cada etapa del pipeline: etiqueta visible + color del punto. ──
@@ -209,8 +210,8 @@ export default function CrmClients() {
           setClients(normalizedClients);
           setAttentionSummary(response.attentionSummary || summarizeAttention(normalizedClients));
         }
-      } catch {
-        if (!cancelled) setError("No se pudieron cargar los clientes.");
+      } catch (err) {
+        if (!cancelled) setError(extractServerMessage(err, "No se pudieron cargar los clientes."));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -230,8 +231,8 @@ export default function CrmClients() {
       const normalizedClients = normalizeAttention(response.clients);
       setClients(normalizedClients);
       setAttentionSummary(response.attentionSummary || summarizeAttention(normalizedClients));
-    } catch {
-      setError("El cambio se guardó, pero no se pudo actualizar la tabla 360.");
+    } catch (err) {
+      setError(extractServerMessage(err, "El cambio se guardó, pero no se pudo actualizar la tabla 360."));
     }
   }, [setError]);
   const openDrawer = useCallback((userID: string) => {
@@ -257,8 +258,8 @@ export default function CrmClients() {
       patchClient(userID, { stage });
       await refreshClients();
       notifySuccess("Etapa del cliente actualizada.");
-    } catch {
-      notifyError("No se pudo guardar la nueva etapa del cliente.");
+    } catch (err) {
+      notifyError(extractServerMessage(err, "No se pudo guardar la nueva etapa del cliente."));
     } finally {
       setMovingClientId(null);
     }
@@ -332,8 +333,8 @@ export default function CrmClients() {
       a.click();
       URL.revokeObjectURL(url);
       notifySuccess("Listado de clientes exportado.");
-    } catch {
-      notifyError("No se pudo exportar el listado. Intentá de nuevo.");
+    } catch (err) {
+      notifyError(extractServerMessage(err, "No se pudo exportar el listado. Intentá de nuevo."));
     } finally {
       setExporting(false);
     }
@@ -805,8 +806,8 @@ function ClientDrawer({
       void onRefresh();
       notifySuccess("Perfil de CRM actualizado.");
       return true;
-    } catch {
-      notifyError("No se pudo guardar el cambio en el perfil de CRM.");
+    } catch (err) {
+      notifyError(extractServerMessage(err, "No se pudo guardar el cambio en el perfil de CRM."));
       return false;
     } finally {
       setSavingProfile(false);
@@ -833,8 +834,8 @@ function ClientDrawer({
       setDetail((d) => (d ? { ...d, crm: updated } : d));
       setNoteInput("");
       notifySuccess("Nota agregada.");
-    } catch {
-      notifyError("No se pudo agregar la nota.");
+    } catch (err) {
+      notifyError(extractServerMessage(err, "No se pudo agregar la nota."));
     } finally {
       setSavingNote(false);
     }
@@ -847,8 +848,8 @@ function ClientDrawer({
       const updated = await deleteCrmNote(userID, noteID);
       setDetail((d) => (d ? { ...d, crm: updated } : d));
       notifySuccess("Nota eliminada.");
-    } catch {
-      notifyError("No se pudo eliminar la nota.");
+    } catch (err) {
+      notifyError(extractServerMessage(err, "No se pudo eliminar la nota."));
     } finally {
       setDeletingNoteId(null);
     }
@@ -890,8 +891,8 @@ function ClientDrawer({
       void onRefresh();
 
       notifySuccess(active ? "Cuenta activada." : "Cuenta desactivada.");
-    } catch {
-      notifyError("No se pudo cambiar el estado de la cuenta.");
+    } catch (err) {
+      notifyError(extractServerMessage(err, "No se pudo cambiar el estado de la cuenta."));
     } finally {
       setChangingActive(false);
     }

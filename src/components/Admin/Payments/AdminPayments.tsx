@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { listAdminPayments } from "../../../api/adminPayments";
 import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
+import { extractServerMessage } from "../../../lib/apiErrors";
 import {
   ENTITLEMENT_LABEL,
   OPERATION_LABEL,
@@ -57,10 +58,10 @@ export default function AdminPayments() {
           setError("");
         }
       })
-      .catch(() => {
+      .catch((err) => {
         if (!cancelled) {
           setData(null);
-          setError("No se pudo cargar el historial de pagos.");
+          setError(extractServerMessage(err, "No se pudo cargar el historial de pagos."));
         }
       })
       .finally(() => {

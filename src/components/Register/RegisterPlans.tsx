@@ -230,7 +230,7 @@ export default function RegisterPlansPage() {
             }),
           },
         );
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message || "Error al registrarse");
 
         sessionStorage.removeItem("pendingRegister");
@@ -255,7 +255,7 @@ export default function RegisterPlansPage() {
           }),
         },
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         if (data.code === "PLAN_PRICE_CHANGED") await catalog.refetch();
         throw new Error(

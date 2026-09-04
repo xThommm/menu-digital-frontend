@@ -133,7 +133,7 @@ function LockIcon({ size = 14 }: { size?: number }) {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function UserEditorPage() {
-  const { token } = useAuth();
+  const { token, logout } = useAuth();
   const catalog = usePlans();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -227,7 +227,15 @@ export default function UserEditorPage() {
         const res  = await fetch("/api/users/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) throw new Error();
+        if (res.status === 401) {
+          logout();
+          window.location.href = "/login";
+          return;
+        }
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || "No se pudo cargar la información del negocio.");
+        }
         const data = await res.json();
 
         const loaded: FormState = {
@@ -249,14 +257,14 @@ export default function UserEditorPage() {
         setBackground(data.media?.backgroundPicture || "");
         setTemplate(data.template || 1);
         setSubscription(data.subscription || "free");
-      } catch {
-        setError("No se pudo cargar la información del negocio.");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "No se pudo cargar la información del negocio.");
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, [token, setError]);
+  }, [token, setError, logout]);
 
   // Save info
   const saveInfo = async () => {
@@ -302,13 +310,21 @@ export default function UserEditorPage() {
           schedule,
         }),
       });
-      if (!res.ok) throw new Error();
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "No se pudo guardar la información.");
+      }
       initialFormRef.current = form;
       initialScheduleRef.current = schedule;
       setIsDirty(false);
       setSuccess("Información guardada.");
-    } catch {
-      setError("No se pudo guardar la información.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar la información.");
     } finally {
       setSaving(false);
     }
@@ -325,11 +341,16 @@ export default function UserEditorPage() {
         headers: authHeaders,
         body: JSON.stringify({ template: t }),
       });
-      if (res.status === 403) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.message || "Ese template requiere un plan pago.");
+      if (res.status === 401) {
+        logout();
+        window.location.assign("/login");
+        return;
       }
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        const fallback = res.status === 403 ? "Ese template requiere un plan pago." : "No se pudo guardar la apariencia.";
+        throw new Error(data?.message || fallback);
+      }
       setSuccess("Apariencia actualizada.");
     } catch (err) {
       setTemplate(previous);
@@ -372,6 +393,7 @@ export default function UserEditorPage() {
     setUploading("gallery"); setError(""); setSuccess("");
     let uploaded = 0;
     let failed = 0;
+    let lastErrorMessage: string | null = null;
     for (let i = 0; i < toUpload.length; i++) {
       setGalleryProgress({ done: i, total: toUpload.length });
       try {
@@ -382,7 +404,17 @@ export default function UserEditorPage() {
           headers: { Authorization: `Bearer ${token}` },
           body: formData,
         });
-        if (!res.ok) throw new Error();
+        if (res.status === 401) {
+          logout();
+          window.location.href = "/login";
+          return;
+        }
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          lastErrorMessage = typeof data.message === "string" ? data.message : null;
+          failed++;
+          continue;
+        }
         const data = await res.json();
         if (data.media?.pictures) setPictures(data.media.pictures);
         uploaded++;
@@ -397,7 +429,7 @@ export default function UserEditorPage() {
       setSuccess(uploaded === 1 ? "Foto agregada." : `${uploaded} fotos agregadas.`);
     } else {
       const parts = [];
-      if (failed > 0) parts.push(`${failed} no se pudieron subir`);
+      if (failed > 0) parts.push(`${failed} no se pudieron subir${lastErrorMessage ? ` (${lastErrorMessage})` : ""}`);
       if (skipped > 0) parts.push(`${skipped} no entraban (máximo 10 fotos)`);
       setError(`${uploaded > 0 ? `${uploaded} fotos agregadas. ` : ""}${parts.join(" y ")}.`);
     }
@@ -414,12 +446,20 @@ export default function UserEditorPage() {
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
-      if (!res.ok) throw new Error();
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "No se pudo subir la imagen de portada.");
+      }
       const data = await res.json();
       setBackground(data.media?.backgroundPicture || data.imageUrl || "");
       setSuccess("Portada actualizada.");
-    } catch {
-      setError("No se pudo subir la imagen de portada.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo subir la imagen de portada.");
     } finally {
       setUploading(null);
     }
@@ -556,12 +596,20 @@ export default function UserEditorPage() {
         headers: authHeaders,
         body: JSON.stringify({ index }),
       });
-      if (!res.ok) throw new Error();
-    } catch {
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "No se pudo eliminar la imagen.");
+      }
+    } catch (err) {
       setPictures(prev);
-      setError("No se pudo eliminar la imagen.");
+      setError(err instanceof Error ? err.message : "No se pudo eliminar la imagen.");
     }
-  }, [pictures, authHeaders, setError]);
+  }, [pictures, authHeaders, setError, logout]);
 
   // Drag & drop de fotos sobre la galería. Se usa un contador de
   // enter/leave (en vez de un booleano simple) porque el grid tiene hijos:
