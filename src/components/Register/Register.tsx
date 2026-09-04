@@ -49,6 +49,10 @@ export default function RegisterPage() {
       setError("Por favor completá todos los campos.");
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Ingresá un email válido.");
+      return;
+    }
     if (!acceptedTerms) {
       setError("Debes aceptar los términos y condiciones.");
       return;

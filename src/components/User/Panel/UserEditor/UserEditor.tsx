@@ -264,6 +264,10 @@ export default function UserEditorPage() {
       setError("El nombre del negocio es obligatorio.");
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.mail.trim())) {
+      setError("Ingresá un email de contacto válido.");
+      return;
+    }
     const numberDigits = form.number.replace(/\D/g, "");
     if (form.number.trim() && !numberDigits) {
       setError("El teléfono no es válido.");
