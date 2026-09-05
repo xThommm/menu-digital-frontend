@@ -49,6 +49,7 @@ const ATTENTION_META: Record<CrmAttentionCode, { label: string; shortLabel: stri
   subscription_missing_expiry: { label: "Planes sin vencimiento", shortLabel: "Sin vencimiento" },
   follow_up_overdue: { label: "Seguimientos vencidos", shortLabel: "Seguimiento" },
   onboarding_incomplete: { label: "Onboarding incompleto", shortLabel: "Onboarding" },
+  no_traffic: { label: "Carta sin visitas (30 días)", shortLabel: "Sin visitas" },
 };
 
 const EMPTY_ATTENTION_SUMMARY: CrmAttentionSummary = {
@@ -59,6 +60,7 @@ const EMPTY_ATTENTION_SUMMARY: CrmAttentionSummary = {
   missingExpirySubscriptions: 0,
   overdueFollowUps: 0,
   incompleteOnboarding: 0,
+  noTraffic: 0,
 };
 
 type SortKey = "client" | "stage" | "expiry" | "payment" | "followUp" | "attention";
@@ -175,6 +177,7 @@ const summarizeAttention = (clients: CrmClient[]): CrmAttentionSummary => ({
   missingExpirySubscriptions: clients.filter((client) => client.attention?.includes("subscription_missing_expiry")).length,
   overdueFollowUps: clients.filter((client) => client.attention?.includes("follow_up_overdue")).length,
   incompleteOnboarding: clients.filter((client) => client.attention?.includes("onboarding_incomplete")).length,
+  noTraffic: clients.filter((client) => client.attention?.includes("no_traffic")).length,
 });
 
 // ══════════════════════════════════════════════════════════════════
@@ -477,6 +480,7 @@ export default function CrmClients() {
                     <SortableHeader label="Plan / vencimiento" sortKey="expiry" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
                     <SortableHeader label="Etapa" sortKey="stage" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
                     <th>Onboarding</th>
+                    <th>Visitas 30 d</th>
                     <SortableHeader label="Último pago" sortKey="payment" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
                     <SortableHeader label="Seguimiento" sortKey="followUp" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
                     <SortableHeader label="Alertas" sortKey="attention" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
@@ -579,6 +583,7 @@ function AttentionInbox({
     { code: "subscription_missing_expiry", count: summary.missingExpirySubscriptions, tone: "warning" },
     { code: "follow_up_overdue", count: summary.overdueFollowUps, tone: "warning" },
     { code: "onboarding_incomplete", count: summary.incompleteOnboarding, tone: "neutral" },
+    { code: "no_traffic", count: summary.noTraffic ?? 0, tone: "warning" },
   ];
 
   return (
@@ -639,6 +644,24 @@ function SortableHeader({
   );
 }
 
+// Tendencia de tráfico contra los 30 días previos. Sin base previa no se
+// muestra porcentaje: "+∞%" no le dice nada a nadie, y una cuenta nueva
+// siempre "creció".
+function TrafficTrend({ last30d, previous30d }: { last30d: number; previous30d: number }) {
+  if (previous30d === 0) {
+    return <small className={s.tableMuted}>{last30d > 0 ? "Sin base previa" : "Sin visitas"}</small>;
+  }
+
+  const delta = Math.round(((last30d - previous30d) / previous30d) * 100);
+  if (delta === 0) return <small className={s.tableMuted}>Estable</small>;
+
+  return (
+    <small className={delta > 0 ? s.trendUp : s.trendDown}>
+      {delta > 0 ? "↑" : "↓"} {Math.abs(delta)}%
+    </small>
+  );
+}
+
 function ClientTableRow({ client, onOpen }: { client: CrmClient; onOpen: (userID: string) => void }) {
   const alerts = client.attention || [];
   const onboarding = client.onboarding;
@@ -655,6 +678,11 @@ function ClientTableRow({ client, onOpen }: { client: CrmClient; onOpen: (userID
             {client.businessName || <em>Sin nombre comercial</em>}
           </span>
           <span>@{client.username}</span>
+          {client.seller && (
+            <span className={s.tableSeller} title={`Vendedor: ${client.seller.name} (${client.seller.code})`}>
+              {client.seller.name}
+            </span>
+          )}
         </button>
       </td>
       <td>
@@ -682,6 +710,19 @@ function ClientTableRow({ client, onOpen }: { client: CrmClient; onOpen: (userID
             <span className={s.tableProgressTrack} aria-label={`${onboarding.completedCount} de ${onboarding.total} pasos completos`}>
               <span style={{ width: `${Math.round((onboarding.completedCount / onboarding.total) * 100)}%` }} />
             </span>
+          </div>
+        ) : <span className={s.tableMuted}>Sin datos</span>}
+      </td>
+      <td>
+        {client.views ? (
+          <div className={s.tableViews}>
+            <strong className={client.views.last30d === 0 ? s.tableViewsZero : undefined}>
+              {client.views.last30d.toLocaleString("es-AR")}
+            </strong>
+            <TrafficTrend
+              last30d={client.views.last30d}
+              previous30d={client.views.previous30d}
+            />
           </div>
         ) : <span className={s.tableMuted}>Sin datos</span>}
       </td>

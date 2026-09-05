@@ -369,6 +369,9 @@ export type CrmAttentionCode =
   | "subscription_missing_expiry"
   | "follow_up_overdue"
   | "onboarding_incomplete"
+  // Paga, publicó la carta y aun así nadie la miró en 30 días: la señal de
+  // baja más temprana disponible, antes de que deje de renovar.
+  | "no_traffic"
 
 // kind distingue notas manuales ("note") de eventos que loguea el sistema
 // solo ("event": cambio de plan, activar/desactivar, cambio de template).
@@ -415,6 +418,17 @@ export interface CrmClient {
     createdAt: string | null
   } | null
   paymentAttentionCount?: number
+  // Visitas a la carta pública, para ver si la cuenta se usa de verdad.
+  // Opcional porque el backend puede desplegarse después que el frontend.
+  views?: {
+    last30d: number
+    previous30d: number
+  }
+  seller?: {
+    _id: string
+    name: string
+    code: string
+  } | null
   attention?: CrmAttentionCode[]
 }
 
@@ -426,6 +440,7 @@ export interface CrmAttentionSummary {
   missingExpirySubscriptions: number
   overdueFollowUps: number
   incompleteOnboarding: number
+  noTraffic?: number
 }
 
 export interface CrmClientDetailUser {

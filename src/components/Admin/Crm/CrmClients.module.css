@@ -444,6 +444,32 @@
 .tableFollowUpOverdue,
 .tableFollowUpOverdue small { color: var(--admin-red-text); font-weight: 600; }
 .tableMuted { color: var(--admin-text-faint); font-size: var(--text-xs); }
+
+/* Vendedor que trajo la cuenta: dato de atribución, secundario frente al
+   nombre del cliente. */
+.tableSeller {
+  color: var(--admin-text-faint);
+  font-size: var(--text-xs);
+}
+
+.tableViews {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tableViews strong {
+  color: var(--admin-text-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* Cero visitas en una cuenta paga es la alerta, no un dato neutro. */
+.tableViewsZero { color: var(--admin-warning-core); }
+
+.trendUp { color: var(--admin-success-text); font-size: var(--text-xs); }
+.trendDown { color: var(--admin-warning-core); font-size: var(--text-xs); }
 .tableAlerts { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .tableAlerts span {
   padding: 2px 6px;
