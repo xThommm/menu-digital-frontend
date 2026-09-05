@@ -279,7 +279,7 @@
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.35fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.35fr) auto auto auto;
   align-items: end;
   gap: var(--space-3);
   margin-bottom: var(--space-4);

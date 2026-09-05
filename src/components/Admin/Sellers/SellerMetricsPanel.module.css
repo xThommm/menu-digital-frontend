@@ -28,15 +28,18 @@
   text-transform: uppercase;
 }
 
-.backLink {
-  display: inline-block;
+.headerLinks {
+  display: flex;
+  gap: var(--space-4);
   margin-top: var(--space-3);
+}
+.headerLinks a {
   color: var(--admin-accent, var(--admin-gold));
   font-size: var(--text-sm);
   font-weight: 600;
   text-decoration: none;
 }
-.backLink:hover { text-decoration: underline; }
+.headerLinks a:hover { text-decoration: underline; }
 
 /* Totales del equipo, arriba de la comparación individual. */
 .totals {

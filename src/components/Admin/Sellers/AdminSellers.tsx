@@ -218,7 +218,10 @@ export default function AdminSellers() {
                 {visibleSellers.length} de {sellers.data.length} vendedores
               </p>
               <Link className={s.metricsLink} to="/admin/sellers/metricas">
-                Ver panel de métricas
+                Panel de métricas
+              </Link>
+              <Link className={s.metricsLink} to="/admin/sellers/comisiones">
+                Comisiones
               </Link>
             </section>
 

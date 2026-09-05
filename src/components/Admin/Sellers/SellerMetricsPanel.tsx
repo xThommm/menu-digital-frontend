@@ -66,7 +66,10 @@ export default function SellerMetricsPanel() {
           <p className={s.eyebrow}>Administración de MenuDigital</p>
           <h1>Métricas de vendedores</h1>
           <p>Comparación del equipo por facturación atribuida, cartera y renovaciones.</p>
-          <Link className={s.backLink} to="/admin/sellers">← Volver a vendedores</Link>
+          <div className={s.headerLinks}>
+            <Link to="/admin/sellers">← Volver a vendedores</Link>
+            <Link to="/admin/sellers/comisiones">Calculadora de comisiones</Link>
+          </div>
         </header>
 
         {sellers.isPending ? (

@@ -24,6 +24,7 @@ const AdminPayments = lazy(() => import("../../src/components/Admin/Payments/Adm
 const AdminPlans = lazy(() => import("../components/Admin/Plans/AdminPlans"));
 const AdminSellers = lazy(() => import("../components/Admin/Sellers/AdminSellers"));
 const SellerMetricsPanel = lazy(() => import("../components/Admin/Sellers/SellerMetricsPanel"));
+const SellerCommissions = lazy(() => import("../components/Admin/Sellers/SellerCommissions"));
 
 // User (dueño del restaurante autenticado)
 const DashboardLayout = lazy(() => import("../../src/components/User/Panel/DashboardLayout/DashboardLayout"));
@@ -59,6 +60,7 @@ export default function AppRoutes() {
           <Route path="/admin/plans" element={<AdminPlans />} />
           <Route path="/admin/sellers" element={<AdminSellers />} />
           <Route path="/admin/sellers/metricas" element={<SellerMetricsPanel />} />
+          <Route path="/admin/sellers/comisiones" element={<SellerCommissions />} />
         </Route>
       </Route>
 
