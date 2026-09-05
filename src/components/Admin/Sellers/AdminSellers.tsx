@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { Link } from "react-router-dom";
@@ -71,6 +71,7 @@ export default function AdminSellers() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SellerSort>("clients");
+  const [creating, setCreating] = useState(false);
   const sellers = useQuery({
     queryKey: ADMIN_SELLERS_QUERY_KEY,
     queryFn: ({ signal }) => listAdminSellers(signal),
@@ -169,7 +170,6 @@ export default function AdminSellers() {
           </section>
         )}
 
-        <CreateSellerForm onCreated={prependSeller} />
 
         {sellers.isPending ? (
           <div className={s.loading}>
@@ -187,8 +187,17 @@ export default function AdminSellers() {
             </button>
           </div>
         ) : sellers.data.length === 0 ? (
+          // El botón de alta vive en la barra de filtros, que no se muestra sin
+          // vendedores: sin este, no habría forma de crear el primero.
           <div className={s.empty} role="status">
-            Todavía no hay vendedores. Creá el primero arriba.
+            <p>Todavía no hay vendedores.</p>
+            <button
+              className={s.primaryButton}
+              type="button"
+              onClick={() => setCreating(true)}
+            >
+              Crear el primero
+            </button>
           </div>
         ) : (
           <>
@@ -223,6 +232,13 @@ export default function AdminSellers() {
               <Link className={s.metricsLink} to="/admin/sellers/comisiones">
                 Comisiones
               </Link>
+              <button
+                className={s.newSellerButton}
+                type="button"
+                onClick={() => setCreating(true)}
+              >
+                + Nuevo vendedor
+              </button>
             </section>
 
             {visibleSellers.length === 0 ? (
@@ -259,6 +275,13 @@ export default function AdminSellers() {
             )}
           </>
         )}
+
+        {creating && (
+          <CreateSellerModal
+            onCreated={prependSeller}
+            onClose={() => setCreating(false)}
+          />
+        )}
       </div>
     </main>
   );
@@ -273,10 +296,12 @@ function SummaryMetric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function CreateSellerForm({
+function CreateSellerModal({
   onCreated,
+  onClose,
 }: {
   onCreated: (seller: Seller) => void;
+  onClose: () => void;
 }) {
   const [name, setName] = useState("");
   const [dni, setDni] = useState("");
@@ -284,6 +309,19 @@ function CreateSellerForm({
   const [saving, setSaving] = useState(false);
   const submitting = useRef(false);
   const notifications = useNotifications();
+  const firstFieldRef = useRef<HTMLInputElement>(null);
+
+  // Foco en el primer campo al abrir y cierre con Escape, igual que el drawer
+  // del CRM. No se cierra mientras se está guardando para no dejar al usuario
+  // sin saber si el alta salió.
+  useEffect(() => {
+    firstFieldRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !submitting.current) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   const invalid =
     !normalizeText(name) || !isValidDni(dni) || !normalizeDni(dni);
@@ -302,9 +340,8 @@ function CreateSellerForm({
       notifications.success(
         `Vendedor ${created.name} creado · código ${created.code}`,
       );
-      setName("");
-      setDni("");
       onCreated(created);
+      onClose();
     } catch (cause) {
       if (isAxiosError(cause) && cause.response?.status === 409) {
         const message = isAxiosError<{ message?: string }>(cause)
@@ -326,54 +363,85 @@ function CreateSellerForm({
   };
 
   return (
-    // Una sola fila: crear un vendedor es una acción ocasional y antes se
-    // llevaba ~200px de alto permanentes, empujando la tabla fuera de pantalla.
-    <form className={s.createForm} onSubmit={submit} noValidate>
-      <div className={s.createRow}>
-        <h2 className={s.createTitle}>Nuevo vendedor</h2>
-        <label htmlFor="seller-create-name">
-          Nombre
-          <input
-            id="seller-create-name"
-            value={name}
-            maxLength={80}
-            disabled={saving}
-            autoComplete="off"
-            onChange={(event) => {
-              setName(event.target.value);
-              setError("");
-            }}
-          />
-        </label>
-        <label htmlFor="seller-create-dni">
-          DNI
-          <input
-            id="seller-create-dni"
-            value={dni}
-            maxLength={20}
-            disabled={saving}
-            inputMode="numeric"
-            autoComplete="off"
-            onChange={(event) => {
-              setDni(normalizeDni(event.target.value));
-              setError("");
-            }}
-          />
-        </label>
-        <button
-          className={s.primaryButton}
-          type="submit"
-          disabled={saving || invalid}
-        >
-          {saving && <Spinner />} {saving ? "Creando…" : "Crear vendedor"}
-        </button>
-      </div>
-      {error && (
-        <p className={s.error} role="alert">
-          {error}
+    // En un modal y no en la página: dar de alta un vendedor es una acción
+    // ocasional que estaba ocupando espacio fijo arriba de la tabla, que es
+    // lo que se viene a mirar todos los días.
+    <div
+      className={s.modalOverlay}
+      onClick={() => { if (!saving) onClose(); }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="seller-create-title"
+    >
+      <form
+        className={s.modal}
+        onSubmit={submit}
+        onClick={(event) => event.stopPropagation()}
+        noValidate
+      >
+        <h2 id="seller-create-title" className={s.modalTitle}>Nuevo vendedor</h2>
+        <p className={s.modalHint}>
+          Nombre y DNI deben ser únicos. El código (ej. ABC-123) lo genera el backend.
         </p>
-      )}
-    </form>
+
+        <div className={s.modalFields}>
+          <label htmlFor="seller-create-name">
+            Nombre
+            <input
+              id="seller-create-name"
+              ref={firstFieldRef}
+              value={name}
+              maxLength={80}
+              disabled={saving}
+              autoComplete="off"
+              onChange={(event) => {
+                setName(event.target.value);
+                setError("");
+              }}
+            />
+          </label>
+          <label htmlFor="seller-create-dni">
+            DNI
+            <input
+              id="seller-create-dni"
+              value={dni}
+              maxLength={20}
+              disabled={saving}
+              inputMode="numeric"
+              autoComplete="off"
+              onChange={(event) => {
+                setDni(normalizeDni(event.target.value));
+                setError("");
+              }}
+            />
+          </label>
+        </div>
+
+        {error && (
+          <p className={s.error} role="alert">
+            {error}
+          </p>
+        )}
+
+        <div className={s.modalActions}>
+          <button
+            className={s.secondaryButton}
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+          >
+            Cancelar
+          </button>
+          <button
+            className={s.primaryButton}
+            type="submit"
+            disabled={saving || invalid}
+          >
+            {saving && <Spinner />} {saving ? "Creando…" : "Crear vendedor"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 
