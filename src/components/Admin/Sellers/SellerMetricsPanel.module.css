@@ -108,7 +108,7 @@
 .numeric { text-align: right; font-variant-numeric: tabular-nums; }
 .table th.numeric { text-align: right; }
 
-.sellerCell { display: flex; flex-direction: column; gap: 1px; }
+.sellerCell { display: flex; flex-direction: column; gap: 5px; }
 .sellerCell strong { color: var(--admin-text-primary); font-size: var(--text-sm); font-weight: 600; }
 .sellerCell span { color: var(--admin-text-faint); font-size: var(--text-xs); }
 
