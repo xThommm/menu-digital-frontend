@@ -28,6 +28,13 @@ export interface SellerMetrics {
     pro: number;
   };
   lastClientAt: string | null;
+  // Métricas de venta. Opcionales porque el backend puede desplegarse después
+  // que el frontend: sin ellas se muestra "sin datos", no rompe.
+  revenueTotal?: number;
+  revenue30d?: number;
+  payments?: number;
+  renewals?: number;
+  payingClients?: number;
 }
 
 export interface SellerSummary extends Seller {

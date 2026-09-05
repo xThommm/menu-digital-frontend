@@ -15,7 +15,7 @@ import {
 } from "../../../api/adminSellers";
 import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
 import { useNotifications } from "../../../context/useNotifications";
-import { formatPaymentDate } from "../../../lib/adminPayments";
+import { formatPaymentAmount, formatPaymentDate, formatPaymentDay } from "../../../lib/adminPayments";
 import { PLAN_LABEL } from "../../../lib/plans";
 import Spinner from "../../Common/Spinner";
 import s from "./AdminSellers.module.css";
@@ -23,7 +23,7 @@ import s from "./AdminSellers.module.css";
 const ADMIN_SELLERS_QUERY_KEY = ["admin-sellers"] as const;
 const sellerDetailQueryKey = (sellerID: string) => ["admin-seller", sellerID] as const;
 
-type SellerSort = "clients" | "recent" | "name";
+type SellerSort = "revenue" | "clients" | "recent" | "name";
 
 const emptySellerMetrics = (): SellerMetrics => ({
   clientsTotal: 0,
@@ -35,7 +35,17 @@ const emptySellerMetrics = (): SellerMetrics => ({
   withMenu: 0,
   plans: { basic: 0, pro: 0 },
   lastClientAt: null,
+  revenueTotal: 0,
+  revenue30d: 0,
+  payments: 0,
+  renewals: 0,
+  payingClients: 0,
 });
+
+// Un backend viejo no manda las métricas de plata. En ese caso mostramos un
+// guion en vez de "$ 0,00", que se leería como "no vendió nada".
+const formatSellerRevenue = (value: number | undefined) =>
+  typeof value === "number" ? formatPaymentAmount(value, "ARS") : "—";
 
 function normalizeSearch(value: string) {
   return value
@@ -113,6 +123,12 @@ export default function AdminSellers() {
 
     return [...filtered].sort((a, b) => {
       if (sort === "name") return a.name.localeCompare(b.name, "es-AR");
+      if (sort === "revenue") {
+        return (
+          (b.metrics?.revenueTotal ?? 0) - (a.metrics?.revenueTotal ?? 0) ||
+          a.name.localeCompare(b.name, "es-AR")
+        );
+      }
       if (sort === "recent") {
         const lastClientAtA = Date.parse(a.metrics?.lastClientAt || "") || 0;
         const lastClientAtB = Date.parse(b.metrics?.lastClientAt || "") || 0;
@@ -192,6 +208,7 @@ export default function AdminSellers() {
                   value={sort}
                   onChange={(event) => setSort(event.target.value as SellerSort)}
                 >
+                  <option value="revenue">Más facturación</option>
                   <option value="clients">Más clientes</option>
                   <option value="recent">Alta más reciente</option>
                   <option value="name">Nombre</option>
@@ -200,6 +217,9 @@ export default function AdminSellers() {
               <p aria-live="polite">
                 {visibleSellers.length} de {sellers.data.length} vendedores
               </p>
+              <Link className={s.metricsLink} to="/admin/sellers/metricas">
+                Ver panel de métricas
+              </Link>
             </section>
 
             {visibleSellers.length === 0 ? (
@@ -207,15 +227,32 @@ export default function AdminSellers() {
                 No hay vendedores que coincidan con la búsqueda.
               </div>
             ) : (
-              <section className={s.list} aria-label="Listado de vendedores">
-                {visibleSellers.map((seller) => (
-                  <SellerCard
-                    key={seller._id}
-                    seller={seller}
-                    onUpdated={replaceSeller}
-                  />
-                ))}
-              </section>
+              <div className={s.tableWrap}>
+                <table className={s.table}>
+                  <caption className={s.srOnly}>Listado de vendedores</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col"><span className={s.srOnly}>Desplegar</span></th>
+                      <th scope="col">Vendedor</th>
+                      <th scope="col">Código</th>
+                      <th scope="col" className={s.numeric}>Clientes</th>
+                      <th scope="col" className={s.numeric}>Pagos vigentes</th>
+                      <th scope="col" className={s.numeric}>Facturado 30 d</th>
+                      <th scope="col" className={s.numeric}>Facturado total</th>
+                      <th scope="col">Última alta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleSellers.map((seller) => (
+                      <SellerRow
+                        key={seller._id}
+                        seller={seller}
+                        onUpdated={replaceSeller}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </>
         )}
@@ -337,7 +374,7 @@ function CreateSellerForm({
   );
 }
 
-function SellerCard({
+function SellerRow({
   seller,
   onUpdated,
 }: {
@@ -416,31 +453,65 @@ function SellerCard({
   };
 
   return (
-    <article className={s.card} aria-labelledby={`seller-${seller._id}-title`}>
-      <header className={s.cardHeader}>
-        <div>
-          <p className={s.eyebrow}>Código</p>
-          <h2 id={`seller-${seller._id}-title`} className={s.code}>
-            {seller.code}
-          </h2>
-        </div>
-        <div className={s.cardHeaderActions}>
-          <button className={s.secondaryButton} type="button" onClick={() => void copyCode()}>
-            Copiar código
+    <>
+      <tr className={expanded ? s.rowOpen : undefined}>
+        <td className={s.chevronCell}>
+          <button
+            className={s.chevronButton}
+            type="button"
+            aria-expanded={expanded}
+            aria-controls={clientsPanelID}
+            aria-label={expanded ? `Ocultar detalle de ${seller.name}` : `Ver detalle de ${seller.name}`}
+            onClick={() => setExpanded((current) => !current)}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden
+              className={expanded ? s.chevronOpen : undefined}>
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
           </button>
-          {!editing && (
-            <button
-              className={s.secondaryButton}
-              type="button"
-              onClick={() => setEditing(true)}
-            >
-              Editar
-            </button>
-          )}
-        </div>
-      </header>
+        </td>
+        <td>
+          <button
+            className={s.rowNameButton}
+            type="button"
+            onClick={() => setExpanded((current) => !current)}
+          >
+            <strong>{seller.name}</strong>
+            <span>DNI {seller.dni}</span>
+          </button>
+        </td>
+        <td><code className={s.codeCell}>{seller.code}</code></td>
+        <td className={s.numeric}>{metrics.clientsTotal.toLocaleString("es-AR")}</td>
+        <td className={s.numeric}>{metrics.paidCurrent.toLocaleString("es-AR")}</td>
+        <td className={s.numeric}>{formatSellerRevenue(metrics.revenue30d)}</td>
+        <td className={s.numeric}>{formatSellerRevenue(metrics.revenueTotal)}</td>
+        <td className={s.dateCell}>{formatPaymentDay(metrics.lastClientAt)}</td>
+      </tr>
 
-      {editing ? (
+      {expanded && (
+        <tr className={s.panelRow}>
+          <td colSpan={8}>
+            <div id={clientsPanelID} className={s.panel}>
+              <div className={s.panelActions}>
+                <button className={s.secondaryButton} type="button" onClick={() => void copyCode()}>
+                  Copiar código
+                </button>
+                {!editing && (
+                  <button
+                    className={s.secondaryButton}
+                    type="button"
+                    onClick={() => setEditing(true)}
+                  >
+                    Editar datos
+                  </button>
+                )}
+                <Link className={s.panelMetricsLink} to="/admin/sellers/metricas">
+                  Ver métricas comparadas →
+                </Link>
+              </div>
+
+              {editing ? (
         <form className={s.editForm} onSubmit={submit} noValidate>
           <div className={s.fields}>
             <label htmlFor={`seller-${seller._id}-name`}>
@@ -509,71 +580,65 @@ function SellerCard({
             <dd>{formatPaymentDate(seller.createdAt)}</dd>
           </div>
         </dl>
+              )}
+
+              <section className={s.metrics} aria-label={`Métricas de ${seller.name}`}>
+                <SellerMetric label="Clientes vendidos" value={metrics.clientsTotal} />
+                <SellerMetric label="Pagaron alguna vez" value={metrics.payingClients ?? 0} />
+                <SellerMetric label="Planes pagos vigentes" value={metrics.paidCurrent} />
+                <SellerMetric label="Altas últimos 30 días" value={metrics.newClients30d} />
+                <SellerMetric label="Renovaciones" value={metrics.renewals ?? 0} />
+                <SellerMetric label="Facturado total" value={formatSellerRevenue(metrics.revenueTotal)} />
+              </section>
+
+              <div className={s.operationalSummary}>
+                <span>Basic: <strong>{metrics.plans.basic}</strong></span>
+                <span>Pro: <strong>{metrics.plans.pro}</strong></span>
+                <span>Cuentas activas: <strong>{metrics.activeAccounts}</strong></span>
+                <span>Con menú: <strong>{metrics.withMenu}</strong></span>
+                <span className={metrics.expiring30d > 0 ? s.attention : undefined}>
+                  Vencen en 30 días: <strong>{metrics.expiring30d}</strong>
+                </span>
+                <span className={metrics.expired > 0 ? s.attention : undefined}>
+                  Vencidos: <strong>{metrics.expired}</strong>
+                </span>
+              </div>
+
+              <section className={s.clientsPanel} aria-label={`Clientes de ${seller.name}`}>
+                <p className={s.panelSectionTitle}>
+                  Clientes atribuidos ({metrics.clientsTotal})
+                </p>
+                {details.isPending ? (
+                  <div className={s.detailsLoading}>
+                    <Spinner size={24} label="Cargando clientes" />
+                  </div>
+                ) : details.isError ? (
+                  <div className={s.inlineError} role="alert">
+                    <p>No se pudo cargar el detalle de clientes.</p>
+                    <button
+                      className={s.secondaryButton}
+                      type="button"
+                      onClick={() => void details.refetch()}
+                      disabled={details.isFetching}
+                    >
+                      {details.isFetching ? "Reintentando…" : "Reintentar"}
+                    </button>
+                  </div>
+                ) : details.data.clients.length === 0 ? (
+                  <p className={s.clientsEmpty}>Este vendedor todavía no tiene clientes atribuidos.</p>
+                ) : (
+                  <div className={s.clientList}>
+                    {details.data.clients.map((client) => (
+                      <SellerClientRow key={client._id} client={client} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          </td>
+        </tr>
       )}
-
-      <section className={s.metrics} aria-label={`Métricas de ${seller.name}`}>
-  <SellerMetric label="Clientes vendidos" value={metrics.clientsTotal} />
-  <SellerMetric label="Planes pagos vigentes" value={metrics.paidCurrent} />
-  <SellerMetric label="Altas últimos 30 días" value={metrics.newClients30d} />
-  <SellerMetric
-    label="Última alta"
-    value={formatPaymentDate(metrics.lastClientAt)}
-  />
-</section>
-
-<div className={s.operationalSummary}>
-  <span>Basic: <strong>{metrics.plans.basic}</strong></span>
-  <span>Pro: <strong>{metrics.plans.pro}</strong></span>
-  <span>Cuentas activas: <strong>{metrics.activeAccounts}</strong></span>
-  <span>Con menú: <strong>{metrics.withMenu}</strong></span>
-  <span className={metrics.expiring30d > 0 ? s.attention : undefined}>
-    Vencen en 30 días: <strong>{metrics.expiring30d}</strong>
-  </span>
-  <span className={metrics.expired > 0 ? s.attention : undefined}>
-    Vencidos: <strong>{metrics.expired}</strong>
-  </span>
-</div>
-
-<button
-  className={s.detailsButton}
-  type="button"
-  aria-expanded={expanded}
-  aria-controls={clientsPanelID}
-  onClick={() => setExpanded((current) => !current)}
->
-  {expanded ? "Ocultar clientes" : `Ver clientes (${metrics.clientsTotal})`}
-</button>
-
-      {expanded && (
-        <section id={clientsPanelID} className={s.clientsPanel} aria-label={`Clientes de ${seller.name}`}>
-          {details.isPending ? (
-            <div className={s.detailsLoading}>
-              <Spinner size={24} label="Cargando clientes" />
-            </div>
-          ) : details.isError ? (
-            <div className={s.inlineError} role="alert">
-              <p>No se pudo cargar el detalle de clientes.</p>
-              <button
-                className={s.secondaryButton}
-                type="button"
-                onClick={() => void details.refetch()}
-                disabled={details.isFetching}
-              >
-                {details.isFetching ? "Reintentando…" : "Reintentar"}
-              </button>
-            </div>
-          ) : details.data.clients.length === 0 ? (
-            <p className={s.clientsEmpty}>Este vendedor todavía no tiene clientes atribuidos.</p>
-          ) : (
-            <div className={s.clientList}>
-              {details.data.clients.map((client) => (
-                <SellerClientRow key={client._id} client={client} />
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-    </article>
+    </>
   );
 }
 

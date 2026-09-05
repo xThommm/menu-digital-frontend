@@ -73,3 +73,15 @@ export const formatPaymentDate = (iso: string | null) => (
       })
     : "—"
 )
+
+// Variante sin hora, para columnas de tabla donde el minuto exacto no aporta
+// y la fecha con hora ocupa el doble del ancho disponible.
+export const formatPaymentDay = (iso: string | null) => (
+  iso
+    ? new Date(iso).toLocaleDateString("es-AR", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "—"
+)
