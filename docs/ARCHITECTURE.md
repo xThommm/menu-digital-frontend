@@ -933,6 +933,21 @@ onboarding/alertas CRM, `PlanFeatures` y `BooleanPlanFeature`. El DTO comercial 
 - **`FreePlanAd.tsx`** — publicidad reutilizable en la landing/carta cuando
   `features.sin_publicidad` no está activo, cualquiera sea el plan. Marca y CTA a
   `/`; estilos globales `t-free-plan-ad*`.
+- **`DataTable/DataTable.tsx`** — **`DataTable<T>({rows, columns, getRowId, caption, ...})`**:
+  tabla genérica del panel admin. Aporta el wrapper con scroll horizontal propio (la
+  página nunca scrollea en horizontal), la barra de filtros, el orden por clic en el
+  encabezado (`aria-sort` incluido), la búsqueda de texto en memoria sin acentos ni
+  mayúsculas, las filas desplegables (una sola abierta a la vez) y los estados de
+  carga/error/vacío/sin-resultados. Los vacíos se ordenan siempre al final, en las dos
+  direcciones. **No** resuelve el filtrado que no sea texto ni la paginación a propósito:
+  en Pagos ambos son del lado del servidor, así que cada pantalla arma sus controles y
+  los pasa por `filters` (o los deja afuera, como el CRM, cuyos filtros también
+  gobiernan el kanban). Cada columna define `render` y, si se puede ordenar,
+  `sortValue` más un `initialDirection` opcional (cantidades, plata y fechas suelen
+  querer "desc" al primer clic). `layout="fixed"` hace mandar al `width` de cada
+  columna, para tablas con muchas columnas donde una celda larga desacomodaría el
+  resto. Usado por `Admin/Sellers/AdminSellers` y `Admin/Crm/CrmClients`; Pagos sigue
+  con su tabla propia. CSS en `DataTable.module.css`.
 - **`FullScreenLoader.tsx`** — **`FullScreenLoader({label})`**: contenedor
   `.pageLoaderScreen` con `Spinner` de 36 px; guards y fallback de Suspense.
 - **`Spinner.tsx`** — **`Spinner({size, label})`**: spinner SVG inline para botones y overlays
@@ -988,9 +1003,14 @@ Module y tokens `--admin-*`; navegación/logout viven en `AdminLayout`.
   `updateCrmProfile` al soltarlas — `moveToStage`, optimista). Arriba, un **banner de
   seguimientos vencidos** (clickeable: filtra solo esos clientes) y un botón
   **"Exportar a Excel"** (`exportCrmClients`, respeta el filtro de etapa activo). Al
-  seleccionar un cliente abre el drawer. La tabla 360 incluye contacto, estado,
-  plan/vencimiento, onboarding, último pago y alertas, con ordenamiento y bandeja
-  de atención. `?client=<id>` abre una ficha desde el dashboard.
+  seleccionar un cliente abre el drawer. La tabla 360 la dibuja el `DataTable` común
+  (`layout="fixed"`, orden por encabezado): contacto, plan/vencimiento, etapa,
+  onboarding, visitas 30 d, último pago, seguimiento y alertas. La búsqueda y los
+  filtros de plan/cuenta quedan **fuera** de la tabla porque también gobiernan el
+  kanban; el kanban ordena sus tarjetas alfabéticamente por negocio. Alertas y último
+  pago abren en descendente al primer clic, y lo que no tiene dato ("Sin pagos", "Sin
+  agendar", sin vencimiento) queda al final en las dos direcciones. `?client=<id>`
+  abre una ficha desde el dashboard.
 - **`ClientDrawer`** — panel lateral de detalle: trae `getCrmClient`, muestra perfil +
   actividad + link a la carta, y permite cambiar etapa, editar tags, setear el próximo
   seguimiento y gestionar el historial de **Actividad**: notas manuales mezcladas
@@ -1018,14 +1038,20 @@ existentes; los checkouts anteriores conservan su importe.
 
 ### `components/Admin/Sellers/AdminSellers.tsx`
 
-ABM parcial de `/admin/sellers`: React Query carga la lista; formularios separados
-crean y editan nombre/DNI; el código generado se muestra como inmutable. Normaliza
-el DNI a ocho dígitos en frontend, informa 409 y actualiza el caché sin recargar.
-Agrega resumen global, búsqueda por nombre/código/DNI, orden por clientes/última
-alta/nombre y copia del código. Cada tarjeta muestra métricas actuales y carga bajo
-demanda el detalle responsive de clientes, con acceso directo a su ficha CRM y a
-Pagos. No ofrece eliminación, paginación ni activación/desactivación. Los estilos
-viven en su CSS Module; los íconos del shell requieren `lucide-react`.
+ABM parcial de `/admin/sellers`: React Query carga la lista y la pinta con el
+`DataTable` común (búsqueda por nombre/código/DNI, orden clickeando cualquier
+encabezado, fila desplegable). El alta vive en un modal (`CreateSellerModal`, cierra
+con Escape o clic afuera, nunca mientras guarda) que se abre desde el botón de la
+barra o desde el estado vacío; la edición de nombre/DNI está dentro del panel de cada
+vendedor. El código generado se muestra como inmutable. Normaliza el DNI a ocho
+dígitos en frontend, informa 409 y actualiza el caché sin recargar. Las columnas
+incluyen clientes, pagos vigentes, facturado 30 días / total y última alta; cuando el
+backend no manda las métricas de plata se muestra "—" y esa fila se ordena al final,
+para no confundir "sin dato" con cero. El panel desplegable carga bajo demanda el
+detalle de clientes, con acceso directo a su ficha CRM y a Pagos, y enlaza al panel
+comparativo (`SellerMetricsPanel`) y a la calculadora de comisiones
+(`SellerCommissions`). No ofrece eliminación, paginación ni activación/desactivación.
+Los estilos viven en su CSS Module; los íconos del shell requieren `lucide-react`.
 
 ### `components/Login/Login.tsx`
 - **`Login`** — formulario de login. Usa `useAuth().login`, muestra errores, redirige

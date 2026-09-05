@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type {
   AdminPayment,
@@ -30,6 +30,7 @@ import {
 import { PLAN_LABEL } from "../../../lib/plans";
 import { sanitizePhoneForWa } from "../../../lib/whatsapp";
 import { extractServerMessage } from "../../../lib/apiErrors";
+import DataTable, { type DataTableColumn } from "../../Common/DataTable/DataTable";
 import s from "./CrmClients.module.css";
 
 // ── Metadata de cada etapa del pipeline: etiqueta visible + color del punto. ──
@@ -63,8 +64,6 @@ const EMPTY_ATTENTION_SUMMARY: CrmAttentionSummary = {
   noTraffic: 0,
 };
 
-type SortKey = "client" | "stage" | "expiry" | "payment" | "followUp" | "attention";
-type SortDirection = "asc" | "desc";
 
 const ONBOARDING_ITEMS = [
   { key: "businessInfo", label: "Datos del negocio", detail: "Nombre y dirección" },
@@ -197,8 +196,6 @@ export default function CrmClients() {
   const [attentionFilter, setAttentionFilter] = useState<CrmAttentionCode | "all">("all");
   const selectedId = urlParams.get("client");
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
-  const [sortKey, setSortKey] = useState<SortKey>("client");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [exporting, setExporting] = useState(false);
   const [dragOverStage, setDragOverStage] = useState<CrmStage | null>(null);
   const [movingClientId, setMovingClientId] = useState<string | null>(null);
@@ -287,38 +284,175 @@ export default function CrmClients() {
     );
   });
 
-  const sortValue = (client: CrmClient, key: SortKey): string | number => {
-    if (key === "client") return client.businessName || client.username;
-    if (key === "stage") return STAGE_ORDER.indexOf(client.stage);
-    if (key === "expiry") return client.subscriptionExpiresAt
-      ? new Date(client.subscriptionExpiresAt).getTime()
-      : Number.MAX_SAFE_INTEGER;
-    if (key === "payment") return client.lastPayment?.createdAt
-      ? new Date(client.lastPayment.createdAt).getTime()
-      : 0;
-    if (key === "followUp") return client.nextFollowUp
-      ? calendarDate(client.nextFollowUp).getTime()
-      : Number.MAX_SAFE_INTEGER;
-    return (client.attention || []).length;
-  };
+  // El kanban no tiene encabezados para ordenar: se muestra siempre alfabético
+  // por negocio, que es lo que se espera al mirar tarjetas.
+  const kanbanClients = [...filtered].sort((left, right) =>
+    (left.businessName || left.username).localeCompare(
+      right.businessName || right.username,
+      "es",
+      { sensitivity: "base" },
+    ),
+  );
 
-  const sortedClients = [...filtered].sort((left, right) => {
-    const leftValue = sortValue(left, sortKey);
-    const rightValue = sortValue(right, sortKey);
-    const result = typeof leftValue === "string" && typeof rightValue === "string"
-      ? leftValue.localeCompare(rightValue, "es", { sensitivity: "base" })
-      : Number(leftValue) - Number(rightValue);
-    return sortDirection === "asc" ? result : -result;
-  });
-
-  const changeSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortKey(key);
-    setSortDirection(key === "attention" || key === "payment" ? "desc" : "asc");
-  };
+  // Columnas de la tabla 360. El ancho de cada una lo respeta el layout fijo de
+  // DataTable; "Cliente" va sin ancho a propósito para quedarse con el espacio
+  // sobrante en pantallas anchas (antes se lo llevaba la columna de la flecha).
+  const columns = useMemo<DataTableColumn<CrmClient>[]>(() => [
+    {
+      id: "client",
+      header: "Cliente",
+      sortValue: (client) => client.businessName || client.username,
+      render: (client) => (
+        <button type="button" className={s.tableClientButton} onClick={() => openDrawer(client._id)}>
+          <span className={s.tableClientName}>
+            {client.businessName || <em>Sin nombre comercial</em>}
+          </span>
+          <span>@{client.username}</span>
+          {client.seller && (
+            <span className={s.tableSeller} title={`Vendedor: ${client.seller.name} (${client.seller.code})`}>
+              {client.seller.name}
+            </span>
+          )}
+        </button>
+      ),
+    },
+    {
+      id: "contact",
+      header: "Contacto",
+      width: "185px",
+      render: (client) => (
+        <div className={s.tableContact}>
+          <span>{client.contactInfo?.mail || "Sin email"}</span>
+          <small>{client.contactInfo?.number ? String(client.contactInfo.number) : "Sin teléfono"}</small>
+        </div>
+      ),
+    },
+    {
+      id: "expiry",
+      header: "Plan / vencimiento",
+      width: "145px",
+      // Sin fecha de vencimiento no es "vence lejísimos": es sin dato, y
+      // DataTable lo manda al final en las dos direcciones.
+      sortValue: (client) => (client.subscriptionExpiresAt
+        ? new Date(client.subscriptionExpiresAt).getTime()
+        : null),
+      render: (client) => (
+        <div className={s.tablePlan}>
+          <span className={`${s.planBadge} ${s[`plan_${effectiveSubscriptionFor(client)}`]}`}>{planBadgeLabel(client)}</span>
+          <small>{planExpiryLabel(client.subscription, client.subscriptionExpiresAt || null)}</small>
+        </div>
+      ),
+    },
+    {
+      id: "stage",
+      header: "Etapa",
+      width: "120px",
+      sortValue: (client) => STAGE_ORDER.indexOf(client.stage),
+      render: (client) => (
+        <span className={s.tableStage}>
+          <span className={s.stageDot} style={{ background: STAGE_META[client.stage].color }} />
+          {STAGE_META[client.stage].label}
+        </span>
+      ),
+    },
+    {
+      id: "onboarding",
+      header: "Onboarding",
+      width: "115px",
+      render: (client) => (client.onboarding ? (
+        <div className={s.tableOnboarding}>
+          <span>{client.onboarding.completedCount}/{client.onboarding.total}</span>
+          <span
+            className={s.tableProgressTrack}
+            aria-label={`${client.onboarding.completedCount} de ${client.onboarding.total} pasos completos`}
+          >
+            <span style={{ width: `${Math.round((client.onboarding.completedCount / client.onboarding.total) * 100)}%` }} />
+          </span>
+        </div>
+      ) : <span className={s.tableMuted}>Sin datos</span>),
+    },
+    {
+      id: "views",
+      header: "Visitas 30 d",
+      width: "145px",
+      render: (client) => (client.views ? (
+        <div className={s.tableViews}>
+          <strong className={client.views.last30d === 0 ? s.tableViewsZero : undefined}>
+            {client.views.last30d.toLocaleString("es-AR")}
+          </strong>
+          <TrafficTrend last30d={client.views.last30d} previous30d={client.views.previous30d} />
+        </div>
+      ) : <span className={s.tableMuted}>Sin datos</span>),
+    },
+    {
+      id: "payment",
+      header: "Último pago",
+      width: "125px",
+      initialDirection: "desc",
+      sortValue: (client) => (client.lastPayment?.createdAt
+        ? new Date(client.lastPayment.createdAt).getTime()
+        : null),
+      render: (client) => {
+        const payment = client.lastPayment;
+        if (!payment) return <span className={s.tableMuted}>Sin pagos</span>;
+        const hasIssue = payment.status === "approved" && payment.entitlementStatus !== "applied";
+        return (
+          <div className={`${s.tablePayment} ${hasIssue ? s.tablePaymentIssue : ""}`}>
+            <strong>{formatPaymentAmount(payment.amount, payment.currency || "ARS")}</strong>
+            <span>{PAYMENT_STATUS_LABEL[payment.status || ""] || payment.status || "Sin estado"}</span>
+            <small>{payment.createdAt ? fmtDate(payment.createdAt) : "Sin fecha"}</small>
+          </div>
+        );
+      },
+    },
+    {
+      id: "followUp",
+      header: "Seguimiento",
+      width: "165px",
+      sortValue: (client) => (client.nextFollowUp ? calendarDate(client.nextFollowUp).getTime() : null),
+      render: (client) => (client.nextFollowUp ? (
+        <span className={`${s.tableFollowUp} ${isOverdue(client.nextFollowUp) ? s.tableFollowUpOverdue : ""}`}>
+          {isOverdue(client.nextFollowUp) ? "Vencido" : "Agendado"}
+          <small>{fmtFollowUpDate(client.nextFollowUp)}</small>
+        </span>
+      ) : <span className={s.tableMuted}>Sin agendar</span>),
+    },
+    {
+      id: "attention",
+      header: "Alertas",
+      width: "105px",
+      initialDirection: "desc",
+      sortValue: (client) => (client.attention || []).length,
+      render: (client) => {
+        const alerts = client.attention || [];
+        if (!alerts.length) return <span className={s.tableOk}>Al día</span>;
+        return (
+          <div className={s.tableAlerts}>
+            {alerts.slice(0, 2).map((code) => (
+              <span key={code}>{ATTENTION_META[code].shortLabel}</span>
+            ))}
+            {alerts.length > 2 && <small>+{alerts.length - 2}</small>}
+          </div>
+        );
+      },
+    },
+    {
+      id: "open",
+      header: null,
+      headerLabel: "Acciones",
+      width: "52px",
+      render: (client) => (
+        <button
+          type="button"
+          className={s.tableOpenButton}
+          onClick={() => openDrawer(client._id)}
+          aria-label={`Abrir ficha de ${client.businessName || client.username}`}
+        >
+          →
+        </button>
+      ),
+    },
+  ], [openDrawer]);
 
   const selectAttention = (code: CrmAttentionCode | "all") => {
     setAttentionFilter((current) => (current === code ? "all" : code));
@@ -361,9 +495,9 @@ export default function CrmClients() {
             <h1 className={s.title}>Clientes</h1>
           </div>
           <span className={s.countBadge}>
-            {sortedClients.length === clients.length
+            {filtered.length === clients.length
               ? clients.length
-              : `${sortedClients.length} de ${clients.length}`}
+              : `${filtered.length} de ${clients.length}`}
           </span>
         </div>
       </header>
@@ -468,40 +602,35 @@ export default function CrmClients() {
 
         {/* ── Vista Clientes 360 ── */}
         {viewMode === "list" && (
-          sortedClients.length === 0 ? (
-            <p className={s.emptyHint}>No hay clientes que coincidan.</p>
-          ) : (
-            <div className={s.clientTableShell}>
-              <table className={s.clientTable}>
-                <thead>
-                  <tr>
-                    <SortableHeader label="Cliente" sortKey="client" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
-                    <th>Contacto</th>
-                    <SortableHeader label="Plan / vencimiento" sortKey="expiry" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
-                    <SortableHeader label="Etapa" sortKey="stage" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
-                    <th>Onboarding</th>
-                    <th>Visitas 30 d</th>
-                    <SortableHeader label="Último pago" sortKey="payment" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
-                    <SortableHeader label="Seguimiento" sortKey="followUp" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
-                    <SortableHeader label="Alertas" sortKey="attention" activeKey={sortKey} direction={sortDirection} onSort={changeSort} />
-                    <th><span className={s.srOnly}>Acciones</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedClients.map((client) => (
-                    <ClientTableRow key={client._id} client={client} onOpen={openDrawer} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )
+          // La búsqueda y los filtros quedan arriba, fuera de la tabla, porque
+          // también gobiernan el kanban: acá ya llegan las filas filtradas.
+          <DataTable<CrmClient>
+            caption="Clientes 360"
+            rows={filtered}
+            columns={columns}
+            getRowId={(client) => client._id}
+            defaultSort={{ columnId: "client", direction: "asc" }}
+            layout="fixed"
+            minWidth={1260}
+            rowClassName={(client) => [
+              s.clientTableRow,
+              client.active ? "" : s.clientTableRowInactive,
+            ].join(" ").trim()}
+            // Si la carga falló no hay que afirmar que no hay clientes: no se
+            // sabe. El detalle del error ya está en el banner de arriba.
+            emptyMessage={error
+              ? "No se pudo cargar el listado."
+              : clients.length === 0
+                ? "Todavía no hay clientes."
+                : "No hay clientes que coincidan."}
+          />
         )}
 
         {/* ── Vista kanban ── */}
         {viewMode === "kanban" && (
           <div className={s.kanbanBoard}>
             {STAGE_ORDER.map((st) => {
-              const stClients = sortedClients.filter((c) => c.stage === st);
+              const stClients = kanbanClients.filter((c) => c.stage === st);
               return (
                 <div
                   key={st}
@@ -620,30 +749,6 @@ function AttentionInbox({
   );
 }
 
-function SortableHeader({
-  label,
-  sortKey,
-  activeKey,
-  direction,
-  onSort,
-}: {
-  label: string;
-  sortKey: SortKey;
-  activeKey: SortKey;
-  direction: SortDirection;
-  onSort: (key: SortKey) => void;
-}) {
-  const active = activeKey === sortKey;
-  return (
-    <th scope="col" aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}>
-      <button type="button" className={s.sortButton} onClick={() => onSort(sortKey)}>
-        {label}
-        <span aria-hidden>{active ? (direction === "asc" ? "↑" : "↓") : "↕"}</span>
-      </button>
-    </th>
-  );
-}
-
 // Tendencia de tráfico contra los 30 días previos. Sin base previa no se
 // muestra porcentaje: "+∞%" no le dice nada a nadie, y una cuenta nueva
 // siempre "creció".
@@ -659,111 +764,6 @@ function TrafficTrend({ last30d, previous30d }: { last30d: number; previous30d: 
     <small className={delta > 0 ? s.trendUp : s.trendDown}>
       {delta > 0 ? "↑" : "↓"} {Math.abs(delta)}%
     </small>
-  );
-}
-
-function ClientTableRow({ client, onOpen }: { client: CrmClient; onOpen: (userID: string) => void }) {
-  const alerts = client.attention || [];
-  const onboarding = client.onboarding;
-  const payment = client.lastPayment;
-  const paymentHasIssue = Boolean(
-    payment && payment.status === "approved" && payment.entitlementStatus !== "applied"
-  );
-
-  return (
-    <tr className={!client.active ? s.clientTableRowInactive : undefined}>
-      <td>
-        <button type="button" className={s.tableClientButton} onClick={() => onOpen(client._id)}>
-          <span className={s.tableClientName}>
-            {client.businessName || <em>Sin nombre comercial</em>}
-          </span>
-          <span>@{client.username}</span>
-          {client.seller && (
-            <span className={s.tableSeller} title={`Vendedor: ${client.seller.name} (${client.seller.code})`}>
-              {client.seller.name}
-            </span>
-          )}
-        </button>
-      </td>
-      <td>
-        <div className={s.tableContact}>
-          <span>{client.contactInfo?.mail || "Sin email"}</span>
-          <small>{client.contactInfo?.number ? String(client.contactInfo.number) : "Sin teléfono"}</small>
-        </div>
-      </td>
-      <td>
-        <div className={s.tablePlan}>
-          <span className={`${s.planBadge} ${s[`plan_${effectiveSubscriptionFor(client)}`]}`}>{planBadgeLabel(client)}</span>
-          <small>{planExpiryLabel(client.subscription, client.subscriptionExpiresAt || null)}</small>
-        </div>
-      </td>
-      <td>
-        <span className={s.tableStage}>
-          <span className={s.stageDot} style={{ background: STAGE_META[client.stage].color }} />
-          {STAGE_META[client.stage].label}
-        </span>
-      </td>
-      <td>
-        {onboarding ? (
-          <div className={s.tableOnboarding}>
-            <span>{onboarding.completedCount}/{onboarding.total}</span>
-            <span className={s.tableProgressTrack} aria-label={`${onboarding.completedCount} de ${onboarding.total} pasos completos`}>
-              <span style={{ width: `${Math.round((onboarding.completedCount / onboarding.total) * 100)}%` }} />
-            </span>
-          </div>
-        ) : <span className={s.tableMuted}>Sin datos</span>}
-      </td>
-      <td>
-        {client.views ? (
-          <div className={s.tableViews}>
-            <strong className={client.views.last30d === 0 ? s.tableViewsZero : undefined}>
-              {client.views.last30d.toLocaleString("es-AR")}
-            </strong>
-            <TrafficTrend
-              last30d={client.views.last30d}
-              previous30d={client.views.previous30d}
-            />
-          </div>
-        ) : <span className={s.tableMuted}>Sin datos</span>}
-      </td>
-      <td>
-        {payment ? (
-          <div className={`${s.tablePayment} ${paymentHasIssue ? s.tablePaymentIssue : ""}`}>
-            <strong>{formatPaymentAmount(payment.amount, payment.currency || "ARS")}</strong>
-            <span>{PAYMENT_STATUS_LABEL[payment.status || ""] || payment.status || "Sin estado"}</span>
-            <small>{payment.createdAt ? fmtDate(payment.createdAt) : "Sin fecha"}</small>
-          </div>
-        ) : <span className={s.tableMuted}>Sin pagos</span>}
-      </td>
-      <td>
-        {client.nextFollowUp ? (
-          <span className={`${s.tableFollowUp} ${isOverdue(client.nextFollowUp) ? s.tableFollowUpOverdue : ""}`}>
-            {isOverdue(client.nextFollowUp) ? "Vencido" : "Agendado"}
-            <small>{fmtFollowUpDate(client.nextFollowUp)}</small>
-          </span>
-        ) : <span className={s.tableMuted}>Sin agendar</span>}
-      </td>
-      <td>
-        {alerts.length ? (
-          <div className={s.tableAlerts}>
-            {alerts.slice(0, 2).map((code) => (
-              <span key={code}>{ATTENTION_META[code].shortLabel}</span>
-            ))}
-            {alerts.length > 2 && <small>+{alerts.length - 2}</small>}
-          </div>
-        ) : <span className={s.tableOk}>Al día</span>}
-      </td>
-      <td>
-        <button
-          type="button"
-          className={s.tableOpenButton}
-          onClick={() => onOpen(client._id)}
-          aria-label={`Abrir ficha de ${client.businessName || client.username}`}
-        >
-          →
-        </button>
-      </td>
-    </tr>
   );
 }
 
