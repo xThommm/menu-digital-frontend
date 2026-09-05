@@ -85,10 +85,8 @@ const EMPTY_ITEM: ItemFormState = {
   availabilitySchedule: emptyAvailabilitySchedule(),
 };
 
-// ── Subida de imagen de producto (directo a Cloudinary, sin passar por el backend) ──
+// ── Subida de imagen de producto (por el backend, ver handleImageUpload) ──
 
-const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/dbzqq1del/image/upload";
-const CLOUDINARY_UPLOAD_PRESET = "menu_items";
 const MAX_IMAGE_MB = 5;
 
 // ── Vistas posibles ────────────────────────────────────────────────────────────
@@ -711,27 +709,30 @@ export default function MenuEditorPage() {
     setImageUploading(true);
     setError("");
     try {
+      // Sube por nuestro backend, no directo a Cloudinary. El atajo anterior
+      // usaba un upload preset sin firmar: el cloud y el preset quedaban en el
+      // bundle público, así que cualquiera podía escribir archivos en la cuenta
+      // de Cloudinary sin tener sesión. Este endpoint pide JWT y plan con
+      // menu_editor, y sirve también al crear un producto (todavía sin itemID).
       const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      formData.append("image", file);
 
-      const res  = await fetch(CLOUDINARY_UPLOAD_URL, { method: "POST", body: formData });
-      // Cloudinary, no nuestro backend: su formato de error es {error:{message}},
-      // no {message} — y un 401 acá es un preset/cloud mal configurado, no la
-      // sesión del usuario, así que no pasa por parseApiResponse.
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.secure_url) {
-        const cloudinaryMessage = typeof data?.error?.message === "string" ? data.error.message : null;
-        throw new Error(cloudinaryMessage ?? "No se pudo subir la imagen.");
-      }
+      const res = await fetch("/api/items/upload-image", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await parseApiResponse(res, "No se pudo subir la imagen.");
+      const imageUrl = typeof data.imageUrl === "string" ? data.imageUrl : "";
+      if (!imageUrl) throw new Error("No se pudo subir la imagen.");
 
-      setItemForm(f => ({ ...f, image: data.secure_url }));
+      setItemForm(f => ({ ...f, image: imageUrl }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo subir la imagen.");
     } finally {
       setImageUploading(false);
     }
-  }, [setError]);
+  }, [setError, token, parseApiResponse]);
 
   const removeItemImage = useCallback(() => {
     setItemForm(f => ({ ...f, image: "" }));
