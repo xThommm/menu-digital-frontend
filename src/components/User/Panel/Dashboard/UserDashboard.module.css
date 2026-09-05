@@ -1,4 +1,43 @@
 /* ═══════════════════════════════════════════════════════════════
+   FONDO DECORATIVO (glassmorphism)
+   --admin-bg-base es un color plano: sin algo con variación detrás, el
+   backdrop-filter de las cards de abajo no tiene nada que desenfocar y el
+   efecto de vidrio esmerilado no se nota (blurear un color sólido se ve
+   igual que el color sólido). Estos dos blobs radiales, fixed y detrás de
+   todo, le dan esa base de color con la que las cards "conversan".
+   ═══════════════════════════════════════════════════════════════ */
+.root {
+  position: relative;
+  isolation: isolate;
+}
+
+.root::before,
+.root::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(90px);
+}
+
+.root::before {
+  top: -12%;
+  right: -8%;
+  width: 30rem;
+  height: 30rem;
+  background: color-mix(in srgb, var(--admin-gold) 22%, transparent);
+}
+
+.root::after {
+  bottom: -18%;
+  left: -12%;
+  width: 26rem;
+  height: 26rem;
+  background: color-mix(in srgb, var(--admin-gold) 14%, transparent);
+}
+
+/* ═══════════════════════════════════════════════════════════════
    CONTENIDO PRINCIPAL
    ═══════════════════════════════════════════════════════════════ */
 .main {
@@ -64,9 +103,21 @@
   );
 }
 
+/* Chip de vidrio flotando sobre la foto — acá el backdrop-filter sí tiene
+   algo real para desenfocar (la foto de portada), es el caso clásico de
+   glassmorphism (texto legible sobre una imagen variable). Sin foto, cae
+   sobre el degradé de fondo de .hero, más sutil pero consistente. */
 .heroContent {
   position: relative;
   z-index: 1;
+  display: inline-flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--admin-radius-lg);
+  background: color-mix(in srgb, var(--admin-bg-surface) 42%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--admin-gold) 25%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
 }
 
 .welcomeEyebrow {
@@ -101,7 +152,9 @@
   padding: var(--space-4) var(--space-5);
   border: 0.5px solid var(--admin-border-gold-soft);
   border-radius: var(--admin-radius-xl);
-  background: linear-gradient(135deg, var(--admin-bg-raised), var(--admin-bg-surface));
+  background: color-mix(in srgb, var(--admin-bg-surface) 55%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   box-shadow: var(--admin-shadow-card-rest);
   animation: fadeUp 0.45s var(--ease-out) both;
   animation-delay: 0.1s;
@@ -133,7 +186,9 @@
    TARJETA STOREFRONT
    ═══════════════════════════════════════════════════════════════ */
 .storefrontCard {
-  background: var(--admin-bg-surface);
+  background: color-mix(in srgb, var(--admin-bg-surface) 55%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   border: 0.5px solid var(--admin-border-warm);
   border-radius: var(--admin-radius-2xl);
   padding: var(--space-5);
@@ -291,7 +346,9 @@
 .qrMenu {
   z-index: var(--z-overlay);
   min-width: 180px;
-  background: var(--admin-bg-elevated);
+  background: color-mix(in srgb, var(--admin-bg-elevated) 85%, transparent);
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
   border: 0.5px solid var(--admin-border-default);
   border-radius: var(--admin-radius-md);
   box-shadow: var(--admin-shadow-card);
@@ -417,7 +474,9 @@
 
 .navCard {
   width: 100%;
-  background: var(--admin-bg-raised);
+  background: color-mix(in srgb, var(--admin-bg-raised) 55%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
   border: 0.5px solid var(--admin-border-subtle);
   border-radius: var(--admin-radius-xl);
   padding: var(--space-4);
@@ -459,7 +518,7 @@
 
 .navCard:hover {
   border-color: var(--admin-border-gold-mid);
-  background: var(--admin-bg-raised-3);
+  background: color-mix(in srgb, var(--admin-bg-raised-3) 65%, transparent);
   box-shadow: var(--admin-shadow-navcard-hover);
 }
 
@@ -469,13 +528,13 @@
 }
 
 .navCardPrimary {
-  background: var(--admin-bg-raised-2);
+  background: color-mix(in srgb, var(--admin-bg-raised-2) 55%, transparent);
   border-color: var(--admin-border-warm);
 }
 
 .navCardPrimary:hover {
   border-color: var(--admin-border-gold-strong);
-  background: var(--admin-bg-raised-4);
+  background: color-mix(in srgb, var(--admin-bg-raised-4) 65%, transparent);
   box-shadow: var(--admin-shadow-navcard-primary-hover);
 }
 
@@ -551,7 +610,9 @@
   margin-top: var(--space-6);
   border: 0.5px solid var(--admin-border-subtle);
   border-radius: var(--admin-radius-2xl);
-  background: var(--admin-bg-raised);
+  background: color-mix(in srgb, var(--admin-bg-raised) 60%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   overflow: hidden;
   animation: fadeUp 0.45s var(--ease-out) both;
   animation-delay: 0.35s;
@@ -586,7 +647,9 @@
 
 .previewToggle {
   display: flex;
-  background: var(--admin-bg-elevated);
+  background: color-mix(in srgb, var(--admin-bg-elevated) 70%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 0.5px solid var(--admin-border-default);
   border-radius: var(--radius-full);
   padding: 3px;
