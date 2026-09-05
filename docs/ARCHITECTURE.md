@@ -946,8 +946,9 @@ onboarding/alertas CRM, `PlanFeatures` y `BooleanPlanFeature`. El DTO comercial 
   `sortValue` más un `initialDirection` opcional (cantidades, plata y fechas suelen
   querer "desc" al primer clic). `layout="fixed"` hace mandar al `width` de cada
   columna, para tablas con muchas columnas donde una celda larga desacomodaría el
-  resto. Usado por `Admin/Sellers/AdminSellers` y `Admin/Crm/CrmClients`; Pagos sigue
-  con su tabla propia. CSS en `DataTable.module.css`.
+  resto. Usado por `Admin/Sellers/AdminSellers`, `Admin/Sellers/SellerMetricsPanel` y
+  `Admin/Crm/CrmClients`; Pagos sigue con su tabla propia. CSS en
+  `DataTable.module.css`.
 - **`FullScreenLoader.tsx`** — **`FullScreenLoader({label})`**: contenedor
   `.pageLoaderScreen` con `Spinner` de 36 px; guards y fallback de Suspense.
 - **`Spinner.tsx`** — **`Spinner({size, label})`**: spinner SVG inline para botones y overlays
@@ -1052,6 +1053,18 @@ detalle de clientes, con acceso directo a su ficha CRM y a Pagos, y enlaza al pa
 comparativo (`SellerMetricsPanel`) y a la calculadora de comisiones
 (`SellerCommissions`). No ofrece eliminación, paginación ni activación/desactivación.
 Los estilos viven en su CSS Module; los íconos del shell requieren `lucide-react`.
+
+### `components/Admin/Sellers/SellerMetricsPanel.tsx`
+
+Ranking comparativo del equipo (`/admin/sellers/metricas`): totales de facturación,
+cartera y renovaciones arriba, y abajo una tabla `DataTable` (`layout="fixed"`) con
+facturación atribuida —con barra contra el que más facturó, no contra el total—,
+30 días, clientes, conversión, renovaciones y última alta. Ordena por facturación
+descendente por defecto y todas las métricas abren en descendente al primer clic.
+La columna `#` es el puesto por facturación y **no** la posición de la fila: al
+ordenar por otra columna sigue diciendo en qué lugar de facturación está cada uno.
+Lo que no tiene dato queda al final en las dos direcciones. Carga, error y vacío
+son de la página (envuelven también los totales), no de la tabla.
 
 ### `components/Login/Login.tsx`
 - **`Login`** — formulario de login. Usa `useAuth().login`, muestra errores, redirige

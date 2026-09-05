@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { listAdminSellers, type SellerSummary } from "../../../api/adminSellers";
 import { formatPaymentAmount, formatPaymentDay } from "../../../lib/adminPayments";
+import DataTable, { type DataTableColumn } from "../../Common/DataTable/DataTable";
 import Spinner from "../../Common/Spinner";
 import s from "./SellerMetricsPanel.module.css";
 
@@ -59,6 +60,105 @@ export default function SellerMetricsPanel() {
   // invisibles.
   const topRevenue = rows[0]?.metrics?.revenueTotal ?? 0;
 
+  // El "#" es el puesto por facturación y no se mueve al reordenar la tabla:
+  // si fuera la posición de la fila, ordenar por conversión mostraría un
+  // ranking de facturación que no es tal.
+  const rankById = useMemo(() => {
+    const map = new Map<string, number>();
+    rows.forEach((seller, index) => map.set(seller._id, index + 1));
+    return map;
+  }, [rows]);
+
+  const columns = useMemo<DataTableColumn<SellerSummary>[]>(() => [
+    {
+      id: "rank",
+      header: "#",
+      width: "46px",
+      render: (seller) => <span className={s.rankCol}>{rankById.get(seller._id)}</span>,
+    },
+    {
+      id: "seller",
+      header: "Vendedor",
+      width: "190px",
+      sortValue: (seller) => seller.name,
+      render: (seller) => (
+        <div className={s.sellerCell}>
+          <strong>{seller.name}</strong>
+          <span>{seller.code}</span>
+        </div>
+      ),
+    },
+    {
+      id: "revenue",
+      header: "Facturación atribuida",
+      width: "230px",
+      initialDirection: "desc",
+      sortValue: (seller) => seller.metrics?.revenueTotal,
+      render: (seller) => {
+        const revenue = seller.metrics?.revenueTotal ?? 0;
+        const share = topRevenue > 0 ? Math.round((revenue / topRevenue) * 100) : 0;
+        return (
+          <div className={s.revenueCell}>
+            <span className={s.revenueValue}>{money(seller.metrics?.revenueTotal)}</span>
+            <span className={s.bar} aria-hidden>
+              <span className={s.barFill} style={{ width: `${share}%` }} />
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      id: "revenue30d",
+      header: "30 días",
+      align: "right",
+      width: "130px",
+      initialDirection: "desc",
+      sortValue: (seller) => seller.metrics?.revenue30d,
+      render: (seller) => money(seller.metrics?.revenue30d),
+    },
+    {
+      id: "clients",
+      header: "Clientes",
+      align: "right",
+      width: "100px",
+      initialDirection: "desc",
+      sortValue: (seller) => seller.metrics?.clientsTotal ?? 0,
+      render: (seller) => (seller.metrics?.clientsTotal ?? 0).toLocaleString("es-AR"),
+    },
+    {
+      id: "conversion",
+      header: "Conversión",
+      align: "right",
+      width: "110px",
+      initialDirection: "desc",
+      sortValue: (seller) => conversion(seller),
+      render: (seller) => {
+        const conv = conversion(seller);
+        return conv === null ? "—" : `${conv}%`;
+      },
+    },
+    {
+      id: "renewals",
+      header: "Renovaciones",
+      align: "right",
+      width: "120px",
+      initialDirection: "desc",
+      sortValue: (seller) => seller.metrics?.renewals ?? 0,
+      render: (seller) => (seller.metrics?.renewals ?? 0).toLocaleString("es-AR"),
+    },
+    {
+      id: "lastClient",
+      header: "Última alta",
+      width: "130px",
+      initialDirection: "desc",
+      // Se ordena por la fecha real, no por el texto ya formateado.
+      sortValue: (seller) => Date.parse(seller.metrics?.lastClientAt ?? "") || null,
+      render: (seller) => (
+        <span className={s.dateCell}>{formatPaymentDay(seller.metrics?.lastClientAt ?? null)}</span>
+      ),
+    },
+  ], [rankById, topRevenue]);
+
   return (
     <main className={s.page}>
       <div className={s.inner}>
@@ -111,64 +211,16 @@ export default function SellerMetricsPanel() {
               </article>
             </section>
 
-            <div className={s.tableWrap}>
-              <table className={s.table}>
-                <caption className={s.srOnly}>Ranking de vendedores por facturación</caption>
-                <thead>
-                  <tr>
-                    <th scope="col" className={s.rankCol}>#</th>
-                    <th scope="col">Vendedor</th>
-                    <th scope="col">Facturación atribuida</th>
-                    <th scope="col" className={s.numeric}>30 días</th>
-                    <th scope="col" className={s.numeric}>Clientes</th>
-                    <th scope="col" className={s.numeric}>Conversión</th>
-                    <th scope="col" className={s.numeric}>Renovaciones</th>
-                    <th scope="col">Última alta</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((seller, index) => {
-                    const metrics = seller.metrics;
-                    const revenue = metrics?.revenueTotal ?? 0;
-                    const share = topRevenue > 0 ? Math.round((revenue / topRevenue) * 100) : 0;
-                    const conv = conversion(seller);
-
-                    return (
-                      <tr key={seller._id}>
-                        <td className={s.rankCol}>{index + 1}</td>
-                        <td>
-                          <div className={s.sellerCell}>
-                            <strong>{seller.name}</strong>
-                            <span>{seller.code}</span>
-                          </div>
-                        </td>
-                        <td>
-                          <div className={s.revenueCell}>
-                            <span className={s.revenueValue}>{money(metrics?.revenueTotal)}</span>
-                            <span className={s.bar} aria-hidden>
-                              <span className={s.barFill} style={{ width: `${share}%` }} />
-                            </span>
-                          </div>
-                        </td>
-                        <td className={s.numeric}>{money(metrics?.revenue30d)}</td>
-                        <td className={s.numeric}>
-                          {(metrics?.clientsTotal ?? 0).toLocaleString("es-AR")}
-                        </td>
-                        <td className={s.numeric}>
-                          {conv === null ? "—" : `${conv}%`}
-                        </td>
-                        <td className={s.numeric}>
-                          {(metrics?.renewals ?? 0).toLocaleString("es-AR")}
-                        </td>
-                        <td className={s.dateCell}>
-                          {formatPaymentDay(metrics?.lastClientAt ?? null)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <DataTable<SellerSummary>
+              caption="Ranking de vendedores por facturación"
+              rows={rows}
+              columns={columns}
+              getRowId={(seller) => seller._id}
+              defaultSort={{ columnId: "revenue", direction: "desc" }}
+              layout="fixed"
+              minWidth={1050}
+              rowClassName={() => s.tableRow}
+            />
 
             <p className={s.footnote}>
               La facturación cuenta pagos aprobados y acreditados de los clientes
