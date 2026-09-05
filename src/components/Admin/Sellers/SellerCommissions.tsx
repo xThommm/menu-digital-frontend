@@ -76,7 +76,6 @@ export default function SellerCommissions() {
     contractTotal: total,
     commissionRate: tier.rate,
     months,
-    isRenewal,
     mpRatePercent: parsedMpRate,
     mpIvaPercent: parsedMpIva,
   });
@@ -97,16 +96,18 @@ export default function SellerCommissions() {
         </header>
 
         <aside className={s.rule}>
-          <strong>El vendedor cobra solo por la primera venta concretada.</strong>
+          <strong>Una renovación se liquida igual que una venta nueva.</strong>
           <p>
-            Si el cliente renueva, esa ganancia es íntegra de Menú Digital. Los puntos
-            del escalafón sí suman igual, porque miden actividad comercial y no lo que
-            se paga.
+            El vendedor vuelve a cobrar la comisión del nuevo contrato, con el porcentaje
+            del escalafón del mes en que se hace la renovación, y esos puntos suman al
+            cómputo del mes.
           </p>
           <p className={s.ruleNote}>
-            Ojo: el PDF "Estructura de Comisiones v6.0" dice lo contrario en su sección 4
-            (que la renovación vuelve a pagar comisión). Acá manda esta regla; si se
-            cambia de criterio, se ajusta en <code>src/lib/commissions.ts</code>.
+            El PDF redacta esa cláusula sobre "un cliente <strong>contratado por 1 mes</strong>{" "}
+            que renueva" y no aclara qué pasa si el que renueva venía de 3, 6 o 12 meses.
+            Esta calculadora trata a todas las renovaciones igual. Si solo correspondiera
+            pagar las que vienen de un plan mensual, hay que definirlo y ajustarlo en{" "}
+            <code>src/lib/commissions.ts</code>.
           </p>
         </aside>
 
@@ -199,7 +200,7 @@ export default function SellerCommissions() {
                     checked={isRenewal}
                     onChange={(e) => setIsRenewal(e.target.checked)}
                   />
-                  Es una renovación (no paga comisión)
+                  Es una renovación (se liquida igual que una venta nueva)
                 </label>
                 {selectedPlan.discountPrice !== null && (
                   <label>
@@ -228,10 +229,10 @@ export default function SellerCommissions() {
                 </div>
                 <div className={`${s.resultRow} ${s.negative}`}>
                   <span>
-                    Comisión del vendedor
-                    {isRenewal ? " (renovación: no aplica)" : ` (${Math.round(tier.rate * 100)}%, nivel ${tier.label})`}
+                    Comisión del vendedor ({Math.round(tier.rate * 100)}%, nivel {tier.label})
+                    {isRenewal ? " · por renovación" : ""}
                   </span>
-                  <strong>{isRenewal ? money(0) : `− ${money(breakdown.sellerCommission)}`}</strong>
+                  <strong>− {money(breakdown.sellerCommission)}</strong>
                 </div>
                 <div className={`${s.resultRow} ${s.total}`}>
                   <span>Queda para Menú Digital</span>
@@ -249,7 +250,7 @@ export default function SellerCommissions() {
               <h2 className={s.tableTitle}>Ganancia del vendedor por cliente</h2>
               <p className={s.tableCaption}>
                 Comisión sobre el total del contrato, según el escalafón del mes. Aplica
-                solo a la primera venta de cada cliente.
+                tanto a una venta nueva como a una renovación.
               </p>
               <div className={s.tableWrap}>
                 <table className={s.table}>

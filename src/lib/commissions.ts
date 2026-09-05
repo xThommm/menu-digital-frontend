@@ -1,16 +1,20 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Comisiones de vendedores
 //
-// Basado en "Estructura de Comisiones y Políticas Comerciales v6.0", con UNA
-// diferencia deliberada respecto de ese documento:
+// Sigue "Estructura de Comisiones y Políticas Comerciales v6.0".
 //
-//   El PDF (sección 4, "Liquidación y Cómputo por Renovación") dice que el
-//   vendedor vuelve a cobrar comisión cuando el cliente renueva. La regla
-//   vigente es la contraria: el vendedor cobra SOLO por la primera venta
-//   concretada, y lo que deja una renovación es 100% de Menú Digital.
+// Renovaciones (sección 4, "Liquidación y Cómputo por Renovación"): el
+// vendedor percibe nuevamente la comisión del nuevo contrato, con el
+// porcentaje del escalafón del mes en que se efectúa la renovación, y esa
+// renovación suma sus puntos al cómputo del mes. Es decir: una renovación se
+// liquida igual que una venta nueva.
 //
-// Si algún día se vuelve al criterio del PDF, el único cambio necesario está
-// en `buildBreakdown`: hoy fuerza comisión cero cuando `isRenewal` es true.
+// Queda una ambigüedad del documento que NO se resuelve acá: la cláusula está
+// redactada sobre "un cliente contratado por 1 mes [que] renueva", y no dice
+// qué pasa cuando el que renueva venía de un contrato de 3, 6 o 12 meses. El
+// cálculo trata a todas las renovaciones igual; si la intención fuera pagar
+// solo las que vienen de un plan mensual, hay que filtrarlo antes de llamar a
+// `buildBreakdown`.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type ContractMonths = 1 | 3 | 6 | 12;
@@ -93,8 +97,6 @@ export interface BreakdownInput {
   /** Porcentaje del escalafón (0.25 / 0.30 / 0.35). */
   commissionRate: number;
   months: ContractMonths;
-  /** Una renovación no paga comisión: la ganancia es toda de Menú Digital. */
-  isRenewal: boolean;
   mpRatePercent: number;
   mpIvaPercent?: number;
 }
@@ -116,12 +118,13 @@ export function buildBreakdown({
   contractTotal,
   commissionRate,
   months,
-  isRenewal,
   mpRatePercent,
   mpIvaPercent = MP_IVA_PERCENT,
 }: BreakdownInput): CommissionBreakdown {
   const fee = mercadoPagoFee(contractTotal, mpRatePercent, mpIvaPercent);
-  const commission = isRenewal ? 0 : contractTotal * commissionRate;
+  // Una renovación se liquida igual que una venta nueva (PDF, sección 4), así
+  // que el cálculo no distingue entre las dos.
+  const commission = contractTotal * commissionRate;
 
   return {
     contractTotal,
@@ -129,8 +132,6 @@ export function buildBreakdown({
     netCredited: contractTotal - fee,
     sellerCommission: commission,
     companyMargin: contractTotal - fee - commission,
-    // Los puntos suman igual en una renovación: miden actividad comercial,
-    // no lo que se paga.
     points: POINTS_BY_MONTHS[months],
   };
 }
