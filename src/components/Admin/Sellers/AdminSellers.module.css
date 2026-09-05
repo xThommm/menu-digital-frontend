@@ -5,8 +5,11 @@
   font-family: var(--font-sans);
 }
 
+/* 960px alcanzaba cuando esto eran tarjetas apiladas, pero encajona una tabla
+   de 8 columnas: a 1440 dejaba 440px sin usar y aun asi obligaba a scrollear
+   en horizontal. Es una pantalla de datos, no un formulario. */
 .inner {
-  width: min(100%, 960px);
+  width: min(100%, 1400px);
   margin: 0 auto;
   padding: var(--space-8) var(--space-5) var(--space-12);
 }
@@ -363,9 +366,11 @@
   font-size: var(--text-sm);
 }
 
+/* Las 6 métricas entran en una sola fila en desktop; en pantallas chicas
+   se acomodan solas sin quedar espachurradas. */
 .metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: var(--space-2);
   margin-top: var(--space-4);
 }
@@ -473,8 +478,12 @@
   text-align: center;
 }
 
+/* En una sola columna, un vendedor con 24 clientes daba un panel de más de
+   2000px de alto: había que scrollear mucho para volver a la tabla. En
+   varias columnas la cartera entera se ve casi de un vistazo. */
 .clientList {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: var(--space-3);
 }
 
