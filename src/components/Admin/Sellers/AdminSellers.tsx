@@ -17,13 +17,13 @@ import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
 import { useNotifications } from "../../../context/useNotifications";
 import { formatPaymentAmount, formatPaymentDate, formatPaymentDay } from "../../../lib/adminPayments";
 import { PLAN_LABEL } from "../../../lib/plans";
+import DataTable, { type DataTableColumn } from "../../Common/DataTable/DataTable";
 import Spinner from "../../Common/Spinner";
 import s from "./AdminSellers.module.css";
 
 const ADMIN_SELLERS_QUERY_KEY = ["admin-sellers"] as const;
 const sellerDetailQueryKey = (sellerID: string) => ["admin-seller", sellerID] as const;
 
-type SellerSort = "revenue" | "clients" | "recent" | "name";
 
 const emptySellerMetrics = (): SellerMetrics => ({
   clientsTotal: 0,
@@ -47,14 +47,6 @@ const emptySellerMetrics = (): SellerMetrics => ({
 const formatSellerRevenue = (value: number | undefined) =>
   typeof value === "number" ? formatPaymentAmount(value, "ARS") : "—";
 
-function normalizeSearch(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLocaleLowerCase("es-AR");
-}
-
 function normalizeText(value: string) {
   return value.trim();
 }
@@ -69,8 +61,6 @@ function isValidDni(value: string) {
 
 export default function AdminSellers() {
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<SellerSort>("clients");
   const [creating, setCreating] = useState(false);
   const sellers = useQuery({
     queryKey: ADMIN_SELLERS_QUERY_KEY,
@@ -116,31 +106,71 @@ export default function AdminSellers() {
   [sellers.data],
 );
 
-  const visibleSellers = useMemo(() => {
-    const term = normalizeSearch(search);
-    const filtered = (sellers.data || []).filter((seller) =>
-      normalizeSearch(`${seller.name} ${seller.code} ${seller.dni}`).includes(term),
-    );
-
-    return [...filtered].sort((a, b) => {
-      if (sort === "name") return a.name.localeCompare(b.name, "es-AR");
-      if (sort === "revenue") {
-        return (
-          (b.metrics?.revenueTotal ?? 0) - (a.metrics?.revenueTotal ?? 0) ||
-          a.name.localeCompare(b.name, "es-AR")
-        );
-      }
-      if (sort === "recent") {
-        const lastClientAtA = Date.parse(a.metrics?.lastClientAt || "") || 0;
-        const lastClientAtB = Date.parse(b.metrics?.lastClientAt || "") || 0;
-        return lastClientAtB - lastClientAtA;
-      }
-      return (
-  (b.metrics?.clientsTotal ?? 0) - (a.metrics?.clientsTotal ?? 0) ||
-  a.name.localeCompare(b.name, "es-AR")
-        );
-    });
-  }, [search, sellers.data, sort]);
+  // Columnas de la tabla. El orden ahora se hace clickeando el encabezado
+  // (lo resuelve DataTable), así que el select "Ordenar por" ya no hace falta.
+  const columns = useMemo<DataTableColumn<SellerSummary>[]>(() => [
+    {
+      id: "seller",
+      header: "Vendedor",
+      width: "210px",
+      sortValue: (seller) => seller.name,
+      render: (seller) => (
+        <span className={s.rowName}>
+          <strong>{seller.name}</strong>
+          <span>DNI {seller.dni}</span>
+        </span>
+      ),
+    },
+    {
+      id: "code",
+      header: "Código",
+      width: "120px",
+      sortValue: (seller) => seller.code,
+      render: (seller) => <code className={s.codeCell}>{seller.code}</code>,
+    },
+    {
+      id: "clients",
+      header: "Clientes",
+      align: "right",
+      width: "110px",
+      sortValue: (seller) => seller.metrics?.clientsTotal ?? 0,
+      render: (seller) => (seller.metrics?.clientsTotal ?? 0).toLocaleString("es-AR"),
+    },
+    {
+      id: "paid",
+      header: "Pagos vigentes",
+      align: "right",
+      width: "110px",
+      sortValue: (seller) => seller.metrics?.paidCurrent ?? 0,
+      render: (seller) => (seller.metrics?.paidCurrent ?? 0).toLocaleString("es-AR"),
+    },
+    {
+      id: "revenue30d",
+      header: "Facturado 30 d",
+      align: "right",
+      width: "140px",
+      sortValue: (seller) => seller.metrics?.revenue30d,
+      render: (seller) => formatSellerRevenue(seller.metrics?.revenue30d),
+    },
+    {
+      id: "revenueTotal",
+      header: "Facturado total",
+      align: "right",
+      width: "140px",
+      sortValue: (seller) => seller.metrics?.revenueTotal,
+      render: (seller) => formatSellerRevenue(seller.metrics?.revenueTotal),
+    },
+    {
+      id: "lastClient",
+      header: "Última alta",
+      width: "130px",
+      // Se ordena por la fecha real, no por el texto ya formateado.
+      sortValue: (seller) => Date.parse(seller.metrics?.lastClientAt ?? "") || null,
+      render: (seller) => (
+        <span className={s.dateCell}>{formatPaymentDay(seller.metrics?.lastClientAt ?? null)}</span>
+      ),
+    },
+  ], []);
 
   return (
     <main className={s.page}>
@@ -171,61 +201,39 @@ export default function AdminSellers() {
         )}
 
 
-        {sellers.isPending ? (
-          <div className={s.loading}>
-            <Spinner size={28} label="Cargando vendedores" />
-          </div>
-        ) : sellers.isError ? (
-          <div className={s.error} role="alert">
-            <p>No se pudieron cargar los vendedores.</p>
-            <button
-              className={s.secondaryButton}
-              onClick={() => void sellers.refetch()}
-              disabled={sellers.isFetching}
-            >
-              {sellers.isFetching ? "Reintentando…" : "Reintentar"}
-            </button>
-          </div>
-        ) : sellers.data.length === 0 ? (
-          // El botón de alta vive en la barra de filtros, que no se muestra sin
-          // vendedores: sin este, no habría forma de crear el primero.
-          <div className={s.empty} role="status">
-            <p>Todavía no hay vendedores.</p>
-            <button
-              className={s.primaryButton}
-              type="button"
-              onClick={() => setCreating(true)}
-            >
-              Crear el primero
-            </button>
-          </div>
-        ) : (
-          <>
-            <section className={s.toolbar} aria-label="Filtrar vendedores">
-              <label>
-                Buscar
-                <input
-                  type="search"
-                  value={search}
-                  placeholder="Nombre, código o DNI"
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-              </label>
-              <label>
-                Ordenar por
-                <select
-                  value={sort}
-                  onChange={(event) => setSort(event.target.value as SellerSort)}
-                >
-                  <option value="revenue">Más facturación</option>
-                  <option value="clients">Más clientes</option>
-                  <option value="recent">Alta más reciente</option>
-                  <option value="name">Nombre</option>
-                </select>
-              </label>
-              <p aria-live="polite">
-                {visibleSellers.length} de {sellers.data.length} vendedores
-              </p>
+        <DataTable<SellerSummary>
+          caption="Listado de vendedores"
+          rows={sellers.data ?? []}
+          columns={columns}
+          getRowId={(seller) => seller._id}
+          minWidth={1000}
+          defaultSort={{ columnId: "clients", direction: "desc" }}
+          search={{
+            accessor: (seller) => `${seller.name} ${seller.code} ${seller.dni}`,
+            placeholder: "Nombre, código o DNI",
+          }}
+          countLabel={(visible, total) => `${visible} de ${total} vendedores`}
+          loading={sellers.isPending}
+          error={sellers.isError ? "No se pudieron cargar los vendedores." : null}
+          onRetry={() => void sellers.refetch()}
+          retrying={sellers.isFetching}
+          emptyMessage={
+            // El botón de alta vive en la barra, que no se muestra sin
+            // vendedores: sin este, no habría forma de crear el primero.
+            <div className={s.emptyState}>
+              <p>Todavía no hay vendedores.</p>
+              <button
+                className={s.primaryButton}
+                type="button"
+                onClick={() => setCreating(true)}
+              >
+                Crear el primero
+              </button>
+            </div>
+          }
+          noResultsMessage="No hay vendedores que coincidan con la búsqueda."
+          actions={
+            <>
               <Link className={s.metricsLink} to="/admin/sellers/metricas">
                 Panel de métricas
               </Link>
@@ -239,42 +247,15 @@ export default function AdminSellers() {
               >
                 + Nuevo vendedor
               </button>
-            </section>
-
-            {visibleSellers.length === 0 ? (
-              <div className={s.empty} role="status">
-                No hay vendedores que coincidan con la búsqueda.
-              </div>
-            ) : (
-              <div className={s.tableWrap}>
-                <table className={s.table}>
-                  <caption className={s.srOnly}>Listado de vendedores</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col"><span className={s.srOnly}>Desplegar</span></th>
-                      <th scope="col">Vendedor</th>
-                      <th scope="col">Código</th>
-                      <th scope="col" className={s.numeric}>Clientes</th>
-                      <th scope="col" className={s.numeric}>Pagos vigentes</th>
-                      <th scope="col" className={s.numeric}>Facturado 30 d</th>
-                      <th scope="col" className={s.numeric}>Facturado total</th>
-                      <th scope="col">Última alta</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleSellers.map((seller) => (
-                      <SellerRow
-                        key={seller._id}
-                        seller={seller}
-                        onUpdated={replaceSeller}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
-        )}
+            </>
+          }
+          expandable={{
+            label: (seller) => `Ver detalle de ${seller.name}`,
+            renderPanel: (seller) => (
+              <SellerPanel seller={seller} onUpdated={replaceSeller} />
+            ),
+          }}
+        />
 
         {creating && (
           <CreateSellerModal
@@ -445,18 +426,19 @@ function CreateSellerModal({
   );
 }
 
-function SellerRow({
+// Contenido del panel desplegable. La fila y el despliegue los maneja
+// DataTable; acá queda solo el detalle del vendedor. El componente se monta
+// recién al abrir, así que la consulta del detalle ya no necesita `enabled`.
+function SellerPanel({
   seller,
   onUpdated,
 }: {
   seller: SellerSummary;
   onUpdated: (seller: Seller) => void;
 }) {
-
   const metrics = seller.metrics ?? emptySellerMetrics();
 
   const [editing, setEditing] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const [name, setName] = useState(seller.name);
   const [dni, setDni] = useState(seller.dni);
   const [error, setError] = useFeedbackMessage("error");
@@ -467,13 +449,11 @@ function SellerRow({
   const details = useQuery({
     queryKey: sellerDetailQueryKey(seller._id),
     queryFn: ({ signal }) => getAdminSeller(seller._id, signal),
-    enabled: expanded,
     refetchOnWindowFocus: false,
     staleTime: 30_000,
   });
 
   const dirty = name !== seller.name || dni !== seller.dni;
-  const clientsPanelID = `seller-${seller._id}-clients`;
 
   const reset = () => {
     setName(seller.name);
@@ -525,46 +505,7 @@ function SellerRow({
 
   return (
     <>
-      <tr className={expanded ? s.rowOpen : undefined}>
-        <td className={s.chevronCell}>
-          <button
-            className={s.chevronButton}
-            type="button"
-            aria-expanded={expanded}
-            aria-controls={clientsPanelID}
-            aria-label={expanded ? `Ocultar detalle de ${seller.name}` : `Ver detalle de ${seller.name}`}
-            onClick={() => setExpanded((current) => !current)}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden
-              className={expanded ? s.chevronOpen : undefined}>
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        </td>
-        <td>
-          <button
-            className={s.rowNameButton}
-            type="button"
-            onClick={() => setExpanded((current) => !current)}
-          >
-            <strong>{seller.name}</strong>
-            <span>DNI {seller.dni}</span>
-          </button>
-        </td>
-        <td><code className={s.codeCell}>{seller.code}</code></td>
-        <td className={s.numeric}>{metrics.clientsTotal.toLocaleString("es-AR")}</td>
-        <td className={s.numeric}>{metrics.paidCurrent.toLocaleString("es-AR")}</td>
-        <td className={s.numeric}>{formatSellerRevenue(metrics.revenue30d)}</td>
-        <td className={s.numeric}>{formatSellerRevenue(metrics.revenueTotal)}</td>
-        <td className={s.dateCell}>{formatPaymentDay(metrics.lastClientAt)}</td>
-      </tr>
-
-      {expanded && (
-        <tr className={s.panelRow}>
-          <td colSpan={8}>
-            <div id={clientsPanelID} className={s.panel}>
-              <div className={s.panelActions}>
+      <div className={s.panelActions}>
                 <button className={s.secondaryButton} type="button" onClick={() => void copyCode()}>
                   Copiar código
                 </button>
@@ -704,11 +645,7 @@ function SellerRow({
                     ))}
                   </div>
                 )}
-              </section>
-            </div>
-          </td>
-        </tr>
-      )}
+      </section>
     </>
   );
 }
