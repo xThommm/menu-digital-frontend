@@ -9,7 +9,7 @@
    de 8 columnas: a 1440 dejaba 440px sin usar y aun asi obligaba a scrollear
    en horizontal. Es una pantalla de datos, no un formulario. */
 .inner {
-  width: min(100%, 1400px);
+  width: min(100%, 1920px);
   margin: 0 auto;
   padding: var(--space-8) var(--space-5) var(--space-12);
 }
@@ -200,7 +200,7 @@
   background: var(--admin-bg-elevated);
   color: var(--admin-text-muted);
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -260,7 +260,7 @@
 .rowNameButton strong {
   color: var(--admin-text-primary);
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 800;
   white-space: nowrap;
 }
 .rowNameButton span { color: var(--admin-text-faint); font-size: var(--text-xs); }

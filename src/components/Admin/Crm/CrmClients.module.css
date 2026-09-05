@@ -22,7 +22,7 @@
   z-index: 10;
 }
 .topBarInner {
-  max-width: 1440px;
+  max-width: 1920px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -58,7 +58,7 @@
 
 /* ── Contenido ── */
 .content {
-  max-width: 1440px;
+  max-width: 1920px;
   margin: 0 auto;
   padding: var(--space-5) var(--space-5) var(--space-12);
 }

@@ -14,7 +14,7 @@
   backdrop-filter: blur(12px);
 }
 .topBarInner {
-  max-width: 1180px;
+  max-width: 1920px;
   margin: 0 auto;
   padding: var(--space-4) var(--space-5);
   display: flex;
@@ -48,7 +48,7 @@
   font-weight: 600;
 }
 
-.content { max-width: 1180px; margin: 0 auto; padding: var(--space-5) var(--space-5) var(--space-12); }
+.content { max-width: 1920px; margin: 0 auto; padding: var(--space-5) var(--space-5) var(--space-12); }
 .clientFilterBanner {
   display: flex;
   align-items: center;

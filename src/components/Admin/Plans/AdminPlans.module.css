@@ -5,7 +5,7 @@
   font-family: var(--font-sans);
 }
 
-.inner { width: min(100%, 1240px); margin: 0 auto; padding: var(--space-8) var(--space-5) var(--space-12); }
+.inner { width: min(100%, 1920px); margin: 0 auto; padding: var(--space-8) var(--space-5) var(--space-12); }
 .header { padding-bottom: var(--space-5); border-bottom: 1px solid var(--admin-border-subtle); }
 .eyebrow { margin: 0 0 var(--space-1); color: var(--admin-text-faint); font-size: 0.68rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }
 .header h1 { margin: 0; color: var(--admin-text-primary); font-size: clamp(1.35rem, 1.7vw, 1.65rem); font-weight: 600; letter-spacing: -0.022em; line-height: 1.15; }
