@@ -96,11 +96,6 @@
 
 .table tbody tr:last-child td { border-bottom: 0; }
 
-/* Los números se comparan en vertical: a la derecha y con cifras de ancho
-   fijo, para que las columnas de plata se lean como una sola. */
-.numeric { text-align: right; font-variant-numeric: tabular-nums; }
-.table thead th.numeric { text-align: right; }
-
 .sortButton {
   display: inline-flex;
   align-items: center;
