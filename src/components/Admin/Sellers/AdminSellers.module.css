@@ -43,13 +43,13 @@
 }
 
 .notice {
-  margin-block: var(--space-5);
-  padding: var(--space-4);
+  margin-block: var(--space-4);
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--admin-border-gold-mid);
   border-radius: var(--admin-radius-lg);
   background: var(--admin-gold-glow);
-  font-size: var(--text-sm);
-  line-height: 1.6;
+  font-size: var(--text-xs);
+  line-height: 1.5;
 }
 
 .notice strong {
@@ -60,38 +60,39 @@
   margin: var(--space-1) 0 0;
 }
 
+/* Cifra y etiqueta en la misma línea, no apiladas: son cuatro totales de
+   contexto, no el contenido principal de la pantalla. Así el bloque pasa de
+   ~100px de alto a la mitad y la tabla sube. */
 .overview {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-3);
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-4);
 }
 
 .summaryMetric {
   min-width: 0;
-  padding: var(--space-4);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--admin-border-default);
   border-radius: var(--admin-radius-lg);
   background: var(--admin-bg-raised);
 }
 
-.summaryMetric strong,
-.summaryMetric span {
-  display: block;
-}
-
 .summaryMetric strong {
   color: var(--admin-text-primary);
-  font-family: var(--font-serif);
-  font-size: var(--text-2xl);
-  font-weight: 500;
+  font-size: var(--text-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .summaryMetric span {
-  margin-top: var(--space-1);
+  min-width: 0;
   color: var(--admin-text-warm);
   font-size: var(--text-xs);
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .sectionTitle {
@@ -103,11 +104,63 @@
 
 .createForm,
 .card {
-  margin-bottom: var(--space-5);
-  padding: var(--space-5);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--admin-border-default);
   border-radius: var(--admin-radius-xl);
   background: var(--admin-bg-raised);
+}
+
+/* Alta de vendedor en una sola línea: título, los dos campos y el botón.
+   Es una acción ocasional y no justifica un bloque alto y permanente
+   arriba de la tabla, que es lo que realmente se viene a mirar. */
+.createRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 0.5fr) auto;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.createTitle {
+  margin: 0;
+  padding-bottom: var(--space-2);
+  color: var(--admin-text-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.createRow label {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--admin-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.createRow input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--control-min-size);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-bg-base);
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+/* Por debajo de una pantalla de escritorio, la fila única aprieta: se
+   permite que el título y el botón bajen. */
+@media (max-width: 900px) {
+  .createRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .createTitle,
+  .createRow button { grid-column: 1 / -1; }
 }
 
 .list {

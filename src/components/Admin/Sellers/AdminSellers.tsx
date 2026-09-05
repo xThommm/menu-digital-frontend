@@ -326,9 +326,11 @@ function CreateSellerForm({
   };
 
   return (
+    // Una sola fila: crear un vendedor es una acción ocasional y antes se
+    // llevaba ~200px de alto permanentes, empujando la tabla fuera de pantalla.
     <form className={s.createForm} onSubmit={submit} noValidate>
-      <h2 className={s.sectionTitle}>Nuevo vendedor</h2>
-      <div className={s.fields}>
+      <div className={s.createRow}>
+        <h2 className={s.createTitle}>Nuevo vendedor</h2>
         <label htmlFor="seller-create-name">
           Nombre
           <input
@@ -358,13 +360,6 @@ function CreateSellerForm({
             }}
           />
         </label>
-      </div>
-      {error && (
-        <p className={s.error} role="alert">
-          {error}
-        </p>
-      )}
-      <div className={s.actions}>
         <button
           className={s.primaryButton}
           type="submit"
@@ -373,6 +368,11 @@ function CreateSellerForm({
           {saving && <Spinner />} {saving ? "Creando…" : "Crear vendedor"}
         </button>
       </div>
+      {error && (
+        <p className={s.error} role="alert">
+          {error}
+        </p>
+      )}
     </form>
   );
 }
