@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
-import { listAdminPlans, updateAdminPlan } from "../../../api/adminPlans";
+import { listAdminPlans, listAdminPlanUsage, updateAdminPlan, type AdminPlanUsage } from "../../../api/adminPlans";
 import { isPlanFeatures, isPeriodMultipliers, type PlanDefinition, type PlanBillingOption } from "../../../api/plans";
 import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
 import { PLANS_QUERY_KEY } from "../../../hooks/usePlans";
@@ -46,6 +46,19 @@ export default function AdminPlans() {
     gcTime: 0,
   });
 
+  // Query separada del catálogo: si la agregación falla, las tarjetas siguen
+  // siendo editables, solo que sin el contexto de cuántas cuentas toca.
+  const usage = useQuery({
+    queryKey: ["admin-plan-usage"],
+    queryFn: ({ signal }) => listAdminPlanUsage(signal),
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
+  });
+
+  const usageByPlan = new Map<string, AdminPlanUsage>(
+    (usage.data ?? []).map((row) => [row.name, row]),
+  );
+
   const replacePlan = (updated: PlanDefinition) => {
     queryClient.setQueryData<PlanDefinition[]>(ADMIN_PLANS_QUERY_KEY, (current) => (
       current?.map((plan) => plan.name === updated.name ? updated : plan)
@@ -82,7 +95,12 @@ export default function AdminPlans() {
         ) : (
           <section className={s.plans} aria-label="Catálogo de planes">
             {[...plans.data.filter((plan) => plan.name !== "free"), ...plans.data.filter((plan) => plan.name === "free")].map((plan) => (
-              <PlanCard key={`${plan.name}-${plan.version}`} plan={plan} onUpdated={replacePlan} />
+              <PlanCard
+                key={`${plan.name}-${plan.version}`}
+                plan={plan}
+                usage={usageByPlan.get(plan.name)}
+                onUpdated={replacePlan}
+              />
             ))}
           </section>
         )}
@@ -91,7 +109,11 @@ export default function AdminPlans() {
   );
 }
 
-function PlanCard({ plan, onUpdated }: { plan: PlanDefinition; onUpdated: (plan: PlanDefinition) => void }) {
+function PlanCard({ plan, usage, onUpdated }: {
+  plan: PlanDefinition;
+  usage?: AdminPlanUsage;
+  onUpdated: (plan: PlanDefinition) => void;
+}) {
   const [label, setLabel] = useState(plan.label);
   const [description, setDescription] = useState(plan.description);
   const [features, setFeatures] = useState(() => structuredClone(plan.features));
@@ -213,6 +235,35 @@ function PlanCard({ plan, onUpdated }: { plan: PlanDefinition; onUpdated: (plan:
         </div>
         <span className={dirty ? s.unsaved : s.status}>{dirty ? "Sin guardar" : free ? "Siempre gratis" : "Publicado"}</span>
       </header>
+
+      {/* Cuánta gente y cuánta plata toca este plan, para no editar precios a
+          ciegas. El plan gratis no factura, así que ahí solo van cuentas. */}
+      {usage && (
+        <dl className={s.usageRow}>
+          <div>
+            <dt>Cuentas</dt>
+            <dd>
+              {usage.accounts.toLocaleString("es-AR")}
+              <small>{usage.activeAccounts.toLocaleString("es-AR")} activas</small>
+            </dd>
+          </div>
+          {!free && (
+            <>
+              <div>
+                <dt>Facturado (30 d)</dt>
+                <dd>{formatPaymentAmount(usage.revenue30d, plan.currency)}</dd>
+              </div>
+              <div>
+                <dt>Facturado total</dt>
+                <dd>
+                  {formatPaymentAmount(usage.revenueTotal, plan.currency)}
+                  <small>{usage.payments.toLocaleString("es-AR")} pagos</small>
+                </dd>
+              </div>
+            </>
+          )}
+        </dl>
+      )}
       {free ? (
         <p className={s.freeSummary}>{formatPaymentAmount(0, plan.currency)} ARS · {limits}</p>
       ) : <>

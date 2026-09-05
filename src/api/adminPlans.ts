@@ -17,6 +17,26 @@ export async function listAdminPlans(signal?: AbortSignal): Promise<PlanDefiniti
   return parsePlanCatalog(response.data);
 }
 
+// Cuentas y facturación por plan. Va aparte del catálogo a propósito: el
+// catálogo es configuración (se edita) y esto es medición (solo lectura). Si
+// la agregación falla, el editor de precios tiene que seguir funcionando.
+export interface AdminPlanUsage {
+  name: PlanDefinition["name"];
+  accounts: number;
+  activeAccounts: number;
+  revenueTotal: number;
+  revenue30d: number;
+  payments: number;
+}
+
+export async function listAdminPlanUsage(signal?: AbortSignal): Promise<AdminPlanUsage[]> {
+  const response = await apiClient.get<{ usage: AdminPlanUsage[] }>(
+    "/admin/plans/usage",
+    { signal, timeout: 10000 },
+  );
+  return Array.isArray(response.data?.usage) ? response.data.usage : [];
+}
+
 export async function updateAdminPlan(
   name: PlanDefinition["name"],
   update: AdminPlanPriceUpdate,
