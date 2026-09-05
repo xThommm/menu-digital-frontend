@@ -17,21 +17,21 @@
 }
 
 .eyebrow {
-  margin: 0 0 var(--space-2);
-  color: var(--admin-gold);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  margin: 0 0 var(--space-1);
+  color: var(--admin-text-faint);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
 .header h1 {
   margin: 0;
   color: var(--admin-text-primary);
-  font-family: var(--font-serif);
-  font-size: clamp(2rem, 3vw, 3rem);
-  font-weight: 400;
-  line-height: 1.1;
+  font-size: clamp(1.35rem, 1.7vw, 1.65rem);
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  line-height: 1.15;
 }
 
 .header > p:last-child {

@@ -8,7 +8,7 @@
 .inner {
   width: min(100%, 1480px);
   margin: 0 auto;
-  padding: 34px 36px 72px;
+  padding: 24px 28px 56px;
 }
 
 .hero {
@@ -16,41 +16,49 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 32px;
-  padding-bottom: 24px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--admin-border-subtle);
 }
 
+/* Los eyebrows dejan de ser del color de acento: cuando cada sección
+   lleva uno, el acento deja de señalar nada. Gris apagado como etiqueta
+   estructural, y el acento queda libre para lo accionable. */
 .eyebrow,
 .panelHeader p {
-  margin: 0 0 7px;
-  color: var(--admin-gold);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.13em;
+  margin: 0 0 5px;
+  color: var(--admin-text-faint);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
 .hero h1 {
   margin: 0;
-  font-family: var(--font-serif);
-  font-size: clamp(2rem, 3vw, 3.25rem);
-  font-weight: 500;
-  letter-spacing: -0.035em;
-  line-height: 1;
+  font-size: clamp(1.35rem, 1.7vw, 1.65rem);
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  line-height: 1.15;
 }
 
 .heroCopy {
-  margin: 11px 0 0;
+  margin: 6px 0 0;
   color: var(--admin-text-muted);
-  font-size: 0.9rem;
+  font-size: 0.83rem;
 }
 
 .today {
   padding-bottom: 3px;
-  color: var(--admin-text-warm);
-  font-size: 0.78rem;
-  text-transform: capitalize;
+  color: var(--admin-text-muted);
+  font-size: 0.76rem;
   white-space: nowrap;
+}
+
+/* toLocaleDateString devuelve "viernes, 4 de septiembre…" en minúscula.
+   capitalize sobre todo el string daba "Viernes, 4 De Septiembre De
+   2026"; solo la primera letra es lo correcto en español. */
+.today::first-letter {
+  text-transform: uppercase;
 }
 
 .errorBanner {
@@ -66,15 +74,15 @@
 .kpiGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 22px;
+  gap: 10px;
+  margin-top: 18px;
 }
 
 .kpiCard {
-  min-height: 154px;
-  padding: 20px;
+  min-height: 0;
+  padding: 14px 16px 16px;
   border: 1px solid var(--admin-border-subtle);
-  border-radius: var(--admin-radius-xl);
+  border-radius: var(--admin-radius-lg);
   background: var(--admin-bg-raised);
   box-shadow: var(--admin-shadow-card);
 }
@@ -83,23 +91,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   color: var(--admin-text-muted);
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .kpiIcon,
 .shortcutIcon {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
   border: 1px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--admin-radius-sm);
   background: var(--admin-bg-elevated);
-  color: var(--admin-text-secondary);
+  color: var(--admin-text-muted);
 }
 
 .kpiIcon svg,
@@ -118,13 +128,12 @@
 
 .kpiCard > strong {
   display: block;
-  margin-top: 19px;
+  margin-top: 12px;
   overflow: hidden;
   color: var(--admin-text-primary);
-  font-family: var(--font-serif);
-  font-size: clamp(1.65rem, 2.2vw, 2.35rem);
-  font-weight: 500;
-  letter-spacing: -0.035em;
+  font-size: clamp(1.4rem, 1.8vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.025em;
   line-height: 1.05;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -151,14 +160,20 @@
   color: var(--admin-success-text);
 }
 
+/* El único bloque que conserva el dorado: es la tarjeta de dinero. Ahí
+   el color señala "esto es plata", no "esto es importante". */
 .kpi_gold {
-  border-color: var(--admin-border-gold-mid);
+  border-color: color-mix(in srgb, var(--admin-money) 26%, transparent);
 }
 
 .kpi_gold .kpiIcon {
-  border-color: var(--admin-border-gold-mid);
-  background: var(--admin-gold-glow);
-  color: var(--admin-gold);
+  border-color: color-mix(in srgb, var(--admin-money) 26%, transparent);
+  background: color-mix(in srgb, var(--admin-money) 12%, transparent);
+  color: var(--admin-money);
+}
+
+.kpi_gold > strong {
+  color: var(--admin-money);
 }
 
 .shortcuts {
@@ -170,28 +185,26 @@
 
 .moduleShortcut {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) auto 30px;
+  grid-template-columns: 36px minmax(0, 1fr) auto 24px;
   align-items: center;
-  gap: 15px;
-  min-height: 112px;
-  padding: 19px 20px;
+  gap: 13px;
+  min-height: 0;
+  padding: 14px 16px;
   border: 1px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-xl);
+  border-radius: var(--admin-radius-lg);
   background: var(--admin-bg-surface);
   color: inherit;
   text-decoration: none;
   transition:
     border-color var(--admin-transition),
-    background var(--admin-transition),
-    box-shadow var(--admin-transition),
-    transform var(--admin-transition-spring);
+    background var(--admin-transition);
 }
 
+/* Sin el "lift" al pasar el mouse: una tarjeta que se despega es lenguaje
+   de app de consumo. Acá el hover solo confirma que la fila es clickeable. */
 .moduleShortcut:hover {
   border-color: var(--admin-border-warm);
   background: var(--admin-bg-raised);
-  box-shadow: var(--admin-shadow-navcard-hover);
-  transform: translateY(-2px);
 }
 
 .moduleShortcut:focus-visible,
@@ -206,14 +219,15 @@
 }
 
 .shortcut_gold {
-  border-color: var(--admin-border-gold-mid);
-  background: color-mix(in srgb, var(--admin-bg-surface) 92%, var(--admin-gold-glow));
+  border-color: var(--admin-border-default);
 }
 
+/* Módulo de cobros: el ícono lleva el dorado por ser dinero, la tarjeta
+   se mantiene neutra como el resto. */
 .shortcut_gold .shortcutIcon {
-  border-color: var(--admin-border-gold-mid);
-  background: var(--admin-gold-glow);
-  color: var(--admin-gold);
+  border-color: color-mix(in srgb, var(--admin-money) 26%, transparent);
+  background: color-mix(in srgb, var(--admin-money) 12%, transparent);
+  color: var(--admin-money);
 }
 
 .shortcutBody {
@@ -223,9 +237,9 @@
 }
 
 .shortcutBody small {
-  color: var(--admin-gold);
-  font-size: var(--text-xs);
-  font-weight: 700;
+  color: var(--admin-text-faint);
+  font-size: 0.68rem;
+  font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
@@ -279,9 +293,9 @@
 
 .panel {
   min-width: 0;
-  padding: 22px;
+  padding: 18px;
   border: 1px solid var(--admin-border-subtle);
-  border-radius: var(--admin-radius-xl);
+  border-radius: var(--admin-radius-lg);
   background: var(--admin-bg-raised);
   box-shadow: var(--admin-shadow-card);
 }
@@ -291,17 +305,16 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  padding-bottom: 17px;
+  padding-bottom: 13px;
   border-bottom: 1px solid var(--admin-border-subtle);
 }
 
 .panelHeader h2 {
   margin: 0;
   color: var(--admin-text-primary);
-  font-family: var(--font-serif);
-  font-size: 1.3rem;
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
 }
 
 .panelHeader a {
@@ -336,7 +349,7 @@
   grid-template-columns: 8px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  min-height: 52px;
+  min-height: 40px;
   border-bottom: 1px solid var(--admin-border-subtle);
 }
 
@@ -366,9 +379,11 @@
   background: var(--admin-text-faint);
 }
 
+/* Ámbar, no el color de acento: un punto azul al lado de "vencen en 30
+   días" no comunica advertencia, y compite con lo accionable. */
 .dot_warning {
-  background: var(--admin-gold);
-  box-shadow: 0 0 0 4px var(--admin-gold-glow);
+  background: var(--admin-warning-core);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--admin-warning-core) 18%, transparent);
 }
 
 .dot_danger {
@@ -377,7 +392,7 @@
 }
 
 .paymentHero {
-  padding: 21px 0 19px;
+  padding: 16px 0 14px;
 }
 
 .paymentHero span,
@@ -389,13 +404,12 @@
 
 .paymentHero strong {
   display: block;
-  margin: 8px 0 7px;
+  margin: 6px 0 6px;
   overflow: hidden;
-  color: var(--admin-text-primary);
-  font-family: var(--font-serif);
-  font-size: clamp(1.55rem, 2.2vw, 2.2rem);
-  font-weight: 500;
-  letter-spacing: -0.03em;
+  color: var(--admin-money);
+  font-size: clamp(1.35rem, 1.8vw, 1.7rem);
+  font-weight: 600;
+  letter-spacing: -0.025em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

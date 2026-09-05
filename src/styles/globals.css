@@ -328,6 +328,170 @@
   --admin-shadow-action-btn-success-hover: 0 2px 14px color-mix(in srgb, var(--admin-success-core) 55%, transparent);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   PANEL CEO — IDENTIDAD "GRAFITO"
+   El panel interno es una herramienta de gestión, no el producto que
+   se vende: no debería verse como la carta del restaurante. Acá se
+   redefinen los tokens --admin-* SOLO dentro de .admin-panel-graphite
+   (la raíz de AdminLayout), así el panel del dueño de restaurante —que
+   consume los mismos tokens— conserva su identidad dorada intacta.
+
+   Dos cambios de fondo respecto del default:
+   1. Superficies grafito neutro (frías) en vez de espresso cálido.
+   2. El rol de acento pasa a un azul acero. OJO con el nombre: los 5
+      módulos usan --admin-gold para "lo interactivo/enfatizado"
+      (botones, nav activa, hover), así que ese token acá lleva el azul
+      y NO se renombra —renombrarlo obligaría a tocar ~2.600 líneas sin
+      ganar nada—. El dorado como color sigue existiendo, degradado a
+      acento puntual, en --admin-plan-pro y --admin-money: dinero y
+      plan Pro, nada más.
+
+   Especificidad: (0,1,0), igual que :root, pero declarado después →
+   gana. Para el tema claro se usa :root[data-theme="light"] .admin-…
+   (0,3,0), que le gana al bloque claro base (0,2,0).
+   ═══════════════════════════════════════════════════════════════ */
+.admin-panel-graphite {
+  --admin-bg-base:        #09090b;
+  --admin-bg-surface:     #0f0f12;
+  --admin-bg-raised:      #141417;
+  --admin-bg-elevated:    #1a1a1f;
+  --admin-bg-raised-2:    #151519;
+  --admin-bg-raised-3:    #18181f;
+  --admin-bg-raised-4:    #1d1d25;
+
+  --admin-border-subtle:  #1f1f26;
+  --admin-border-default: #2a2a33;
+  --admin-border-warm:    #3a3a46;
+
+  --admin-border-gold-soft:   rgba(255, 255, 255, 0.06);
+  --admin-border-gold-mid:    rgba(111, 154, 239, 0.24);
+  --admin-border-gold-strong: rgba(111, 154, 239, 0.45);
+
+  --admin-text-primary:   #e8e8ee;
+  --admin-text-secondary: #b3b3c0;
+  --admin-text-muted:     #7b7b8a;
+  --admin-text-faint:     #55555f;
+  --admin-text-warm:      #9494a3;
+
+  /* Rol de acento (azul acero), no "dorado" — ver nota de arriba. */
+  --admin-gold:           #6f9aef;
+  --admin-gold-hover:     #89aef5;
+  --admin-gold-glow:      rgba(111, 154, 239, 0.14);
+  --admin-gold-ink:       #0a0f1a;
+
+  /* El dorado real, ya como acento puntual. */
+  --admin-money:          #d0a63f;
+  --admin-plan-free:      var(--admin-text-muted);
+  --admin-plan-basic:     #45b3a9;
+  --admin-plan-pro:       var(--admin-money);
+
+  --admin-success-core:   #3fb27a;
+  --admin-danger-core:    #e0605f;
+  /* Naranja, no dorado: si advertencia y dinero comparten tono, un "vence
+     pronto" se confunde con un importe. */
+  --admin-warning-core:   #e08b45;
+
+  --admin-pill-off-text:  color-mix(in srgb, var(--admin-money) 70%, var(--admin-text-warm));
+  --admin-pill-off-bg:    color-mix(in srgb, var(--admin-money) 10%, var(--admin-bg-base));
+  --admin-pill-muted-bg:     #17171d;
+  --admin-pill-muted-border: #26262f;
+  --admin-pill-muted-dot:    #3a3a46;
+
+  /* Esquinas más marcadas: menos "app", más herramienta. */
+  --admin-radius-sm:      4px;
+  --admin-radius-md:      6px;
+  --admin-radius-lg:      8px;
+  --admin-radius-xl:      10px;
+  --admin-radius-2xl:     12px;
+
+  /* Profundidad por borde, no por resplandor: se eliminan los glows
+     dorados que daban el aire "boutique". */
+  --admin-shadow-card:    0 1px 2px rgba(0, 0, 0, 0.5);
+  --admin-shadow-fab:     0 4px 20px rgba(0, 0, 0, 0.55);
+  --admin-shadow-modal:   0 24px 64px rgba(0, 0, 0, 0.62), 0 0 0 0.5px rgba(255, 255, 255, 0.06) inset;
+  --admin-shadow-dock:    0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.05) inset;
+  --admin-shadow-popover: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(255, 255, 255, 0.05) inset;
+  --admin-shadow-logo:       none;
+  --admin-shadow-logo-hover: none;
+  --admin-shadow-card-rest:  0 0 0 0.5px rgba(255, 255, 255, 0.04) inset;
+  --admin-shadow-card-hover: 0 0 0 0.5px rgba(255, 255, 255, 0.08) inset, 0 4px 16px rgba(0, 0, 0, 0.45);
+  --admin-shadow-navcard-hover:         0 2px 12px rgba(0, 0, 0, 0.4);
+  --admin-shadow-navcard-primary-hover: 0 2px 16px rgba(0, 0, 0, 0.45);
+  --admin-shadow-action-btn-hover:      0 2px 12px rgba(111, 154, 239, 0.28);
+}
+
+:root[data-theme="light"] .admin-panel-graphite {
+  --admin-bg-base:        #f6f7f9;
+  --admin-bg-surface:     #ffffff;
+  --admin-bg-raised:      #ffffff;
+  --admin-bg-elevated:    #f1f3f7;
+  --admin-bg-raised-2:    #fafbfc;
+  --admin-bg-raised-3:    #f4f6f9;
+  --admin-bg-raised-4:    #eef1f6;
+
+  --admin-border-subtle:  #e8eaf0;
+  --admin-border-default: #d8dbe4;
+  --admin-border-warm:    #c3c7d3;
+
+  --admin-border-gold-soft:   rgba(20, 24, 35, 0.06);
+  --admin-border-gold-mid:    rgba(47, 111, 208, 0.28);
+  --admin-border-gold-strong: rgba(47, 111, 208, 0.5);
+
+  --admin-text-primary:   #14181f;
+  --admin-text-secondary: #495062;
+  --admin-text-muted:     #767d8d;
+  --admin-text-faint:     #a2a8b6;
+  --admin-text-warm:      #5b6273;
+
+  --admin-gold:           #2f6fd0;
+  --admin-gold-hover:     #245cb4;
+  --admin-gold-glow:      rgba(47, 111, 208, 0.10);
+  --admin-gold-ink:       #ffffff;
+
+  --admin-money:          #a17a1c;
+  --admin-plan-basic:     #1c8f86;
+
+  --admin-success-core:   #1f9d63;
+  --admin-danger-core:    #cf4b4a;
+  --admin-warning-core:   #b5651d;
+
+  --admin-pill-muted-bg:     #eef0f4;
+  --admin-pill-muted-border: #dcdfe7;
+  --admin-pill-muted-dot:    #b0b6c2;
+
+  --admin-shadow-card:    0 1px 2px rgba(20, 24, 35, 0.08);
+  --admin-shadow-fab:     0 4px 20px rgba(20, 24, 35, 0.16);
+  --admin-shadow-modal:   0 24px 56px rgba(20, 24, 35, 0.18);
+  --admin-shadow-dock:    0 12px 28px rgba(20, 24, 35, 0.12);
+  --admin-shadow-popover: 0 16px 36px rgba(20, 24, 35, 0.14);
+  --admin-shadow-card-rest:  0 0 0 0.5px rgba(20, 24, 35, 0.04) inset;
+  --admin-shadow-card-hover: 0 0 0 0.5px rgba(20, 24, 35, 0.08) inset, 0 4px 14px rgba(20, 24, 35, 0.08);
+  --admin-shadow-navcard-hover:         0 2px 10px rgba(20, 24, 35, 0.08);
+  --admin-shadow-navcard-primary-hover: 0 2px 14px rgba(20, 24, 35, 0.10);
+  --admin-shadow-action-btn-hover:      0 2px 12px rgba(47, 111, 208, 0.24);
+}
+
+/* ── Tipografía del panel CEO ──
+   Los 5 módulos piden var(--font-serif) en 14 lugares (títulos y cifras).
+   Redefinirla acá los pasa a sans de una, sin tocar los .module.css. El
+   serif es la voz editorial de la carta pública; una herramienta de
+   gestión se lee mejor en sans, con cifras tabulares para que las
+   columnas de números alineen. */
+.admin-panel-graphite {
+  --font-serif: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.006em;
+}
+
+/* Sin el serif, el peso 400 de los títulos queda desvaído: la jerarquía
+   ahora la dan peso y tracking, no la familia. */
+.admin-panel-graphite h1,
+.admin-panel-graphite h2,
+.admin-panel-graphite h3 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
 /* ── Dock móvil compartido (panel de usuario + panel CEO) ── */
 .admin-mobile-dock,
 .admin-mobile-more,

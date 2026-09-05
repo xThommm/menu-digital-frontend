@@ -76,7 +76,7 @@ export default function AdminLayout() {
   const themeLabel = theme === "dark" ? "Activar tema claro" : "Activar tema oscuro";
 
   return (
-    <div className={s.layoutRoot}>
+    <div className={`${s.layoutRoot} admin-panel-graphite`}>
 
       {/* ── Sidebar (desktop) ─────────────────────────────────────────────── */}
       <aside className={s.sidebar} aria-label="Navegación del panel CEO">
