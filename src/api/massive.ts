@@ -12,11 +12,13 @@ export const downloadMassiveTemplate = async (): Promise<Blob> => {
 }
 
 // POST /api/massive/preview  →  procesa el Excel y devuelve el resumen de cambios (sin guardar nada)
+// El Content-Type no se toca: ante un FormData, axios borra el header para que
+// lo escriba el browser con su boundary. Escribirlo a mano daría un
+// 'multipart/form-data' sin boundary, que hoy solo funciona porque axios lo
+// descarta (el porqué de todo esto está en src/api/client.ts).
 export const previewMassiveImport = async (file: File): Promise<MassivePreviewResponse> => {
   const form = new FormData()
   form.append('archivo', file)
-  // No seteamos Content-Type manualmente: el browser/axios calcula el boundary
-  // del multipart automáticamente. Forzarlo a mano rompe el parseo en el backend (multer).
   const res = await apiClient.post<MassivePreviewResponse>('/massive/preview', form)
   return res.data
 }

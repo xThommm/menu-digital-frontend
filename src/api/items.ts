@@ -49,9 +49,7 @@ export const uploadItemImage = async (
 ): Promise<{ imageUrl: string; item: Item }> => {
   const form = new FormData()
   form.append('image', file)
-  const res = await apiClient.post(`/items/${itemID}/upload-image`, form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  const res = await apiClient.post(`/items/${itemID}/upload-image`, form)
   return res.data
 }
 

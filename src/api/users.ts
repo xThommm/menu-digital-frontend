@@ -51,9 +51,7 @@ export const uploadUserImage = async (
 ): Promise<{ imageUrl: string; media: User['media'] }> => {
   const form = new FormData()
   form.append('image', file)
-  const res = await apiClient.post('/users/upload-image', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  const res = await apiClient.post('/users/upload-image', form)
   return res.data
 }
 

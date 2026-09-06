@@ -46,8 +46,6 @@ export const uploadMenuImage = async (
 ): Promise<{ imageUrl: string; menu: Menu }> => {
   const form = new FormData()
   form.append('image', file)
-  const res = await apiClient.post(`/menus/${menuID}/upload-image`, form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  const res = await apiClient.post(`/menus/${menuID}/upload-image`, form)
   return res.data
 }
