@@ -23,6 +23,41 @@
   left: 0;
   bottom: 0;
   z-index: 20;
+  transition: transform var(--transition-md);
+}
+
+.sidebarCollapsed {
+  transform: translateX(-100%);
+}
+
+/* Riel que queda pegado al borde para volver a mostrar la sidebar — ver
+   comentario en AdminLayout.tsx sobre por qué vive fuera del <aside>. */
+.sidebarToggle {
+  position: fixed;
+  top: 50%;
+  left: 232px;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-sm);
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  z-index: 21;
+  transition: left var(--transition-md), background var(--admin-transition), color var(--admin-transition);
+}
+
+.sidebarToggle:hover {
+  background: var(--admin-bg-raised);
+  color: var(--admin-gold);
+}
+
+.sidebarToggleCollapsed {
+  left: 0;
 }
 
 /* ── Brand ── */
@@ -181,10 +216,16 @@
   flex: 1;
   margin-left: 232px;
   min-width: 0;
+  transition: margin-left var(--transition-md);
+}
+
+.contentExpanded {
+  margin-left: 0;
 }
 
 @media (max-width: 599px) {
   .sidebar { display: none; }
+  .sidebarToggle { display: none; }
 
   .content {
     margin-left: 0;
