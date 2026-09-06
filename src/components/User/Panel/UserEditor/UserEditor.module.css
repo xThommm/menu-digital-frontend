@@ -219,6 +219,75 @@
   opacity: 0.8;
 }
 
+/* ── Cambio de email pendiente de confirmación ── */
+.emailChangeCard {
+  margin: -0.4rem 0 1.1rem;
+  padding: 0.9rem 1rem;
+  background: var(--admin-bg-raised);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+}
+
+.emailChangeRow {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.emailChangeRow input {
+  flex: 1;
+  min-width: 0;
+  background: var(--admin-bg-base);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+  color: var(--admin-text-secondary);
+  font-family: var(--font-sans);
+  outline: none;
+}
+
+.emailChangeRow input:focus {
+  border-color: var(--admin-gold);
+}
+
+.emailChangeConfirmBtn {
+  min-height: 40px;
+  padding: 0 1.1rem;
+  background: var(--admin-gold);
+  border: none;
+  border-radius: var(--admin-radius-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--admin-gold-ink);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.emailChangeConfirmBtn:hover:not(:disabled) {
+  background: var(--admin-gold-hover);
+}
+
+.emailChangeConfirmBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.emailChangeActions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.6rem;
+}
+
+.emailChangeError {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--admin-red-text);
+}
+
 /* ── Horario de atención ── */
 .scheduleSection {
   margin: 1.25rem 0 1.5rem;

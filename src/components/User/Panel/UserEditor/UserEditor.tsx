@@ -164,6 +164,17 @@ export default function UserEditorPage() {
   const [isDirty, setIsDirty]   = useState(false);
   const initialFormRef = useRef<FormState>(EMPTY_FORM);
 
+  // ── Cambio de email de contacto ──
+  // Cambiar el mail no se guarda junto con el resto de "Info": requiere
+  // confirmar un código mandado a la casilla nueva (POST /users/me/email-change
+  // + /email-change/confirm) antes de que el backend lo escriba de verdad —
+  // así nunca queda guardado un mail que el dueño no probó controlar.
+  const [emailChangeStep, setEmailChangeStep] = useState<"idle" | "pending">("idle");
+  const [emailChangeCode, setEmailChangeCode] = useState("");
+  const [emailChangeSubmitting, setEmailChangeSubmitting] = useState(false);
+  const [emailChangeMasked, setEmailChangeMasked] = useState<string | null>(null);
+  const [emailChangeError, setEmailChangeError] = useState("");
+
   // ── Ajuste de portada (crop/zoom) ──
   // En vez de subir el archivo tal cual se selecciona, se abre un modal
   // donde el usuario puede arrastrar y hacer zoom sobre un recorte fijo
@@ -289,6 +300,12 @@ export default function UserEditorPage() {
       }
     }
 
+    const trimmedMail = form.mail.trim();
+    // Cambiar el mail no pasa por este PUT (el backend lo rechaza): se manda
+    // siempre el valor ya guardado, y si el dueño tipeó uno distinto se
+    // dispara aparte el flujo de confirmación por código.
+    const mailChanged = trimmedMail !== initialFormRef.current.mail;
+
     setSaving(true); setError(""); setSuccess("");
     try {
       const res = await fetch("/api/users/me", {
@@ -297,7 +314,7 @@ export default function UserEditorPage() {
         body: JSON.stringify({
           contactInfo: {
             businessName: form.businessName.trim(),
-            mail:         form.mail.trim(),
+            mail:         initialFormRef.current.mail,
             number:       numberDigits ? Number(numberDigits) : null,
             address:      form.address.trim(),
             social: {
@@ -312,22 +329,98 @@ export default function UserEditorPage() {
       });
       if (res.status === 401) {
         logout();
-        window.location.href = "/login";
+        window.location.assign("/login");
         return;
       }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message || "No se pudo guardar la información.");
       }
-      initialFormRef.current = form;
+      // El mail queda afuera a propósito: sigue siendo el viejo hasta
+      // confirmar el código, así isDirty refleja que ese cambio puntual
+      // todavía no se guardó de verdad.
+      initialFormRef.current = { ...form, mail: initialFormRef.current.mail };
       initialScheduleRef.current = schedule;
-      setIsDirty(false);
+      setIsDirty(mailChanged);
       setSuccess("Información guardada.");
+
+      if (mailChanged) {
+        await startEmailChange(trimmedMail);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar la información.");
     } finally {
       setSaving(false);
     }
+  };
+
+  // Paso 1: pide el cambio de mail — manda un código a la casilla nueva, no
+  // toca contactInfo.mail todavía.
+  const startEmailChange = async (mail: string) => {
+    setEmailChangeSubmitting(true);
+    setEmailChangeError("");
+    try {
+      const res = await fetch("/api/users/me/email-change", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ mail }),
+      });
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "No se pudo iniciar el cambio de email.");
+      setEmailChangeMasked(data.maskedEmail || null);
+      setEmailChangeStep("pending");
+    } catch (err) {
+      setEmailChangeError(err instanceof Error ? err.message : "No se pudo iniciar el cambio de email.");
+    } finally {
+      setEmailChangeSubmitting(false);
+    }
+  };
+
+  // Paso 2: recién acá el backend escribe contactInfo.mail, si el código coincide.
+  const confirmEmailChangeCode = async () => {
+    if (emailChangeCode.length !== 6) return;
+    setEmailChangeSubmitting(true);
+    setEmailChangeError("");
+    try {
+      const res = await fetch("/api/users/me/email-change/confirm", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ code: emailChangeCode }),
+      });
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "El código no es correcto.");
+      const newMail = data.contactInfo?.mail || form.mail.trim();
+      setForm(f => ({ ...f, mail: newMail }));
+      initialFormRef.current = { ...initialFormRef.current, mail: newMail };
+      setEmailChangeStep("idle");
+      setEmailChangeCode("");
+      setEmailChangeMasked(null);
+      setSuccess("Email de contacto actualizado.");
+    } catch (err) {
+      setEmailChangeError(err instanceof Error ? err.message : "El código no es correcto.");
+    } finally {
+      setEmailChangeSubmitting(false);
+    }
+  };
+
+  // Abandona el cambio pendiente sin llamar al backend: como nunca se llegó
+  // a guardar nada, alcanza con volver el form al mail vigente.
+  const cancelEmailChange = () => {
+    setForm(f => ({ ...f, mail: initialFormRef.current.mail }));
+    setEmailChangeStep("idle");
+    setEmailChangeCode("");
+    setEmailChangeMasked(null);
+    setEmailChangeError("");
   };
 
   // Save template
@@ -781,9 +874,59 @@ export default function UserEditorPage() {
                   value={form.mail}
                   onChange={e => setForm(f => ({ ...f, mail: e.target.value }))}
                   autoComplete="email"
+                  disabled={emailChangeStep === "pending"}
                 />
               </div>
             </div>
+
+            {emailChangeStep === "pending" && (
+              <div className={styles.emailChangeCard}>
+                <p className={styles.fieldHint}>
+                  Te mandamos un código a {emailChangeMasked || "tu email nuevo"} para
+                  confirmarlo. El email de contacto se actualiza recién al ingresarlo acá
+                  — el resto de esta pestaña ya se guardó.
+                </p>
+                <div className={styles.emailChangeRow}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={emailChangeCode}
+                    onChange={e => setEmailChangeCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    disabled={emailChangeSubmitting}
+                    aria-label="Código de confirmación del email nuevo"
+                  />
+                  <button
+                    type="button"
+                    className={styles.emailChangeConfirmBtn}
+                    onClick={confirmEmailChangeCode}
+                    disabled={emailChangeSubmitting || emailChangeCode.length !== 6}
+                  >
+                    {emailChangeSubmitting ? "Confirmando..." : "Confirmar"}
+                  </button>
+                </div>
+                {emailChangeError && <p className={styles.emailChangeError}>{emailChangeError}</p>}
+                <div className={styles.emailChangeActions}>
+                  <button
+                    type="button"
+                    className={styles.textBtn}
+                    onClick={() => void startEmailChange(form.mail.trim())}
+                    disabled={emailChangeSubmitting}
+                  >
+                    Reenviar código
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.textBtn}
+                    onClick={cancelEmailChange}
+                    disabled={emailChangeSubmitting}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className={styles.field}>
               <label htmlFor="reservationMessage">Mensaje de reserva (WhatsApp)</label>
@@ -897,11 +1040,12 @@ export default function UserEditorPage() {
             <button
               className={styles.saveBtn}
               onClick={saveInfo}
-              disabled={saving || !isDirty}
+              disabled={saving || !isDirty || emailChangeStep === "pending"}
               aria-busy={saving}
             >
               {saving
                 ? <><Spinner size={16} /> Guardando...</>
+                : emailChangeStep === "pending" ? "Confirmá el email arriba"
                 : isDirty ? "Guardar cambios" : "Sin cambios"
               }
             </button>
