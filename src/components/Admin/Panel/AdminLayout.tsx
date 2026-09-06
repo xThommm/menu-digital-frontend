@@ -81,8 +81,14 @@ export default function AdminLayout() {
       {/* ── Sidebar (desktop) ─────────────────────────────────────────────── */}
       <aside className={s.sidebar} aria-label="Navegación del panel CEO">
 
-        <div className={s.logoSq} role="img" aria-label="MenuDigital">
-          <BrandMark className={s.brandMarkImage} />
+        <div className={s.brand}>
+          <div className={s.logoSq} role="img" aria-label="MenuDigital">
+            <BrandMark className={s.brandMarkImage} />
+          </div>
+          <div className={s.brandText}>
+            <span className={s.brandName}>Menu<span>Digital</span></span>
+            <span className={s.brandSubtitle}>Panel CEO</span>
+          </div>
         </div>
 
         <nav className={s.sideNav}>
@@ -92,36 +98,40 @@ export default function AdminLayout() {
             return (
               <button
                 key={item.path}
-                className={`${s.sideBtn} ${active ? s.sideBtnActive : ""}`}
+                className={`${s.navItem} ${active ? s.navItemActive : ""}`}
                 onClick={() => navigate(item.path)}
                 aria-label={showBadge ? `${item.label} (${overdueCount} seguimientos vencidos)` : item.label}
                 aria-current={active ? "page" : undefined}
-                data-tooltip={showBadge ? `${item.label} · ${overdueCount} vencidos` : item.label}
               >
-                {item.icon}
-                {showBadge && <span className={s.navBadge}>{overdueCount > 9 ? "9+" : overdueCount}</span>}
+                <span className={s.navIcon}>{item.icon}</span>
+                <span className={s.navLabel}>{item.label}</span>
+                {showBadge && (
+                  <span className={s.navBadge}>{overdueCount > 9 ? "9+" : overdueCount}</span>
+                )}
               </button>
             );
           })}
         </nav>
 
-        <button
-          className={`${s.sideBtn} ${s.sideLogout}`}
-          onClick={toggleTheme}
-          aria-label={themeLabel}
-          data-tooltip={themeLabel}
-        >
-          {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-        </button>
+        <div className={s.sideFooter}>
+          <button
+            className={s.navItem}
+            onClick={toggleTheme}
+            aria-label={themeLabel}
+          >
+            <span className={s.navIcon}>{theme === "dark" ? <SunIcon /> : <MoonIcon />}</span>
+            <span className={s.navLabel}>{theme === "dark" ? "Tema claro" : "Tema oscuro"}</span>
+          </button>
 
-        <button
-          className={s.sideBtn}
-          onClick={handleLogout}
-          aria-label="Cerrar sesión"
-          data-tooltip="Salir"
-        >
-          <LogOut size={20} strokeWidth={1.5} />
-        </button>
+          <button
+            className={`${s.navItem} ${s.navItemDanger}`}
+            onClick={handleLogout}
+            aria-label="Cerrar sesión"
+          >
+            <span className={s.navIcon}><LogOut size={20} strokeWidth={1.5} /></span>
+            <span className={s.navLabel}>Cerrar sesión</span>
+          </button>
+        </div>
       </aside>
 
       {/* ── Contenido de la página activa ────────────────────────────────── */}

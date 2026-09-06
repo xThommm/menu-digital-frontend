@@ -11,14 +11,13 @@
 
 /* ── Sidebar (desktop) ── */
 .sidebar {
-  width: 64px;
+  width: 232px;
   flex-shrink: 0;
   background: var(--admin-bg-surface);
   border-right: 0.5px solid var(--admin-border-subtle);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: var(--space-4) 0 var(--space-6);
+  padding: var(--space-5) var(--space-3);
   position: fixed;
   top: 0;
   left: 0;
@@ -26,16 +25,24 @@
   z-index: 20;
 }
 
+/* ── Brand ── */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
 .logoSq {
-  width: 28px;
-  height: 40px;
+  width: 26px;
+  height: 37px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-bottom: var(--space-6);
-  transition: transform var(--transition-md);
   cursor: pointer;
+  transition: transform var(--transition-md);
 }
 
 .logoSq:hover {
@@ -52,96 +59,127 @@
   filter: drop-shadow(var(--admin-shadow-logo-hover));
 }
 
+.brandText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.brandName {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--admin-text-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.brandName span {
+  color: var(--admin-gold);
+}
+
+.brandSubtitle {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--admin-text-muted);
+  margin-top: 2px;
+}
+
+/* ── Nav ── */
 .sideNav {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   flex: 1;
 }
 
-.sideBtn {
-  width: var(--control-min-size);
-  height: var(--control-min-size);
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  height: 42px;
+  padding: 0 var(--space-3);
   border-radius: var(--admin-radius-md);
   border: none;
   background: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   color: var(--admin-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: left;
   cursor: pointer;
   transition: background var(--admin-transition), color var(--admin-transition);
-  position: relative;
 }
 
-.sideBtn:hover {
+.navItem:hover {
   background: var(--admin-bg-raised);
   color: var(--admin-text-warm);
 }
 
-.sideBtnActive {
+.navItemActive {
   background: var(--admin-bg-raised-2);
   color: var(--admin-gold);
 }
 
-.sideBtnActive:hover {
+.navItemActive:hover {
   background: var(--admin-bg-raised-3);
   color: var(--admin-gold);
 }
 
-/* Badge de alerta (seguimientos de CRM vencidos) — esquina del botón en el
-   sidebar, esquina del ícono en el bottomnav. */
+.navIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.navLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Badge de alerta (seguimientos de CRM vencidos), a la derecha del label. */
 .navBadge {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  min-width: 15px;
-  height: 15px;
-  padding: 0 3px;
+  flex-shrink: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: var(--radius-full);
   background: var(--admin-danger-core);
   color: var(--text-inv);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  line-height: 15px;
+  line-height: 18px;
   text-align: center;
-  box-shadow: 0 0 0 2px var(--admin-bg-surface);
-  pointer-events: none;
 }
 
-.sideBtn::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  left: calc(100% + 10px);
-  top: 50%;
-  transform: translateY(-50%);
-  background: var(--admin-bg-elevated);
-  border: 0.5px solid var(--admin-border-default);
-  color: var(--admin-text-primary);
-  font-size: var(--text-xs);
-  font-family: var(--font-sans);
-  white-space: nowrap;
-  padding: 4px 10px;
-  border-radius: var(--admin-radius-sm);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity var(--admin-transition);
-  z-index: 30;
+/* ── Footer (tema, logout) ── */
+.sideFooter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
+  border-top: 0.5px solid var(--admin-border-subtle);
 }
 
-.sideBtn:hover::after {
-  opacity: 1;
-}
-
-.sideLogout {
-  margin-top: auto;
+.navItemDanger:hover {
+  background: var(--admin-red-bg);
+  color: var(--admin-red-text);
 }
 
 /* ── Área de contenido (Outlet) ── */
 .content {
   flex: 1;
-  margin-left: 64px;
+  margin-left: 232px;
   min-width: 0;
 }
 
