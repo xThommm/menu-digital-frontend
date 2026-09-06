@@ -9,3 +9,5 @@ README.md
 # Documentación principal trasladada a docs: debe seguir versionada.
 !/docs/ARCHITECTURE.md
 !/docs/README.md
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
