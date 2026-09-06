@@ -13,6 +13,7 @@ type AuthUserPayload = {
   previousSubscription?: AuthUser["previousSubscription"]
   downgradeReason?: AuthUser["downgradeReason"]
   downgradedAt?: string | null
+  emailVerified?: boolean
 }
 
 const toAuthUser = (data: AuthUserPayload): AuthUser => ({
@@ -26,6 +27,9 @@ const toAuthUser = (data: AuthUserPayload): AuthUser => ({
   previousSubscription: data.previousSubscription ?? null,
   downgradeReason: data.downgradeReason ?? null,
   downgradedAt: data.downgradedAt ?? null,
+  // Falta en respuestas de un backend desplegado antes que este cambio de
+  // frontend — se asume verificado para no bloquear a nadie por ese hueco.
+  emailVerified: data.emailVerified ?? true,
 });
 
 

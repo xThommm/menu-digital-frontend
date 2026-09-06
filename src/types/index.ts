@@ -94,6 +94,7 @@ export interface User {
   slug: string
   active: boolean
   admin: boolean
+  emailVerified: boolean
   subscription: Subscription   // ✅ antes era `string`, ahora tipado estricto
   subscriptionExpiresAt?: string | null
   menu: boolean
@@ -122,6 +123,10 @@ export interface AuthUser {
   previousSubscription?: Exclude<Subscription, "free"> | null
   downgradeReason?: DowngradeReason | null
   downgradedAt?: string | null
+  // Ausente en sesiones guardadas antes de esta funcionalidad — se trata
+  // como verificado (`?? true`, ver AuthProvider.toAuthUser) para no
+  // bloquear de golpe a nadie con una sesión previa.
+  emailVerified?: boolean
 }
 
 export interface Menu {
@@ -179,6 +184,7 @@ export interface AuthResponse {
   previousSubscription?: Exclude<Subscription, "free"> | null
   downgradeReason?: DowngradeReason | null
   downgradedAt?: string | null
+  emailVerified?: boolean
   token: string
 }
 

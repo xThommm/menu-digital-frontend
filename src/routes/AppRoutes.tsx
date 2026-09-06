@@ -9,6 +9,7 @@ const Login    = lazy(() => import("../../src/components/Login/Login"));
 const Register = lazy(() => import("../../src/components/Register/Register"));
 const RegisterPlans = lazy(() => import("../components/Register/RegisterPlans"));
 const RegisterSuccess = lazy(() => import("../components/Register/RegisterSuccess"));
+const VerifyEmail = lazy(() => import("../components/Register/VerifyEmail"));
 const Terms   = lazy(() => import("../../src/pages/Legal/Terms"));
 const Privacy = lazy(() => import("../../src/pages/Legal/Privacy"));
 const Contact = lazy(() => import("../../src/pages/Legal/Contact"));
@@ -46,6 +47,7 @@ export default function AppRoutes() {
       <Route path="/register"  element={<Register />} />
       <Route path="/register/plans" element={<RegisterPlans />} />
       <Route path="/register/success" element={<RegisterSuccess />} />
+      <Route path="/verificar-email" element={<VerifyEmail />} />
       <Route path="/terminos"  element={<Terms />} />
       <Route path="/privacidad" element={<Privacy />} />
       <Route path="/contacto"  element={<Contact />} />

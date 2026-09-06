@@ -36,6 +36,18 @@ export const getMe = async (): Promise<User> => {
   return res.data
 }
 
+// POST /api/users/me/verify-email
+export const verifyEmail = async (code: string): Promise<{ emailVerified: boolean }> => {
+  const res = await apiClient.post<{ emailVerified: boolean }>('/users/me/verify-email', { code })
+  return res.data
+}
+
+// POST /api/users/me/verify-email/resend
+export const resendVerificationCode = async (): Promise<{ maskedEmail?: string }> => {
+  const res = await apiClient.post<{ maskedEmail?: string }>('/users/me/verify-email/resend')
+  return res.data
+}
+
 // PUT /api/users/me
 export const updateMe = async (
   data: Partial<Pick<User, 'contactInfo' | 'hasDelivery' | 'media' | 'template'>>
