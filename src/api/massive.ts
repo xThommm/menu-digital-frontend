@@ -38,6 +38,12 @@ export const triggerBlobDownload = (blob: Blob, filename: string): void => {
   const a = document.createElement('a')
   a.href = url
   a.download = filename
+  a.style.display = 'none'
+  // Firefox ignora el click de un <a> que no está en el documento.
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  a.remove()
+  // Revocar en el mismo tick puede cancelar la descarga antes de que arranque
+  // (la plantilla bajaba vacía o directamente no bajaba, según el browser).
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }

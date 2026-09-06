@@ -54,9 +54,12 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
   // ── Manejo del archivo ────────────────────────────────────────────────────
   const handleFileSelect = (f: File | null) => {
     if (!f) return;
-    if (f.size > 5 * 1024 * 1024) { setValidationError("El archivo supera el límite de 5 MB."); return; }
+    // Un archivo rechazado limpia el anterior: si no, el banner de error
+    // convivía con un archivo válido viejo todavía cargado y el botón
+    // "Ver resumen" terminaba subiendo ese, no el que se acababa de elegir.
+    if (f.size > 5 * 1024 * 1024) { setFile(null); setValidationError("El archivo supera el límite de 5 MB."); return; }
     const ext = f.name.split(".").pop()?.toLowerCase();
-    if (!["xlsx", "xls"].includes(ext ?? "")) { setValidationError("Solo se aceptan archivos .xlsx o .xls."); return; }
+    if (!["xlsx", "xls"].includes(ext ?? "")) { setFile(null); setValidationError("Solo se aceptan archivos .xlsx o .xls."); return; }
     setFile(f);
     setValidationError("");
     setError("");
@@ -106,6 +109,11 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
   const reset = () => {
     setFile(null); setResumen(null); setResultado(null);
     setValidationError(""); setError(""); setStep("upload");
+    // Sin esto el input conserva el path del archivo anterior y volver a
+    // elegir el mismo .xlsx no dispara onChange: el flujo real (bajar la
+    // plantilla, corregir errores, volver a subirla con el mismo nombre)
+    // quedaba muerto sin ningún mensaje.
+    if (inputRef.current) inputRef.current.value = "";
   };
 
   // ── Totales de resumen ────────────────────────────────────────────────────
@@ -219,7 +227,7 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
             </div>
 
             <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }}
-              onChange={e => handleFileSelect(e.target.files?.[0] ?? null)} />
+              onChange={e => { handleFileSelect(e.target.files?.[0] ?? null); e.target.value = ""; }} />
 
             <button className="save-btn" onClick={preview} disabled={!file || loading}>
               {loading ? "Procesando..." : "Ver resumen de cambios →"}
