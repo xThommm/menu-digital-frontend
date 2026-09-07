@@ -129,7 +129,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // a la pestaña y en el instante de vencimiento (con chequeos diarios para
   // fechas muy lejanas). Las cuentas legacy sin fecha no generan timers.
   useEffect(() => {
-    if (!token) return;
+    // Los sellers no tienen suscripción/plan (ni existen en la colección
+    // User que resuelve GET /users/me): sincronizar acá los desloguearía
+    // apenas inician sesión, con un 401 de un endpoint que nunca los va a
+    // reconocer.
+    if (!token || user?.role === "seller") return;
 
     let cancelled = false;
     let expiryTimer: number | undefined;
@@ -169,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [refreshUser, token, user?.subscription, user?.subscriptionExpiresAt, user?.subscriptionStatus]);
+  }, [refreshUser, token, user?.role, user?.subscription, user?.subscriptionExpiresAt, user?.subscriptionStatus]);
 
   // ✅ Parámetro `username` no choca con ningún estado
   const login = async (username: string, password: string): Promise<AuthUser> => {

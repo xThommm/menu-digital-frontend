@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import { lazy } from "react";
 
 import AdminRoute from "./AdminRoutes";
+import SellerRoute from "./SellerRoutes";
 import UserRoute from "./UserRoutes";
 
 // Public
@@ -69,10 +70,13 @@ export default function AppRoutes() {
           <Route path="/admin/sellers/comisiones" element={<SellerCommissions />} />
         </Route>
       </Route>
-    
-<Route element={<SellerLayout />}>
-    <Route path="/sellers" element={<SellerPanel />} />
-</Route>
+
+      {/* Rutas protegidas — solo sellers y admins */}
+      <Route element={<SellerRoute />}>
+        <Route element={<SellerLayout />}>
+          <Route path="/sellers" element={<SellerPanel />} />
+        </Route>
+      </Route>
 
       {/* Rutas protegidas — solo dueños de restaurante, con sidebar persistente */}
       <Route element={<UserRoute />}>
