@@ -1,28 +1,44 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useTheme } from "../../hooks/useTheme";
 import BrandMark from "../Common/BrandMark";
 import s from "./SellerLayout.module.css";
-import { ChevronLeft, ChevronRight, LayoutPanelLeft, LogOut, MoreHorizontal } from "lucide-react";
+import {
+  BarChart3,
+  Calculator,
+  ChevronLeft,
+  ChevronRight,
+  LayoutPanelLeft,
+  LogOut,
+  MoreHorizontal,
+  Settings,
+  Users,
+} from "lucide-react";
 
 // Preferencia de sidebar colapsada (separada de la del admin)
 const SIDEBAR_COLLAPSED_KEY = "seller-sidebar-collapsed";
 
-const NAV_ITEMS = [
-  {
-    path: "/sellers",
-    label: "Panel",
-    short: "Panel",
-    icon: <LayoutPanelLeft size={20} strokeWidth={1.5} />,
-  },
+const BASE_NAV_ITEMS = [
+  { path: "/sellers", label: "Panel general", short: "Panel", icon: <LayoutPanelLeft size={20} strokeWidth={1.5} /> },
+  { path: "/sellers/simulacion", label: "Simulación", short: "Simular", icon: <Calculator size={20} strokeWidth={1.5} /> },
+  { path: "/sellers/crm", label: "CRM", short: "CRM", icon: <Users size={20} strokeWidth={1.5} /> },
+  { path: "/sellers/configuracion", label: "Configuración", short: "Config.", icon: <Settings size={20} strokeWidth={1.5} /> },
 ];
 
+// Ranking es exclusivo admin — se agrega condicionalmente para no mostrarle a
+// un vendedor un link que lo va a rebotar de vuelta a /sellers.
+const RANKING_ITEM = { path: "/sellers/ranking", label: "Ranking", short: "Ranking", icon: <BarChart3 size={20} strokeWidth={1.5} /> };
+
 export default function SellerLayout() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const NAV_ITEMS = useMemo(
+    () => (user?.role === "admin" ? [...BASE_NAV_ITEMS, RANKING_ITEM] : BASE_NAV_ITEMS),
+    [user?.role],
+  );
 
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const mobileMoreButtonRef = useRef<HTMLButtonElement>(null);

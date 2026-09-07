@@ -2,27 +2,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/useAuth";
 import { useTheme } from "../../../hooks/useTheme";
-import { getCrmOverdueCount } from "../../../api/crm";
 import BrandMark from "../../Common/BrandMark";
 import s from "./AdminLayout.module.css";
-import { DollarSign, LayoutPanelLeft, LogOut, MoreHorizontal, PanelLeft, PlayingCards, Speech, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, DollarSign, PanelLeft, LayoutPanelLeft, LogOut, MoreHorizontal, PlayingCards, Speech, Users } from "lucide-react";
 
 // Preferencia del CEO de ocultar la sidebar (desktop). Persistida para que no
 // tenga que volver a colapsarla en cada visita al panel.
 const SIDEBAR_COLLAPSED_KEY = "admin-sidebar-collapsed";
 
-// const NAV_ITEMS = [
-//   { path: "/admin",          label: "Panel", short: "Panel", icon: <GridIcon /> },
-//   { path: "/admin/crm",      label: "CRM",   short: "CRM",   icon: <UsersIcon /> },
-//   { path: "/admin/payments", label: "Pagos", short: "Pagos", icon: <PaymentsIcon /> },
-//   { path: "/admin/plans", label: "Planes", short: "Planes", icon: <PlanIcon /> },
-//   { path: "/admin/sellers",  label: "Vendedores", short: "Vend.",  icon: <SellerIcon /> },
-// ];
-
-
+// El CRM se mudó al panel de vendedores (/sellers/crm, alcanzable por admin
+// también) — ya no vive en este layout.
 const NAV_ITEMS = [
   { path: "/admin",          label: "Panel",      short: "Panel",  icon: <LayoutPanelLeft size={20} strokeWidth={1.5} /> },
-  { path: "/admin/crm",      label: "CRM",        short: "CRM",    icon: <Users size={20} strokeWidth={1.5} /> },
   { path: "/admin/payments", label: "Pagos",      short: "Pagos",  icon: <DollarSign size={20} strokeWidth={1.5} /> },
   { path: "/admin/plans",    label: "Planes",     short: "Planes", icon: <PlayingCards size={20} strokeWidth={1.5} /> },
   { path: "/admin/sellers",  label: "Vendedores", short: "Vend.",  icon: <Speech size={20} strokeWidth={1.5} /> },
@@ -44,22 +35,6 @@ export default function AdminLayout() {
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
   }, [sidebarCollapsed]);
-
-  // Badge de alerta en el ítem "CRM": cuántos clientes tienen un seguimiento
-  // vencido. Se pide una vez al montar el layout (vive todo el panel admin,
-  // no solo /admin/crm) y se refresca cada vez que se vuelve a esa ruta,
-  // para que el número baje apenas se resuelve un seguimiento desde el CRM.
-  const [overdueCount, setOverdueCount] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    getCrmOverdueCount()
-      .then((count) => { if (!cancelled) setOverdueCount(count); })
-      // Badge secundario, no amerita un banner de error — pero se loguea para
-      // no perder por completo la falla (antes el catch quedaba mudo).
-      .catch((err) => { if (!cancelled) console.error("No se pudo cargar el contador de seguimientos vencidos:", err); });
-    return () => { cancelled = true; };
-  }, [location.pathname]);
 
   useEffect(() => {
     if (!mobileMoreOpen) return;
@@ -111,20 +86,16 @@ export default function AdminLayout() {
         <nav className={s.sideNav}>
           {NAV_ITEMS.map(item => {
             const active = location.pathname === item.path;
-            const showBadge = item.path === "/admin/crm" && overdueCount > 0;
             return (
               <button
                 key={item.path}
                 className={`${s.navItem} ${active ? s.navItemActive : ""}`}
                 onClick={() => navigate(item.path)}
-                aria-label={showBadge ? `${item.label} (${overdueCount} seguimientos vencidos)` : item.label}
+                aria-label={item.label}
                 aria-current={active ? "page" : undefined}
               >
                 <span className={s.navIcon}>{item.icon}</span>
                 <span className={s.navLabel}>{item.label}</span>
-                {showBadge && (
-                  <span className={s.navBadge}>{overdueCount > 9 ? "9+" : overdueCount}</span>
-                )}
               </button>
             );
           })}
@@ -177,7 +148,6 @@ export default function AdminLayout() {
       <nav className="admin-mobile-dock" aria-label="Navegación del panel CEO">
         {NAV_ITEMS.map(item => {
           const active = location.pathname === item.path;
-          const showBadge = item.path === "/admin/crm" && overdueCount > 0;
           return (
             <button
               type="button"
@@ -187,13 +157,10 @@ export default function AdminLayout() {
                 setMobileMoreOpen(false);
                 navigate(item.path);
               }}
-              aria-label={showBadge ? `${item.label} (${overdueCount} seguimientos vencidos)` : item.label}
+              aria-label={item.label}
               aria-current={active ? "page" : undefined}
             >
-              <span className="admin-mobile-dock__icon">
-                {item.icon}
-                {showBadge && <span className={s.navBadge}>{overdueCount > 9 ? "9+" : overdueCount}</span>}
-              </span>
+              <span className="admin-mobile-dock__icon">{item.icon}</span>
               {item.short}
             </button>
           );

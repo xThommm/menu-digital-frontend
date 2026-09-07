@@ -388,6 +388,9 @@ export interface CrmNote {
   kind: "note" | "event"
   createdAt: string
   author?: { _id: string; username: string } | null
+  // Autoría de una nota escrita por un vendedor (author solo resuelve contra
+  // User) — texto plano, aditivo, ausente en notas viejas.
+  authorLabel?: string | null
 }
 
 export interface CrmProfile {
