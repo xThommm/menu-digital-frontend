@@ -6,6 +6,7 @@ type AuthUserPayload = {
   _id: string
   username: string
   admin: boolean
+  role: "admin" | "user" | "seller"
   slug: string
   subscription?: AuthUser["subscription"]
   subscriptionExpiresAt?: string | null
@@ -19,7 +20,7 @@ type AuthUserPayload = {
 const toAuthUser = (data: AuthUserPayload): AuthUser => ({
   id: data._id,
   name: data.username,
-  role: data.admin ? "admin" : "user",
+  role: data.role ?? (data.admin ? "admin" : "user"),
   slug: data.slug,
   subscription: data.subscription ?? "free",
   subscriptionExpiresAt: data.subscriptionExpiresAt ?? null,

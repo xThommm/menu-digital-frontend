@@ -5,6 +5,7 @@ import { useNotifications } from "../../context/useNotifications";
 import { useFeedbackMessage } from "../../hooks/useFeedbackMessage";
 import BrandMark from "../Common/BrandMark";
 import styles from "./Login.module.css";
+import type { AuthUser } from "../../types";
 
 export default function LoginPage() {
   const { login, isAuthenticated, isLoading, user } = useAuth();
@@ -28,8 +29,14 @@ export default function LoginPage() {
   const usernameRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
+const getRedirectPath = (user: AuthUser | null) => {
+  if (user?.role === "admin") return "/admin";
+  if (user?.role === "user") return "/dashboard";
+  return "/sellers";
+};
+
   if (isAuthenticated) {
-    return <Navigate to={user?.role === "admin" ? "/admin" : "/dashboard"} replace />;
+    return <Navigate to={getRedirectPath(user)} replace />;
   }
 
   const triggerShake = () => {
@@ -71,7 +78,7 @@ export default function LoginPage() {
       }
 
       notifySuccess("Sesión iniciada correctamente.");
-      navigate(loggedUser.role === "admin" ? "/admin" : "/dashboard");
+      navigate(getRedirectPath(loggedUser))
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Usuario o contraseña incorrectos.");
       setFieldErrors({ username: false, password: true });

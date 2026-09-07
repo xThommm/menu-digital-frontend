@@ -27,6 +27,10 @@ const AdminSellers = lazy(() => import("../components/Admin/Sellers/AdminSellers
 const SellerMetricsPanel = lazy(() => import("../components/Admin/Sellers/SellerMetricsPanel"));
 const SellerCommissions = lazy(() => import("../components/Admin/Sellers/SellerCommissions"));
 
+// Seller
+const SellerLayout = lazy(() => import("../../src/components/Seller/SellerLayout"));
+const SellerPanel = lazy(() => import("../../src/components/Seller/SellerPanel"));
+
 // User (dueño del restaurante autenticado)
 const DashboardLayout = lazy(() => import("../../src/components/User/Panel/DashboardLayout/DashboardLayout"));
 const Dashboard  = lazy(() => import("../../src/components/User/Panel/Dashboard/UserDashboard"));
@@ -65,6 +69,10 @@ export default function AppRoutes() {
           <Route path="/admin/sellers/comisiones" element={<SellerCommissions />} />
         </Route>
       </Route>
+    
+<Route element={<SellerLayout />}>
+    <Route path="/sellers" element={<SellerPanel />} />
+</Route>
 
       {/* Rutas protegidas — solo dueños de restaurante, con sidebar persistente */}
       <Route element={<UserRoute />}>
