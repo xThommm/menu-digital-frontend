@@ -6,6 +6,7 @@ type AuthUserPayload = {
   _id: string
   username: string
   admin: boolean
+  role: "admin" | "user" | "seller"
   slug: string
   subscription?: AuthUser["subscription"]
   subscriptionExpiresAt?: string | null
@@ -19,7 +20,7 @@ type AuthUserPayload = {
 const toAuthUser = (data: AuthUserPayload): AuthUser => ({
   id: data._id,
   name: data.username,
-  role: data.admin ? "admin" : "user",
+  role: data.role ?? (data.admin ? "admin" : "user"),
   slug: data.slug,
   subscription: data.subscription ?? "free",
   subscriptionExpiresAt: data.subscriptionExpiresAt ?? null,
@@ -128,7 +129,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // a la pestaña y en el instante de vencimiento (con chequeos diarios para
   // fechas muy lejanas). Las cuentas legacy sin fecha no generan timers.
   useEffect(() => {
-    if (!token) return;
+    // Los sellers no tienen suscripción/plan (ni existen en la colección
+    // User que resuelve GET /users/me): sincronizar acá los desloguearía
+    // apenas inician sesión, con un 401 de un endpoint que nunca los va a
+    // reconocer.
+    if (!token || user?.role === "seller") return;
 
     let cancelled = false;
     let expiryTimer: number | undefined;
@@ -168,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [refreshUser, token, user?.subscription, user?.subscriptionExpiresAt, user?.subscriptionStatus]);
+  }, [refreshUser, token, user?.role, user?.subscription, user?.subscriptionExpiresAt, user?.subscriptionStatus]);
 
   // ✅ Parámetro `username` no choca con ningún estado
   const login = async (username: string, password: string): Promise<AuthUser> => {

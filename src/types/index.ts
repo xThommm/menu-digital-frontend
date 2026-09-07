@@ -114,7 +114,7 @@ export interface User {
 export interface AuthUser {
   id: string
   name: string
-  role: "admin" | "user"
+  role: "admin" | "user" | "seller"
   slug: string
   subscription: Subscription
   subscriptionExpiresAt?: string | null
@@ -177,6 +177,7 @@ export interface AuthResponse {
   _id: string
   username: string
   admin: boolean
+  role: "admin" | "user" | "seller"
   slug: string
   subscription: Subscription
   subscriptionExpiresAt?: string | null

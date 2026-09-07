@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import { lazy } from "react";
 
 import AdminRoute from "./AdminRoutes";
+import SellerRoute from "./SellerRoutes";
 import UserRoute from "./UserRoutes";
 
 // Public
@@ -26,6 +27,10 @@ const AdminPlans = lazy(() => import("../components/Admin/Plans/AdminPlans"));
 const AdminSellers = lazy(() => import("../components/Admin/Sellers/AdminSellers"));
 const SellerMetricsPanel = lazy(() => import("../components/Admin/Sellers/SellerMetricsPanel"));
 const SellerCommissions = lazy(() => import("../components/Admin/Sellers/SellerCommissions"));
+
+// Seller
+const SellerLayout = lazy(() => import("../../src/components/Seller/SellerLayout"));
+const SellerPanel = lazy(() => import("../../src/components/Seller/SellerPanel"));
 
 // User (dueño del restaurante autenticado)
 const DashboardLayout = lazy(() => import("../../src/components/User/Panel/DashboardLayout/DashboardLayout"));
@@ -63,6 +68,13 @@ export default function AppRoutes() {
           <Route path="/admin/sellers" element={<AdminSellers />} />
           <Route path="/admin/sellers/metricas" element={<SellerMetricsPanel />} />
           <Route path="/admin/sellers/comisiones" element={<SellerCommissions />} />
+        </Route>
+      </Route>
+
+      {/* Rutas protegidas — solo sellers y admins */}
+      <Route element={<SellerRoute />}>
+        <Route element={<SellerLayout />}>
+          <Route path="/sellers" element={<SellerPanel />} />
         </Route>
       </Route>
 
