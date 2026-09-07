@@ -4,11 +4,7 @@ import { useAuth } from "../../../context/useAuth";
 import { useTheme } from "../../../hooks/useTheme";
 import BrandMark from "../../Common/BrandMark";
 import s from "./AdminLayout.module.css";
-<<<<<<< HEAD
-import { ChevronDown, ChevronLeft, ChevronRight, DollarSign, LayoutPanelLeft, LogOut, MoreHorizontal, PlayingCards, Speech } from "lucide-react";
-=======
-import { ChevronLeft, ChevronRight, DollarSign, PanelLeft, LayoutPanelLeft, LogOut, MoreHorizontal, PlayingCards, Speech, Users } from "lucide-react";
->>>>>>> 5f6628e3aefc00cbcf12aa0b40c7632822feb70b
+import { ChevronDown,PanelLeft , DollarSign, LayoutPanelLeft, LogOut, MoreHorizontal, PlayingCards, Speech } from "lucide-react";
 
 // Preferencia del CEO de ocultar la sidebar (desktop). Persistida para que no
 // tenga que volver a colapsarla en cada visita al panel.
