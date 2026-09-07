@@ -4,11 +4,26 @@ import { useAuth } from "../../../context/useAuth";
 import { useTheme } from "../../../hooks/useTheme";
 import BrandMark from "../../Common/BrandMark";
 import s from "./AdminLayout.module.css";
+<<<<<<< HEAD
+import { ChevronDown, ChevronLeft, ChevronRight, DollarSign, LayoutPanelLeft, LogOut, MoreHorizontal, PlayingCards, Speech } from "lucide-react";
+=======
 import { ChevronLeft, ChevronRight, DollarSign, PanelLeft, LayoutPanelLeft, LogOut, MoreHorizontal, PlayingCards, Speech, Users } from "lucide-react";
+>>>>>>> 5f6628e3aefc00cbcf12aa0b40c7632822feb70b
 
 // Preferencia del CEO de ocultar la sidebar (desktop). Persistida para que no
 // tenga que volver a colapsarla en cada visita al panel.
 const SIDEBAR_COLLAPSED_KEY = "admin-sidebar-collapsed";
+
+// Accesos directos a las secciones del panel de vendedor (/sellers/*), para
+// no tener que pasar primero por el ABM y clickear de nuevo desde ahí. Son
+// solo links — esas pantallas siguen viviendo únicamente en /sellers.
+const SELLERS_SUB_ITEMS = [
+  { path: "/sellers", label: "Panel general" },
+  { path: "/sellers/simulacion", label: "Simulación de ventas" },
+  { path: "/sellers/crm", label: "CRM" },
+  { path: "/sellers/ranking", label: "Ranking" },
+  { path: "/sellers/configuracion", label: "Configuración" },
+];
 
 // El CRM se mudó al panel de vendedores (/sellers/crm, alcanzable por admin
 // también) — ya no vive en este layout.
@@ -16,7 +31,7 @@ const NAV_ITEMS = [
   { path: "/admin",          label: "Panel",      short: "Panel",  icon: <LayoutPanelLeft size={20} strokeWidth={1.5} /> },
   { path: "/admin/payments", label: "Pagos",      short: "Pagos",  icon: <DollarSign size={20} strokeWidth={1.5} /> },
   { path: "/admin/plans",    label: "Planes",     short: "Planes", icon: <PlayingCards size={20} strokeWidth={1.5} /> },
-  { path: "/admin/sellers",  label: "Vendedores", short: "Vend.",  icon: <Speech size={20} strokeWidth={1.5} /> },
+  { path: "/admin/sellers",  label: "Vendedores", short: "Vend.",  icon: <Speech size={20} strokeWidth={1.5} />, subItems: SELLERS_SUB_ITEMS },
 ];
 
 export default function AdminLayout() {
@@ -31,6 +46,9 @@ export default function AdminLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true"
   );
+
+  // Desplegable de accesos a /sellers/* dentro del ítem "Vendedores".
+  const [sellersSubmenuOpen, setSellersSubmenuOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
@@ -73,7 +91,7 @@ export default function AdminLayout() {
         inert={sidebarCollapsed}
       >
 
-        <div className={s.brand}>
+        <button type="button" className={s.brand} onClick={() => navigate("/admin")} aria-label="Ir al panel general">
           <div className={s.logoSq} role="img" aria-label="MenuDigital">
             <BrandMark className={s.brandMarkImage} />
           </div>
@@ -81,22 +99,68 @@ export default function AdminLayout() {
             <span className={s.brandName}>Menu<span>Digital</span></span>
             <span className={s.brandSubtitle}>Panel CEO</span>
           </div>
-        </div>
+        </button>
 
         <nav className={s.sideNav}>
           {NAV_ITEMS.map(item => {
             const active = location.pathname === item.path;
+            if (!item.subItems) {
+              return (
+                <button
+                  key={item.path}
+                  className={`${s.navItem} ${active ? s.navItemActive : ""}`}
+                  onClick={() => navigate(item.path)}
+                  aria-label={item.label}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <span className={s.navIcon}>{item.icon}</span>
+                  <span className={s.navLabel}>{item.label}</span>
+                </button>
+              );
+            }
+
             return (
-              <button
-                key={item.path}
-                className={`${s.navItem} ${active ? s.navItemActive : ""}`}
-                onClick={() => navigate(item.path)}
-                aria-label={item.label}
-                aria-current={active ? "page" : undefined}
-              >
-                <span className={s.navIcon}>{item.icon}</span>
-                <span className={s.navLabel}>{item.label}</span>
-              </button>
+              <div key={item.path} className={s.navGroup}>
+                <div className={s.navItemRow}>
+                  <button
+                    className={`${s.navItem} ${s.navItemGrow} ${active ? s.navItemActive : ""}`}
+                    onClick={() => navigate(item.path)}
+                    aria-label={item.label}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <span className={s.navIcon}>{item.icon}</span>
+                    <span className={s.navLabel}>{item.label}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={s.navSubToggle}
+                    onClick={() => setSellersSubmenuOpen(open => !open)}
+                    aria-expanded={sellersSubmenuOpen}
+                    aria-controls="admin-sellers-submenu"
+                    aria-label={sellersSubmenuOpen ? "Ocultar accesos al panel de vendedores" : "Mostrar accesos al panel de vendedores"}
+                  >
+                    <ChevronDown
+                      size={16}
+                      strokeWidth={1.5}
+                      className={sellersSubmenuOpen ? s.navSubToggleIconOpen : undefined}
+                    />
+                  </button>
+                </div>
+                {sellersSubmenuOpen && (
+                  <div id="admin-sellers-submenu" className={s.navSubList}>
+                    {item.subItems.map(sub => (
+                      <button
+                        key={sub.path}
+                        type="button"
+                        className={s.navSubItem}
+                        onClick={() => navigate(sub.path)}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>

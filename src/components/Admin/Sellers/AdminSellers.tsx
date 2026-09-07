@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
+import { Link } from "react-router-dom";
 import {
   createAdminSeller,
   deactivateAdminSeller,
@@ -199,9 +200,14 @@ export default function AdminSellers() {
             </label>
           }
           actions={
-            <button className={s.newSellerButton} type="button" onClick={() => setCreating(true)}>
-              + Nuevo vendedor
-            </button>
+            <>
+              <Link className={s.sellerPanelLink} to="/sellers">
+                Ir al panel de vendedores
+              </Link>
+              <button className={s.newSellerButton} type="button" onClick={() => setCreating(true)}>
+                + Nuevo vendedor
+              </button>
+            </>
           }
           expandable={{
             label: (seller) => `Ver detalle de ${seller.name}`,

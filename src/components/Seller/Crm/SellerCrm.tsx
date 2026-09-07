@@ -61,7 +61,13 @@ export default function SellerCrm() {
   const [attentionFilter, setAttentionFilter] = useState<CrmAttentionCode | "all">("all");
   const [sellerFilter, setSellerFilter] = useState("all");
   const selectedId = urlParams.get("client");
-  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
+  // En celular la tabla (pensada para desktop, con scroll horizontal) es
+  // incómoda como primera vista — el kanban, con columnas angostas, se lee
+  // mejor de arranque. Es solo el default inicial: el toggle de vista sigue
+  // disponible para cambiar en cualquier momento.
+  const [viewMode, setViewMode] = useState<"list" | "kanban">(
+    () => (window.innerWidth < 768 ? "kanban" : "list"),
+  );
   const [exporting, setExporting] = useState(false);
   const [dragOverStage, setDragOverStage] = useState<CrmStage | null>(null);
   const [movingClientId, setMovingClientId] = useState<string | null>(null);

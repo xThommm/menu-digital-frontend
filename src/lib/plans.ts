@@ -49,3 +49,30 @@ export function getPlanFeatureLabels(features: PlanFeatures): string[] {
     ...(!features.sin_publicidad ? ["Incluye publicidad de MenuDigital"] : []),
   ];
 }
+
+// Solo lo que un plan agrega por encima del anterior en PLAN_ORDER — para no
+// repetir en la lista del plan Pro lo que ya se leyó en la del plan Básico
+// (o en la del Básico lo que ya venía en el Gratuito). Sin plan anterior
+// (o si por algún motivo no queda nada que agregar), cae a la lista completa.
+export function getPlanUpgradeLabels(features: PlanFeatures, previousFeatures: PlanFeatures | null): string[] {
+  if (!previousFeatures) return getPlanFeatureLabels(features);
+
+  const added: string[] = [];
+
+  if (features.item_limit !== previousFeatures.item_limit) {
+    added.push(features.item_limit === null ? "Productos ilimitados" : `Hasta ${features.item_limit} productos`);
+  }
+
+  added.push(
+    ...BOOLEAN_FEATURES
+      .filter(key => features[key] && !previousFeatures[key])
+      .map(key => FEATURE_LABELS[key]),
+  );
+
+  const newTemplates = features.templateIds.length - previousFeatures.templateIds.length;
+  if (newTemplates > 0) {
+    added.push(`+${newTemplates} ${newTemplates === 1 ? "diseño nuevo" : "diseños nuevos"}`);
+  }
+
+  return added.length > 0 ? added : getPlanFeatureLabels(features);
+}
