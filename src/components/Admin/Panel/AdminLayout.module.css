@@ -30,25 +30,27 @@
   transform: translateX(-100%);
 }
 
-/* Riel que queda pegado al borde para volver a mostrar la sidebar — ver
-   comentario en AdminLayout.tsx sobre por qué vive fuera del <aside>. */
+/* Botón de toggle, fijo fuera del <aside> — ver comentario en AdminLayout.tsx.
+   Estilo ChatGPT/Claude: vive siempre en la misma posición top-left, tanto
+   con la sidebar abierta (queda sobre su franja superior, ver .brand) como
+   cerrada (flota sobre el contenido, ver .contentExpanded) — nunca se mueve,
+   así no hay que ir a buscarlo. */
 .sidebarToggle {
   position: fixed;
-  top: 50%;
-  left: 232px;
-  transform: translate(-50%, -50%);
-  width: 20px;
-  height: 40px;
+  top: var(--space-4);
+  left: var(--space-4);
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--admin-bg-elevated);
-  border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-sm);
-  color: var(--admin-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--admin-radius-md);
+  color: var(--admin-text-secondary);
   cursor: pointer;
-  z-index: 21;
-  transition: left var(--transition-md), background var(--admin-transition), color var(--admin-transition);
+  z-index: 25;
+  transition: background var(--admin-transition), color var(--admin-transition), transform var(--admin-transition-spring);
 }
 
 .sidebarToggle:hover {
@@ -56,8 +58,8 @@
   color: var(--admin-gold);
 }
 
-.sidebarToggleCollapsed {
-  left: 0;
+.sidebarToggle:active {
+  transform: scale(0.9);
 }
 
 /* ── Brand ── */
@@ -66,6 +68,9 @@
   align-items: center;
   gap: var(--space-3);
   padding: 0 var(--space-2);
+  /* Deja lugar arriba para el sidebarToggle fijo (top-left), que se
+     superpone a esta franja de la sidebar en vez de empujarla en el flujo. */
+  margin-top: var(--space-10);
   margin-bottom: var(--space-6);
 }
 
@@ -146,22 +151,29 @@
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: background var(--admin-transition), color var(--admin-transition);
+  transition: background var(--admin-transition), color var(--admin-transition), transform var(--admin-transition-spring);
 }
 
 .navItem:hover {
   background: var(--admin-bg-raised);
   color: var(--admin-text-warm);
+  transform: translateX(2px);
+}
+
+.navItem:active {
+  transform: translateX(2px) scale(0.97);
 }
 
 .navItemActive {
   background: var(--admin-bg-raised-2);
   color: var(--admin-gold);
+  box-shadow: inset 2px 0 0 var(--admin-gold);
 }
 
 .navItemActive:hover {
   background: var(--admin-bg-raised-3);
   color: var(--admin-gold);
+  transform: translateX(2px);
 }
 
 .navIcon {
@@ -221,6 +233,9 @@
 
 .contentExpanded {
   margin-left: 0;
+  /* Con la sidebar oculta, el sidebarToggle fijo flota sobre esta esquina
+     del contenido — se reserva el espacio para que no quede tapado. */
+  padding-top: var(--space-16);
 }
 
 @media (max-width: 599px) {

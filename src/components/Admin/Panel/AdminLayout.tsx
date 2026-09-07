@@ -5,7 +5,7 @@ import { useTheme } from "../../../hooks/useTheme";
 import { getCrmOverdueCount } from "../../../api/crm";
 import BrandMark from "../../Common/BrandMark";
 import s from "./AdminLayout.module.css";
-import { ChevronLeft, ChevronRight, DollarSign, LayoutPanelLeft, LogOut, MoreHorizontal, PlayingCards, Speech, Users } from "lucide-react";
+import { DollarSign, LayoutPanelLeft, LogOut, MoreHorizontal, PanelLeft, PlayingCards, Speech, Users } from "lucide-react";
 
 // Preferencia del CEO de ocultar la sidebar (desktop). Persistida para que no
 // tenga que volver a colapsarla en cada visita al panel.
@@ -151,19 +151,21 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      {/* Riel fijo, fuera del <aside>: sigue visible/clickeable con la
+      {/* Botón fijo, fuera del <aside>: sigue visible/clickeable con la
           sidebar oculta — si viviera adentro desaparecería con ella y no
-          habría forma de volver a mostrarla. */}
+          habría forma de volver a mostrarla. Vive siempre en la misma
+          posición top-left (estilo ChatGPT/Claude) en vez de moverse con la
+          sidebar, así nunca hay que ir a buscarlo. */}
       <button
         type="button"
-        className={`${s.sidebarToggle} ${sidebarCollapsed ? s.sidebarToggleCollapsed : ""}`}
+        className={s.sidebarToggle}
         onClick={() => setSidebarCollapsed(collapsed => !collapsed)}
         aria-expanded={!sidebarCollapsed}
         aria-controls="ceo-sidebar"
         aria-label={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"}
         title={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"}
       >
-        {sidebarCollapsed ? <ChevronRight size={14} strokeWidth={2} /> : <ChevronLeft size={14} strokeWidth={2} />}
+        <PanelLeft size={18} strokeWidth={1.75} />
       </button>
 
       {/* ── Contenido de la página activa ────────────────────────────────── */}
