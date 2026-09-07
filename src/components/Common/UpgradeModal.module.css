@@ -139,7 +139,8 @@
 .cancel:disabled, .pay:disabled, .option:disabled, .month:disabled { cursor: not-allowed; opacity: 0.6; }
 
 @media (max-width: 560px) {
-  .modal { padding: var(--space-5); }
+  .overlay { padding: var(--space-5); }
+  .modal { padding: var(--space-4); max-height: calc(100dvh - 40px); }
   .months { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .options { grid-template-columns: 1fr; }
   /* En fila, "Cerrar" y "Pagar $157.496,85" no entraban en el ancho del
