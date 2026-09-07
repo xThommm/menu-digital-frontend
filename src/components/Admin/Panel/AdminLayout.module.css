@@ -31,16 +31,16 @@
 }
 
 /* Botón de toggle, fijo fuera del <aside> — ver comentario en AdminLayout.tsx.
-   Estilo ChatGPT/Claude: vive siempre en la misma posición top-left, tanto
-   con la sidebar abierta (queda sobre su franja superior, ver .brand) como
-   cerrada (flota sobre el contenido, ver .contentExpanded) — nunca se mueve,
-   así no hay que ir a buscarlo. */
+   Expandida: se alinea con la fila del brand (mismo top que el logo, pegado
+   al borde derecho interno de la sidebar). Colapsada: salta a la esquina
+   superior izquierda (estilo ChatGPT/Claude) para seguir visible sin la
+   sidebar — ver .sidebarToggleCollapsed y .contentExpanded. */
 .sidebarToggle {
   position: fixed;
-  top: var(--space-4);
-  left: var(--space-4);
-  width: 36px;
-  height: 36px;
+  top: 22px;
+  left: 188px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -50,7 +50,8 @@
   color: var(--admin-text-secondary);
   cursor: pointer;
   z-index: 25;
-  transition: background var(--admin-transition), color var(--admin-transition), transform var(--admin-transition-spring);
+  transition: top var(--transition-md), left var(--transition-md),
+    background var(--admin-transition), color var(--admin-transition), transform var(--admin-transition-spring);
 }
 
 .sidebarToggle:hover {
@@ -62,15 +63,17 @@
   transform: scale(0.9);
 }
 
+.sidebarToggleCollapsed {
+  top: var(--space-4);
+  left: var(--space-4);
+}
+
 /* ── Brand ── */
 .brand {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: 0 var(--space-2);
-  /* Deja lugar arriba para el sidebarToggle fijo (top-left), que se
-     superpone a esta franja de la sidebar en vez de empujarla en el flujo. */
-  margin-top: var(--space-10);
   margin-bottom: var(--space-6);
 }
 

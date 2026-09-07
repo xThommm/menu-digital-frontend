@@ -153,12 +153,12 @@ export default function AdminLayout() {
 
       {/* Botón fijo, fuera del <aside>: sigue visible/clickeable con la
           sidebar oculta — si viviera adentro desaparecería con ella y no
-          habría forma de volver a mostrarla. Vive siempre en la misma
-          posición top-left (estilo ChatGPT/Claude) en vez de moverse con la
-          sidebar, así nunca hay que ir a buscarlo. */}
+          habría forma de volver a mostrarla. Expandida, se alinea con la fila
+          del brand; colapsada, salta a la esquina superior izquierda (estilo
+          ChatGPT/Claude) para seguir visible sin la sidebar. */}
       <button
         type="button"
-        className={s.sidebarToggle}
+        className={`${s.sidebarToggle} ${sidebarCollapsed ? s.sidebarToggleCollapsed : ""}`}
         onClick={() => setSidebarCollapsed(collapsed => !collapsed)}
         aria-expanded={!sidebarCollapsed}
         aria-controls="ceo-sidebar"
