@@ -158,7 +158,7 @@ export default function CEODashboard() {
 
         <section className={s.shortcuts} aria-label="Accesos rápidos">
           <ModuleShortcut
-            to="/admin/crm"
+            to="/sellers/crm"
             icon={<UsersIcon />}
             eyebrow="Clientes 360"
             title="Gestionar CRM"
@@ -182,7 +182,7 @@ export default function CEODashboard() {
               eyebrow="Bandeja operativa"
               title="Atención de clientes"
               action="Ir al CRM"
-              to="/admin/crm"
+              to="/sellers/crm"
             />
             <div className={s.attentionList}>
               <AttentionRow label="Problemas de pago" value={attention?.paymentIssues} tone="danger" />
@@ -252,11 +252,11 @@ export default function CEODashboard() {
         </section>
 
         <section className={`${s.panel} ${s.recentPanel}`}>
-          <PanelHeader eyebrow="Actividad reciente" title="Últimos clientes registrados" action="Ver todos" to="/admin/crm" />
+          <PanelHeader eyebrow="Actividad reciente" title="Últimos clientes registrados" action="Ver todos" to="/sellers/crm" />
           {recentClients.length > 0 ? (
             <div className={s.recentList}>
               {recentClients.map((client) => (
-                <Link className={s.recentRow} to={`/admin/crm?client=${client._id}`} key={client._id}>
+                <Link className={s.recentRow} to={`/sellers/crm?client=${client._id}`} key={client._id}>
                   <span className={s.avatar} aria-hidden="true">
                     {(client.businessName || client.username).charAt(0).toUpperCase()}
                   </span>
