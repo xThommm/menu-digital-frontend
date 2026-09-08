@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "../../context/useAuth";
 import { useFeedbackMessage } from "../../hooks/useFeedbackMessage";
-import { getPlanFeatureLabels, PLAN_ORDER } from "../../lib/plans";
+import { getPlanUpgradeLabels, PLAN_LABEL, PLAN_ORDER } from "../../lib/plans";
 import type { Subscription, BooleanPlanFeature } from "../../types";
 import { usePlans } from "../../hooks/usePlans";
 import Spinner from "./Spinner";
@@ -50,6 +51,14 @@ export default function UpgradeModal({
   );
   const [planId, setPlanId] = useState<Subscription>(minPlan);
   const selected = availablePlans.find(plan => plan.name === planId) ?? availablePlans[0];
+  // El plan anterior en la escalera (no necesariamente ofertado acá: para el
+  // Básico es el Gratuito, que ni aparece en availablePlans) — sirve para no
+  // repetir en la lista lo que ese plan anterior ya incluye.
+  const previousPlanName = selected ? PLAN_ORDER[PLAN_ORDER.indexOf(selected.name) - 1] : undefined;
+  const previousPlan = previousPlanName && !catalog.isError
+    ? catalog.data?.find(plan => plan.name === previousPlanName)
+    : undefined;
+  const upgradeLabels = selected ? getPlanUpgradeLabels(selected.features, previousPlan?.features ?? null) : [];
   const [months, setMonths] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useFeedbackMessage("error");
@@ -97,7 +106,13 @@ export default function UpgradeModal({
     }
   };
 
-  return (
+  // Portal a document.body: este modal se invoca desde puntos bien anidados
+  // del árbol (dashboard, editores) y cualquiera de esos ancestros puede
+  // crear su propio contexto de apilamiento (position/transform/etc.) — sin
+  // portal, el z-index del overlay solo compite DENTRO de ese contexto, y el
+  // dock de navegación mobile (que vive al nivel raíz del layout) terminaba
+  // tapando los botones de abajo pese a tener un z-index mucho menor.
+  return createPortal(
     <div className={styles.overlay} onClick={() => !submitting && onClose()} role="dialog" aria-modal="true" aria-labelledby="upgrade-title">
       <div className={`${styles.modal} grain`} onClick={event => event.stopPropagation()}>
         <p className={styles.eyebrow}>{selected?.name === currentPlan ? "Renovar plan" : "Mejorar plan"}</p>
@@ -138,7 +153,14 @@ export default function UpgradeModal({
           {savings > 0 && <small>Ahorrás {formatPrice(savings)}</small>}
         </div>
 
-        {selected && <ul className={styles.benefits}>{getPlanFeatureLabels(selected.features).map(label => <li key={label}>{label}</li>)}</ul>}
+        {selected && (
+          <>
+            {previousPlan && (
+              <p className={styles.benefitsIntro}>Todo lo del plan {PLAN_LABEL[previousPlan.name]} +</p>
+            )}
+            <ul className={styles.benefits}>{upgradeLabels.map(label => <li key={label}>{label}</li>)}</ul>
+          </>
+        )}
         <p className={styles.validity}>
           {selected?.name === currentPlan
             ? "Los meses se suman a la vigencia actual cuando MercadoPago aprueba el pago."
@@ -153,6 +175,7 @@ export default function UpgradeModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

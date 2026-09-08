@@ -1,51 +1,24 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { Link } from "react-router-dom";
 import {
   createAdminSeller,
-  getAdminSeller,
+  deactivateAdminSeller,
   listAdminSellers,
+  resetAdminSellerPassword,
   updateAdminSeller,
   type Seller,
-  type SellerClient,
-  type SellerDetail,
-  type SellerMetrics,
-  type SellerSummary,
+  type SellerCreatePayload,
 } from "../../../api/adminSellers";
 import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
 import { useNotifications } from "../../../context/useNotifications";
-import { formatPaymentAmount, formatPaymentDate, formatPaymentDay } from "../../../lib/adminPayments";
-import { PLAN_LABEL } from "../../../lib/plans";
+import { formatPaymentDate } from "../../../lib/adminPayments";
 import DataTable, { type DataTableColumn } from "../../Common/DataTable/DataTable";
 import Spinner from "../../Common/Spinner";
 import s from "./AdminSellers.module.css";
 
-const ADMIN_SELLERS_QUERY_KEY = ["admin-sellers"] as const;
-const sellerDetailQueryKey = (sellerID: string) => ["admin-seller", sellerID] as const;
-
-
-const emptySellerMetrics = (): SellerMetrics => ({
-  clientsTotal: 0,
-  activeAccounts: 0,
-  paidCurrent: 0,
-  newClients30d: 0,
-  expiring30d: 0,
-  expired: 0,
-  withMenu: 0,
-  plans: { basic: 0, pro: 0 },
-  lastClientAt: null,
-  revenueTotal: 0,
-  revenue30d: 0,
-  payments: 0,
-  renewals: 0,
-  payingClients: 0,
-});
-
-// Un backend viejo no manda las métricas de plata. En ese caso mostramos un
-// guion en vez de "$ 0,00", que se leería como "no vendió nada".
-const formatSellerRevenue = (value: number | undefined) =>
-  typeof value === "number" ? formatPaymentAmount(value, "ARS") : "—";
+const ADMIN_SELLERS_QUERY_KEY = (includeInactive: boolean) => ["admin-sellers", includeInactive] as const;
 
 function normalizeText(value: string) {
   return value.trim();
@@ -59,12 +32,25 @@ function isValidDni(value: string) {
   return /^\d{8,8}$/.test(value);
 }
 
+function isValidMail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+// El input HTML type="date" trabaja con "YYYY-MM-DD"; el backend guarda un
+// Date completo. Se convierte en el borde, no se arrastra el formato adentro.
+function toDateInputValue(iso: string | null): string {
+  if (!iso) return "";
+  return iso.slice(0, 10);
+}
+
 export default function AdminSellers() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
+  const [includeInactive, setIncludeInactive] = useState(false);
+  const queryKey = ADMIN_SELLERS_QUERY_KEY(includeInactive);
   const sellers = useQuery({
-    queryKey: ADMIN_SELLERS_QUERY_KEY,
-    queryFn: ({ signal }) => listAdminSellers(signal),
+    queryKey,
+    queryFn: ({ signal }) => listAdminSellers(includeInactive, signal),
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     staleTime: 0,
@@ -72,47 +58,36 @@ export default function AdminSellers() {
   });
 
   const replaceSeller = (updated: Seller) => {
-    queryClient.setQueryData<SellerSummary[]>(ADMIN_SELLERS_QUERY_KEY, (current) =>
-      current?.map((item) =>
-        item._id === updated._id ? { ...item, ...updated } : item,
-      ),
-    );
-    queryClient.setQueryData<SellerDetail>(sellerDetailQueryKey(updated._id), (current) =>
-      current ? { ...current, ...updated } : current,
+    queryClient.setQueryData<Seller[]>(queryKey, (current) =>
+      current?.map((item) => (item._id === updated._id ? updated : item)),
     );
   };
 
   const prependSeller = (created: Seller) => {
-    const summary: SellerSummary = { ...created, metrics: emptySellerMetrics() };
-    queryClient.setQueryData<SellerSummary[]>(ADMIN_SELLERS_QUERY_KEY, (current) =>
-      current ? [summary, ...current] : [summary],
+    queryClient.setQueryData<Seller[]>(queryKey, (current) =>
+      current ? [created, ...current] : [created],
     );
   };
 
-  const overview = useMemo(
-  () =>
-    (sellers.data || []).reduce(
-      (total, seller) => {
-        const m = seller.metrics ?? emptySellerMetrics();
-        return {
-          clients: total.clients + m.clientsTotal,
-          paidCurrent: total.paidCurrent + m.paidCurrent,
-          newClients30d: total.newClients30d + m.newClients30d,
-          expiring30d: total.expiring30d + m.expiring30d,
-        };
-      },
-      { clients: 0, paidCurrent: 0, newClients30d: 0, expiring30d: 0 },
-    ),
-  [sellers.data],
-);
+  const removeSellerFromView = (id: string) => {
+    // "Dar de baja" solo saca al vendedor de la vista si no se están
+    // mostrando los dados de baja — si se muestran, se refleja el active:false.
+    if (includeInactive) {
+      queryClient.setQueryData<Seller[]>(queryKey, (current) =>
+        current?.map((item) => (item._id === id ? { ...item, active: false } : item)),
+      );
+    } else {
+      queryClient.setQueryData<Seller[]>(queryKey, (current) =>
+        current?.filter((item) => item._id !== id),
+      );
+    }
+  };
 
-  // Columnas de la tabla. El orden ahora se hace clickeando el encabezado
-  // (lo resuelve DataTable), así que el select "Ordenar por" ya no hace falta.
-  const columns = useMemo<DataTableColumn<SellerSummary>[]>(() => [
+  const columns = useMemo<DataTableColumn<Seller>[]>(() => [
     {
       id: "seller",
       header: "Vendedor",
-      width: "210px",
+      width: "220px",
       sortValue: (seller) => seller.name,
       render: (seller) => (
         <span className={s.rowName}>
@@ -129,46 +104,45 @@ export default function AdminSellers() {
       render: (seller) => <code className={s.codeCell}>{seller.code}</code>,
     },
     {
-      id: "clients",
-      header: "Clientes",
-      align: "right",
-      width: "110px",
-      sortValue: (seller) => seller.metrics?.clientsTotal ?? 0,
-      render: (seller) => (seller.metrics?.clientsTotal ?? 0).toLocaleString("es-AR"),
-    },
-    {
-      id: "paid",
-      header: "Pagos vigentes",
-      align: "right",
-      width: "110px",
-      sortValue: (seller) => seller.metrics?.paidCurrent ?? 0,
-      render: (seller) => (seller.metrics?.paidCurrent ?? 0).toLocaleString("es-AR"),
-    },
-    {
-      id: "revenue30d",
-      header: "Facturado 30 d",
-      align: "right",
-      width: "140px",
-      sortValue: (seller) => seller.metrics?.revenue30d,
-      render: (seller) => formatSellerRevenue(seller.metrics?.revenue30d),
-    },
-    {
-      id: "revenueTotal",
-      header: "Facturado total",
-      align: "right",
-      width: "140px",
-      sortValue: (seller) => seller.metrics?.revenueTotal,
-      render: (seller) => formatSellerRevenue(seller.metrics?.revenueTotal),
-    },
-    {
-      id: "lastClient",
-      header: "Última alta",
-      width: "130px",
-      // Se ordena por la fecha real, no por el texto ya formateado.
-      sortValue: (seller) => Date.parse(seller.metrics?.lastClientAt ?? "") || null,
+      id: "mail",
+      header: "Contacto",
+      width: "220px",
+      sortValue: (seller) => seller.mail,
       render: (seller) => (
-        <span className={s.dateCell}>{formatPaymentDay(seller.metrics?.lastClientAt ?? null)}</span>
+        <span className={s.rowName}>
+          <strong>{seller.mail}</strong>
+          {seller.number ? <span>{seller.number}</span> : null}
+        </span>
       ),
+    },
+    {
+      id: "status",
+      header: "Estado",
+      width: "110px",
+      sortValue: (seller) => (seller.active ? 1 : 0),
+      render: (seller) => (
+        <span className={`${s.statusBadge} ${seller.active ? s.statusOk : s.statusMuted}`}>
+          {seller.active ? "Activo" : "Dado de baja"}
+        </span>
+      ),
+    },
+    {
+      id: "startDate",
+      header: "Vendedor desde",
+      width: "140px",
+      sortValue: (seller) => Date.parse(seller.startDate ?? "") || null,
+      render: (seller) => (
+        <span className={s.dateCell}>
+          {seller.startDate ? formatPaymentDate(seller.startDate) : "Sin definir"}
+        </span>
+      ),
+    },
+    {
+      id: "createdAt",
+      header: "Alta",
+      width: "120px",
+      sortValue: (seller) => Date.parse(seller.createdAt) || null,
+      render: (seller) => <span className={s.dateCell}>{formatPaymentDate(seller.createdAt)}</span>,
     },
   ], []);
 
@@ -178,39 +152,28 @@ export default function AdminSellers() {
         <header className={s.header}>
           <p className={s.eyebrow}>Administración de MenuDigital</p>
           <h1>Vendedores</h1>
-          <p>
-            Rendimiento comercial, clientes atribuidos y gestión de códigos.
-          </p>
+          <p>Alta, baja y modificación del equipo de ventas.</p>
         </header>
 
         <aside className={s.notice}>
           <strong>Nombre y DNI deben ser únicos.</strong>
           <p>
-            El código (ej. ABC-123) lo genera el backend. Las métricas cuentan
-            usuarios atribuidos y muestran su situación actual; no estiman comisiones.
+            El código (ej. ABC-123) lo genera el backend. Las comisiones,
+            métricas y el CRM de cada vendedor viven en su propio panel
+            (/sellers), no acá.
           </p>
         </aside>
 
-        {sellers.data && (
-          <section className={s.overview} aria-label="Resumen de vendedores">
-            <SummaryMetric label="Vendedores" value={sellers.data.length} />
-            <SummaryMetric label="Clientes vendidos" value={overview.clients} />
-            <SummaryMetric label="Planes pagos vigentes" value={overview.paidCurrent} />
-            <SummaryMetric label="Altas en 30 días" value={overview.newClients30d} />
-          </section>
-        )}
-
-
-        <DataTable<SellerSummary>
+        <DataTable<Seller>
           caption="Listado de vendedores"
           rows={sellers.data ?? []}
           columns={columns}
           getRowId={(seller) => seller._id}
-          minWidth={1000}
-          defaultSort={{ columnId: "clients", direction: "desc" }}
+          minWidth={900}
+          defaultSort={{ columnId: "seller" }}
           search={{
-            accessor: (seller) => `${seller.name} ${seller.code} ${seller.dni}`,
-            placeholder: "Nombre, código o DNI",
+            accessor: (seller) => `${seller.name} ${seller.code} ${seller.dni} ${seller.mail}`,
+            placeholder: "Nombre, código, DNI o mail",
           }}
           countLabel={(visible, total) => `${visible} de ${total} vendedores`}
           loading={sellers.isPending}
@@ -218,33 +181,30 @@ export default function AdminSellers() {
           onRetry={() => void sellers.refetch()}
           retrying={sellers.isFetching}
           emptyMessage={
-            // El botón de alta vive en la barra, que no se muestra sin
-            // vendedores: sin este, no habría forma de crear el primero.
             <div className={s.emptyState}>
               <p>Todavía no hay vendedores.</p>
-              <button
-                className={s.primaryButton}
-                type="button"
-                onClick={() => setCreating(true)}
-              >
+              <button className={s.primaryButton} type="button" onClick={() => setCreating(true)}>
                 Crear el primero
               </button>
             </div>
           }
           noResultsMessage="No hay vendedores que coincidan con la búsqueda."
+          filters={
+            <label className={s.inlineCheckbox}>
+              <input
+                type="checkbox"
+                checked={includeInactive}
+                onChange={(event) => setIncludeInactive(event.target.checked)}
+              />
+              Mostrar dados de baja
+            </label>
+          }
           actions={
             <>
-              <Link className={s.metricsLink} to="/admin/sellers/metricas">
-                Panel de métricas
+              <Link className={s.sellerPanelLink} to="/sellers">
+                Ir al panel de vendedores
               </Link>
-              <Link className={s.metricsLink} to="/admin/sellers/comisiones">
-                Comisiones
-              </Link>
-              <button
-                className={s.newSellerButton}
-                type="button"
-                onClick={() => setCreating(true)}
-              >
+              <button className={s.newSellerButton} type="button" onClick={() => setCreating(true)}>
                 + Nuevo vendedor
               </button>
             </>
@@ -252,28 +212,20 @@ export default function AdminSellers() {
           expandable={{
             label: (seller) => `Ver detalle de ${seller.name}`,
             renderPanel: (seller) => (
-              <SellerPanel seller={seller} onUpdated={replaceSeller} />
+              <SellerEditPanel
+                seller={seller}
+                onUpdated={replaceSeller}
+                onDeactivated={removeSellerFromView}
+              />
             ),
           }}
         />
 
         {creating && (
-          <CreateSellerModal
-            onCreated={prependSeller}
-            onClose={() => setCreating(false)}
-          />
+          <CreateSellerModal onCreated={prependSeller} onClose={() => setCreating(false)} />
         )}
       </div>
     </main>
-  );
-}
-
-function SummaryMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <article className={s.summaryMetric}>
-      <strong>{value.toLocaleString("es-AR")}</strong>
-      <span>{label}</span>
-    </article>
   );
 }
 
@@ -286,26 +238,21 @@ function CreateSellerModal({
 }) {
   const [name, setName] = useState("");
   const [dni, setDni] = useState("");
+  const [mail, setMail] = useState("");
+  const [number, setNumber] = useState("");
+  const [password, setPassword] = useState("");
+  const [startDate, setStartDate] = useState("");
   const [error, setError] = useFeedbackMessage("error");
   const [saving, setSaving] = useState(false);
   const submitting = useRef(false);
   const notifications = useNotifications();
   const firstFieldRef = useRef<HTMLInputElement>(null);
 
-  // Foco en el primer campo al abrir y cierre con Escape, igual que el drawer
-  // del CRM. No se cierra mientras se está guardando para no dejar al usuario
-  // sin saber si el alta salió.
-  useEffect(() => {
-    firstFieldRef.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !submitting.current) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const invalid =
-    !normalizeText(name) || !isValidDni(dni) || !normalizeDni(dni);
+    !normalizeText(name) ||
+    !isValidDni(dni) ||
+    !isValidMail(mail) ||
+    password.length < 8;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -314,28 +261,27 @@ function CreateSellerModal({
     setSaving(true);
     setError("");
     try {
-      const created = await createAdminSeller({
+      const payload: SellerCreatePayload = {
         name: normalizeText(name),
         dni: normalizeDni(dni),
-      });
-      notifications.success(
-        `Vendedor ${created.name} creado · código ${created.code}`,
-      );
+        mail: normalizeText(mail),
+        password,
+      };
+      if (number.trim()) payload.number = Number(number);
+      if (startDate) payload.startDate = startDate;
+
+      const created = await createAdminSeller(payload);
+      notifications.success(`Vendedor ${created.name} creado · código ${created.code}`);
       onCreated(created);
       onClose();
     } catch (cause) {
+      const serverMessage = isAxiosError<{ message?: string }>(cause)
+        ? cause.response?.data?.message
+        : null;
       if (isAxiosError(cause) && cause.response?.status === 409) {
-        const message = isAxiosError<{ message?: string }>(cause)
-          ? cause.response?.data?.message
-          : null;
-        setError(message || "Ya existe un vendedor con ese nombre o DNI.");
+        setError(serverMessage || "Ya existe un vendedor con ese nombre o DNI.");
       } else {
-        const serverMessage = isAxiosError<{ message?: string }>(cause)
-          ? cause.response?.data?.message
-          : null;
-        setError(
-          serverMessage || "No se pudo crear el vendedor. Intentá de nuevo.",
-        );
+        setError(serverMessage || "No se pudo crear el vendedor. Intentá de nuevo.");
       }
     } finally {
       submitting.current = false;
@@ -344,9 +290,6 @@ function CreateSellerModal({
   };
 
   return (
-    // En un modal y no en la página: dar de alta un vendedor es una acción
-    // ocasional que estaba ocupando espacio fijo arriba de la tabla, que es
-    // lo que se viene a mirar todos los días.
     <div
       className={s.modalOverlay}
       onClick={() => { if (!saving) onClose(); }}
@@ -375,10 +318,7 @@ function CreateSellerModal({
               maxLength={80}
               disabled={saving}
               autoComplete="off"
-              onChange={(event) => {
-                setName(event.target.value);
-                setError("");
-              }}
+              onChange={(event) => { setName(event.target.value); setError(""); }}
             />
           </label>
           <label htmlFor="seller-create-dni">
@@ -390,34 +330,61 @@ function CreateSellerModal({
               disabled={saving}
               inputMode="numeric"
               autoComplete="off"
-              onChange={(event) => {
-                setDni(normalizeDni(event.target.value));
-                setError("");
-              }}
+              onChange={(event) => { setDni(normalizeDni(event.target.value)); setError(""); }}
+            />
+          </label>
+          <label htmlFor="seller-create-mail">
+            Mail
+            <input
+              id="seller-create-mail"
+              type="email"
+              value={mail}
+              disabled={saving}
+              autoComplete="off"
+              onChange={(event) => { setMail(event.target.value); setError(""); }}
+            />
+          </label>
+          <label htmlFor="seller-create-number">
+            Teléfono (opcional)
+            <input
+              id="seller-create-number"
+              inputMode="numeric"
+              value={number}
+              disabled={saving}
+              autoComplete="off"
+              onChange={(event) => setNumber(event.target.value.replace(/\D/g, ""))}
+            />
+          </label>
+          <label htmlFor="seller-create-startdate">
+            Fecha de inicio (opcional — ancla su ciclo mensual de comisión)
+            <input
+              id="seller-create-startdate"
+              type="date"
+              value={startDate}
+              disabled={saving}
+              onChange={(event) => setStartDate(event.target.value)}
+            />
+          </label>
+          <label htmlFor="seller-create-password">
+            Contraseña
+            <input
+              id="seller-create-password"
+              type="password"
+              value={password}
+              disabled={saving}
+              autoComplete="new-password"
+              onChange={(event) => { setPassword(event.target.value); setError(""); }}
             />
           </label>
         </div>
 
-        {error && (
-          <p className={s.error} role="alert">
-            {error}
-          </p>
-        )}
+        {error && <p className={s.error} role="alert">{error}</p>}
 
         <div className={s.modalActions}>
-          <button
-            className={s.secondaryButton}
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-          >
+          <button className={s.secondaryButton} type="button" onClick={onClose} disabled={saving}>
             Cancelar
           </button>
-          <button
-            className={s.primaryButton}
-            type="submit"
-            disabled={saving || invalid}
-          >
+          <button className={s.primaryButton} type="submit" disabled={saving || invalid}>
             {saving && <Spinner />} {saving ? "Creando…" : "Crear vendedor"}
           </button>
         </div>
@@ -426,41 +393,36 @@ function CreateSellerModal({
   );
 }
 
-// Contenido del panel desplegable. La fila y el despliegue los maneja
-// DataTable; acá queda solo el detalle del vendedor. El componente se monta
-// recién al abrir, así que la consulta del detalle ya no necesita `enabled`.
-function SellerPanel({
+function SellerEditPanel({
   seller,
   onUpdated,
+  onDeactivated,
 }: {
-  seller: SellerSummary;
+  seller: Seller;
   onUpdated: (seller: Seller) => void;
+  onDeactivated: (id: string) => void;
 }) {
-  const metrics = seller.metrics ?? emptySellerMetrics();
-
-  const [editing, setEditing] = useState(false);
   const [name, setName] = useState(seller.name);
   const [dni, setDni] = useState(seller.dni);
+  const [mail, setMail] = useState(seller.mail);
+  const [number, setNumber] = useState(seller.number ? String(seller.number) : "");
+  const [startDate, setStartDate] = useState(toDateInputValue(seller.startDate));
+  const [admin, setAdmin] = useState(seller.admin);
   const [error, setError] = useFeedbackMessage("error");
   const [saving, setSaving] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
   const submitting = useRef(false);
   const notifications = useNotifications();
-  const invalid = !normalizeText(name) || !isValidDni(dni);
-  const details = useQuery({
-    queryKey: sellerDetailQueryKey(seller._id),
-    queryFn: ({ signal }) => getAdminSeller(seller._id, signal),
-    refetchOnWindowFocus: false,
-    staleTime: 30_000,
-  });
 
-  const dirty = name !== seller.name || dni !== seller.dni;
-
-  const reset = () => {
-    setName(seller.name);
-    setDni(seller.dni);
-    setError("");
-    setEditing(false);
-  };
+  const invalid = !normalizeText(name) || !isValidDni(dni) || !isValidMail(mail);
+  const dirty =
+    name !== seller.name ||
+    dni !== seller.dni ||
+    mail !== seller.mail ||
+    number !== (seller.number ? String(seller.number) : "") ||
+    startDate !== toDateInputValue(seller.startDate) ||
+    admin !== seller.admin;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -472,20 +434,20 @@ function SellerPanel({
       const updated = await updateAdminSeller(seller._id, {
         name: normalizeText(name),
         dni: normalizeDni(dni),
+        mail: normalizeText(mail),
+        number: number.trim() ? Number(number) : null,
+        startDate: startDate || null,
+        admin,
       });
       notifications.success(`Vendedor ${updated.name} actualizado.`);
       onUpdated(updated);
-      setEditing(false);
     } catch (cause) {
+      const serverMessage = isAxiosError<{ message?: string }>(cause)
+        ? cause.response?.data?.message
+        : null;
       if (isAxiosError(cause) && cause.response?.status === 409) {
-        const message = isAxiosError<{ message?: string }>(cause)
-          ? cause.response?.data?.message
-          : null;
-        setError(message || "Ya existe un vendedor con ese nombre o DNI.");
+        setError(serverMessage || "Ya existe un vendedor con ese nombre o DNI.");
       } else {
-        const serverMessage = isAxiosError<{ message?: string }>(cause)
-          ? cause.response?.data?.message
-          : null;
         setError(serverMessage || "No se pudo guardar. Intentá de nuevo.");
       }
     } finally {
@@ -503,209 +465,217 @@ function SellerPanel({
     }
   };
 
+  const toggleActive = async () => {
+    if (!seller.active) return; // reactivar se hace editando (o no está soportado aún)
+    if (!window.confirm(`¿Dar de baja a ${seller.name}? Deja de poder iniciar sesión, pero se conserva su historial.`)) {
+      return;
+    }
+    setDeactivating(true);
+    try {
+      const updated = await deactivateAdminSeller(seller._id);
+      notifications.success(`${seller.name} dado de baja.`);
+      onUpdated(updated);
+      onDeactivated(seller._id);
+    } catch {
+      notifications.error("No se pudo dar de baja al vendedor.");
+    } finally {
+      setDeactivating(false);
+    }
+  };
+
   return (
     <>
       <div className={s.panelActions}>
-                <button className={s.secondaryButton} type="button" onClick={() => void copyCode()}>
-                  Copiar código
-                </button>
-                {!editing && (
-                  <button
-                    className={s.secondaryButton}
-                    type="button"
-                    onClick={() => setEditing(true)}
-                  >
-                    Editar datos
-                  </button>
-                )}
-                <Link className={s.panelMetricsLink} to="/admin/sellers/metricas">
-                  Ver métricas comparadas →
-                </Link>
-              </div>
+        <button className={s.secondaryButton} type="button" onClick={() => void copyCode()}>
+          Copiar código
+        </button>
+        <button
+          className={s.secondaryButton}
+          type="button"
+          onClick={() => setResettingPassword(true)}
+        >
+          Restablecer contraseña
+        </button>
+        {seller.active && (
+          <button
+            className={s.dangerButton}
+            type="button"
+            onClick={() => void toggleActive()}
+            disabled={deactivating}
+          >
+            {deactivating && <Spinner />} {deactivating ? "Dando de baja…" : "Dar de baja"}
+          </button>
+        )}
+      </div>
 
-              {editing ? (
-        <form className={s.editForm} onSubmit={submit} noValidate>
-          <div className={s.fields}>
-            <label htmlFor={`seller-${seller._id}-name`}>
-              Nombre
-              <input
-                id={`seller-${seller._id}-name`}
-                value={name}
-                maxLength={80}
-                disabled={saving}
-                onChange={(event) => {
-                  setName(event.target.value);
-                  setError("");
-                }}
-              />
-            </label>
-            <label htmlFor={`seller-${seller._id}-dni`}>
-              DNI
-              <input
-                id={`seller-${seller._id}-dni`}
-                value={dni}
-                maxLength={20}
-                disabled={saving}
-                inputMode="numeric"
-                onChange={(event) => {
-                  setDni(normalizeDni(event.target.value));
-                  setError("");
-                }}
-              />
-            </label>
-          </div>
-          {error && (
-            <p className={s.error} role="alert">
-              {error}
-            </p>
-          )}
-          <div className={s.actions}>
-            <button
-              className={s.primaryButton}
-              type="submit"
-              disabled={saving || !dirty || invalid}
-            >
-              {saving && <Spinner />} {saving ? "Guardando…" : "Guardar"}
-            </button>
-            <button
-              className={s.secondaryButton}
-              type="button"
-              onClick={reset}
+      <form className={s.editForm} onSubmit={submit} noValidate>
+        <div className={s.fields}>
+          <label htmlFor={`seller-${seller._id}-name`}>
+            Nombre
+            <input
+              id={`seller-${seller._id}-name`}
+              value={name}
+              maxLength={80}
               disabled={saving}
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
-      ) : (
-        <dl className={s.meta}>
-          <div>
-            <dt>Nombre</dt>
-            <dd>{seller.name}</dd>
-          </div>
-          <div>
-            <dt>DNI</dt>
-            <dd>{seller.dni}</dd>
-          </div>
-          <div>
-            <dt>Vendedor desde</dt>
-            <dd>{formatPaymentDate(seller.createdAt)}</dd>
-          </div>
-        </dl>
-              )}
+              onChange={(event) => { setName(event.target.value); setError(""); }}
+            />
+          </label>
+          <label htmlFor={`seller-${seller._id}-dni`}>
+            DNI
+            <input
+              id={`seller-${seller._id}-dni`}
+              value={dni}
+              maxLength={20}
+              disabled={saving}
+              inputMode="numeric"
+              onChange={(event) => { setDni(normalizeDni(event.target.value)); setError(""); }}
+            />
+          </label>
+          <label htmlFor={`seller-${seller._id}-mail`}>
+            Mail
+            <input
+              id={`seller-${seller._id}-mail`}
+              type="email"
+              value={mail}
+              disabled={saving}
+              onChange={(event) => { setMail(event.target.value); setError(""); }}
+            />
+          </label>
+          <label htmlFor={`seller-${seller._id}-number`}>
+            Teléfono
+            <input
+              id={`seller-${seller._id}-number`}
+              value={number}
+              disabled={saving}
+              inputMode="numeric"
+              onChange={(event) => setNumber(event.target.value.replace(/\D/g, ""))}
+            />
+          </label>
+          <label htmlFor={`seller-${seller._id}-startdate`}>
+            Fecha de inicio (ancla su ciclo mensual de comisión)
+            <input
+              id={`seller-${seller._id}-startdate`}
+              type="date"
+              value={startDate}
+              disabled={saving}
+              onChange={(event) => setStartDate(event.target.value)}
+            />
+          </label>
+          <label className={s.inlineCheckbox} htmlFor={`seller-${seller._id}-admin`}>
+            <input
+              id={`seller-${seller._id}-admin`}
+              type="checkbox"
+              checked={admin}
+              disabled={saving}
+              onChange={(event) => setAdmin(event.target.checked)}
+            />
+            Admin
+          </label>
+        </div>
 
-              <section className={s.metrics} aria-label={`Métricas de ${seller.name}`}>
-                <SellerMetric label="Clientes vendidos" value={metrics.clientsTotal} />
-                <SellerMetric label="Pagaron alguna vez" value={metrics.payingClients ?? 0} />
-                <SellerMetric label="Planes pagos vigentes" value={metrics.paidCurrent} />
-                <SellerMetric label="Altas últimos 30 días" value={metrics.newClients30d} />
-                <SellerMetric label="Renovaciones" value={metrics.renewals ?? 0} />
-                <SellerMetric label="Facturado total" value={formatSellerRevenue(metrics.revenueTotal)} />
-              </section>
+        {error && <p className={s.error} role="alert">{error}</p>}
 
-              <div className={s.operationalSummary}>
-                <span>Basic: <strong>{metrics.plans.basic}</strong></span>
-                <span>Pro: <strong>{metrics.plans.pro}</strong></span>
-                <span>Cuentas activas: <strong>{metrics.activeAccounts}</strong></span>
-                <span>Con menú: <strong>{metrics.withMenu}</strong></span>
-                <span className={metrics.expiring30d > 0 ? s.attention : undefined}>
-                  Vencen en 30 días: <strong>{metrics.expiring30d}</strong>
-                </span>
-                <span className={metrics.expired > 0 ? s.attention : undefined}>
-                  Vencidos: <strong>{metrics.expired}</strong>
-                </span>
-              </div>
+        <div className={s.actions}>
+          <button className={s.primaryButton} type="submit" disabled={saving || !dirty || invalid}>
+            {saving && <Spinner />} {saving ? "Guardando…" : "Guardar"}
+          </button>
+        </div>
+      </form>
 
-              <section className={s.clientsPanel} aria-label={`Clientes de ${seller.name}`}>
-                <p className={s.panelSectionTitle}>
-                  Clientes atribuidos ({metrics.clientsTotal})
-                </p>
-                {details.isPending ? (
-                  <div className={s.detailsLoading}>
-                    <Spinner size={24} label="Cargando clientes" />
-                  </div>
-                ) : details.isError ? (
-                  <div className={s.inlineError} role="alert">
-                    <p>No se pudo cargar el detalle de clientes.</p>
-                    <button
-                      className={s.secondaryButton}
-                      type="button"
-                      onClick={() => void details.refetch()}
-                      disabled={details.isFetching}
-                    >
-                      {details.isFetching ? "Reintentando…" : "Reintentar"}
-                    </button>
-                  </div>
-                ) : details.data.clients.length === 0 ? (
-                  <p className={s.clientsEmpty}>Este vendedor todavía no tiene clientes atribuidos.</p>
-                ) : (
-                  <div className={s.clientList}>
-                    {details.data.clients.map((client) => (
-                      <SellerClientRow key={client._id} client={client} />
-                    ))}
-                  </div>
-                )}
-      </section>
+      <dl className={s.meta}>
+        <div>
+          <dt>Vendedor desde (alta)</dt>
+          <dd>{formatPaymentDate(seller.createdAt)}</dd>
+        </div>
+        <div>
+          <dt>Estado</dt>
+          <dd>{seller.active ? "Activo" : "Dado de baja"}</dd>
+        </div>
+      </dl>
+
+      {resettingPassword && (
+        <ResetPasswordModal
+          seller={seller}
+          onClose={() => setResettingPassword(false)}
+        />
+      )}
     </>
   );
 }
 
-function SellerMetric({ label, value }: { label: string; value: number | string }) {
+function ResetPasswordModal({ seller, onClose }: { seller: Seller; onClose: () => void }) {
+  const [newPassword, setNewPassword] = useState("");
+  const [error, setError] = useFeedbackMessage("error");
+  const [saving, setSaving] = useState(false);
+  const submitting = useRef(false);
+  const notifications = useNotifications();
+  const invalid = newPassword.length < 8;
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (submitting.current || invalid) return;
+    submitting.current = true;
+    setSaving(true);
+    setError("");
+    try {
+      await resetAdminSellerPassword(seller._id, newPassword);
+      notifications.success(`Contraseña de ${seller.name} restablecida.`);
+      onClose();
+    } catch (cause) {
+      const serverMessage = isAxiosError<{ message?: string }>(cause)
+        ? cause.response?.data?.message
+        : null;
+      setError(serverMessage || "No se pudo restablecer la contraseña.");
+    } finally {
+      submitting.current = false;
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className={s.metric}>
-      <strong>{typeof value === "number" ? value.toLocaleString("es-AR") : value}</strong>
-      <span>{label}</span>
+    <div
+      className={s.modalOverlay}
+      onClick={() => { if (!saving) onClose(); }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={`reset-password-title-${seller._id}`}
+    >
+      <form
+        className={s.modal}
+        onSubmit={submit}
+        onClick={(event) => event.stopPropagation()}
+        noValidate
+      >
+        <h2 id={`reset-password-title-${seller._id}`} className={s.modalTitle}>
+          Restablecer contraseña de {seller.name}
+        </h2>
+        <p className={s.modalHint}>No hace falta la contraseña actual.</p>
+
+        <div className={s.modalFields}>
+          <label htmlFor={`reset-password-${seller._id}`}>
+            Nueva contraseña
+            <input
+              id={`reset-password-${seller._id}`}
+              type="password"
+              value={newPassword}
+              disabled={saving}
+              autoComplete="new-password"
+              onChange={(event) => { setNewPassword(event.target.value); setError(""); }}
+            />
+          </label>
+        </div>
+
+        {error && <p className={s.error} role="alert">{error}</p>}
+
+        <div className={s.modalActions}>
+          <button className={s.secondaryButton} type="button" onClick={onClose} disabled={saving}>
+            Cancelar
+          </button>
+          <button className={s.primaryButton} type="submit" disabled={saving || invalid}>
+            {saving && <Spinner />} {saving ? "Guardando…" : "Restablecer"}
+          </button>
+        </div>
+      </form>
     </div>
-  );
-}
-
-function SellerClientRow({ client }: { client: SellerClient }) {
-  const expired = client.subscription !== "free" && client.effectiveSubscription === "free";
-  const planLabel = expired
-    ? `${PLAN_LABEL[client.subscription]} vencido`
-    : PLAN_LABEL[client.effectiveSubscription];
-  const expiryLabel = client.subscriptionExpiresAt
-    ? formatPaymentDate(client.subscriptionExpiresAt)
-    : client.effectiveSubscription === "free"
-      ? "Sin vencimiento"
-      : "Vigencia legacy";
-
-  return (
-    <article className={s.clientRow}>
-      <header className={s.clientHeader}>
-        <div>
-          <strong>{client.businessName || client.username}</strong>
-          <span>@{client.username}</span>
-        </div>
-        <div className={s.clientBadges}>
-          <span className={`${s.statusBadge} ${client.active ? s.statusOk : s.statusMuted}`}>
-            {client.active ? "Cuenta activa" : "Cuenta inactiva"}
-          </span>
-          <span className={`${s.statusBadge} ${expired ? s.statusWarning : s.statusPlan}`}>
-            {planLabel}
-          </span>
-        </div>
-      </header>
-
-      <dl className={s.clientMeta}>
-        <div>
-          <dt>Alta</dt>
-          <dd>{formatPaymentDate(client.createdAt)}</dd>
-        </div>
-        <div>
-          <dt>Vencimiento</dt>
-          <dd>{expiryLabel}</dd>
-        </div>
-        <div>
-          <dt>Menú creado</dt>
-          <dd>{client.menu ? "Sí" : "No"}</dd>
-        </div>
-      </dl>
-
-      <div className={s.clientActions}>
-        <Link to={`/admin/crm?client=${client._id}`}>Abrir ficha CRM</Link>
-        <Link to={`/admin/payments?userID=${client._id}`}>Ver pagos</Link>
-      </div>
-    </article>
   );
 }

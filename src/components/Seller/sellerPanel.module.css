@@ -1,0 +1,397 @@
+/* Estilos compartidos por las 5 secciones del panel de vendedor. Mismo
+   sistema de variables (--admin-*, --space-*, --text-*) que ya usa el resto
+   del panel admin/CRM — son tokens globales de diseño, no exclusivos de esa
+   pantalla (ver src/styles/globals.css). */
+
+.page {
+  min-height: 100vh;
+  background: var(--admin-bg-base);
+  color: var(--admin-text-secondary);
+  font-family: var(--font-sans);
+}
+
+.inner {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-5) var(--space-12);
+  box-sizing: border-box;
+}
+
+.header {
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--admin-border-subtle);
+}
+
+.eyebrow {
+  margin: 0 0 var(--space-1);
+  color: var(--admin-text-faint);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 0;
+  color: var(--admin-text-primary);
+  font-size: clamp(1.35rem, 1.7vw, 1.65rem);
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  line-height: 1.15;
+}
+
+.header > p:last-child {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+}
+
+.section {
+  margin-top: var(--space-6);
+}
+
+.sectionTitle {
+  margin: 0 0 var(--space-3);
+  color: var(--admin-text-primary);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.card {
+  padding: var(--space-4);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-lg);
+  background: var(--admin-bg-raised);
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.stat {
+  padding: var(--space-4);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-lg);
+  background: var(--admin-bg-raised);
+}
+
+.stat strong {
+  display: block;
+  color: var(--admin-text-primary);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat span {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--admin-text-warm);
+  font-size: var(--text-xs);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.selectField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--admin-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.selectField select {
+  min-height: var(--control-min-size);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-bg-base);
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.fields label {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--admin-text-secondary);
+}
+
+.fields input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--control-min-size);
+  padding: var(--space-3);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-bg-base);
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.fields input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-min-size);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-bg-elevated);
+  color: var(--admin-text-secondary);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border-color: var(--admin-gold);
+  background: var(--admin-gold);
+  color: var(--admin-gold-ink);
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: var(--admin-gold-hover);
+}
+
+.secondaryButton:hover:not(:disabled) {
+  border-color: var(--admin-gold);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  margin-block: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--admin-red-border);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-red-bg);
+  color: var(--admin-red-text);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.hint {
+  margin: var(--space-2) 0 0;
+  color: var(--admin-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.avatarRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid var(--admin-border-default);
+  background: var(--admin-bg-base);
+}
+
+.avatarPlaceholder {
+  width: 88px;
+  height: 88px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px dashed var(--admin-border-default);
+  background: var(--admin-bg-base);
+  color: var(--admin-text-faint);
+  font-size: var(--text-xs);
+}
+
+/* ── Simulador ─────────────────────────────────────────────────────────── */
+
+.simTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.simTable th,
+.simTable td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--admin-border-subtle);
+  text-align: right;
+}
+
+.simTable th:first-child,
+.simTable td:first-child {
+  text-align: left;
+  color: var(--admin-text-primary);
+  font-weight: 600;
+}
+
+.simTable thead th {
+  color: var(--admin-text-warm);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.simInput {
+  width: 72px;
+  min-height: var(--control-min-size);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-bg-base);
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: right;
+}
+
+.tierBadge {
+  display: inline-flex;
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+  border: 1px solid var(--admin-border-gold-mid);
+  background: var(--admin-gold-glow);
+  color: var(--admin-gold);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+/* ── Ranking ───────────────────────────────────────────────────────────── */
+
+.chartCard {
+  margin-top: var(--space-4);
+}
+
+.chartTitle {
+  margin: 0 0 var(--space-3);
+  color: var(--admin-text-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.barList {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: 140px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.barRowName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--admin-text-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.barTrack {
+  position: relative;
+  height: 22px;
+  display: flex;
+  overflow: hidden;
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-bg-base);
+  border: 1px solid var(--admin-border-subtle);
+}
+
+.barSegmentBasic,
+.barSegmentPro {
+  height: 100%;
+  min-width: 2px;
+  transition: width var(--admin-transition, 0.2s ease);
+}
+
+.barSegmentBasic { background: var(--admin-gold); }
+.barSegmentPro { background: var(--admin-accent, var(--admin-blue, #4f8fe0)); }
+
+.barValue {
+  min-width: 150px;
+  color: var(--admin-text-secondary);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.barLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  color: var(--admin-text-warm);
+  font-size: var(--text-xs);
+}
+
+.legendDot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  margin-right: var(--space-1);
+  vertical-align: middle;
+}
+
+.legendDotBasic { background: var(--admin-gold); }
+.legendDotPro { background: var(--admin-accent, var(--admin-blue, #4f8fe0)); }
+
+.emptyState {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--admin-text-warm);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 640px) {
+  .inner { padding-inline: var(--space-3); }
+  .fields { grid-template-columns: 1fr; }
+  .barRow { grid-template-columns: 96px 1fr; }
+  .barValue { grid-column: 1 / -1; min-width: 0; }
+}

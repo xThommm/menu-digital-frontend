@@ -72,11 +72,17 @@
 .total strong { font-size: 1.35rem; }
 .total small { grid-column: 1 / -1; color: var(--admin-success-core); }
 .validity { margin: var(--space-3) 0 0; color: var(--admin-text-muted); font-size: 0.78rem; }
+.benefitsIntro {
+  margin: var(--space-4) 0 0;
+  color: var(--admin-text-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
 .benefits {
   display: grid;
   gap: var(--space-2);
   padding: 0;
-  margin-block: var(--space-4);
+  margin-block: var(--space-2) var(--space-4);
   list-style: none;
   color: var(--admin-text-secondary);
   font-size: var(--text-xs);
@@ -99,7 +105,24 @@
   line-height: 1;
 }
 .error { margin: var(--space-3) 0 0; color: var(--admin-danger-core); font-size: 0.85rem; }
-.actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-5); }
+/* Con el plan Pro (11 líneas de beneficios) el modal supera fácil el alto de
+   una pantalla chica: .modal ya scrollea internamente (overflow-y: auto +
+   max-height), pero eso solo movía el problema — antes había que darse
+   cuenta de que el modal scrollea y llegar hasta el final para encontrar
+   "Pagar". Fijos abajo con sticky, quedan a la vista desde que se abre el
+   modal, sin importar cuánto contenido haya arriba. */
+.actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  padding-top: var(--space-3);
+  background: var(--admin-bg-elevated);
+  border-top: 0.5px solid var(--admin-border-default);
+}
 .cancel, .pay {
   min-height: var(--control-min-size);
   padding: 0 var(--space-4);
@@ -119,12 +142,10 @@
   .overlay { padding: var(--space-5); }
   .modal { padding: var(--space-4); max-height: calc(100dvh - 40px); }
   .months { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .eyebrow { margin-bottom: var(--space-1); }
-  .title { font-size: 1.15rem; }
-  .description { margin: var(--space-1) 0 var(--space-3); }
-  .section { margin-top: var(--space-3); }
-  .total { margin-top: var(--space-4); padding: var(--space-3); }
-  .benefits { margin-block: var(--space-3); gap: var(--space-1); }
-  .validity { margin-top: var(--space-2); }
-  .actions { margin-top: var(--space-4); }
+  .options { grid-template-columns: 1fr; }
+  /* En fila, "Cerrar" y "Pagar $157.496,85" no entraban en el ancho del
+     modal y terminaban solapándose — apiladas y a todo el ancho, cada
+     botón tiene lugar de sobra para su texto. */
+  .actions { flex-direction: column; }
+  .cancel, .pay { width: 100%; justify-content: center; }
 }

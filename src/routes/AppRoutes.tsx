@@ -21,16 +21,17 @@ const Baja = lazy(() => import("../../src/pages/Legal/Unsubscribe"));
 const AdminHome    = lazy(() => import("../../src/components/Admin/Home/AdminHome"));
 const AdminLayout  = lazy(() => import("../../src/components/Admin/Panel/AdminLayout"));
 const CEODashboard = lazy(() => import("../../src/components/Admin/Panel/CEODashboard"));
-const CrmClients   = lazy(() => import("../../src/components/Admin/Crm/CrmClients"));
 const AdminPayments = lazy(() => import("../../src/components/Admin/Payments/AdminPayments"));
 const AdminPlans = lazy(() => import("../components/Admin/Plans/AdminPlans"));
 const AdminSellers = lazy(() => import("../components/Admin/Sellers/AdminSellers"));
-const SellerMetricsPanel = lazy(() => import("../components/Admin/Sellers/SellerMetricsPanel"));
-const SellerCommissions = lazy(() => import("../components/Admin/Sellers/SellerCommissions"));
 
-// Seller
+// Seller — 5 secciones del panel propio del vendedor (accesible también por admin)
 const SellerLayout = lazy(() => import("../../src/components/Seller/SellerLayout"));
-const SellerPanel = lazy(() => import("../../src/components/Seller/SellerPanel"));
+const SellerOverview = lazy(() => import("../components/Seller/Overview/SellerOverview"));
+const SellerSimulation = lazy(() => import("../components/Seller/Simulation/SellerSimulation"));
+const SellerSettings = lazy(() => import("../components/Seller/Settings/SellerSettings"));
+const SellerRanking = lazy(() => import("../components/Seller/Ranking/SellerRanking"));
+const SellerCrm = lazy(() => import("../components/Seller/Crm/SellerCrm"));
 
 // User (dueño del restaurante autenticado)
 const DashboardLayout = lazy(() => import("../../src/components/User/Panel/DashboardLayout/DashboardLayout"));
@@ -62,19 +63,20 @@ export default function AppRoutes() {
       <Route element={<AdminRoute />}>
         <Route element={<AdminLayout />}>
           <Route path="/admin"     element={<CEODashboard />} />
-          <Route path="/admin/crm" element={<CrmClients />} />
           <Route path="/admin/payments" element={<AdminPayments />} />
           <Route path="/admin/plans" element={<AdminPlans />} />
           <Route path="/admin/sellers" element={<AdminSellers />} />
-          <Route path="/admin/sellers/metricas" element={<SellerMetricsPanel />} />
-          <Route path="/admin/sellers/comisiones" element={<SellerCommissions />} />
         </Route>
       </Route>
 
       {/* Rutas protegidas — solo sellers y admins */}
       <Route element={<SellerRoute />}>
         <Route element={<SellerLayout />}>
-          <Route path="/sellers" element={<SellerPanel />} />
+          <Route path="/sellers" element={<SellerOverview />} />
+          <Route path="/sellers/simulacion" element={<SellerSimulation />} />
+          <Route path="/sellers/configuracion" element={<SellerSettings />} />
+          <Route path="/sellers/ranking" element={<SellerRanking />} />
+          <Route path="/sellers/crm" element={<SellerCrm />} />
         </Route>
       </Route>
 

@@ -1,28 +1,44 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useTheme } from "../../hooks/useTheme";
 import BrandMark from "../Common/BrandMark";
 import s from "./SellerLayout.module.css";
-import { ChevronLeft, ChevronRight, LayoutPanelLeft, LogOut, MoreHorizontal } from "lucide-react";
+import {
+  BarChart3,
+  Calculator,
+  ChevronLeft,
+  ChevronRight,
+  LayoutPanelLeft,
+  LogOut,
+  MoreHorizontal,
+  Settings,
+  Users,
+} from "lucide-react";
 
 // Preferencia de sidebar colapsada (separada de la del admin)
 const SIDEBAR_COLLAPSED_KEY = "seller-sidebar-collapsed";
 
-const NAV_ITEMS = [
-  {
-    path: "/sellers",
-    label: "Panel",
-    short: "Panel",
-    icon: <LayoutPanelLeft size={20} strokeWidth={1.5} />,
-  },
+const BASE_NAV_ITEMS = [
+  { path: "/sellers", label: "Panel general", short: "Panel", icon: <LayoutPanelLeft size={20} strokeWidth={1.5} /> },
+  { path: "/sellers/simulacion", label: "Simulación", short: "Simular", icon: <Calculator size={20} strokeWidth={1.5} /> },
+  { path: "/sellers/crm", label: "CRM", short: "CRM", icon: <Users size={20} strokeWidth={1.5} /> },
+  { path: "/sellers/configuracion", label: "Configuración", short: "Config.", icon: <Settings size={20} strokeWidth={1.5} /> },
 ];
 
+// Ranking es exclusivo admin — se agrega condicionalmente para no mostrarle a
+// un vendedor un link que lo va a rebotar de vuelta a /sellers.
+const RANKING_ITEM = { path: "/sellers/ranking", label: "Ranking", short: "Ranking", icon: <BarChart3 size={20} strokeWidth={1.5} /> };
+
 export default function SellerLayout() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const NAV_ITEMS = useMemo(
+    () => (user?.role === "admin" ? [...BASE_NAV_ITEMS, RANKING_ITEM] : BASE_NAV_ITEMS),
+    [user?.role],
+  );
 
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const mobileMoreButtonRef = useRef<HTMLButtonElement>(null);
@@ -58,6 +74,12 @@ export default function SellerLayout() {
     navigate("/login");
   }, [logout, navigate]);
 
+  // Este layout lo comparten sellers y admins (que pueden entrar a /sellers
+  // a mirar) — el logo lleva al panel general de cada uno.
+  const goToOwnPanel = useCallback(() => {
+    navigate(user?.role === "admin" ? "/admin" : "/sellers");
+  }, [navigate, user?.role]);
+
   const themeLabel = theme === "dark" ? "Activar tema claro" : "Activar tema oscuro";
 
   return (
@@ -69,7 +91,7 @@ export default function SellerLayout() {
         aria-label="Navegación del panel de vendedor"
         inert={sidebarCollapsed}
       >
-        <div className={s.brand}>
+        <button type="button" className={s.brand} onClick={goToOwnPanel} aria-label="Ir al panel general">
           <div className={s.logoSq} role="img" aria-label="MenuDigital">
             <BrandMark className={s.brandMarkImage} />
           </div>
@@ -77,9 +99,9 @@ export default function SellerLayout() {
             <span className={s.brandName}>
               Menu<span>Digital</span>
             </span>
-            <span className={s.brandSubtitle}>Panel Vendedor</span>
+            <span className={s.brandSubtitle}>{user?.name}</span>
           </div>
-        </div>
+        </button>
 
         <nav className={s.sideNav}>
           {NAV_ITEMS.map((item) => {
@@ -144,7 +166,11 @@ export default function SellerLayout() {
       </button>
 
       {/* ── Contenido ─────────────────────────────────────────────────────── */}
-      <div className={`${s.content} ${sidebarCollapsed ? s.contentExpanded : ""}`}>
+      {/* admin-layout-content: mismo dock móvil compartido que el panel CEO y
+          el de usuario — sin esta clase, el padding-bottom que le reserva
+          espacio al dock fijo nunca se aplica acá, y el menú tapa lo último
+          de cada página en mobile. */}
+      <div className={`${s.content} admin-layout-content ${sidebarCollapsed ? s.contentExpanded : ""}`}>
         <Outlet />
       </div>
 
