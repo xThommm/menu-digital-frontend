@@ -520,14 +520,13 @@ interface PreviewCardProps {
   url: string | null;
 }
 
+const DEVICE = { w: 390, h: 844 };
+
 function PreviewCard({ url }: PreviewCardProps) {
-  const [mode, setMode] = useState<"mobile" | "desktop">("mobile");
   const [scale, setScale] = useState(1);
   const [loaded, setLoaded] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
-
-  const DEVICE = mode === "mobile" ? { w: 390, h: 844 } : { w: 1280, h: 800 };
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -553,9 +552,9 @@ function PreviewCard({ url }: PreviewCardProps) {
       // la card se ajuste al tamaño del dispositivo simulado en vez de dejar
       // espacio vacío. Si ahí metemos el alto en el cálculo, se arma un
       // bucle — scale más chico → frame más chico → viewport más bajo →
-      // scale aún más chico — y la preview colapsaba a un tamaño diminuto al
-      // alternar Móvil/Escritorio. Por eso ahí escalamos solo por ancho (el
-      // ancho lo fija la columna, es estable).
+      // scale aún más chico — y la preview colapsaba a un tamaño diminuto.
+      // Por eso ahí escalamos solo por ancho (el ancho lo fija la columna,
+      // es estable).
       const twoColumn = window.matchMedia("(min-width: 1200px)").matches;
       const byWidth  = width / DEVICE.w;
       const scaleNext = twoColumn
@@ -569,17 +568,16 @@ function PreviewCard({ url }: PreviewCardProps) {
     // primer render `url` todavía es null (data no cargó), este componente
     // devuelve null y wrapRef.current es null, así que ese primer efecto no
     // hace nada. Cuando `url` pasa a tener valor recién ahí se monta el div
-    // con el ref — sin `url` en las deps, el efecto no se repetiría (mode
-    // no cambió) y la vista previa quedaba pegada en scale:1 hasta que se
-    // togglea mobile/desktop a mano (lo que sí cambia DEVICE.w).
-  }, [DEVICE.w, DEVICE.h, url]);
+    // con el ref — sin `url` en las deps, el efecto no se repetiría (DEVICE
+    // es constante) y la vista previa quedaba pegada en scale:1.
+  }, [url]);
 
-  // Reseteamos `loaded` cuando cambia el modo, la url o se fuerza un reload.
+  // Reseteamos `loaded` cuando cambia la url o se fuerza un reload.
   // En vez de un useEffect que llame a setLoaded de forma síncrona (lo que
   // dispara un render en cascada evitable), lo resolvemos durante el propio
   // render comparando contra la key anterior, tal como recomienda React para
   // "ajustar estado cuando cambia algo" sin pasar por un efecto.
-  const frameKey = `${mode}|${url}|${reloadKey}`;
+  const frameKey = `${url}|${reloadKey}`;
   const [prevFrameKey, setPrevFrameKey] = useState(frameKey);
   if (frameKey !== prevFrameKey) {
     setPrevFrameKey(frameKey);
@@ -593,20 +591,6 @@ function PreviewCard({ url }: PreviewCardProps) {
       <div className={s.previewHeader}>
         <span className={s.previewLabel}>Vista previa</span>
         <div className={s.previewControls}>
-          <div className={s.previewToggle}>
-            <button
-              className={`${s.previewToggleBtn} ${mode === "mobile" ? s.previewToggleBtnActive : ""}`}
-              onClick={() => setMode("mobile")}
-            >
-              Móvil
-            </button>
-            <button
-              className={`${s.previewToggleBtn} ${mode === "desktop" ? s.previewToggleBtnActive : ""}`}
-              onClick={() => setMode("desktop")}
-            >
-              Escritorio
-            </button>
-          </div>
           <button
             className={s.previewRefreshBtn}
             onClick={() => setReloadKey((k) => k + 1)}

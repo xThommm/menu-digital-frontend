@@ -645,41 +645,6 @@
   gap: var(--space-2);
 }
 
-.previewToggle {
-  display: flex;
-  background: color-mix(in srgb, var(--admin-bg-elevated) 70%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--radius-full);
-  padding: 3px;
-  gap: 2px;
-}
-
-.previewToggleBtn {
-  min-height: var(--control-min-size);
-  border: none;
-  background: transparent;
-  color: var(--admin-text-muted);
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  font-weight: 500;
-  padding: 0.35rem var(--space-3);
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  transition: background var(--admin-transition), color var(--admin-transition);
-}
-
-.previewToggleBtn:hover:not(.previewToggleBtnActive) {
-  color: var(--admin-text-warm);
-}
-
-.previewToggleBtnActive {
-  background: var(--admin-gold);
-  color: var(--admin-gold-ink);
-  font-weight: 600;
-}
-
 .previewRefreshBtn {
   display: grid;
   place-items: center;
