@@ -1027,10 +1027,12 @@ export default function MenuEditorPage() {
     });
   }, []);
 
-  // Reutiliza parseApiResponse (401 → logout, !ok → Error con el mensaje del
-  // backend) en vez de reimplementar ese chequeo para cada item del lote.
+  // Pega una vez a los endpoints /bulk/* del backend (un solo request para
+  // todo el lote) en vez de hacer N pedidos, uno por producto seleccionado.
   const runBulkAction = useCallback(async (
-    action: (id: string) => Promise<Response>,
+    url: string,
+    method: "PATCH" | "POST",
+    body: Record<string, unknown> | undefined,
     successLabel: (count: number) => string,
     failureFallback: string,
   ) => {
@@ -1038,48 +1040,50 @@ export default function MenuEditorPage() {
     if (ids.length === 0) return;
     setBulkBusy(true);
     try {
-      const results = await Promise.allSettled(
-        ids.map(async id => { await parseApiResponse(await action(id), failureFallback); }),
-      );
-      const failed = results.filter(r => r.status === "rejected").length;
-      const okCount = ids.length - failed;
+      const res = await fetch(url, {
+        method, headers: authHeaders,
+        body: JSON.stringify({ ...body, itemIds: ids }),
+      });
+      const data = await parseApiResponse(res, failureFallback);
       await refetch();
-      if (failed === 0) {
-        notifySuccess(successLabel(okCount));
-      } else if (okCount === 0) {
-        setError(`No se pudo aplicar la acción a ningún producto seleccionado.`);
+
+      const updatedCount = Number(data.updatedCount ?? data.deletedCount ?? 0);
+      const failedCount = Array.isArray(data.failedIds) ? data.failedIds.length : 0;
+
+      if (failedCount === 0) {
+        notifySuccess(successLabel(updatedCount));
+      } else if (updatedCount === 0) {
+        setError("No se pudo aplicar la acción a ningún producto seleccionado.");
       } else {
-        setError(`${successLabel(okCount)} ${failed} producto${failed !== 1 ? "s" : ""} no se ${failed !== 1 ? "pudieron" : "pudo"} actualizar.`);
+        setError(`${successLabel(updatedCount)} ${failedCount} producto${failedCount !== 1 ? "s" : ""} no se ${failedCount !== 1 ? "pudieron" : "pudo"} actualizar.`);
       }
       setSelectedIds(new Set());
       setSelectionMode(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : failureFallback);
     } finally {
       setBulkBusy(false);
       setBulkDeleteConfirmOpen(false);
     }
-  }, [selectedIds, refetch, notifySuccess, setError, parseApiResponse]);
+  }, [selectedIds, authHeaders, refetch, notifySuccess, setError, parseApiResponse]);
 
   const bulkSetAvailable = useCallback((available: boolean) => runBulkAction(
-    id => fetch(`/api/items/${id}/available`, {
-      method: "PATCH", headers: authHeaders, body: JSON.stringify({ available }),
-    }),
+    "/api/items/bulk/available", "PATCH", { available },
     count => `${count} producto${count !== 1 ? "s" : ""} ${available ? "activado" : "pausado"}${count !== 1 ? "s" : ""}.`,
     "No se pudo cambiar la disponibilidad.",
-  ), [runBulkAction, authHeaders]);
+  ), [runBulkAction]);
 
   const bulkSetHidden = useCallback((hidden: boolean) => runBulkAction(
-    id => fetch(`/api/items/${id}/hidden`, {
-      method: "PATCH", headers: authHeaders, body: JSON.stringify({ hidden }),
-    }),
+    "/api/items/bulk/hidden", "PATCH", { hidden },
     count => `${count} producto${count !== 1 ? "s" : ""} ${hidden ? "ocultado" : "mostrado"}${count !== 1 ? "s" : ""}.`,
     "No se pudo cambiar la visibilidad.",
-  ), [runBulkAction, authHeaders]);
+  ), [runBulkAction]);
 
   const bulkDelete = useCallback(() => runBulkAction(
-    id => fetch(`/api/items/${id}`, { method: "DELETE", headers: authHeaders }),
+    "/api/items/bulk/delete", "POST", undefined,
     count => `${count} producto${count !== 1 ? "s" : ""} eliminado${count !== 1 ? "s" : ""}.`,
     "No se pudo eliminar.",
-  ), [runBulkAction, authHeaders]);
+  ), [runBulkAction]);
 
   // ── Drag & Drop ────────────────────────────────────────────────────────────
 
