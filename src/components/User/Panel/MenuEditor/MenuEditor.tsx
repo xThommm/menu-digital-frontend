@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, memo, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "../../../../context/useAuth";
 import { useNotifications } from "../../../../context/useNotifications";
 import { isSubscriptionExpired } from "../../../../lib/plans";
@@ -206,6 +207,13 @@ const icons = {
       <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   ),
+  checkSquare: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <polyline points="7 12 10 15 17 8" />
+    </svg>
+  ),
 };
 
 // ── Toggle sub-componente ──────────────────────────────────────────────────────
@@ -322,20 +330,39 @@ interface CategoriaAcordeonProps {
   onDragEnd: () => void;
   dragOverCat: string | null;
   draggedItem: string | null;
+  selectionMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelectItem: (id: string) => void;
+  onToggleSelectAllInCat: (cat: Categoria) => void;
 }
 
 const CategoriaAcordeon = memo(function CategoriaAcordeon({
   cat, expanded, atItemLimit, onToggle, onEditCat, onDeleteCat, onNewItem,
   onEditItem, onDeleteItem, onToggleAvailable, onDragStart,
   onDragOver, onDragLeave, onDrop, onDragEnd, dragOverCat, draggedItem,
+  selectionMode, selectedIds, onToggleSelectItem, onToggleSelectAllInCat,
 }: CategoriaAcordeonProps) {
   const isDragOver = dragOverCat === cat._id;
   const itemCount  = cat.items?.length ?? 0;
+  const catItemIds = useMemo(() => (cat.items ?? []).map(i => i._id), [cat.items]);
+  const allInCatSelected  = itemCount > 0 && catItemIds.every(id => selectedIds.has(id));
+  const someInCatSelected = catItemIds.some(id => selectedIds.has(id));
 
   return (
     <div className={styles.catAcordeon}>
       {/* Header */}
       <div className={`${styles.catHeader} ${expanded ? styles.open : ""}`}>
+        {selectionMode && itemCount > 0 && (
+          <label className={styles.itemCheckboxWrap} onClick={e => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={allInCatSelected}
+              ref={el => { if (el) el.indeterminate = someInCatSelected && !allInCatSelected; }}
+              onChange={() => onToggleSelectAllInCat(cat)}
+              aria-label={allInCatSelected ? `Deseleccionar todos los productos de ${cat.title}` : `Seleccionar todos los productos de ${cat.title}`}
+            />
+          </label>
+        )}
         <button
           className={styles.catChevronBtn}
           onClick={onToggle}
@@ -391,28 +418,45 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
             </p>
           )}
 
-          {cat.items?.map(item => (
+          {cat.items?.map(item => {
+            const selected = selectedIds.has(item._id);
+            return (
             <div
               key={item._id}
               role="listitem"
-              className={`${styles.itemRowAc} ${draggedItem === item._id ? styles.dragging : ""}`}
-              draggable
+              className={`${styles.itemRowAc} ${draggedItem === item._id ? styles.dragging : ""} ${selected ? styles.selected : ""}`}
+              draggable={!selectionMode}
               onDragStart={e => onDragStart(e, item._id)}
               onDragEnd={onDragEnd}
             >
-              {/* Handle drag */}
-              <span className={styles.dragHandle} aria-hidden="true">
-                <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
-                  <circle cx="4" cy="3"  r="1.5" fill="currentColor" />
-                  <circle cx="4" cy="8"  r="1.5" fill="currentColor" />
-                  <circle cx="4" cy="13" r="1.5" fill="currentColor" />
-                  <circle cx="8" cy="3"  r="1.5" fill="currentColor" />
-                  <circle cx="8" cy="8"  r="1.5" fill="currentColor" />
-                  <circle cx="8" cy="13" r="1.5" fill="currentColor" />
-                </svg>
-              </span>
+              {selectionMode ? (
+                <label className={styles.itemCheckboxWrap}>
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={() => onToggleSelectItem(item._id)}
+                    aria-label={`Seleccionar ${item.title}`}
+                  />
+                </label>
+              ) : (
+                /* Handle drag */
+                <span className={styles.dragHandle} aria-hidden="true">
+                  <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
+                    <circle cx="4" cy="3"  r="1.5" fill="currentColor" />
+                    <circle cx="4" cy="8"  r="1.5" fill="currentColor" />
+                    <circle cx="4" cy="13" r="1.5" fill="currentColor" />
+                    <circle cx="8" cy="3"  r="1.5" fill="currentColor" />
+                    <circle cx="8" cy="8"  r="1.5" fill="currentColor" />
+                    <circle cx="8" cy="13" r="1.5" fill="currentColor" />
+                  </svg>
+                </span>
+              )}
 
-              <button className={styles.itemInfoAc} onClick={() => onEditItem(item)} type="button">
+              <button
+                className={styles.itemInfoAc}
+                onClick={() => selectionMode ? onToggleSelectItem(item._id) : onEditItem(item)}
+                type="button"
+              >
                 <span className={styles.itemNameAc}>{item.title}</span>
                 <span className={styles.itemMetaAc}>
                   {item.price != null
@@ -430,27 +474,30 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
                 </span>
               </button>
 
-              <div className={styles.itemActions}>
-                <button
-                  className={`${styles.pillBtn} ${item.available ? styles.pillOn : styles.pillOff}`}
-                  onClick={() => onToggleAvailable(item)}
-                  aria-label={item.available ? `Pausar ${item.title}` : `Activar ${item.title}`}
-                  type="button"
-                >
-                  {item.available ? "Activo" : "Pausado"}
-                </button>
-                <button
-                  className={`${styles.iconBtn} ${styles.danger}`}
-                  onClick={() => onDeleteItem(item)}
-                  title="Eliminar"
-                  aria-label={`Eliminar ${item.title}`}
-                  type="button"
-                >
-                  {icons.trash}
-                </button>
-              </div>
+              {!selectionMode && (
+                <div className={styles.itemActions}>
+                  <button
+                    className={`${styles.pillBtn} ${item.available ? styles.pillOn : styles.pillOff}`}
+                    onClick={() => onToggleAvailable(item)}
+                    aria-label={item.available ? `Pausar ${item.title}` : `Activar ${item.title}`}
+                    type="button"
+                  >
+                    {item.available ? "Activo" : "Pausado"}
+                  </button>
+                  <button
+                    className={`${styles.iconBtn} ${styles.danger}`}
+                    onClick={() => onDeleteItem(item)}
+                    title="Eliminar"
+                    aria-label={`Eliminar ${item.title}`}
+                    type="button"
+                  >
+                    {icons.trash}
+                  </button>
+                </div>
+              )}
             </div>
-          ))}
+            );
+          })}
 
           <div className={styles.catFooter}>
             <button
@@ -511,6 +558,12 @@ export default function MenuEditorPage() {
 
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [dragOverCat, setDragOverCat] = useState<string | null>(null);
+
+  // ── Selección múltiple de productos ─────────────────────────────────────
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
 
   const [view,            setView]            = useState<View>("menu");
   const [menuSheetOpen,   setMenuSheetOpen]   = useState(false);
@@ -949,6 +1002,85 @@ export default function MenuEditorPage() {
     }
   }, [authHeaders, refetch, notifySuccess, setError, logout]);
 
+  // ── Selección múltiple de productos ─────────────────────────────────────
+
+  const toggleSelectionMode = useCallback(() => {
+    setSelectionMode(prev => !prev);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelectItem = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAllInCat = useCallback((cat: Categoria) => {
+    const ids = (cat.items ?? []).map(i => i._id);
+    setSelectedIds(prev => {
+      const allSelected = ids.length > 0 && ids.every(id => prev.has(id));
+      const next = new Set(prev);
+      ids.forEach(id => allSelected ? next.delete(id) : next.add(id));
+      return next;
+    });
+  }, []);
+
+  // Reutiliza parseApiResponse (401 → logout, !ok → Error con el mensaje del
+  // backend) en vez de reimplementar ese chequeo para cada item del lote.
+  const runBulkAction = useCallback(async (
+    action: (id: string) => Promise<Response>,
+    successLabel: (count: number) => string,
+    failureFallback: string,
+  ) => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const results = await Promise.allSettled(
+        ids.map(async id => { await parseApiResponse(await action(id), failureFallback); }),
+      );
+      const failed = results.filter(r => r.status === "rejected").length;
+      const okCount = ids.length - failed;
+      await refetch();
+      if (failed === 0) {
+        notifySuccess(successLabel(okCount));
+      } else if (okCount === 0) {
+        setError(`No se pudo aplicar la acción a ningún producto seleccionado.`);
+      } else {
+        setError(`${successLabel(okCount)} ${failed} producto${failed !== 1 ? "s" : ""} no se ${failed !== 1 ? "pudieron" : "pudo"} actualizar.`);
+      }
+      setSelectedIds(new Set());
+      setSelectionMode(false);
+    } finally {
+      setBulkBusy(false);
+      setBulkDeleteConfirmOpen(false);
+    }
+  }, [selectedIds, refetch, notifySuccess, setError, parseApiResponse]);
+
+  const bulkSetAvailable = useCallback((available: boolean) => runBulkAction(
+    id => fetch(`/api/items/${id}/available`, {
+      method: "PATCH", headers: authHeaders, body: JSON.stringify({ available }),
+    }),
+    count => `${count} producto${count !== 1 ? "s" : ""} ${available ? "activado" : "pausado"}${count !== 1 ? "s" : ""}.`,
+    "No se pudo cambiar la disponibilidad.",
+  ), [runBulkAction, authHeaders]);
+
+  const bulkSetHidden = useCallback((hidden: boolean) => runBulkAction(
+    id => fetch(`/api/items/${id}/hidden`, {
+      method: "PATCH", headers: authHeaders, body: JSON.stringify({ hidden }),
+    }),
+    count => `${count} producto${count !== 1 ? "s" : ""} ${hidden ? "ocultado" : "mostrado"}${count !== 1 ? "s" : ""}.`,
+    "No se pudo cambiar la visibilidad.",
+  ), [runBulkAction, authHeaders]);
+
+  const bulkDelete = useCallback(() => runBulkAction(
+    id => fetch(`/api/items/${id}`, { method: "DELETE", headers: authHeaders }),
+    count => `${count} producto${count !== 1 ? "s" : ""} eliminado${count !== 1 ? "s" : ""}.`,
+    "No se pudo eliminar.",
+  ), [runBulkAction, authHeaders]);
+
   // ── Drag & Drop ────────────────────────────────────────────────────────────
 
   const handleDragStart = useCallback((e: React.DragEvent, itemId: string) => {
@@ -1272,6 +1404,17 @@ export default function MenuEditorPage() {
                   </span>
                 )}
               </div>
+              {totalItems > 0 && (
+                <button
+                  className={styles.backBtn}
+                  onClick={toggleSelectionMode}
+                  title={selectionMode ? "Cancelar selección" : "Seleccionar productos"}
+                  aria-label={selectionMode ? "Cancelar selección" : "Seleccionar productos"}
+                  aria-pressed={selectionMode}
+                >
+                  {selectionMode ? icons.close : icons.checkSquare}
+                </button>
+              )}
               <button
                 className={styles.backBtn}
                 onClick={() => setMenuSheetOpen(true)}
@@ -1284,7 +1427,7 @@ export default function MenuEditorPage() {
               </button>
             </header>
 
-            <div className={styles.content}>
+            <div className={`${styles.content} ${selectionMode ? styles.contentBulkPad : ""}`}>
               {error && (
                 <div className={styles.errorBanner} role="alert" aria-live="assertive">
                   {error}
@@ -1406,6 +1549,10 @@ export default function MenuEditorPage() {
                       onDragEnd={handleDragEnd}
                       dragOverCat={dragOverCat}
                       draggedItem={draggedItem}
+                      selectionMode={selectionMode}
+                      selectedIds={selectedIds}
+                      onToggleSelectItem={toggleSelectItem}
+                      onToggleSelectAllInCat={toggleSelectAllInCat}
                     />
                   ))}
 
@@ -1447,6 +1594,10 @@ export default function MenuEditorPage() {
                       onDragEnd={handleDragEnd}
                       dragOverCat={dragOverCat}
                       draggedItem={draggedItem}
+                      selectionMode={selectionMode}
+                      selectedIds={selectedIds}
+                      onToggleSelectItem={toggleSelectItem}
+                      onToggleSelectAllInCat={toggleSelectAllInCat}
                     />
                   ))}
                 </div>
@@ -1573,6 +1724,61 @@ export default function MenuEditorPage() {
                   </button>
                 </div>
               </div>
+            )}
+
+            {/* ── Barra de acciones masivas ── */}
+            {/* Portal a document.body: mismo motivo que UpgradeModal — sin esto
+                el dock de navegación mobile (position:fixed a nivel raíz del
+                layout) tapa esta barra pese al z-index. */}
+            {selectionMode && createPortal(
+              <div className={styles.bulkBar} role="toolbar" aria-label="Acciones sobre productos seleccionados">
+                <span className={styles.bulkBarCount}>
+                  {selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}
+                </span>
+                <div className={styles.bulkBarActions}>
+                  <button
+                    type="button"
+                    className={styles.bulkBarBtn}
+                    disabled={selectedIds.size === 0 || bulkBusy}
+                    onClick={() => bulkSetAvailable(true)}
+                  >
+                    Activar
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.bulkBarBtn}
+                    disabled={selectedIds.size === 0 || bulkBusy}
+                    onClick={() => bulkSetAvailable(false)}
+                  >
+                    Pausar
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.bulkBarBtn}
+                    disabled={selectedIds.size === 0 || bulkBusy}
+                    onClick={() => bulkSetHidden(false)}
+                  >
+                    Mostrar
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.bulkBarBtn}
+                    disabled={selectedIds.size === 0 || bulkBusy}
+                    onClick={() => bulkSetHidden(true)}
+                  >
+                    Ocultar
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.bulkBarBtn} ${styles.bulkBarBtnDanger}`}
+                    disabled={selectedIds.size === 0 || bulkBusy}
+                    onClick={() => setBulkDeleteConfirmOpen(true)}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>,
+              document.body,
             )}
           </>
         )}
@@ -2241,6 +2447,39 @@ export default function MenuEditorPage() {
                 </button>
                 <button className={styles.modalConfirm} onClick={confirmDelete} type="button" autoFocus>
                   Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══ MODAL: ELIMINAR PRODUCTOS SELECCIONADOS ══ */}
+        {bulkDeleteConfirmOpen && (
+          <div
+            className={styles.modalOverlay}
+            onClick={() => !bulkBusy && setBulkDeleteConfirmOpen(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-delete-modal-title"
+          >
+            <div className={styles.modal} onClick={e => e.stopPropagation()}>
+              <p id="bulk-delete-modal-title" className={styles.modalTitle}>
+                ¿Eliminar {selectedIds.size} producto{selectedIds.size !== 1 ? "s" : ""}?
+              </p>
+              <p className={styles.modalDesc}>
+                Los productos seleccionados se eliminarán de forma permanente. Esta acción no se puede deshacer.
+              </p>
+              <div className={styles.modalBtns}>
+                <button
+                  className={styles.modalCancel}
+                  onClick={() => setBulkDeleteConfirmOpen(false)}
+                  type="button"
+                  disabled={bulkBusy}
+                >
+                  Cancelar
+                </button>
+                <button className={styles.modalConfirm} onClick={bulkDelete} type="button" disabled={bulkBusy} autoFocus>
+                  {bulkBusy ? <><Spinner /> Eliminando...</> : "Eliminar"}
                 </button>
               </div>
             </div>

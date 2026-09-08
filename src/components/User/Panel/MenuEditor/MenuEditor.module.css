@@ -134,6 +134,10 @@
   padding: 0 0 2rem;
 }
 
+.contentBulkPad {
+  padding-bottom: 5.5rem;
+}
+
 .formContext {
   font-size: 0.78rem;
   color: var(--admin-text-muted);
@@ -704,6 +708,28 @@
 .itemRowAc.dragging {
   opacity: 0.3;
   background: var(--admin-bg-elevated);
+}
+
+.itemRowAc.selected {
+  background: var(--admin-gold-glow);
+}
+
+/* Checkbox de selección múltiple (fila de item y "seleccionar todos" de categoría) */
+.itemCheckboxWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--control-min-size);
+  height: var(--control-min-size);
+  cursor: pointer;
+}
+
+.itemCheckboxWrap input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--admin-gold);
+  cursor: pointer;
 }
 
 /* Handle de arrastre */
@@ -1382,7 +1408,8 @@
 }
 
 .modalCancel:disabled,
-.modalUpgrade:disabled {
+.modalUpgrade:disabled,
+.modalConfirm:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -1781,4 +1808,80 @@
 .removeImage:focus-visible {
   outline: 2px solid #e05555;
   outline-offset: 2px;
+}
+
+/* ── Barra de acciones masivas (selección múltiple) ── */
+/* Portal a document.body (ver MenuEditor.tsx) — fixed a la ventana, no al
+   contenedor scrolleable de .content. */
+.bulkBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  background: var(--admin-bg-elevated);
+  border-top: 0.5px solid var(--admin-border-warm);
+  box-shadow: var(--admin-shadow-dock);
+  animation: slideUp 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bulkBarCount {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-text-primary);
+  flex-shrink: 0;
+}
+
+.bulkBarActions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.bulkBarBtn {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--admin-radius-md);
+  border: 0.5px solid var(--admin-border-default);
+  background: var(--admin-bg-raised);
+  color: var(--admin-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--admin-transition), border-color var(--admin-transition), color var(--admin-transition), opacity var(--admin-transition);
+}
+
+.bulkBarBtn:hover:not(:disabled) {
+  border-color: var(--admin-border-warm);
+  background: var(--admin-bg-elevated);
+}
+
+.bulkBarBtn:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
+}
+
+.bulkBarBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bulkBarBtnDanger {
+  border-color: var(--admin-red-border);
+  color: var(--admin-red-text);
+}
+
+.bulkBarBtnDanger:hover:not(:disabled) {
+  background: var(--admin-bg-raised);
+  border-color: var(--admin-red-dark-border);
 }
