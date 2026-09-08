@@ -1,0 +1,453 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  min-height: 72px;
+  padding: 0.875rem 1rem;
+  border-bottom: 0.5px solid var(--admin-border-subtle);
+  background: color-mix(in srgb, var(--admin-bg-base) 90%, transparent);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.backBtn {
+  width: var(--control-min-size);
+  height: var(--control-min-size);
+  flex-shrink: 0;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--admin-text-muted);
+}
+
+.backBtn:hover {
+  color: var(--admin-text-primary);
+  border-color: var(--admin-border-warm);
+}
+
+.headerTitle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.headerTitleText {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--admin-text-primary);
+}
+
+.headerSubtitle {
+  font-size: 0.76rem;
+  color: var(--admin-text-muted);
+}
+
+.saveBtn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--control-min-size);
+  padding: 0 1rem;
+  background: var(--admin-gold);
+  border: none;
+  border-radius: var(--admin-radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--admin-gold-ink);
+  cursor: pointer;
+  transition: opacity var(--admin-transition);
+}
+
+.saveBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Toolbar ────────────────────────────────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 0.5px solid var(--admin-border-subtle);
+}
+
+.onlyPendingToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-min-size);
+  color: var(--admin-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.stockPlaceholder {
+  background: var(--admin-bg-surface);
+  border: 0.5px dashed var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.76rem;
+  color: var(--admin-text-faint);
+  cursor: not-allowed;
+}
+
+/* ── Estados ────────────────────────────────────────────────────────────── */
+
+.errorBanner {
+  margin: 0.75rem 1rem 0;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-warm);
+  border-radius: var(--admin-radius-md);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.82rem;
+  color: var(--admin-red-text);
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.loadingState {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+  color: var(--admin-text-muted);
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 1rem;
+  padding: 4rem 1rem;
+  border: 0.5px dashed var(--admin-border-default);
+  border-radius: var(--admin-radius-lg);
+  background: none;
+  color: var(--admin-text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color var(--admin-transition), background var(--admin-transition);
+}
+
+.emptyState:hover {
+  border-color: var(--admin-gold);
+  background: var(--admin-gold-glow);
+}
+
+.emptyStateIcon {
+  color: var(--admin-text-faint);
+}
+
+/* ── Grilla ─────────────────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  padding: 1rem;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tileThumbWrap {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--admin-radius-md);
+  overflow: hidden;
+  border: 0.5px solid var(--admin-border-default);
+  background: var(--admin-bg-elevated);
+}
+
+.tileThumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tileThumbPlaceholder {
+  width: 100%;
+  height: 100%;
+  background: var(--admin-bg-surface);
+}
+
+.tileOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--admin-text-primary);
+}
+
+.tileOverlayError {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.5rem;
+  text-align: center;
+  background: color-mix(in srgb, var(--admin-red-bg) 92%, black);
+  color: var(--admin-red-text);
+  font-size: 0.72rem;
+}
+
+.tileErrorActions {
+  display: flex;
+  gap: 6px;
+}
+
+.tileErrorBtn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 0.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--admin-radius-sm);
+  padding: 3px 8px;
+  font-size: 0.68rem;
+  color: var(--admin-text-primary);
+  cursor: pointer;
+}
+
+/* ── Selectores de producto ─────────────────────────────────────────────── */
+
+.tilePickers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pickerBox {
+  position: relative;
+}
+
+.pickerInput {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 8px;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-sm);
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  color: var(--admin-text-primary);
+}
+
+.pickerInput::placeholder {
+  color: var(--admin-text-faint);
+}
+
+.pickerInput:focus {
+  outline: none;
+  border-color: var(--admin-gold);
+}
+
+.pickerRowRemove {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--admin-text-faint);
+  cursor: pointer;
+}
+
+.pickerDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  max-height: 180px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--admin-bg-raised);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  box-shadow: var(--admin-shadow-popover);
+}
+
+.pickerDropdownEmpty {
+  padding: 8px;
+  font-size: 0.74rem;
+  color: var(--admin-text-faint);
+}
+
+.pickerDropdownItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: var(--admin-radius-sm);
+  text-align: left;
+  cursor: pointer;
+  color: var(--admin-text-secondary);
+  font-size: 0.78rem;
+}
+
+.pickerDropdownItem:hover {
+  background: var(--admin-bg-elevated);
+  color: var(--admin-text-primary);
+}
+
+.pickerDropdownTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pickerDropdownCode {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  color: var(--admin-text-faint);
+}
+
+.pickerChip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 6px 0 10px;
+  background: var(--admin-gold-glow);
+  border: 0.5px solid var(--admin-border-gold-mid);
+  border-radius: var(--admin-radius-sm);
+}
+
+.pickerChipText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  color: var(--admin-text-primary);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.pickerChipCode {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  color: var(--admin-text-warm);
+}
+
+.pickerChipRemove {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+}
+
+.pickerChipRemove:hover {
+  color: var(--admin-red-text);
+}
+
+.addRowBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 4px;
+  background: transparent;
+  border: none;
+  color: var(--admin-gold);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Tile "+" para agregar más imágenes ────────────────────────────────── */
+
+.addTile {
+  aspect-ratio: 1;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--admin-radius-md);
+  border: 0.5px dashed var(--admin-border-default);
+  background: var(--admin-bg-surface);
+  color: var(--admin-text-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: border-color var(--admin-transition), background var(--admin-transition);
+}
+
+.addTile:hover {
+  border-color: var(--admin-gold);
+  background: var(--admin-gold-glow);
+  color: var(--admin-text-primary);
+}
+
+@media (max-width: 599px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    padding: 0.75rem;
+  }
+
+  .header {
+    flex-wrap: wrap;
+    min-height: auto;
+    padding: 0.75rem;
+  }
+
+  .saveBtn {
+    order: 3;
+    width: 100%;
+  }
+}

@@ -21,6 +21,7 @@ export interface PlanFeatures {
   programacion_productos: boolean
   menu_pdf: boolean
   estadisticas: boolean
+  image_manager: boolean
   item_limit: number | null
   templateIds: number[]
 }
@@ -272,6 +273,30 @@ export interface AdminSeccion {
 export interface AdminMenuData {
   secciones: AdminSeccion[]
   sinSeccion: AdminCategoria[]
+}
+
+// ── Gestor de imágenes (editor de menú) ─────────────────────────────────────
+// Proyección liviana de Item (GET /api/items/lite): solo lo que necesita el
+// buscador de productos del gestor (nombre/código) y saber si ya tiene foto.
+
+export interface ItemLite {
+  _id: string
+  title: string
+  code: string
+  image: string
+}
+
+// Un cambio por imagen tocada en el gestor: el set final de productos a los
+// que debe quedar asignada esa imagen (vacío = "sin asignar, vuelve a
+// pendientes"). Ver POST /api/items/images/assign.
+export interface ImageAssignChange {
+  imageUrl: string
+  itemIDs: string[]
+}
+
+export interface ImageAssignResponse {
+  updatedCount: number
+  pendingImages: string[]
 }
 
 // ── Dashboard y estadísticas del dueño ──────────────────────────────────────

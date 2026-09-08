@@ -5,6 +5,7 @@ import { useNotifications } from "../../../../context/useNotifications";
 import { isSubscriptionExpired } from "../../../../lib/plans";
 import { useFeedbackMessage } from "../../../../hooks/useFeedbackMessage";
 import MassiveImport from "../../../../Utils/MassiveImport";
+import ImageManager from "./ImageManager/ImageManager";
 import type {
   AdminItem as Item,
   AdminCategoria as Categoria,
@@ -92,7 +93,7 @@ const MAX_IMAGE_MB = 5;
 
 // ── Vistas posibles ────────────────────────────────────────────────────────────
 
-type View = "menu" | "item-form" | "categoria-form" | "seccion-form" | "massive-import";
+type View = "menu" | "item-form" | "categoria-form" | "seccion-form" | "massive-import" | "image-manager";
 type ItemFormSection = "basics" | "promotions" | "availability";
 
 interface ItemFieldErrors {
@@ -212,6 +213,15 @@ const icons = {
       strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="3" y="3" width="18" height="18" rx="3" />
       <polyline points="7 12 10 15 17 8" />
+    </svg>
+  ),
+  images: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="14" height="14" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="M3 13l3.5-3.5a2 2 0 0 1 2.8 0L13 13" />
+      <path d="M21 8v11a2 2 0 0 1-2 2H8" />
     </svg>
   ),
 };
@@ -338,7 +348,7 @@ interface CategoriaAcordeonProps {
 
 const CategoriaAcordeon = memo(function CategoriaAcordeon({
   cat, expanded, atItemLimit, onToggle, onEditCat, onDeleteCat, onNewItem,
-  onEditItem, onDeleteItem, onToggleAvailable, onDragStart,
+  onEditItem, onToggleAvailable, onDragStart,
   onDragOver, onDragLeave, onDrop, onDragEnd, dragOverCat, draggedItem,
   selectionMode, selectedIds, onToggleSelectItem, onToggleSelectAllInCat,
 }: CategoriaAcordeonProps) {
@@ -484,7 +494,7 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
                   >
                     {item.available ? "Activo" : "Pausado"}
                   </button>
-                  <button
+                  {/* <button
                     className={`${styles.iconBtn} ${styles.danger}`}
                     onClick={() => onDeleteItem(item)}
                     title="Eliminar"
@@ -492,7 +502,7 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
                     type="button"
                   >
                     {icons.trash}
-                  </button>
+                  </button> */}
                 </div>
               )}
             </div>
@@ -536,6 +546,7 @@ export default function MenuEditorPage() {
     canExportPdf: boolean;
     canScheduleItems?: boolean;
     canScheduleOffers?: boolean;
+    canUseImageManager?: boolean;
   } | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState(false);
@@ -544,7 +555,7 @@ export default function MenuEditorPage() {
   // Modal de upgrade compartido: se abre por el límite de productos
   // del plan free o por intentar usar el importador de Excel sin plan
   // pago. "reason" solo cambia el texto que se muestra.
-  const [upgradeReason, setUpgradeReason] = useState<"items" | "excel" | "pdf" | "schedule" | "offer" | null>(null);
+  const [upgradeReason, setUpgradeReason] = useState<"items" | "excel" | "pdf" | "schedule" | "offer" | "images" | null>(null);
 
   const [imageUploading, setImageUploading] = useState(false);
   const itemImageInputRef = useRef<HTMLInputElement>(null);
@@ -1386,6 +1397,12 @@ export default function MenuEditorPage() {
     return <MassiveImport onBack={() => setView("menu")} onSuccess={refetch} />;
   }
 
+  // ── Vista image-manager ──────────────────────────────────────────────────
+
+  if (view === "image-manager") {
+    return <ImageManager onBack={() => setView("menu")} onSuccess={refetch} />;
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (!loading && limits?.canEditMenu === false) {
@@ -1657,6 +1674,27 @@ export default function MenuEditorPage() {
                     <span className={styles.sheetOptionText}>
                       <span className={styles.sheetOptionTitle}>Nueva sección</span>
                       <span className={styles.sheetOptionDesc}>Agrupa categorías, ej: Comidas</span>
+                    </span>
+                  </button>
+
+                  <button
+                    className={`${styles.sheetOption} ${!limits?.canUseImageManager ? styles.sheetOptionLocked : ""}`}
+                    type="button"
+                    onClick={() => {
+                      setMenuSheetOpen(false);
+                      if (!limits?.canUseImageManager) { setUpgradeReason("images"); return; }
+                      setView("image-manager");
+                    }}
+                  >
+                    <span className={styles.sheetOptionIcon}>
+                      {limits?.canUseImageManager ? icons.images : icons.lock}
+                    </span>
+                    <span className={styles.sheetOptionText}>
+                      <span className={styles.sheetOptionTitle}>
+                        Gestor de imágenes
+                        {!limits?.canUseImageManager && <span className={styles.sheetOptionPro}>VER PLANES</span>}
+                      </span>
+                      <span className={styles.sheetOptionDesc}>Subí varias fotos y asignalas a tus productos</span>
                     </span>
                   </button>
 
@@ -2490,12 +2528,18 @@ export default function MenuEditorPage() {
           </div>
         )}
 
-        {/* ══ MODAL DE UPGRADE (límite de productos / importador Excel) ══ */}
+        {/* ══ MODAL DE UPGRADE (límite de productos / importador Excel / gestor de imágenes) ══ */}
         {upgradeReason && (
           <UpgradeModal
             currentPlan={effectiveSubscription}
-            minPlan="basic"
-            requiredFeature={upgradeReason === "excel" ? "carga_masiva_excel" : upgradeReason === "pdf" ? "menu_pdf" : upgradeReason === "items" ? undefined : "programacion_productos"}
+            minPlan={upgradeReason === "images" ? "pro" : "basic"}
+            requiredFeature={
+              upgradeReason === "excel" ? "carga_masiva_excel"
+              : upgradeReason === "pdf" ? "menu_pdf"
+              : upgradeReason === "images" ? "image_manager"
+              : upgradeReason === "items" ? undefined
+              : "programacion_productos"
+            }
             minimumItems={upgradeReason === "items" ? (limits?.itemCount ?? totalItems) + 1 : undefined}
             title={upgradeReason === "items" ? `Llegaste al límite de ${limits?.itemLimit ?? "tu plan"} productos` : "Esta función no está incluida en tu plan"}
             description="Consultá los planes disponibles con esta capacidad. Los precios y beneficios corresponden al catálogo vigente."
