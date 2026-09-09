@@ -29,7 +29,8 @@ function setCanonical(url?: string) {
     'link[rel="canonical"]'
   ) as HTMLLinkElement | null;
 
-  // En páginas noindex no necesitamos canonical
+  // Si la página no tiene canonical, eliminamos cualquier
+  // canonical que haya quedado de la ruta anterior.
   if (!url) {
     canonical?.remove();
     return;
@@ -51,10 +52,11 @@ function getSeoConfig(pathname: string): SeoConfig {
 
   if (pathname === "/") {
     return {
-        title: "Menú Digital | Menú Digital App",
-        description:
-          "Consultá negocios y menús digitales en Menú Digital App.",
-        robots: "noindex, follow",
+      title: "Menú Digital QR para Restaurantes | Menú Digital App",
+      description:
+        "Creá un menú digital QR para tu restaurante, bar o cafetería. Actualizá productos, precios y ofertas al instante y compartí tu carta desde cualquier celular.",
+      robots: "index, follow",
+      canonical: `${SITE_URL}/`,
     };
   }
 
@@ -113,17 +115,21 @@ function getSeoConfig(pathname: string): SeoConfig {
   }
 
   // ─────────────────────────────────────────────
-  // LOGIN / REGISTRO
-  // NO QUEREMOS QUE APAREZCAN EN GOOGLE
+  // LOGIN
   // ─────────────────────────────────────────────
 
   if (pathname === "/login") {
     return {
       title: "Iniciar sesión | Menú Digital App",
-      description: "Ingresá a tu cuenta de Menú Digital App.",
+      description:
+        "Ingresá a tu cuenta de Menú Digital App.",
       robots: "noindex, follow",
     };
   }
+
+  // ─────────────────────────────────────────────
+  // REGISTRO
+  // ─────────────────────────────────────────────
 
   if (
     pathname === "/register" ||
@@ -132,7 +138,8 @@ function getSeoConfig(pathname: string): SeoConfig {
   ) {
     return {
       title: "Crear cuenta | Menú Digital App",
-      description: "Creá tu cuenta en Menú Digital App.",
+      description:
+        "Creá tu cuenta en Menú Digital App.",
       robots: "noindex, follow",
     };
   }
@@ -140,7 +147,8 @@ function getSeoConfig(pathname: string): SeoConfig {
   if (pathname === "/verificar-email") {
     return {
       title: "Verificar email | Menú Digital App",
-      description: "Verificá tu correo electrónico.",
+      description:
+        "Verificá tu correo electrónico.",
       robots: "noindex, follow",
     };
   }
@@ -155,7 +163,8 @@ function getSeoConfig(pathname: string): SeoConfig {
   ) {
     return {
       title: "Administración | Menú Digital App",
-      description: "Panel interno de administración.",
+      description:
+        "Panel interno de administración.",
       robots: "noindex, nofollow",
     };
   }
@@ -170,7 +179,8 @@ function getSeoConfig(pathname: string): SeoConfig {
   ) {
     return {
       title: "Panel de vendedor | Menú Digital App",
-      description: "Panel privado de vendedores.",
+      description:
+        "Panel privado de vendedores.",
       robots: "noindex, nofollow",
     };
   }
@@ -187,26 +197,34 @@ function getSeoConfig(pathname: string): SeoConfig {
   ) {
     return {
       title: "Panel | Menú Digital App",
-      description: "Panel privado de Menú Digital App.",
+      description:
+        "Panel privado de Menú Digital App.",
       robots: "noindex, nofollow",
     };
   }
 
   // ─────────────────────────────────────────────
-  // TENANTS PÚBLICOS
+  // TENANTS / RUTAS DESCONOCIDAS
+  // ─────────────────────────────────────────────
   //
-  // /mi-restaurante
-  // /mi-restaurante/menu
+  // Inicialmente cualquier /:slug queda noindex.
   //
-  // Más adelante les pondremos SEO dinámico.
+  // Si BusinessSEO comprueba que realmente existe
+  // el negocio, cambia posteriormente a:
+  //
+  // index, follow
+  // canonical real
+  // title real
+  // description real
+  //
+  // Si no existe, permanece noindex.
   // ─────────────────────────────────────────────
 
   return {
     title: "Menú Digital | Menú Digital App",
     description:
-      "Consultá este negocio y su menú digital en Menú Digital App.",
-    robots: "index, follow",
-    canonical: `${SITE_URL}${pathname}`,
+      "Consultá negocios y menús digitales en Menú Digital App.",
+    robots: "noindex, follow",
   };
 }
 
