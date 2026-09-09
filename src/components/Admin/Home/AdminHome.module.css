@@ -386,7 +386,7 @@
   position: absolute; top: 1.5rem; right: 2rem; pointer-events: none;
 }
 .icon { color: var(--auth-amber); stroke-width: 1.75; }
-.stepIcon { composes: icon; width: 2.2rem; height: 2.2rem; margin-bottom: 1.5rem; filter: drop-shadow(0 0 12px color-mix(in srgb, var(--auth-amber) 50%, transparent)); }
+/* .stepIcon { composes: icon; width: 2.2rem; height: 2.2rem; margin-bottom: 1.5rem; filter: drop-shadow(0 0 12px color-mix(in srgb, var(--auth-amber) 50%, transparent)); } */
 .stepTitle { font-family: var(--font-auth-display); font-size: 1.2rem; font-weight: 700; margin-bottom: .8rem; color: var(--auth-cream); }
 .stepDesc { font-size: .93rem; line-height: 1.75; color: var(--auth-cream-mid); }
 
@@ -436,7 +436,7 @@
 }
 .featCard:hover { border-color: color-mix(in srgb, var(--auth-amber) 25%, transparent); transform: translateY(-3px); }
 .featCard:hover::after { opacity: 1; }
-.featIcon { composes: icon; width: 2rem; height: 2rem; margin-bottom: 1.2rem; }
+/* .featIcon { composes: icon; width: 2rem; height: 2rem; margin-bottom: 1.2rem; } */
 .featTitle { font-family: var(--font-auth-display); font-size: 1rem; font-weight: 700; margin-bottom: .6rem; color: var(--auth-cream); }
 .featDesc { font-size: .88rem; line-height: 1.7; color: var(--auth-cream-mid); }
 
@@ -944,7 +944,7 @@
   transition: border-color .3s;
 }
 .aboutCard:hover { border-color: color-mix(in srgb, var(--auth-amber) 20%, transparent); }
-.aboutCardIcon { composes: icon; width: 1.8rem; height: 1.8rem; margin-bottom: .8rem; }
+/* .aboutCardIcon { composes: icon; width: 1.8rem; height: 1.8rem; margin-bottom: .8rem; } */
 .aboutCardTitle { font-size: .95rem; font-weight: 700; margin-bottom: .4rem; color: var(--auth-cream); }
 .aboutCardDesc { font-size: .82rem; color: var(--auth-cream-mid); line-height: 1.6; }
 
