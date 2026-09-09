@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0a0608" />
     <meta name="robots" content="index, follow" />
-    <title>Menú Digital App — Tu menú, en el celular de tus clientes</title>
-    <meta name="description" content="Creá tu menú digital en minutos. Actualizá precios, ocultá platos agotados y compartilo con un QR — sin apps, sin descargas, desde cualquier celular." />
+    <title>Menú Digital QR para Restaurantes | Menú Digital App</title>
+    <meta name="description" content="Creá un menú digital QR para tu restaurante, bar o cafetería. Actualizá productos, precios y ofertas al instante y compartí tu carta desde cualquier celular."/>
     <link rel="canonical" href="https://www.menudigitalapp.com.ar/" />
 
     <meta property="og:type" content="website" />
@@ -23,16 +23,38 @@
     <meta name="twitter:description" content="Creá tu menú digital en minutos. Actualizá precios, ocultá platos agotados y compartilo con un QR — sin apps, sin descargas, desde cualquier celular." />
     <meta name="twitter:image" content="https://www.menudigitalapp.com.ar/brand/menu-digital-logo-mark.svg" />
     <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        "name": "Menú Digital App",
-        "url": "https://www.menudigitalapp.com.ar",
-        "logo": "https://www.menudigitalapp.com.ar/brand/menu-digital-logo-mark.svg",
-        "description": "Creá tu menú digital en minutos. Actualizá precios, ocultá platos agotados y compartilo con un QR — sin apps, sin descargas, desde cualquier celular.",
-        "areaServed": "AR"
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://www.menudigitalapp.com.ar/#organization",
+      "name": "Menú Digital App",
+      "url": "https://www.menudigitalapp.com.ar/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.menudigitalapp.com.ar/brand/menu-digital-logo.png"
+      },
+      "areaServed": {
+        "@type": "Country",
+        "name": "Argentina"
       }
-    </script>
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://www.menudigitalapp.com.ar/#software",
+      "name": "Menú Digital App",
+      "url": "https://www.menudigitalapp.com.ar/",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "description": "Plataforma para crear menús digitales QR para restaurantes, bares y cafeterías.",
+      "provider": {
+        "@id": "https://www.menudigitalapp.com.ar/#organization"
+      }
+    }
+  ]
+}
+</script>
     <script>
       (function () {
         try {
