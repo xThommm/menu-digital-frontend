@@ -524,6 +524,24 @@
   }
 }
 
+.trialPromoDiscount {
+  margin: var(--space-4) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px dashed color-mix(in srgb, var(--auth-amber) 25%, transparent);
+  color: var(--auth-cream-mid);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.trialPromoDiscount strong {
+  color: var(--auth-success-text);
+}
+
+.trialPromoDiscountStrike {
+  color: var(--auth-cream-dim);
+  text-decoration: line-through;
+}
+
 @media (max-width: 480px) {
   .sellerRow {
     flex-direction: column;

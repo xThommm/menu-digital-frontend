@@ -511,6 +511,18 @@ export default function RegisterPlansPage() {
                     ))}
                   </ul>
                 )}
+                {proPlan?.discountPrice != null && (
+                  <p className={styles.trialPromoDiscount}>
+                    Y cuando termine la prueba, si decidís seguir pagando vas
+                    a tener un precio especial:{" "}
+                    <strong>{formatPrice(proPlan.discountPrice)}/mes</strong>{" "}
+                    en vez de{" "}
+                    <span className={styles.trialPromoDiscountStrike}>
+                      {formatPrice(proPlan.price)}/mes
+                    </span>
+                    .
+                  </p>
+                )}
               </div>
             )}
             {sellerCodeError && (

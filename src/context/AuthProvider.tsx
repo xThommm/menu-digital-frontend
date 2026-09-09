@@ -15,6 +15,7 @@ type AuthUserPayload = {
   downgradeReason?: AuthUser["downgradeReason"]
   downgradedAt?: string | null
   emailVerified?: boolean
+  sellerID?: string | null
 }
 
 const toAuthUser = (data: AuthUserPayload): AuthUser => ({
@@ -31,6 +32,7 @@ const toAuthUser = (data: AuthUserPayload): AuthUser => ({
   // Falta en respuestas de un backend desplegado antes que este cambio de
   // frontend — se asume verificado para no bloquear a nadie por ese hueco.
   emailVerified: data.emailVerified ?? true,
+  sellerID: data.sellerID ?? null,
 });
 
 
