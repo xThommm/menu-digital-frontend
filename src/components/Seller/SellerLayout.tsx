@@ -7,11 +7,10 @@ import s from "./SellerLayout.module.css";
 import {
   BarChart3,
   Calculator,
-  ChevronLeft,
-  ChevronRight,
   LayoutPanelLeft,
   LogOut,
   MoreHorizontal,
+  PanelLeft,
   Settings,
   Users,
 } from "lucide-react";
@@ -93,11 +92,11 @@ export default function SellerLayout() {
       >
         <button type="button" className={s.brand} onClick={goToOwnPanel} aria-label="Ir al panel general">
           <div className={s.logoSq} role="img" aria-label="MenuDigital">
-            <BrandMark className={s.brandMarkImage} />
+            <BrandMark inline className={s.brandMarkImage} />
           </div>
           <div className={s.brandText}>
             <span className={s.brandName}>
-              Menu<span>Digital</span>
+              Menú<span> Digital App</span>
             </span>
             <span className={s.brandSubtitle}>{user?.name}</span>
           </div>
@@ -148,7 +147,9 @@ export default function SellerLayout() {
         </div>
       </aside>
 
-      {/* Toggle de sidebar */}
+      {/* Toggle de sidebar — mismo estilo y comportamiento que AdminLayout.tsx
+          (botón fijo fuera del <aside>, salta a la esquina superior
+          izquierda cuando la sidebar está colapsada). */}
       <button
         type="button"
         className={`${s.sidebarToggle} ${sidebarCollapsed ? s.sidebarToggleCollapsed : ""}`}
@@ -158,11 +159,7 @@ export default function SellerLayout() {
         aria-label={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"}
         title={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"}
       >
-        {sidebarCollapsed ? (
-          <ChevronRight size={14} strokeWidth={2} />
-        ) : (
-          <ChevronLeft size={14} strokeWidth={2} />
-        )}
+        <PanelLeft size={18} strokeWidth={1.75} />
       </button>
 
       {/* ── Contenido ─────────────────────────────────────────────────────── */}

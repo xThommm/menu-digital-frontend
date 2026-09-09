@@ -144,7 +144,7 @@ function DashboardLayoutInner() {
           <aside className={`${s.freeBanner} ${subscriptionExpired ? s.freeBannerAfterExpiry : ""}`} aria-label="Publicidad de MenuDigital">
             <BrandMark className={s.freeBannerLogo} />
             <div className={s.freeBannerCopy}>
-              <span className={s.freeBannerBrand}>Menú Digital</span>
+              <span className={s.freeBannerBrand}>Menú Digital App</span>
               <span className={s.freeBannerBadge}>Tu menú digital</span>
               <span className={s.freeBannerText}>
                 Tu carta online, siempre lista para vender.

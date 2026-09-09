@@ -149,7 +149,7 @@ export default function Baja() {
     <div className={styles.page}>
       <nav className={styles.nav}>
         <Link to="/" className={styles.navLogo}>
-          Menú<span> Digital</span>
+          Menú<span> Digital App</span>
         </Link>
         <Link to="/" className={styles.navBack}>
           ← Volver al inicio
@@ -372,7 +372,7 @@ export default function Baja() {
 
       <footer className={styles.footer}>
         <div className={styles.footInner}>
-          <span className={styles.footLogo}>Menú Digital</span>
+          <span className={styles.footLogo}>Menú Digital App</span>
           <div className={styles.footLinks}>
             <Link to="/terminos">Términos</Link>
             <Link to="/privacidad">Privacidad</Link>

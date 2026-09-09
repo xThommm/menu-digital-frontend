@@ -99,7 +99,7 @@ export default function VerifyEmailPage() {
               <BrandMark className={styles.brandMarkImage} />
             </div>
             <div className={styles.brandName}>
-              Menu<span>Digital</span>
+              Menú<span> Digital App</span>
             </div>
           </div>
         </div>

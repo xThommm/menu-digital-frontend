@@ -1,4 +1,5 @@
 .layoutRoot {
+  --sidebar-width: 292px;
   --focus-color: var(--admin-gold);
   display: flex;
   min-height: 100vh;
@@ -11,7 +12,7 @@
 
 /* ── Sidebar (desktop) ── */
 .sidebar {
-  width: 232px;
+  width: var(--sidebar-width);
   flex-shrink: 0;
   background: var(--admin-bg-surface);
   border-right: 0.5px solid var(--admin-border-subtle);
@@ -30,25 +31,28 @@
   transform: translateX(-100%);
 }
 
-/* Riel que queda pegado al borde para volver a mostrar la sidebar — ver
-   comentario en AdminLayout.tsx sobre por qué vive fuera del <aside>. */
+/* Botón de toggle, fijo fuera del <aside> — mismo estilo y comportamiento
+   que .sidebarToggle en AdminLayout.module.css (ver ese archivo para el
+   detalle). Expandida: se alinea con la fila del brand, pegado al borde
+   derecho interno de la sidebar. Colapsada: salta a la esquina superior
+   izquierda — ver .sidebarToggleCollapsed y .contentExpanded. */
 .sidebarToggle {
   position: fixed;
-  top: 50%;
-  left: 232px;
-  transform: translate(-50%, -50%);
-  width: 20px;
-  height: 40px;
+  top: 22px;
+  left: calc(var(--sidebar-width) - 32px - var(--space-3));
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--admin-bg-elevated);
-  border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-sm);
-  color: var(--admin-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--admin-radius-md);
+  color: var(--admin-text-secondary);
   cursor: pointer;
-  z-index: 21;
-  transition: left var(--transition-md), background var(--admin-transition), color var(--admin-transition);
+  z-index: 25;
+  transition: top var(--transition-md), left var(--transition-md),
+    background var(--admin-transition), color var(--admin-transition), transform var(--admin-transition-spring);
 }
 
 .sidebarToggle:hover {
@@ -56,8 +60,13 @@
   color: var(--admin-gold);
 }
 
+.sidebarToggle:active {
+  transform: scale(0.9);
+}
+
 .sidebarToggleCollapsed {
-  left: 0;
+  top: var(--space-4);
+  left: var(--space-4);
 }
 
 /* ── Brand ── */
@@ -75,8 +84,10 @@
 }
 
 .logoSq {
-  width: 58px;
-  height: 37px;
+  /* Mismo tamaño que .logoSq en AdminLayout.module.css, para que el logo
+     se vea consistente entre los dos paneles. */
+  width: 34px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -92,6 +103,7 @@
 .brandMarkImage {
   width: 100%;
   height: 100%;
+  color: var(--admin-gold);
   filter: drop-shadow(var(--admin-shadow-logo));
 }
 
@@ -101,7 +113,6 @@
 
 .brandText {
   display: flex;
-  position: relative;
   flex-direction: column;
   min-width: 0;
 }
@@ -113,25 +124,27 @@
   letter-spacing: -0.01em;
   line-height: 1.15;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .brandName span {
   color: var(--admin-gold);
 }
 
+/* Mismo estilo que .brandSubtitle en AdminLayout.module.css — acá muestra
+   el nombre del vendedor en vez de un rol fijo, así que suma elipsis por
+   si el nombre no entra. */
 .brandSubtitle {
-  padding: 2px var(--space-2);
-  border: 1px solid var(--admin-border-default);
-  border-radius: var(--radius-full);
-  background: var(--admin-bg-elevated);
-  color: var(--admin-text-warm);
-  font-family: var(--font-auth-mono, monospace);
-  font-size: var(--text-xs);
-  position: relative;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--admin-text-muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  width: 100%;
-  display: flex;
-  justify-content: center; 
 }
 
 /* ── Nav ── */
@@ -158,22 +171,29 @@
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: background var(--admin-transition), color var(--admin-transition);
+  transition: background var(--admin-transition), color var(--admin-transition), transform var(--admin-transition-spring);
 }
 
 .navItem:hover {
   background: var(--admin-bg-raised);
   color: var(--admin-text-warm);
+  transform: translateX(2px);
+}
+
+.navItem:active {
+  transform: translateX(2px) scale(0.97);
 }
 
 .navItemActive {
   background: var(--admin-bg-raised-2);
   color: var(--admin-gold);
+  box-shadow: inset 2px 0 0 var(--admin-gold);
 }
 
 .navItemActive:hover {
   background: var(--admin-bg-raised-3);
   color: var(--admin-gold);
+  transform: translateX(2px);
 }
 
 .navIcon {
@@ -226,13 +246,17 @@
 /* ── Área de contenido (Outlet) ── */
 .content {
   flex: 1;
-  margin-left: 232px;
+  margin-left: var(--sidebar-width);
   min-width: 0;
   transition: margin-left var(--transition-md);
 }
 
 .contentExpanded {
   margin-left: 0;
+  /* Con la sidebar oculta, el sidebarToggle fijo flota sobre esta esquina
+     del contenido — se reserva el espacio para que no quede tapado (mismo
+     ajuste que .contentExpanded en AdminLayout.module.css). */
+  padding-top: var(--space-16);
 }
 
 @media (max-width: 599px) {

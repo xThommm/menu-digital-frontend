@@ -359,7 +359,7 @@ export default function RegisterPlansPage() {
     <div className="auth-page-shell">
       <div className={`auth-surface ${styles.card}`}>
         <div className={styles.header}>
-          <span className={styles.eyebrow}>Menú Digital · Alta de cuenta</span>
+          <span className={styles.eyebrow}>Menú Digital App · Alta de cuenta</span>
           <h1>Elegí tu plan</h1>
           <p>
             Hola <strong>{pending.contactInfo.businessName}</strong>, elegí con

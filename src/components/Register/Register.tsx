@@ -102,7 +102,7 @@ export default function RegisterPage() {
               <BrandMark className={styles.brandMarkImage} />
             </div>
             <div className={styles.brandName}>
-              Menu<span>Digital</span>
+              Menú<span> Digital App</span>
             </div>
           </div>
           <p>Crear cuenta</p>

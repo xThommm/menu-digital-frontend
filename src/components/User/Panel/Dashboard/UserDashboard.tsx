@@ -309,7 +309,7 @@ export default function UserDashboard() {
                       // Pro es el tope: listar las 11 funciones que ya tiene no vende
                       // nada (no hay a qué upgradear) y satura la pantalla que más se
                       // usa día a día — alcanza con confirmar que no le falta nada.
-                      ? "Tenés acceso a todas las funciones de Menú Digital."
+                      ? "Tenés acceso a todas las funciones de Menú Digital App."
                       : getPlanFeatureLabels(currentPlan.features).join(" · ")
                     : "No se pudo consultar la configuración del plan."}
               </span>

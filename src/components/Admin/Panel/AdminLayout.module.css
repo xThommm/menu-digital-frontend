@@ -1,4 +1,5 @@
 .layoutRoot {
+  --sidebar-width: 292px;
   --focus-color: var(--admin-gold);
   display: flex;
   min-height: 100vh;
@@ -11,7 +12,7 @@
 
 /* ── Sidebar (desktop) ── */
 .sidebar {
-  width: 232px;
+  width: var(--sidebar-width);
   flex-shrink: 0;
   background: var(--admin-bg-surface);
   border-right: 0.5px solid var(--admin-border-subtle);
@@ -32,13 +33,14 @@
 
 /* Botón de toggle, fijo fuera del <aside> — ver comentario en AdminLayout.tsx.
    Expandida: se alinea con la fila del brand (mismo top que el logo, pegado
-   al borde derecho interno de la sidebar). Colapsada: salta a la esquina
-   superior izquierda (estilo ChatGPT/Claude) para seguir visible sin la
-   sidebar — ver .sidebarToggleCollapsed y .contentExpanded. */
+   al borde derecho interno de la sidebar — de ahí el calc() en vez de un
+   left fijo, así sigue pegado al borde si --sidebar-width cambia). Colapsada:
+   salta a la esquina superior izquierda (estilo ChatGPT/Claude) para seguir
+   visible sin la sidebar — ver .sidebarToggleCollapsed y .contentExpanded. */
 .sidebarToggle {
   position: fixed;
   top: 22px;
-  left: 188px;
+  left: calc(var(--sidebar-width) - 32px - var(--space-3));
   width: 32px;
   height: 32px;
   display: flex;
@@ -121,6 +123,8 @@
   letter-spacing: -0.01em;
   line-height: 1.15;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .brandName span {
@@ -296,7 +300,7 @@
 /* ── Área de contenido (Outlet) ── */
 .content {
   flex: 1;
-  margin-left: 232px;
+  margin-left: var(--sidebar-width);
   min-width: 0;
   transition: margin-left var(--transition-md);
 }
