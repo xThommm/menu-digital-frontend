@@ -18,16 +18,58 @@ import {
   TrendingUp,
   ShieldCheck,
   Wallet,
+  Sun,
+  Moon,
+  MessageCircle,
+  Mail,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import BrandMark from "../../Common/BrandMark";
 import styles from "./AdminHome.module.css";
 import { usePlans } from "../../../hooks/usePlans";
+import { useAuthTheme } from "../../../hooks/useAuthTheme";
 import { getPlanFeatureLabels } from "../../../lib/plans";
 import Spinner from "../../Common/Spinner";
 
 const SITE_URL = "https://www.menudigitalapp.com.ar";
 const QR_REGISTER_SRC = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${SITE_URL}/register`;
+
+const CONTACT_WHATSAPP_NUMBER = "5491123329630"; // +54 9 11 2332-9630
+const CONTACT_INSTAGRAM_URL = "https://www.instagram.com/menudigitalapp_/";
+const CONTACT_FACEBOOK_URL = "https://www.facebook.com/profile.php?id=61593738855931";
+const CONTACT_EMAIL = "menudigitalappsoporte@gmail.com";
+
+const CONTACT_CHANNELS = [
+  {
+    key: "whatsapp",
+    label: "WhatsApp",
+    href: `https://wa.me/${CONTACT_WHATSAPP_NUMBER}`,
+    icon: <WhatsAppIcon />,
+    itemClass: styles.contactWhatsapp,
+  },
+  {
+    key: "instagram",
+    label: "Instagram",
+    href: CONTACT_INSTAGRAM_URL,
+    icon: <InstagramIcon />,
+    itemClass: styles.contactInstagram,
+  },
+  {
+    key: "facebook",
+    label: "Facebook",
+    href: CONTACT_FACEBOOK_URL,
+    icon: <FacebookIcon />,
+    itemClass: styles.contactFacebook,
+  },
+  {
+    key: "email",
+    label: "Email",
+    href: `mailto:${CONTACT_EMAIL}`,
+    icon: <Mail />,
+    itemClass: styles.contactEmail,
+  },
+];
 
 // ─────────────────────────────────────────────
 // DATOS
@@ -140,47 +182,6 @@ function useReveal() {
     check();
     window.addEventListener("scroll", check, { passive: true });
     return () => window.removeEventListener("scroll", check);
-  }, []);
-}
-
-// ─────────────────────────────────────────────
-// HOOK: ANIMATED COUNTER
-// ─────────────────────────────────────────────
-function useCounterOnView(
-  ref: React.RefObject<HTMLElement>,
-  target: number,
-  format: (n: number) => string,
-  setter: (v: string) => void
-) {
-  const formatRef = useRef(format);
-  const setterRef = useRef(setter);
-
-  useEffect(() => {
-    formatRef.current = format;
-    setterRef.current = setter;
-  });
-
-  useEffect(() => {
-    if (!ref.current) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return;
-        obs.disconnect();
-        const dur = 1800;
-        const start = performance.now();
-        const step = (ts: number) => {
-          const p = Math.min((ts - start) / dur, 1);
-          const ease = 1 - Math.pow(1 - p, 3);
-          setterRef.current(formatRef.current(Math.floor(target * ease)));
-          if (p < 1) requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-      },
-      { threshold: 0.4 }
-    );
-    obs.observe(ref.current);
-    return () => obs.disconnect();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
 
@@ -318,24 +319,148 @@ function QRFrame({ children }: { children: React.ReactNode }) {
 }
 
 // ─────────────────────────────────────────────
+// ÍCONO: WHATSAPP (lucide no trae el glifo de marca)
+// ─────────────────────────────────────────────
+function WhatsAppIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.85 9.85 0 0 0 4.73 1.2h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm0 18.13h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.55-3.7 8.24-8.24 8.24Zm4.52-6.17c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.13-.17.24-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.12-1.04-.38-1.99-1.22-.73-.66-1.23-1.46-1.37-1.71-.14-.24-.01-.38.11-.5.11-.11.25-.29.37-.43.13-.14.17-.24.25-.4.08-.16.04-.31-.02-.43-.06-.12-.56-1.36-.77-1.86-.2-.49-.41-.42-.56-.43-.14-.01-.31-.01-.48-.01-.16 0-.43.06-.66.31-.23.24-.86.85-.86 2.06 0 1.22.88 2.4 1 2.56.13.16 1.74 2.66 4.22 3.73.59.25 1.05.4 1.41.52.59.19 1.13.16 1.55.1.47-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.23-.17-.48-.29Z" />
+    </svg>
+  );
+}
+
+// lucide-react no incluye íconos de marca (los sacaron hace varias
+// versiones) — mismo patrón que InstagramIcon/FacebookIcon en
+// UserHome.tsx: un glifo simple en vez del logo oficial.
+function InstagramIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="2" y="2" width="20" height="20" rx="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37Z" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+    </svg>
+  );
+}
+
+function FacebookIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+    </svg>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SUBCOMPONENTE: BOTÓN FLOTANTE DE CONTACTO
+// Despliega los canales de CONTACT_CHANNELS. Se cierra al hacer click
+// afuera, al elegir un canal o con Escape (mismo patrón que el dropdown
+// mobile del nav, más arriba en este archivo).
+// ─────────────────────────────────────────────
+function ContactFab() {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent | TouchEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("touchstart", handleClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("touchstart", handleClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className={styles.contactFab} ref={rootRef}>
+      {open && (
+        <div className={styles.contactPanel} role="menu">
+          {CONTACT_CHANNELS.map((c) => (
+            <a
+              key={c.key}
+              href={c.href}
+              className={`${styles.contactItem} ${c.itemClass}`}
+              target={c.key === "email" ? undefined : "_blank"}
+              rel={c.key === "email" ? undefined : "noreferrer"}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+            >
+              <span className={styles.contactItemIcon}>{c.icon}</span>
+              {c.label}
+            </a>
+          ))}
+        </div>
+      )}
+      <button
+        type="button"
+        className={styles.contactFabBtn}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-label={open ? "Cerrar contacto" : "Contactanos"}
+      >
+        {open ? <X /> : <MessageCircle />}
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────
+const FAQS = [
+  {
+    question: "¿Qué es un menú digital QR?",
+    answer:
+      "Es una carta online a la que los clientes acceden escaneando un código QR con su celular. Permite mostrar productos, categorías, precios, imágenes y otra información del negocio sin depender únicamente de una carta impresa.",
+  },
+  {
+    question: "¿Cómo funciona un menú QR para restaurantes?",
+    answer:
+      "Creás tu menú digital, cargás los productos y compartís el código QR generado. El cliente escanea el código con la cámara de su celular y la carta se abre directamente en el navegador.",
+  },
+  {
+    question: "¿Tengo que cambiar el código QR si modifico los precios?",
+    answer:
+      "No. Podés modificar productos, precios, ofertas y disponibilidad sin cambiar el código QR. Los clientes que vuelvan a escanearlo accederán al menú actualizado.",
+  },
+  {
+    question: "¿El cliente tiene que descargar una aplicación?",
+    answer:
+      "No. El menú funciona desde el navegador del celular, por lo que el cliente no necesita instalar ninguna aplicación ni crear una cuenta.",
+  },
+  {
+    question: "¿Puedo usar el mismo QR en todas las mesas?",
+    answer:
+      "Sí. Podés imprimir el mismo código QR y colocarlo en distintas mesas, en la barra, en la puerta o compartir el enlace del menú por WhatsApp e Instagram.",
+  },
+  {
+    question: "¿Puedo cargar muchos productos de una sola vez?",
+    answer:
+      "Según el plan disponible, podés utilizar la carga masiva mediante Excel para incorporar o actualizar una gran cantidad de productos de forma más rápida.",
+  },
+  {
+    question: "¿Sirve para cafeterías y bares además de restaurantes?",
+    answer:
+      "Sí. Menú Digital App está pensado para restaurantes, cafeterías, bares, rotiserías y otros negocios gastronómicos que necesiten publicar y actualizar su carta online.",
+  },
+];
+
 export default function HomePage() {
   const catalog = usePlans();
   const [menuOpen, setMenuOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
-
-  // Stat counters
-  const statsRef = useRef<HTMLDivElement>(null!);
-  const [s0, setS0] = useState("+0");
-  const [s1, setS1] = useState("+0K");
-  const [s2, setS2] = useState("0 min");
-  const [s3, setS3] = useState("0%");
-  useCounterOnView(statsRef, 500, (n) => `+${n}`, setS0);
-  useCounterOnView(statsRef, 80, (n) => `+${n}K`, setS1);
-  useCounterOnView(statsRef, 2, (n) => `${n} min`, setS2);
-  useCounterOnView(statsRef, 100, (n) => `${n}%`, setS3);
+  const { theme, toggle: toggleTheme } = useAuthTheme();
+  const themeLabel = theme === "dark" ? "Activar tema claro" : "Activar tema oscuro";
 
   useParallax();
   useReveal();
@@ -391,7 +516,7 @@ useEffect(() => {
     <>
       <CustomCursor />
 
-      <div className={styles.hpage}>
+      <div className={styles.hpage} data-auth-theme={theme === "light" ? "light" : undefined}>
 
         {/* ── NAV ── */}
         <nav className={styles.nav} ref={navRef}>
@@ -402,14 +527,24 @@ useEffect(() => {
  
   {/* Links — ocultos en mobile, sin cambios en desktop */}
   <ul className={styles.navLinks}>
-    <li><a href="#how">Cómo funciona</a></li>
-    <li><a href="#features">Funciones</a></li>
-    {/* <li><a href="#reviews">Clientes</a></li> */}
-    <li><a href="#about">Quiénes somos</a></li>
-  </ul>
+  <li><a href="#how">Cómo funciona</a></li>
+  <li><a href="#features">Funciones</a></li>
+  <li><a href="#plans">Precios</a></li>
+  <li><a href="#faq">Preguntas</a></li>
+  <li><a href="#about">Quiénes somos</a></li>
+</ul>
  
   {/* Actions — ocultos en mobile, sin cambios en desktop */}
   <div className={styles.navActions}>
+    <button
+      type="button"
+      className={styles.themeToggle}
+      onClick={toggleTheme}
+      aria-label={themeLabel}
+      title={themeLabel}
+    >
+      {theme === "dark" ? <Sun /> : <Moon />}
+    </button>
     <Link to="/login" className={styles.navLogin}>Iniciar sesión</Link>
     <Link to="/register" className={styles.navRegister}>Crear cuenta</Link>
   </div>
@@ -434,12 +569,24 @@ useEffect(() => {
     <a href="#features" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
       Funciones
     </a>
-    {/* <a href="#reviews" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
-      Clientes
-    </a> */}
+    <a
+  href="#faq"
+  className={styles.mobileLink}
+  onClick={() => setMenuOpen(false)}
+>
+  Preguntas frecuentes
+</a>
     <a href="#about" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
       Quiénes somos
     </a>
+    <button
+      type="button"
+      className={`${styles.mobileLink} ${styles.mobileThemeToggle}`}
+      onClick={() => { toggleTheme(); setMenuOpen(false); }}
+    >
+      {theme === "dark" ? <Sun /> : <Moon />}
+      {theme === "dark" ? "Tema claro" : "Tema oscuro"}
+    </button>
     <Link
       to="/login"
       className={styles.mobileLink}
@@ -509,19 +656,22 @@ useEffect(() => {
         <div className={styles.amberLine} />
 
         {/* ── STATS ── */}
-        <div className={styles.stats} ref={statsRef}>
+        <div className={styles.stats}>
           {[
-            { n: s0, l: "locales activos" },
-            { n: s1, l: "consultas por mes" },
-            { n: s2, l: "para publicar tu menú" },
-            { n: s3, l: "desde el celular" },
-          ].map((s, i) => (
-            <div className={styles.stat} key={i}>
+            { n: "QR", l: "acceso directo desde la mesa" },
+            { n: "24/7", l: "tu carta disponible online" },
+            { n: "Sin app", l: "se abre desde el navegador" },
+            { n: "En vivo", l: "precios y productos actualizados" },
+          ].map((s) => (
+            <div className={styles.stat} key={s.n}>
               <div className={styles.statN}>{s.n}</div>
               <div className={styles.statL}>{s.l}</div>
             </div>
           ))}
         </div>
+
+{/* ── AMBER LINE ── */}
+        <div className={styles.amberLine} />
 
         {/* ── HOW IT WORKS ── */}
         <section className={styles.how} id="how">
@@ -545,6 +695,9 @@ useEffect(() => {
           </div>
         </section>
 
+        {/* ── AMBER LINE ── */}
+        <div className={styles.amberLine} />
+
         {/* ── PARALLAX BANNER ── */}
         <div className={styles.parBanner}>
           <div id="parBg"   className={styles.parBannerBg} />
@@ -553,6 +706,7 @@ useEffect(() => {
             <div className={styles.parBannerBig}>Sin papel.</div>
           </div>
         </div>
+
 
         {/* ── FEATURES ── */}
         <section className={styles.features} id="features">
@@ -574,6 +728,102 @@ useEffect(() => {
             </div>
           </div>
         </section>
+
+{/* ── AMBER LINE ── */}
+        <div className={styles.amberLine} />
+
+
+            {/* ── SEO CONTENT ── */}
+            <section className={styles.seoSection} id="menu-digital-qr">
+              <div className={styles.sectionInner}>
+                <div className={styles.seoIntro}>
+                  <div className={styles.reveal}>
+                    <h2 className={styles.sectionH2}>
+                      ¿Qué es un menú digital QR<br />
+                      y por qué usarlo en tu <em>restaurante?</em>
+                    </h2>
+                  </div>
+
+                  <div className={`${styles.seoText} ${styles.reveal}`}>
+                    <p>
+                      Un <strong>menú digital QR</strong> reemplaza o complementa la carta
+                      impresa de un restaurante, bar o cafetería con una versión online
+                      que los clientes pueden abrir directamente desde su celular.
+                      Solo tienen que escanear un código QR ubicado en la mesa, la barra,
+                      la vidriera o cualquier otro punto del local.
+                    </p>
+
+                    <p>
+                      Con Menú Digital App podés crear una{" "}
+                      <strong>carta digital para tu restaurante</strong> y modificar
+                      productos, precios, fotografías, ofertas y disponibilidad sin tener
+                      que imprimir nuevamente el menú cada vez que algo cambia.
+                    </p>
+
+                    <p>
+                      El cliente no necesita descargar ninguna aplicación ni registrarse.
+                      Escanea el QR con la cámara del celular y accede inmediatamente a la
+                      carta actualizada desde el navegador.
+                    </p>
+                  </div>
+                </div>
+
+                <div className={styles.seoGrid}>
+                  <article className={`${styles.seoCard} ${styles.reveal}`}>
+                    <h3>Actualizá precios sin reimprimir</h3>
+                    <p>
+                      Si cambia el precio de un producto, editás la carta desde tu panel
+                      y el cambio aparece automáticamente en el menú que ya utilizan tus
+                      clientes. El código QR sigue siendo el mismo.
+                    </p>
+                  </article>
+
+                  <article className={`${styles.seoCard} ${styles.reveal}`}>
+                    <h3>Mostrá solo lo que tenés disponible</h3>
+                    <p>
+                      Podés ocultar temporalmente productos agotados, destacar platos,
+                      organizar categorías y publicar ofertas sin eliminar información
+                      que después quieras volver a utilizar.
+                    </p>
+                  </article>
+
+                  <article className={`${styles.seoCard} ${styles.reveal}`}>
+                    <h3>Una carta pensada para celulares</h3>
+                    <p>
+                      El menú se consulta directamente desde el navegador y está diseñado
+                      para que los clientes puedan recorrer categorías, productos,
+                      fotografías y precios cómodamente desde el teléfono.
+                    </p>
+                  </article>
+
+                  <article className={`${styles.seoCard} ${styles.reveal}`}>
+                    <h3>Para restaurantes, bares y cafeterías</h3>
+                    <p>
+                      Podés usar Menú Digital App para cartas gastronómicas de distintos
+                      tamaños, desde una cafetería con pocos productos hasta restaurantes
+                      con múltiples secciones, categorías y variantes.
+                    </p>
+                  </article>
+                </div>
+
+                <div className={`${styles.seoCta} ${styles.reveal}`}>
+                  <h3>Creá tu menú digital QR</h3>
+
+                  <p>
+                    Empezá con tu carta online, cargá tus productos y compartila con tus
+                    clientes mediante un código QR.
+                  </p>
+
+                  <Link className={styles.btnPrimary} to="/register?plan=free">
+                    Crear mi menú digital →
+                  </Link>
+                </div>
+              </div>
+            </section>
+
+            {/* ── AMBER LINE ── */}
+        <div className={styles.amberLine} />
+
 
         {/* ── PLANS ── */}
         <section className={styles.pricing} id="plans">
@@ -615,6 +865,9 @@ useEffect(() => {
           </div>
         </section>
 
+        {/* ── AMBER LINE ── */}
+        <div className={styles.amberLine} />
+
         {/* ── QR DEMO ── */}
 <section className={styles.qrSection}>
   <div className={styles.qrInner}>
@@ -649,6 +902,43 @@ useEffect(() => {
 </section>
 
         {/* ── AMBER LINE ── */}
+        <div className={styles.amberLine} />
+
+
+                  {/* ── FAQ ── */}
+          <section className={styles.faqSection} id="faq">
+            <div className={styles.faqInner}>
+              <div className={`${styles.faqHeader} ${styles.reveal}`}>
+                <h2 className={styles.sectionH2}>
+                  Preguntas frecuentes sobre<br />
+                  <em>menús digitales QR.</em>
+                </h2>
+
+                <p className={styles.faqIntro}>
+                  Todo lo que necesitás saber antes de crear la carta digital de tu
+                  restaurante, bar o cafetería.
+                </p>
+              </div>
+
+              <div className={styles.faqList}>
+                {FAQS.map((faq) => (
+                  <details
+                    key={faq.question}
+                    className={`${styles.faqItem} ${styles.reveal}`}
+                  >
+                    <summary>{faq.question}</summary>
+
+                    <div className={styles.faqAnswer}>
+                      <p>{faq.answer}</p>
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </div>
+          </section>
+
+
+          {/* ── AMBER LINE ── */}
         <div className={styles.amberLine} />
 
         
@@ -719,6 +1009,8 @@ useEffect(() => {
             <div className={styles.footCopy}>© 2026 Menú Digital App. Hecho en Argentina 🇦🇷</div>
           </div>
         </footer>
+
+        <ContactFab />
 
       </div>
     </>

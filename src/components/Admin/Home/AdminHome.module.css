@@ -18,7 +18,12 @@
   background: var(--auth-bg);
   color: var(--auth-cream);
   overflow-x: hidden;
+  transition: background .25s ease, color .25s ease;
 }
+
+/* Tema claro: los valores viven en globals.css bajo
+   [data-auth-theme="light"] (compartidos con Legal.module.css) — acá solo
+   se aplica el atributo, ver data-auth-theme en AdminHome.tsx. */
 
 .hpage::after {
   content: '';
@@ -50,7 +55,7 @@
   position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-modal);
   display: flex; align-items: center; justify-content: space-between;
   padding: 1.25rem 3rem;
-  background: linear-gradient(180deg, rgba(10,6,8,.96) 0%, rgba(10,6,8,0) 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--auth-bg) 96%, transparent) 0%, transparent 100%);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid color-mix(in srgb, var(--auth-amber) 8%, transparent);
 }
@@ -83,6 +88,18 @@
 .navLinks a:hover { color: var(--auth-amber); }
 
 .navActions { display: flex; align-items: center; gap: 12px; }
+
+.themeToggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: var(--control-min-size); height: var(--control-min-size);
+  border: 1px solid color-mix(in srgb, var(--auth-amber) 20%, transparent);
+  border-radius: 3px;
+  background: transparent; cursor: pointer;
+  color: var(--auth-amber);
+  transition: border-color .25s, background .25s, color .25s;
+}
+.themeToggle:hover { border-color: color-mix(in srgb, var(--auth-amber) 55%, transparent); background: color-mix(in srgb, var(--auth-amber) 6%, transparent); }
+.themeToggle svg { width: 18px; height: 18px; stroke-width: 1.75; }
 
 .navRegister {
   min-height: var(--control-min-size);
@@ -409,7 +426,7 @@
 .featGrid { display: grid; grid-template-columns: repeat(3,1fr); gap: 2px; margin-top: 4rem; }
 .featCard {
   padding: 2.5rem; border: 1px solid color-mix(in srgb, var(--auth-amber) 8%, transparent);
-  background: rgba(10,6,8,.6); position: relative; overflow: hidden;
+  background: color-mix(in srgb, var(--auth-bg) 60%, transparent); position: relative; overflow: hidden;
   transition: all .3s; cursor: default;
 }
 .featCard::after {
@@ -422,6 +439,395 @@
 .featIcon { composes: icon; width: 2rem; height: 2rem; margin-bottom: 1.2rem; }
 .featTitle { font-family: var(--font-auth-display); font-size: 1rem; font-weight: 700; margin-bottom: .6rem; color: var(--auth-cream); }
 .featDesc { font-size: .88rem; line-height: 1.7; color: var(--auth-cream-mid); }
+
+/* ─────────────────────────────────────────────
+   SEO CONTENT — MENÚ DIGITAL QR
+───────────────────────────────────────────── */
+
+.seoSection {
+  position: relative;
+  background:
+    radial-gradient(
+      ellipse 65% 45% at 80% 15%,
+      color-mix(in srgb, var(--auth-amber) 7%, transparent) 0%,
+      transparent 65%
+    ),
+    linear-gradient(
+      180deg,
+      var(--auth-bg-card) 0%,
+      var(--auth-bg) 100%
+    );
+
+  border-top: 1px solid
+    color-mix(in srgb, var(--auth-amber) 8%, transparent);
+
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--auth-amber) 8%, transparent);
+
+  overflow: hidden;
+}
+
+.seoSection::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--auth-amber) 2%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--auth-amber) 2%, transparent) 1px,
+      transparent 1px
+    );
+
+  background-size: 80px 80px;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(0, 0, 0, 0.65),
+    transparent
+  );
+
+  opacity: 0.65;
+}
+
+.seoSection .sectionInner {
+  position: relative;
+  z-index: 1;
+}
+
+.seoIntro {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 5rem;
+  align-items: start;
+  margin-bottom: 4rem;
+}
+
+.seoIntro .sectionH2 {
+  margin-bottom: 0;
+}
+
+.seoText {
+  max-width: 680px;
+}
+
+.seoText p {
+  margin-bottom: 1.15rem;
+
+  font-size: 1rem;
+  line-height: 1.8;
+
+  color: var(--auth-cream-mid);
+}
+
+.seoText p:last-child {
+  margin-bottom: 0;
+}
+
+.seoText strong {
+  color: var(--auth-cream);
+  font-weight: 600;
+}
+
+.seoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.seoCard {
+  position: relative;
+  padding: 2.5rem;
+
+  border: 1px solid
+    color-mix(in srgb, var(--auth-amber) 8%, transparent);
+
+  background:
+    color-mix(in srgb, var(--auth-amber) 2%, transparent);
+
+  overflow: hidden;
+
+  transition:
+    border-color 0.3s ease,
+    background 0.3s ease,
+    transform 0.3s ease;
+}
+
+.seoCard::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      var(--auth-amber),
+      transparent
+    );
+
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.seoCard:hover {
+  transform: translateY(-3px);
+
+  border-color:
+    color-mix(in srgb, var(--auth-amber) 25%, transparent);
+
+  background:
+    color-mix(in srgb, var(--auth-amber) 4%, transparent);
+}
+
+.seoCard:hover::after {
+  opacity: 1;
+}
+
+.seoCard h3 {
+  margin-bottom: 0.8rem;
+
+  font-family: var(--font-auth-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+
+  color: var(--auth-cream);
+}
+
+.seoCard p {
+  margin: 0;
+
+  font-size: 0.9rem;
+  line-height: 1.75;
+
+  color: var(--auth-cream-mid);
+}
+
+.seoCta {
+  position: relative;
+
+  margin-top: 2px;
+  padding: 3.5rem 2.5rem;
+
+  text-align: center;
+
+  border: 1px solid
+    color-mix(in srgb, var(--auth-amber) 15%, transparent);
+
+  background:
+    radial-gradient(
+      ellipse 60% 120% at 50% 100%,
+      color-mix(in srgb, var(--auth-amber) 10%, transparent) 0%,
+      transparent 65%
+    ),
+    color-mix(in srgb, var(--auth-amber) 2%, transparent);
+}
+
+.seoCta::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 25%;
+  right: 25%;
+  height: 1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      var(--auth-amber),
+      transparent
+    );
+
+  box-shadow:
+    0 0 16px
+    color-mix(in srgb, var(--auth-amber) 45%, transparent);
+}
+
+.seoCta h3 {
+  margin-bottom: 0.7rem;
+
+  font-family: var(--font-auth-display);
+  font-size: clamp(1.6rem, 3vw, 2.3rem);
+  font-weight: 900;
+
+  color: var(--auth-cream);
+}
+
+.seoCta p {
+  max-width: 620px;
+  margin: 0 auto 2rem;
+
+  font-size: 0.95rem;
+  line-height: 1.75;
+
+  color: var(--auth-cream-mid);
+}
+
+/* ─────────────────────────────────────────────
+   FAQ — PREGUNTAS FRECUENTES
+───────────────────────────────────────────── */
+
+.faqSection {
+  position: relative;
+
+  background:
+    radial-gradient(
+      ellipse 60% 45% at 15% 35%,
+      color-mix(in srgb, var(--auth-amber) 6%, transparent) 0%,
+      transparent 65%
+    ),
+    var(--auth-bg-card);
+
+  border-top: 1px solid
+    color-mix(in srgb, var(--auth-amber) 8%, transparent);
+
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--auth-amber) 8%, transparent);
+}
+
+.faqInner {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 7rem 3rem;
+}
+
+.faqHeader {
+  margin-bottom: 3rem;
+}
+
+.faqIntro {
+  max-width: 650px;
+  margin-top: 1.25rem;
+
+  font-size: 1rem;
+  line-height: 1.75;
+
+  color: var(--auth-cream-mid);
+}
+
+.faqList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.faqItem {
+  position: relative;
+
+  border: 1px solid
+    color-mix(in srgb, var(--auth-amber) 8%, transparent);
+
+  background:
+    color-mix(in srgb, var(--auth-amber) 2%, transparent);
+
+  overflow: hidden;
+
+  transition:
+    border-color 0.25s ease,
+    background 0.25s ease;
+}
+
+.faqItem:hover {
+  border-color:
+    color-mix(in srgb, var(--auth-amber) 20%, transparent);
+}
+
+.faqItem[open] {
+  border-color:
+    color-mix(in srgb, var(--auth-amber) 28%, transparent);
+
+  background:
+    color-mix(in srgb, var(--auth-amber) 4%, transparent);
+}
+
+.faqItem summary {
+  position: relative;
+
+  min-height: var(--control-min-size);
+  padding: 1.45rem 4rem 1.45rem 1.6rem;
+
+  cursor: pointer;
+  list-style: none;
+
+  font-family: var(--font-auth-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+
+  color: var(--auth-cream);
+
+  transition: color 0.25s ease;
+}
+
+.faqItem summary::-webkit-details-marker {
+  display: none;
+}
+
+.faqItem summary::marker {
+  content: "";
+}
+
+.faqItem summary::after {
+  content: "+";
+
+  position: absolute;
+  top: 50%;
+  right: 1.6rem;
+
+  transform: translateY(-50%);
+
+  font-family: var(--font-auth-mono);
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 1;
+
+  color: var(--auth-amber);
+
+  text-shadow:
+    0 0 12px
+    color-mix(in srgb, var(--auth-amber) 40%, transparent);
+
+  transition:
+    transform 0.25s ease,
+    opacity 0.25s ease;
+}
+
+.faqItem[open] summary::after {
+  content: "−";
+}
+
+.faqItem summary:hover {
+  color:
+    color-mix(in srgb, var(--auth-cream) 92%, var(--auth-amber));
+}
+
+.faqItem summary:focus-visible {
+  outline: 1px solid var(--auth-amber);
+  outline-offset: -3px;
+}
+
+.faqAnswer {
+  padding: 0 4rem 1.6rem 1.6rem;
+}
+
+.faqAnswer p {
+  max-width: 780px;
+  margin: 0;
+
+  font-size: 0.92rem;
+  line-height: 1.8;
+
+  color: var(--auth-cream-mid);
+}
 
 /* ── QR SECTION ── */
 .qrSection { background: var(--auth-bg); }
@@ -721,7 +1127,7 @@
     left: 0;
     right: 0;
     z-index: calc(var(--z-modal) - 1);
-    background: rgba(10, 6, 8, 0.98);
+    background: color-mix(in srgb, var(--auth-bg) 98%, transparent);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid color-mix(in srgb, var(--auth-amber) 15%, transparent);
@@ -773,6 +1179,18 @@
   }
   .mobileLinkRegister:hover { background: color-mix(in srgb, var(--auth-amber) 6%, transparent); }
 
+  .mobileThemeToggle {
+    width: 100%;
+    display: flex; align-items: center; gap: .6rem;
+    border: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--auth-amber) 7%, transparent);
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--font-auth-mono);
+    text-align: left;
+  }
+  .mobileThemeToggle svg { width: 15px; height: 15px; stroke-width: 1.75; flex-shrink: 0; }
+
 }
 
 @media (max-width: 900px) {
@@ -791,6 +1209,31 @@
   .finalCta { padding: 5rem 1.5rem; }
   .pricingInner { padding: 5rem 1.5rem; }
   .plansGrid { grid-template-columns: 1fr; }
+    .seoIntro {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-bottom: 3rem;
+  }
+
+  .seoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .seoCard {
+    padding: 2rem;
+  }
+
+  .seoCta {
+    padding: 3rem 1.5rem;
+  }
+
+  .faqInner {
+    padding: 4rem 1.5rem;
+  }
+
+  .faqHeader {
+    margin-bottom: 2.5rem;
+  }
 }
 
 @media (max-width: 599px) {
@@ -804,6 +1247,31 @@
     justify-content: center;
     gap: var(--space-3) var(--space-4);
   }
+  .seoCard {
+    padding: 1.6rem 1.4rem;
+  }
+
+  .seoText p {
+    font-size: 0.95rem;
+  }
+
+  .seoCta {
+    padding: 2.5rem 1.25rem;
+  }
+
+  .faqItem summary {
+    padding: 1.25rem 3.4rem 1.25rem 1.25rem;
+    font-size: 1rem;
+  }
+
+  .faqItem summary::after {
+    right: 1.25rem;
+  }
+
+  .faqAnswer {
+    padding: 0 1.25rem 1.35rem;
+  }
+
 }
 
 @media (pointer: coarse) {
@@ -829,4 +1297,85 @@
     transform: none;
     transition: none;
   }
+}
+
+/* ─────────────────────────────────────────────
+   BOTÓN FLOTANTE DE CONTACTO
+───────────────────────────────────────────── */
+
+.contactFab {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: calc(var(--z-toast) + 1);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .85rem;
+}
+
+.contactFabBtn {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--auth-amber) 30%, transparent);
+  background: var(--auth-amber);
+  color: #000;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 0 30px color-mix(in srgb, var(--auth-amber) 45%, transparent), 0 10px 30px rgba(0, 0, 0, .35);
+  transition: transform .2s, box-shadow .2s;
+}
+.contactFabBtn svg { width: 24px; height: 24px; stroke-width: 2; }
+.contactFabBtn:hover { transform: scale(1.06); box-shadow: 0 0 40px color-mix(in srgb, var(--auth-amber) 60%, transparent), 0 10px 30px rgba(0, 0, 0, .35); }
+
+.contactPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid color-mix(in srgb, var(--auth-amber) 15%, transparent);
+  border-radius: 14px;
+  background: var(--auth-bg-card);
+  box-shadow: var(--auth-shadow-card);
+  overflow: hidden;
+  animation: contactPanelIn .18s ease;
+}
+@keyframes contactPanelIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.contactItem {
+  display: flex; align-items: center; gap: .75rem;
+  min-height: var(--control-min-size);
+  padding: .6rem 1rem .6rem .6rem;
+  border-radius: 12px;
+  text-decoration: none;
+  font-size: .85rem; font-weight: 500;
+  color: var(--auth-cream);
+  background: transparent;
+  transition: background .2s;
+  white-space: nowrap;
+}
+.contactItem:hover { background: color-mix(in srgb, var(--auth-amber) 8%, transparent); }
+
+.contactItemIcon {
+  width: 34px; height: 34px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+}
+.contactItemIcon svg { width: 17px; height: 17px; }
+
+.contactWhatsapp .contactItemIcon { background: #25d366; }
+.contactInstagram .contactItemIcon {
+  background: radial-gradient(circle at 30% 110%, #ffdb73 0%, #fd5949 45%, #d6249f 60%, #285aeb 90%);
+}
+.contactFacebook .contactItemIcon { background: #1877f2; }
+.contactEmail .contactItemIcon { background: var(--auth-amber); color: #000; }
+
+@media (max-width: 599px) {
+  .contactFab { right: 1rem; bottom: 1rem; }
+  .contactFabBtn { width: 50px; height: 50px; }
+  .contactFabBtn svg { width: 21px; height: 21px; }
 }

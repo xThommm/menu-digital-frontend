@@ -10,7 +10,13 @@
   color: var(--auth-cream);
   min-height: 100vh;
   overflow-x: hidden;
+  transition: background .25s ease, color .25s ease;
 }
+
+/* Tema claro: los valores viven en globals.css bajo
+   [data-auth-theme="light"] (compartidos con AdminHome.module.css) — acá
+   solo se aplica el atributo, ver data-auth-theme en cada página de
+   src/pages/Legal/*.tsx. */
 
 /* Scanlines */
 .page::after {
@@ -26,10 +32,24 @@
   position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-modal);
   display: flex; align-items: center; justify-content: space-between;
   padding: 1.25rem 3rem;
-  background: linear-gradient(180deg, rgba(10,6,8,.96) 0%, rgba(10,6,8,0) 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--auth-bg) 96%, transparent) 0%, transparent 100%);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid color-mix(in srgb, var(--auth-amber) 8%, transparent);
 }
+
+.navRight { display: flex; align-items: center; gap: .75rem; }
+
+.themeToggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: var(--control-min-size); height: var(--control-min-size);
+  border: 1px solid color-mix(in srgb, var(--auth-amber) 20%, transparent);
+  border-radius: 3px;
+  background: transparent; cursor: pointer;
+  color: var(--auth-amber);
+  transition: border-color .25s, background .25s, color .25s;
+}
+.themeToggle:hover { border-color: color-mix(in srgb, var(--auth-amber) 55%, transparent); background: color-mix(in srgb, var(--auth-amber) 6%, transparent); }
+.themeToggle svg { width: 18px; height: 18px; stroke-width: 1.75; }
 
 .navLogo {
   font-family: var(--font-auth-display);
@@ -254,7 +274,7 @@
 .errorBox {
   background: var(--auth-error-bg); border: 1px solid var(--auth-error-border);
   border-radius: 3px; padding: 1rem 1.2rem;
-  font-size: .88rem; color: rgba(255,200,200,.8); line-height: 1.6;
+  font-size: .88rem; color: var(--auth-error-text); line-height: 1.6;
 }
 
 /* ── SUCCESS ── */

@@ -679,8 +679,12 @@
    DESIGN TOKENS — AUTENTICACIÓN (Login + Register)
    Prefijo --auth- para no colisionar con --admin- ni con los
    tokens claros del storefront. Única fuente de verdad para
-   Login.module.css, Register.module.css y AdminHome.module.css
-   (landing pública del panel, mismo tema oscuro/ámbar).
+   Login.module.css, Register.module.css, AdminHome.module.css
+   (landing pública) y Legal.module.css (términos, privacidad,
+   contacto, arrepentimiento, baja). Oscuro por defecto; AdminHome y
+   Legal además soportan un tema claro opcional — ver
+   [data-auth-theme="light"] más abajo. Login/Register quedan
+   siempre en oscuro.
 
    REFACTOR: el ámbar original (#ff9500) era esencialmente "iOS
    system orange" — un matiz que no tiene relación con el dorado
@@ -754,6 +758,32 @@
   /* Transición */
   --auth-transition:   0.2s ease;
   --auth-transition-spring: var(--transition-spring);
+}
+
+/* ── TEMA CLARO DE LAS PÁGINAS PÚBLICAS (--auth-*) ──
+   Toggle opcional para las páginas "públicas" del sitio: la landing
+   (AdminHome.module.css) y las páginas legales (Legal.module.css). Login y
+   Register NO lo usan — siempre quedan en el tema oscuro por defecto.
+
+   Vive acá (no en cada .module.css) para que un solo bloque de tokens
+   sirva a los dos módulos sin duplicarlo: cualquier contenedor con el
+   atributo data-auth-theme="light" (ver useAuthTheme.ts) hereda estos
+   valores en vez de los oscuros de :root de arriba. El ámbar se mantiene
+   igual en ambos temas (identidad de marca); solo cambian fondos y texto. */
+[data-auth-theme="light"] {
+  --auth-bg:          #faf5ee;
+  --auth-bg-card:     #f1e7d8;
+  --auth-bg-elevated: #e8d9c3;
+
+  --auth-cream:       #201510;
+  --auth-cream-mid:   rgba(32, 21, 16, 0.62);
+  --auth-cream-dim:   rgba(32, 21, 16, 0.34);
+
+  --auth-shadow-card: 0 0 60px rgba(210, 80, 68, 0.12), 0 30px 60px rgba(60, 40, 25, 0.18);
+
+  /* --auth-error-text (#ff7a5a) da muy poco contraste sobre el fondo claro
+     — en oscuro estaba pensado para leerse sobre --auth-bg casi negro. */
+  --auth-error-text:  #b3261e;
 }
 
 /* ── Shell compartido de los pasos de autenticación ──

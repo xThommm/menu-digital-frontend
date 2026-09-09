@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent, type ChangeEvent } from "react";
 import { Link } from "react-router-dom";
 import styles from "./Legal.module.css";
+import { Sun, Moon } from "lucide-react";
+import { useAuthTheme } from "../../hooks/useAuthTheme";
 
 type FormState = {
   email: string;
@@ -20,6 +22,9 @@ export default function Arrepentimiento() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  const { theme, toggle: toggleTheme } = useAuthTheme();
+  const themeLabel = theme === "dark" ? "Activar tema claro" : "Activar tema oscuro";
 
   const [form, setForm] = useState<FormState>({
     email: "",
@@ -152,14 +157,25 @@ export default function Arrepentimiento() {
   };
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-auth-theme={theme === "light" ? "light" : undefined}>
       <nav className={styles.nav}>
         <Link to="/" className={styles.navLogo}>
           Menú<span> Digital App</span>
         </Link>
-        <Link to="/" className={styles.navBack}>
-          ← Volver al inicio
-        </Link>
+        <div className={styles.navRight}>
+          <button
+            type="button"
+            className={styles.themeToggle}
+            onClick={toggleTheme}
+            aria-label={themeLabel}
+            title={themeLabel}
+          >
+            {theme === "dark" ? <Sun /> : <Moon />}
+          </button>
+          <Link to="/" className={styles.navBack}>
+            ← Volver al inicio
+          </Link>
+        </div>
       </nav>
 
       <div className={styles.hero}>
