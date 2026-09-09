@@ -72,9 +72,11 @@ export default function SellerCrm() {
   const [dragOverStage, setDragOverStage] = useState<CrmStage | null>(null);
   const [movingClientId, setMovingClientId] = useState<string | null>(null);
 
-  // Solo para armar el <select> de "vendedor" del admin.
+  // Solo para armar el <select> de "vendedor" del admin. Misma queryKey que
+  // AdminSellers (includeInactive=false) para compartir la caché en vez de
+  // re-fetchear.
   const sellersList = useQuery({
-    queryKey: ["admin-sellers", "picker"],
+    queryKey: ["admin-sellers", false],
     queryFn: () => listAdminSellers(false),
     enabled: isAdmin,
     staleTime: 60_000,

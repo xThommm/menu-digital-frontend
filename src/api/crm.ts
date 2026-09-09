@@ -5,6 +5,7 @@ import type {
   CrmClientDetail,
   CrmProfile,
   CrmStage,
+  CrmSummary,
 } from '../types'
 
 // ── CRM (el JWT lo adjunta el interceptor de client) ──
@@ -19,6 +20,14 @@ export const listCrmClients = async (): Promise<{
   attentionSummary?: CrmAttentionSummary
 }> => {
   const res = await apiClient.get('/sellers/crm/clients')
+  return res.data
+}
+
+// GET /api/sellers/crm/summary → resumen ejecutivo para el dashboard del CEO
+// (totales/altas del mes/breakdown por plan livianos + attentionSummary de
+// listClients) — admin-only, no trae la ficha completa de cada cliente.
+export const getCrmSummary = async (): Promise<CrmSummary> => {
+  const res = await apiClient.get('/sellers/crm/summary')
   return res.data
 }
 
