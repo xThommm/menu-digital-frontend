@@ -14,7 +14,7 @@ interface PendingRegister {
   username: string;
   password: string;
   acceptedTerms: boolean;
-  contactInfo: { mail: string; businessName: string };
+  contactInfo: { mail: string; businessName: string; number: number };
   registrationToken?: string;
 }
 
@@ -51,6 +51,46 @@ function readPaymentError(): string {
 function readSelectedPlan(): PlanId {
   const plan = new URLSearchParams(window.location.search).get("plan");
   return plan === "free" || plan === "basic" || plan === "pro" ? plan : "basic";
+}
+
+function GiftIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="8" width="18" height="4" rx="1" />
+      <path d="M12 8v13" />
+      <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" />
+      <path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8" />
+      <path d="M16.5 8a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8" />
+    </svg>
+  );
+}
+
+function FeatureCheckIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
 }
 
 const MONTH_OPTION_COPY: Record<
@@ -123,40 +163,28 @@ export default function RegisterPlansPage() {
   ]);
 
   const selected = catalog.data?.find((plan) => plan.name === selectedPlan);
+  const proPlan = catalog.data?.find((plan) => plan.name === "pro");
 
-  // Precios: lista por defecto; promo solo si hay código de vendedor aplicado.
-  const listMonthly = selected?.price ?? 0;
-  const promoMonthly = selected
-    ? (selected.discountPrice ?? selected.price)
-    : 0;
-  const usePromo = Boolean(appliedSellerCode);
-  const monthly = usePromo ? promoMonthly : listMonthly;
+  // Un código de promoción válido ya no da un precio con descuento acá — da
+  // acceso a la prueba gratis del plan Pro (ver handleStartTrial), que
+  // reemplaza el pago inmediato. El precio de pago sigue siendo siempre el
+  // de lista.
+  const monthly = selected?.price ?? 0;
   const multiplier = selected?.periodMultipliers?.[months as 1 | 3 | 6 | 12];
   const totalPrice =
     selected && multiplier != null
       ? Math.round(monthly * multiplier)
       : undefined;
-  const listTotal =
-    selected && multiplier != null
-      ? Math.round(listMonthly * multiplier)
-      : undefined;
-  const savings =
-    usePromo && listTotal != null && totalPrice != null
-      ? listTotal - totalPrice
-      : 0;
 
   // Costo si pagaras cada mes suelto al mismo precio mensual actual
   const fullMonthsTotal =
     selected && totalPrice != null ? monthly * months : undefined;
 
-  // Ahorro solo por el multiplicador (3 / 6 / 12 meses)
+  // Ahorro por el multiplicador (3 / 6 / 12 meses)
   const periodSavings =
     fullMonthsTotal != null && totalPrice != null
       ? fullMonthsTotal - totalPrice
       : 0;
-
-  // Ahorro extra por código de vendedor (ya lo tenías como `savings`)
-  const sellerSavings = savings;
 
   const ready =
   !!selected
@@ -251,7 +279,6 @@ export default function RegisterPlansPage() {
             planId: selectedPlan,
             months,
             planVersion: selected.version,
-            ...(appliedSellerCode ? { sellerCode: appliedSellerCode } : {}),
           }),
         },
       );
@@ -279,6 +306,45 @@ export default function RegisterPlansPage() {
       // la pestaña, sin guardar la contraseña fuera de sessionStorage.
       localStorage.setItem("pendingRegistrationToken", data.registrationToken);
       window.location.assign(data.init_point);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Ocurrió un error");
+      setIsSubmitting(false);
+    }
+  };
+
+  // Con un código de promoción válido, la única acción disponible es empezar
+  // la prueba gratis (reemplaza pagar de una) — crea el User definitivo sin
+  // pasar por Mercado Pago, siempre en plan Pro sin importar la card elegida.
+  const handleStartTrial = async () => {
+    if (!pending || !appliedSellerCode || isSubmitting) return;
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/users/register-trial`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: pending.username,
+            password: pending.password,
+            acceptedTerms: pending.acceptedTerms,
+            contactInfo: pending.contactInfo,
+            sellerCode: appliedSellerCode,
+          }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.message || "No se pudo activar la prueba gratuita");
+      }
+
+      sessionStorage.removeItem("pendingRegister");
+      localStorage.removeItem("pendingRegistrationToken");
+      await login(pending.username, pending.password);
+      notifySuccess("¡Cuenta creada! Tenés 7 días de Pro gratis.");
+      navigate("/dashboard", { replace: true });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Ocurrió un error");
       setIsSubmitting(false);
@@ -314,67 +380,58 @@ export default function RegisterPlansPage() {
             </button>
           </div>
         )}
-        <div className={styles.plansGrid}>
-          {!catalog.isError &&
-            catalog.data?.map((plan) => (
-              <button
-                key={plan.name}
-                type="button"
-                className={`${styles.planCard} ${
-                  selectedPlan === plan.name ? styles.planSelected : ""
-                } ${plan.name === "basic" ? styles.planHighlight : ""}`}
-                onClick={() => setSelectedPlan(plan.name)}
-                disabled={isSubmitting}
-                aria-pressed={selectedPlan === plan.name}
-              >
-                {plan.name === "basic" && (
-                  <span className={styles.badge}>Recomendado</span>
-                )}
-                {selectedPlan === plan.name && (
-                  <span className={styles.selectionMark} aria-hidden>
-                    ✓
-                  </span>
-                )}
-                <div className={styles.planName}>{plan.label}</div>
-                <div className={styles.planPrice}>
-                  {plan.price === 0 ? (
-                    "Gratis"
-                  ) : (
-                    <>
-                      {formatPrice(
-                        appliedSellerCode
-                          ? (plan.discountPrice ?? plan.price)
-                          : plan.price,
-                      )}
-                      <span>/mes</span>
-                      {appliedSellerCode && plan.discountPrice !== null && (
-                        <>
-                          <br />
-                          <span>Antes {formatPrice(plan.price)}</span>
-                        </>
-                      )}
-                    </>
+        {!appliedSellerCode && (
+          <div className={styles.plansGrid}>
+            {!catalog.isError &&
+              catalog.data?.map((plan) => (
+                <button
+                  key={plan.name}
+                  type="button"
+                  className={`${styles.planCard} ${
+                    selectedPlan === plan.name ? styles.planSelected : ""
+                  } ${plan.name === "basic" ? styles.planHighlight : ""}`}
+                  onClick={() => setSelectedPlan(plan.name)}
+                  disabled={isSubmitting}
+                  aria-pressed={selectedPlan === plan.name}
+                >
+                  {plan.name === "basic" && (
+                    <span className={styles.badge}>Recomendado</span>
                   )}
-                </div>
-                <p className={styles.planDesc}>{plan.description}</p>
-                <ul className={styles.features}>
-                  {getPlanFeatureLabels(plan.features).map((f) => (
-                    <li key={f}>
-                      <span aria-hidden>→</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              </button>
-            ))}
-        </div>
+                  {selectedPlan === plan.name && (
+                    <span className={styles.selectionMark} aria-hidden>
+                      ✓
+                    </span>
+                  )}
+                  <div className={styles.planName}>{plan.label}</div>
+                  <div className={styles.planPrice}>
+                    {plan.price === 0 ? (
+                      "Gratis"
+                    ) : (
+                      <>
+                        {formatPrice(plan.price)}
+                        <span>/mes</span>
+                      </>
+                    )}
+                  </div>
+                  <p className={styles.planDesc}>{plan.description}</p>
+                  <ul className={styles.features}>
+                    {getPlanFeatureLabels(plan.features).map((f) => (
+                      <li key={f}>
+                        <span aria-hidden>→</span>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </button>
+              ))}
+          </div>
+        )}
 
-        {selectedPlan !== "free" && (
-          <div className={styles.sellerSection}>
-            <label className={styles.sellerLabel} htmlFor="seller-code">
-              Código de descuento
-              <span className={styles.sellerOptional}>opcional</span>
-            </label>
+        <div className={styles.sellerSection}>
+          <label className={styles.sellerLabel} htmlFor="seller-code">
+            Código de promoción
+            <span className={styles.sellerOptional}>opcional</span>
+          </label>
             <div className={styles.sellerRow}>
               <input
                 id="seller-code"
@@ -426,11 +483,47 @@ export default function RegisterPlansPage() {
               )}
             </div>
             {appliedSellerCode && (
-              <p className={styles.sellerSuccess} role="status">
-                Código {appliedSellerCode} aplicado · {selected?.discountPrice != null
-                  ? "precio con vendedor y 7 días de regalo"
-                  : "7 días de regalo"}
-              </p>
+              <div className={styles.trialPromo} role="status">
+                <div className={styles.trialPromoHeader}>
+                  <span className={styles.trialPromoIcon}>
+                    <GiftIcon />
+                  </span>
+                  <div>
+                    <p className={styles.trialPromoEyebrow}>
+                      Código {appliedSellerCode} aplicado
+                    </p>
+                    <h2 className={styles.trialPromoTitle}>
+                      7 días de Pro, totalmente gratis
+                    </h2>
+                  </div>
+                </div>
+                <p className={styles.trialPromoDesc}>
+                  Sin pagar nada ahora. Durante una semana vas a tener acceso
+                  a todo esto:
+                </p>
+                {proPlan && (
+                  <ul className={styles.trialPromoFeatures}>
+                    {getPlanFeatureLabels(proPlan.features).map((f) => (
+                      <li key={f}>
+                        <FeatureCheckIcon />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {proPlan?.discountPrice != null && (
+                  <p className={styles.trialPromoDiscount}>
+                    Y cuando termine la prueba, si decidís seguir pagando vas
+                    a tener un precio especial:{" "}
+                    <strong>{formatPrice(proPlan.discountPrice)}/mes</strong>{" "}
+                    en vez de{" "}
+                    <span className={styles.trialPromoDiscountStrike}>
+                      {formatPrice(proPlan.price)}/mes
+                    </span>
+                    .
+                  </p>
+                )}
+              </div>
             )}
             {sellerCodeError && (
               <p className={styles.sellerError} role="alert">
@@ -439,14 +532,13 @@ export default function RegisterPlansPage() {
             )}
             {!appliedSellerCode && !sellerCodeError && (
               <p className={styles.sellerHint}>
-                Si tenés un código, aplicálo antes de pagar para ver el precio
-                final.
+                ¿Tenés un código de promoción? Activalo para empezar una
+                prueba gratis del plan Pro por 7 días.
               </p>
             )}
-          </div>
-        )}
+        </div>
 
-        {selectedPlan !== "free" && ready && (
+        {!appliedSellerCode && selectedPlan !== "free" && ready && (
           <div className={styles.monthsSection}>
             <label className={styles.monthsLabel}>¿Por cuánto tiempo?</label>
             <div className={styles.monthsGrid}>
@@ -489,15 +581,8 @@ export default function RegisterPlansPage() {
               <strong>{formatPrice(totalPrice!)}</strong>
             </div>
 
-            {(periodSavings > 0 || sellerSavings > 0) && (
+            {periodSavings > 0 && (
               <ul className={styles.savingsList}>
-                
-                {sellerSavings > 0 && (
-                  <li>
-                    Por código de descuento: ahorrás {formatPrice(sellerSavings)}{" "}
-                    
-                  </li>
-                )}
                 {periodSavings > 0 && (
                   <li>
                     Por pagar {months} {months === 1 ? "mes" : "meses"}: ahorrás{" "}
@@ -516,22 +601,33 @@ export default function RegisterPlansPage() {
           </div>
         )}
 
-        <button
-          type="button"
-          className={styles.submitBtn}
-          onClick={handleContinue}
-          disabled={isSubmitting || !ready}
-        >
-          {isSubmitting
-            ? "Procesando..."
-            : !ready
-              ? "Esperando catálogo…"
-              : selectedPlan === "free"
-                ? "Crear cuenta gratis"
-                : `Pagar ${formatPrice(totalPrice!)} y crear cuenta`}
-        </button>
+        {appliedSellerCode ? (
+          <button
+            type="button"
+            className={styles.submitBtn}
+            onClick={handleStartTrial}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Activando..." : "Empezar prueba gratis de 7 días"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={styles.submitBtn}
+            onClick={handleContinue}
+            disabled={isSubmitting || !ready}
+          >
+            {isSubmitting
+              ? "Procesando..."
+              : !ready
+                ? "Esperando catálogo…"
+                : selectedPlan === "free"
+                  ? "Crear cuenta gratis"
+                  : `Pagar ${formatPrice(totalPrice!)} y crear cuenta`}
+          </button>
+        )}
 
-        {selectedPlan !== "free" && ready && (
+        {!appliedSellerCode && selectedPlan !== "free" && ready && (
           <p className={styles.secure}>
             Pago seguro · Tus datos están protegidos
           </p>

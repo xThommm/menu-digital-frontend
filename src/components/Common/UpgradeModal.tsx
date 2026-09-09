@@ -37,7 +37,16 @@ export default function UpgradeModal({
   requiredFeature, requiredTemplateId, minimumItems,
   onClose,
 }: UpgradeModalProps) {
-  const { token, logout } = useAuth();
+  const { token, user, logout } = useAuth();
+  // Mientras la cuenta tenga sellerID (vino de un código de promoción), cada
+  // pago real usa el discountPrice del plan elegido — para siempre, no solo
+  // la primera vez (ver /crear-preferencia en el backend). El catálogo
+  // público (usePlans) nunca trae el descuento aplicado a effectivePrice a
+  // propósito, así que acá se calcula aparte para mostrar lo que
+  // efectivamente se va a cobrar.
+  const hasPromoDiscount = Boolean(user?.sellerID);
+  const priceFor = (plan: { effectivePrice: number; discountPrice: number | null }) =>
+    hasPromoDiscount && plan.discountPrice != null ? plan.discountPrice : plan.effectivePrice;
   const catalog = usePlans();
   const availablePlans = useMemo(
     () => (catalog.isError ? [] : catalog.data ?? []).filter(plan => plan.name !== "free"
@@ -64,8 +73,20 @@ export default function UpgradeModal({
   const [error, setError] = useFeedbackMessage("error");
 
   const option = selected?.billingOptions.find(item => item.months === months);
-  const total = option?.total;
-  const savings = option?.savings ?? 0;
+  // option.total/savings vienen calculados server-side siempre sobre el
+  // precio regular (ver planCatalog.js) — si la cuenta tiene descuento por
+  // promoción, se recalculan acá con el mismo multiplicador de período para
+  // que coincidan con lo que /crear-preferencia realmente va a cobrar.
+  const monthlyPrice = selected ? priceFor(selected) : undefined;
+  const total = selected && option && monthlyPrice != null
+    ? Math.round(monthlyPrice * option.multiplier)
+    : option?.total;
+  const periodSavings = total != null && monthlyPrice != null
+    ? Math.round(monthlyPrice * months) - total
+    : (option?.savings ?? 0);
+  const promoSavings = hasPromoDiscount && selected?.discountPrice != null && option
+    ? Math.round((selected.effectivePrice - selected.discountPrice) * option.multiplier)
+    : 0;
   const ready = !!selected && !!option && !catalog.isFetching && !catalog.isError;
 
   const handlePay = async () => {
@@ -129,7 +150,7 @@ export default function UpgradeModal({
               {availablePlans.map(plan => (
                 <button key={plan.name} type="button" className={`${styles.option} ${selected?.name === plan.name ? styles.selected : ""}`} onClick={() => setPlanId(plan.name)} disabled={submitting} aria-pressed={selected?.name === plan.name}>
                   <strong>{plan.label}</strong>
-                  <span>{formatPrice(plan.effectivePrice)}/mes</span>
+                  <span>{formatPrice(priceFor(plan))}/mes</span>
                 </button>
               ))}
             </div>
@@ -150,7 +171,8 @@ export default function UpgradeModal({
         <div className={styles.total}>
           <span>Total a pagar</span>
           <strong>{total === undefined ? "—" : formatPrice(total)}</strong>
-          {savings > 0 && <small>Ahorrás {formatPrice(savings)}</small>}
+          {promoSavings > 0 && <small>Precio con tu código de promoción · ahorrás {formatPrice(promoSavings)}</small>}
+          {periodSavings > 0 && <small>Ahorrás {formatPrice(periodSavings)} por elegir {months} {months === 1 ? "mes" : "meses"}</small>}
         </div>
 
         {selected && (

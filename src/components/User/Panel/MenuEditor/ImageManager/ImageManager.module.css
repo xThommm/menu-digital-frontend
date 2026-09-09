@@ -103,6 +103,28 @@
   cursor: pointer;
 }
 
+/* ── Barra de tamaño de grilla (solo PC, ver breakpoint más abajo) ────────── */
+
+.gridSizeControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--control-min-size);
+  color: var(--admin-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.gridSizeLabel {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.gridSizeSlider {
+  width: 120px;
+  accent-color: var(--admin-gold);
+  cursor: pointer;
+}
+
 .stockPlaceholder {
   background: var(--admin-bg-surface);
   border: 0.5px dashed var(--admin-border-default);
@@ -169,7 +191,11 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  /* --tile-columns lo setea el slider "Imágenes por fila" (ImageManager.tsx)
+     inline en el elemento — menos columnas = cada 1fr es más ancho = imágenes
+     más grandes, tal como se pidió. minmax(0, 1fr) evita que una imagen
+     angosta le imponga un ancho mínimo a toda la columna. */
+  grid-template-columns: repeat(var(--tile-columns, 5), minmax(0, 1fr));
   gap: 12px;
   padding: 1rem;
 }
@@ -240,6 +266,28 @@
   font-size: 0.68rem;
   color: var(--admin-text-primary);
   cursor: pointer;
+}
+
+.tileDeleteBtn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--admin-transition);
+}
+
+.tileDeleteBtn:hover {
+  background: rgba(220, 38, 38, 0.9);
 }
 
 /* ── Selectores de producto ─────────────────────────────────────────────── */
@@ -349,29 +397,38 @@
 
 .pickerChip {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 6px;
   min-height: 36px;
-  padding: 0 6px 0 10px;
+  padding: 6px 6px 6px 10px;
   background: var(--admin-gold-glow);
   border: 0.5px solid var(--admin-border-gold-mid);
   border-radius: var(--admin-radius-sm);
 }
 
+/* Antes truncaba a una línea con ellipsis: con productos que arrancan
+   igual ("Pizza muzzarella chica" / "Pizza muzzarella grande") no había
+   forma de distinguirlos sin ir a mirar el código en la base. Ahora el
+   nombre hace wrap completo (sin límite de líneas) y el título nativo
+   (title=...) da un tooltip como red de contención si algún nombre
+   igual es larguísimo. */
 .pickerChipText {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-top: 2px;
   font-size: 0.78rem;
   color: var(--admin-text-primary);
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
+  overflow-wrap: break-word;
+}
+
+.pickerChipTitle {
+  overflow-wrap: break-word;
 }
 
 .pickerChipCode {
-  flex-shrink: 0;
   font-size: 0.68rem;
   color: var(--admin-text-warm);
 }
@@ -408,36 +465,170 @@
   cursor: pointer;
 }
 
-/* ── Tile "+" para agregar más imágenes ────────────────────────────────── */
+/* ── Botón flotante "agregar imágenes" ──────────────────────────────────── */
+/* Reemplaza al viejo tile "+" al final de la grilla: con muchas imágenes
+   cargadas había que scrollear hasta el fondo para encontrarlo. Fijo abajo a
+   la derecha, siempre a la vista. Portal a document.body (ver ImageManager.tsx). */
 
-.addTile {
-  aspect-ratio: 1;
-  align-self: start;
+.fabAddBtn {
+  position: fixed;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  z-index: calc(var(--z-modal) - 10);
+  width: 56px;
+  height: 56px;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  border-radius: var(--admin-radius-md);
-  border: 0.5px dashed var(--admin-border-default);
-  background: var(--admin-bg-surface);
-  color: var(--admin-text-muted);
-  font-size: 0.72rem;
+  border: none;
+  border-radius: 50%;
+  background: var(--admin-gold);
+  color: var(--admin-gold-ink);
   cursor: pointer;
-  transition: border-color var(--admin-transition), background var(--admin-transition);
+  box-shadow: var(--admin-shadow-popover);
+  transition: background var(--admin-transition), box-shadow var(--admin-transition), transform var(--admin-transition-spring);
 }
 
-.addTile:hover {
-  border-color: var(--admin-gold);
-  background: var(--admin-gold-glow);
+.fabAddBtn:hover {
+  background: var(--admin-gold-hover);
+  box-shadow: var(--admin-shadow-action-btn-hover), var(--admin-shadow-popover);
+  transform: translateY(-2px);
+}
+
+.fabAddBtn:active {
+  transform: scale(0.94);
+}
+
+/* ── Modal de confirmación de borrado ───────────────────────────────────── */
+
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--admin-overlay-backdrop);
+  backdrop-filter: blur(5px);
+}
+
+.confirmModal {
+  width: min(100%, 420px);
+  padding: var(--space-5);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-lg);
   color: var(--admin-text-primary);
+  background: var(--admin-bg-elevated);
+  box-shadow: var(--admin-shadow-modal);
+  animation: confirmScaleIn 0.2s var(--admin-transition-spring) both;
+}
+
+@keyframes confirmScaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.confirmTitle {
+  margin: 0 0 var(--space-2);
+  font-size: 1.1rem;
+}
+
+.confirmText {
+  margin: 0 0 var(--space-4);
+  color: var(--admin-text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.confirmCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--space-5);
+  color: var(--admin-text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.confirmCancelBtn, .confirmDeleteBtn {
+  min-height: var(--control-min-size);
+  padding: 0 var(--space-4);
+  border-radius: var(--admin-radius-md);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--admin-transition), border-color var(--admin-transition), color var(--admin-transition), transform var(--admin-transition-spring);
+}
+
+.confirmCancelBtn {
+  border: 1px solid var(--admin-border-default);
+  color: var(--admin-text-secondary);
+  background: transparent;
+}
+
+.confirmCancelBtn:hover {
+  border-color: var(--admin-border-gold-mid);
+  color: var(--admin-text-primary);
+  background: var(--admin-bg-raised);
+}
+
+.confirmDeleteBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  color: #fff;
+  background: rgba(220, 38, 38, 0.9);
+}
+
+.confirmDeleteBtn:hover {
+  background: rgba(220, 38, 38, 1);
+  transform: translateY(-1px);
 }
 
 @media (max-width: 599px) {
+  /* El slider de tamaño de grilla es un control de PC: en mobile el ancho de
+     columna ya lo resuelve el layout de una sola imagen por línea de acá abajo. */
+  .gridSizeControl {
+    display: none;
+  }
+
+  /* Una imagen por línea en vez de la grilla multi-columna: el buscador de
+     producto pasa a tener el ancho completo de la pantalla en vez de los
+     ~110px que le tocaban en una columna angosta, mucho más cómodo para
+     tocar/escribir en el celular. */
   .grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: 1fr;
     gap: 10px;
     padding: 0.75rem;
+  }
+
+  .tile {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .tileThumbWrap {
+    width: 84px;
+    flex-shrink: 0;
+  }
+
+  .tilePickers {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .fabAddBtn {
+    right: var(--space-4);
+    bottom: var(--space-4);
+    width: 52px;
+    height: 52px;
   }
 
   .header {

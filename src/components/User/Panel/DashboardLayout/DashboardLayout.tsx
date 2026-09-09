@@ -4,6 +4,8 @@ import { useAuth } from "../../../../context/useAuth";
 import { useTheme } from "../../../../hooks/useTheme";
 import { usePlans } from "../../../../hooks/usePlans";
 import { isSubscriptionExpired, PLAN_LABEL } from "../../../../lib/plans";
+import { MobileDockProvider } from "../../../../context/MobileDockProvider";
+import { useMobileDock } from "../../../../context/useMobileDock";
 import BrandMark from "../../../Common/BrandMark";
 import s from "./DashboardLayout.module.css";
 
@@ -15,11 +17,24 @@ const NAV_ITEMS = [
 ];
 
 export default function DashboardLayout() {
+  // El Provider tiene que envolver también al propio dock (no solo al
+  // Outlet): una vista hija full-screen como el Gestor de imágenes pide
+  // ocultarlo vía contexto, así que DashboardLayoutInner necesita estar
+  // DENTRO del Provider para poder leer ese estado con useMobileDock().
+  return (
+    <MobileDockProvider>
+      <DashboardLayoutInner />
+    </MobileDockProvider>
+  );
+}
+
+function DashboardLayoutInner() {
   const catalog = usePlans();
   const { user, logout } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const { hidden: mobileDockHidden } = useMobileDock();
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const mobileMoreButtonRef = useRef<HTMLButtonElement>(null);
   const firstMobileMoreActionRef = useRef<HTMLButtonElement>(null);
@@ -109,8 +124,11 @@ export default function DashboardLayout() {
         </button>
       </aside>
 
-      {/* ── Contenido de la página activa ────────────────────────────────── */}
-      <div className={`${s.content} admin-layout-content`}>
+      {/* ── Contenido de la página activa ──────────────────────────────────
+          admin-layout-content reserva espacio abajo para no quedar tapado
+          por el dock (ver globals.css) — con el dock oculto ese espacio
+          reservado sobra, así que se saca con el modificador --no-dock. */}
+      <div className={`${s.content} admin-layout-content ${mobileDockHidden ? "admin-layout-content--no-dock" : ""}`}>
         {subscriptionExpired && (
           <aside className={s.expiryBanner} role="status" aria-live="polite">
             <div className={s.expiryBannerCopy}>
@@ -137,42 +155,47 @@ export default function DashboardLayout() {
         <Outlet />
       </div>
 
-      {/* ── Bottom nav (mobile) ───────────────────────────────────────────── */}
-      <nav className="admin-mobile-dock" aria-label="Navegación principal">
-        {NAV_ITEMS.map(item => {
-          const active = location.pathname === item.path;
-          return (
-            <button
-              type="button"
-              key={item.path}
-              className={`admin-mobile-dock__button ${active ? "admin-mobile-dock__button--active" : ""}`}
-              onClick={() => {
-                setMobileMoreOpen(false);
-                navigate(item.path);
-              }}
-              aria-label={item.label}
-              aria-current={active ? "page" : undefined}
-            >
-              <span className="admin-mobile-dock__icon">{item.icon}</span>
-              {item.short}
-            </button>
-          );
-        })}
-        <button
-          ref={mobileMoreButtonRef}
-          type="button"
-          className={`admin-mobile-dock__button ${mobileMoreOpen ? "admin-mobile-dock__button--active" : ""}`}
-          onClick={() => setMobileMoreOpen(open => !open)}
-          aria-label="Más opciones"
-          aria-expanded={mobileMoreOpen}
-          aria-controls="user-mobile-more-menu"
-        >
-          <span className="admin-mobile-dock__icon"><MoreIcon /></span>
-          Más
-        </button>
-      </nav>
+      {/* ── Bottom nav (mobile) ─────────────────────────────────────────────
+          Oculto mientras una vista hija full-screen lo pide vía contexto
+          (ej. el Gestor de imágenes: ya tiene su propio botón de "volver"
+          arriba a la izquierda, y el dock solo tapa contenido ahí). */}
+      {!mobileDockHidden && (
+        <nav className="admin-mobile-dock" aria-label="Navegación principal">
+          {NAV_ITEMS.map(item => {
+            const active = location.pathname === item.path;
+            return (
+              <button
+                type="button"
+                key={item.path}
+                className={`admin-mobile-dock__button ${active ? "admin-mobile-dock__button--active" : ""}`}
+                onClick={() => {
+                  setMobileMoreOpen(false);
+                  navigate(item.path);
+                }}
+                aria-label={item.label}
+                aria-current={active ? "page" : undefined}
+              >
+                <span className="admin-mobile-dock__icon">{item.icon}</span>
+                {item.short}
+              </button>
+            );
+          })}
+          <button
+            ref={mobileMoreButtonRef}
+            type="button"
+            className={`admin-mobile-dock__button ${mobileMoreOpen ? "admin-mobile-dock__button--active" : ""}`}
+            onClick={() => setMobileMoreOpen(open => !open)}
+            aria-label="Más opciones"
+            aria-expanded={mobileMoreOpen}
+            aria-controls="user-mobile-more-menu"
+          >
+            <span className="admin-mobile-dock__icon"><MoreIcon /></span>
+            Más
+          </button>
+        </nav>
+      )}
 
-      {mobileMoreOpen && (
+      {!mobileDockHidden && mobileMoreOpen && (
         <>
           <button
             type="button"

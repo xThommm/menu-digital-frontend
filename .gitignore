@@ -9,5 +9,15 @@ README.md
 # Documentación principal trasladada a docs: debe seguir versionada.
 !/docs/ARCHITECTURE.md
 !/docs/README.md
-# Playwright CLI output (may contain credentials)
+# Playwright CLI output (may contain credentials) y config local del CLI
 .playwright-cli/
+.playwright/
+
+# Configuración/estado local de Claude Code — no es parte del proyecto
+.claude/
+
+# Archivos locales de SO/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

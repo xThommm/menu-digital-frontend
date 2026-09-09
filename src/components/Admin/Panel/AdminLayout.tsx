@@ -189,7 +189,7 @@ export default function AdminLayout() {
           sidebar, así nunca hay que ir a buscarlo. */}
       <button
         type="button"
-        className={s.sidebarToggle}
+        className={`${s.sidebarToggle} ${sidebarCollapsed ? s.sidebarToggleCollapsed : ""}`}
         onClick={() => setSidebarCollapsed(collapsed => !collapsed)}
         aria-expanded={!sidebarCollapsed}
         aria-controls="ceo-sidebar"

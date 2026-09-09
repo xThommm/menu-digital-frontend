@@ -272,7 +272,7 @@ function PlanCard({ plan, usage, onUpdated }: {
           {formatPaymentAmount(plan.price, plan.currency)} <span>ARS / mes regular</span>
         </p>
         {plan.discountPrice !== null && <p className={s.description}>
-          {formatPaymentAmount(plan.discountPrice, plan.currency)} ARS / mes con código de vendedor
+          {formatPaymentAmount(plan.discountPrice, plan.currency)} ARS / mes con código de promoción
         </p>}
       </>}
 
@@ -293,14 +293,14 @@ function PlanCard({ plan, usage, onUpdated }: {
                 onChange={(event) => { setPrice(event.target.value); setValidationError(""); }} />
             </label>
             <label htmlFor={`${plan.name}-discount`}>
-              Precio mensual con código de vendedor (ARS)
+              Precio mensual con código de promoción (ARS)
               <input id={`${plan.name}-discount`} type="text" inputMode="numeric" value={discountPrice}
-                disabled={busy || free} placeholder="Sin descuento por vendedor" aria-describedby={`${hintID}${validationError ? ` ${errorID}` : ""}`}
+                disabled={busy || free} placeholder="Sin descuento por código" aria-describedby={`${hintID}${validationError ? ` ${errorID}` : ""}`}
                 aria-invalid={validationError ? true : undefined}
                 onChange={(event) => { setDiscountPrice(event.target.value); setValidationError(""); }} />
             </label>
           </div>
-          <p className={s.hint} id={hintID}>Pesos enteros, sin separadores de miles. El descuento solo se aplica a altas con un código de vendedor válido; dejalo vacío para cobrar siempre el precio regular.</p>
+          <p className={s.hint} id={hintID}>Pesos enteros, sin separadores de miles. El descuento solo se aplica a altas con un código de promoción válido; dejalo vacío para cobrar siempre el precio regular.</p>
           <fieldset className={s.featureFields} disabled={busy}>
             <legend>Multiplicadores por período</legend>
             <div className={s.fields}>
