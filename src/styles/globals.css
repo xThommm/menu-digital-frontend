@@ -515,6 +515,12 @@
     padding-bottom: calc(104px + env(safe-area-inset-bottom));
   }
 
+  /* Vistas hijas full-screen que ocultan el dock (ver DashboardLayout.tsx +
+     MobileDockProvider) no necesitan el espacio reservado para él. */
+  .admin-layout-content--no-dock {
+    padding-bottom: 0;
+  }
+
   .admin-mobile-dock {
     position: fixed;
     left: calc(var(--space-3) + env(safe-area-inset-left));

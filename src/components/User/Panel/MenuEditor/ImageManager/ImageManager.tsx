@@ -1,7 +1,11 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { isAxiosError } from "axios";
 import { useAsyncAction } from "../../../../../hooks/useAsyncAction";
-import { getLiteItems, getPendingImages, uploadLibraryImage, assignLibraryImages } from "../../../../../api/items";
+import {
+  getLiteItems, getPendingImages, uploadLibraryImage, assignLibraryImages, deleteLibraryImage,
+} from "../../../../../api/items";
+import { useMobileDock } from "../../../../../context/useMobileDock";
 import type { ItemLite, ImageAssignChange } from "../../../../../types";
 import Spinner from "../../../../Common/Spinner";
 import styles from "./ImageManager.module.css";
@@ -21,7 +25,7 @@ interface ImageManagerProps {
 interface TileState {
   clientId: string;
   imageUrl: string | null; // null mientras se está subiendo
-  status: "uploading" | "ready" | "error";
+  status: "uploading" | "ready" | "error" | "deleting";
   errorMessage?: string;
   pickerRows: string[];
   initialSelected: Set<string>; // foto inicial de qué productos tenía asignados, para el dirty-check
@@ -31,6 +35,20 @@ interface TileState {
 const MAX_IMAGE_MB = 5;
 const UPLOAD_CONCURRENCY = 3;
 const SEARCH_RESULTS_LIMIT = 8;
+
+// Tamaño de grilla (PC): cuántas imágenes por línea — menos columnas implica
+// imágenes más grandes, ya que cada una ocupa 1fr del ancho disponible.
+const GRID_COLUMNS_STORAGE_KEY = "imageManager.gridColumns";
+const DEFAULT_GRID_COLUMNS = 5;
+const MIN_GRID_COLUMNS = 2;
+const MAX_GRID_COLUMNS = 8;
+
+const readStoredGridColumns = (): number => {
+  const stored = Number(localStorage.getItem(GRID_COLUMNS_STORAGE_KEY));
+  return Number.isInteger(stored) && stored >= MIN_GRID_COLUMNS && stored <= MAX_GRID_COLUMNS
+    ? stored
+    : DEFAULT_GRID_COLUMNS;
+};
 
 const normalizeSearchValue = (value: string | null | undefined) =>
   (value ?? "")
@@ -99,12 +117,28 @@ const icons = {
       <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
     </svg>
   ),
+  plusLarge: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  ),
   upload: (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="17 8 12 3 7 8" />
       <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  ),
+  trash: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
     </svg>
   ),
 };
@@ -135,10 +169,11 @@ function ProductPicker({
 
   if (value) {
     const item = itemById.get(value);
+    const fullLabel = item ? `${item.title}${item.code ? ` · ${item.code}` : ""}` : "Producto no encontrado";
     return (
       <div className={styles.pickerChip}>
-        <span className={styles.pickerChipText}>
-          {item ? item.title : "Producto no encontrado"}
+        <span className={styles.pickerChipText} title={fullLabel}>
+          <span className={styles.pickerChipTitle}>{item ? item.title : "Producto no encontrado"}</span>
           {item?.code && <span className={styles.pickerChipCode}>{item.code}</span>}
         </span>
         <button type="button" className={styles.pickerChipRemove} onClick={onRemove} aria-label="Quitar producto">
@@ -178,6 +213,7 @@ function ProductPicker({
               <button
                 type="button"
                 className={styles.pickerDropdownItem}
+                title={`${item.title}${item.code ? ` · ${item.code}` : ""}`}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => { onSelect(item._id); setQuery(""); setOpen(false); }}
               >
@@ -210,6 +246,7 @@ function ImageTile({
   onAddRow,
   onRetry,
   onDismiss,
+  onDelete,
 }: {
   tile: TileState;
   items: ItemLite[];
@@ -221,6 +258,7 @@ function ImageTile({
   onAddRow: () => void;
   onRetry: () => void;
   onDismiss: () => void;
+  onDelete: () => void;
 }) {
   const canAddRow = tile.pickerRows.length > 0 && tile.pickerRows[tile.pickerRows.length - 1] !== "";
 
@@ -231,9 +269,27 @@ function ImageTile({
           ? <img src={tile.imageUrl} alt="" className={styles.tileThumb} />
           : <div className={styles.tileThumbPlaceholder} />}
 
+        {tile.status === "ready" && (
+          <button
+            type="button"
+            className={styles.tileDeleteBtn}
+            onClick={onDelete}
+            aria-label="Eliminar imagen"
+            title="Eliminar imagen"
+          >
+            {icons.trash}
+          </button>
+        )}
+
         {tile.status === "uploading" && (
           <div className={styles.tileOverlay}>
             <Spinner size={20} label="Subiendo imagen" />
+          </div>
+        )}
+
+        {tile.status === "deleting" && (
+          <div className={styles.tileOverlay}>
+            <Spinner size={20} label="Eliminando imagen" />
           </div>
         )}
 
@@ -276,17 +332,85 @@ function ImageTile({
   );
 }
 
+// ── Modal de confirmación de borrado ─────────────────────────────────────────
+
+function DeleteConfirmModal({
+  assignedCount,
+  onConfirm,
+  onCancel,
+}: {
+  assignedCount: number;
+  onConfirm: (skipNextTime: boolean) => void;
+  onCancel: () => void;
+}) {
+  const [skipNextTime, setSkipNextTime] = useState(false);
+
+  // Portal a document.body: mismo motivo que UpgradeModal.tsx — el gestor
+  // vive bastante anidado dentro del panel, y sin portal el overlay solo
+  // gana el z-index DENTRO de ese contexto de apilamiento.
+  return createPortal(
+    <div className={styles.confirmOverlay} onClick={onCancel} role="dialog" aria-modal="true" aria-labelledby="delete-image-title">
+      <div className={styles.confirmModal} onClick={(e) => e.stopPropagation()}>
+        <h3 id="delete-image-title" className={styles.confirmTitle}>Eliminar imagen</h3>
+        <p className={styles.confirmText}>
+          {assignedCount > 0
+            ? `Está asignada a ${assignedCount} producto${assignedCount > 1 ? "s" : ""}. Si la eliminás, ese${assignedCount > 1 ? "s" : ""} producto${assignedCount > 1 ? "s" : ""} queda${assignedCount > 1 ? "n" : ""} sin foto. `
+            : "No está asignada a ningún producto. "}
+          Esta acción no se puede deshacer.
+        </p>
+        <label className={styles.confirmCheckbox}>
+          <input
+            type="checkbox"
+            checked={skipNextTime}
+            onChange={(e) => setSkipNextTime(e.target.checked)}
+          />
+          No volver a preguntar (hasta cerrar el gestor de imágenes)
+        </label>
+        <div className={styles.confirmActions}>
+          <button type="button" className={styles.confirmCancelBtn} onClick={onCancel}>Cancelar</button>
+          <button type="button" className={styles.confirmDeleteBtn} onClick={() => onConfirm(skipNextTime)}>
+            {icons.trash} Eliminar
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // ── Componente principal ─────────────────────────────────────────────────────
 
 export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
   const loadState = useAsyncAction();
   const saveState = useAsyncAction();
+  const deleteState = useAsyncAction();
 
   const [items, setItems] = useState<ItemLite[]>([]);
   const [tiles, setTiles] = useState<TileState[]>([]);
   const [onlyPending, setOnlyPending] = useState(false);
+  const [gridColumns, setGridColumns] = useState<number>(readStoredGridColumns);
+  // "No volver a preguntar" es por sesión de uso del gestor: vive en un
+  // useState normal (no localStorage/sessionStorage) a propósito, así que se
+  // resetea solo la próxima vez que se monte el componente — que es
+  // exactamente cuando se vuelve a abrir el gestor (MenuEditor.tsx desmonta
+  // ImageManager por completo al salir de la vista "image-manager").
+  const [skipDeleteConfirm, setSkipDeleteConfirm] = useState(false);
+  const [pendingDeleteTile, setPendingDeleteTile] = useState<TileState | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem(GRID_COLUMNS_STORAGE_KEY, String(gridColumns));
+  }, [gridColumns]);
+
+  // El gestor ya tiene su propio botón de "volver" arriba a la izquierda —
+  // el dock de navegación mobile de DashboardLayout no aporta nada acá y
+  // solo tapa contenido, así que se oculta mientras esta vista está montada.
+  const { hide: hideMobileDock, show: showMobileDock } = useMobileDock();
+  useEffect(() => {
+    hideMobileDock();
+    return () => showMobileDock();
+  }, [hideMobileDock, showMobileDock]);
 
   const loadData = useCallback(async () => {
     await loadState.run(async () => {
@@ -398,6 +522,54 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
     setTiles((prev) => prev.filter((t) => t.clientId !== clientId));
   }, []);
 
+  // ── Eliminar una imagen (Cloudinary + productos/pendientes) ─────────────────
+
+  const performDelete = useCallback(async (tile: TileState) => {
+    if (tile.status !== "ready" || !tile.imageUrl) return;
+    const imageUrl = tile.imageUrl;
+
+    setTiles((prev) => prev.map((t) => (t.clientId === tile.clientId ? { ...t, status: "deleting" } : t)));
+
+    await deleteState.run(async () => {
+      try {
+        await deleteLibraryImage(imageUrl);
+      } catch (cause) {
+        throw new Error(extractServerMessage(cause) || "No se pudo eliminar la imagen.", { cause });
+      }
+      setTiles((prev) => prev.filter((t) => t.clientId !== tile.clientId));
+      setItems((prev) => prev.map((item) => (item.image === imageUrl ? { ...item, image: "" } : item)));
+      onSuccess();
+    }, { successMessage: "Imagen eliminada." });
+
+    // Si falló, la tile sigue en la lista (no se filtró arriba) — la
+    // devolvemos a "ready" para que se pueda reintentar.
+    setTiles((prev) => prev.map((t) => (
+      t.clientId === tile.clientId && t.status === "deleting" ? { ...t, status: "ready" } : t
+    )));
+  }, [deleteState, onSuccess]);
+
+  // Pedido del usuario: la confirmación nativa (window.confirm) se reemplazó
+  // por un modal propio con un tilde "no volver a preguntar" — ver
+  // DeleteConfirmModal más arriba. skipDeleteConfirm dura lo que dura el
+  // componente montado (por sesión de uso del gestor), no para siempre.
+  const requestDelete = useCallback((tile: TileState) => {
+    if (tile.status !== "ready" || !tile.imageUrl) return;
+    if (skipDeleteConfirm) {
+      performDelete(tile);
+      return;
+    }
+    setPendingDeleteTile(tile);
+  }, [skipDeleteConfirm, performDelete]);
+
+  const confirmDelete = useCallback((skipNextTime: boolean) => {
+    if (skipNextTime) setSkipDeleteConfirm(true);
+    const tile = pendingDeleteTile;
+    setPendingDeleteTile(null);
+    if (tile) performDelete(tile);
+  }, [pendingDeleteTile, performDelete]);
+
+  const cancelDelete = useCallback(() => setPendingDeleteTile(null), []);
+
   // ── Selección de productos ──────────────────────────────────────────────────
 
   const selectProduct = useCallback((tileClientId: string, rowIndex: number, itemID: string) => {
@@ -456,7 +628,7 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
     }, { successMessage: "Cambios guardados." });
   }, [tiles, saveState, loadData, onSuccess]);
 
-  const errorMessage = loadState.error || saveState.error;
+  const errorMessage = loadState.error || saveState.error || deleteState.error;
 
   return (
     <div className={styles.page}>
@@ -487,6 +659,21 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
           />
           Mostrar solo pendientes
         </label>
+        {/* Solo tiene sentido en pantallas anchas: en mobile el ancho de columna ya
+            se resuelve solo (ver breakpoint en el CSS) y se oculta con display:none. */}
+        <label className={styles.gridSizeControl} title="Tamaño de la grilla (solo en PC)">
+          <span className={styles.gridSizeLabel}>Imágenes por fila: {gridColumns}</span>
+          <input
+            type="range"
+            min={MIN_GRID_COLUMNS}
+            max={MAX_GRID_COLUMNS}
+            step={1}
+            value={gridColumns}
+            onChange={(e) => setGridColumns(Number(e.target.value))}
+            className={styles.gridSizeSlider}
+            aria-label="Cantidad de imágenes por fila"
+          />
+        </label>
         <button type="button" className={styles.stockPlaceholder} disabled title="Próximamente">
           Imágenes prediseñadas (Próximamente)
         </button>
@@ -511,7 +698,7 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
           <span>Seleccioná imágenes para importar</span>
         </button>
       ) : (
-        <div className={styles.grid}>
+        <div className={styles.grid} style={{ "--tile-columns": gridColumns } as CSSProperties}>
           {visibleTiles.map((tile) => (
             <ImageTile
               key={tile.clientId}
@@ -525,13 +712,38 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
               onAddRow={() => addProductRow(tile.clientId)}
               onRetry={() => tile.sourceFile && retryUpload(tile.clientId, tile.sourceFile)}
               onDismiss={() => dismissTile(tile.clientId)}
+              onDelete={() => requestDelete(tile)}
             />
           ))}
-          <button type="button" className={styles.addTile} onClick={() => fileInputRef.current?.click()}>
-            {icons.plus}
-            <span>Agregar imágenes</span>
-          </button>
         </div>
+      )}
+
+      {/* Botón flotante de "agregar imágenes": reemplaza al tile "+" que antes
+          vivía al final de la grilla — con muchas imágenes cargadas, había que
+          scrollear hasta el fondo para encontrarlo. Portal a document.body por
+          el mismo motivo que el modal: position:fixed necesita no tener un
+          ancestro con su propio contexto de apilamiento en el medio. Se oculta
+          en el estado vacío (tiles.length === 0), donde ese caso ya lo cubre
+          el botón grande de emptyState de arriba. */}
+      {tiles.length > 0 && createPortal(
+        <button
+          type="button"
+          className={styles.fabAddBtn}
+          onClick={() => fileInputRef.current?.click()}
+          aria-label="Agregar imágenes"
+          title="Agregar imágenes"
+        >
+          {icons.plusLarge}
+        </button>,
+        document.body,
+      )}
+
+      {pendingDeleteTile && (
+        <DeleteConfirmModal
+          assignedCount={pendingDeleteTile.pickerRows.filter(Boolean).length}
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+        />
       )}
     </div>
   );

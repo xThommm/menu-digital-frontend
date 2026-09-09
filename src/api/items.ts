@@ -101,3 +101,10 @@ export const assignLibraryImages = async (changes: ImageAssignChange[]): Promise
   const res = await apiClient.post<ImageAssignResponse>('/items/images/assign', { changes })
   return res.data
 }
+
+// DELETE /api/items/images  →  borra una imagen del gestor: de Cloudinary,
+// de los productos que la tuvieran asignada y de las pendientes
+export const deleteLibraryImage = async (imageUrl: string): Promise<{ removedFromItems: number }> => {
+  const res = await apiClient.delete<{ removedFromItems: number }>('/items/images', { data: { imageUrl } })
+  return res.data
+}
