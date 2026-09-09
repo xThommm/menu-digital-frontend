@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/sitemap.xml",
+      "destination": "https://menu-digital-backend.koyeb.app/sitemap.xml"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://menu-digital-backend.koyeb.app/api/:path*"
     },
