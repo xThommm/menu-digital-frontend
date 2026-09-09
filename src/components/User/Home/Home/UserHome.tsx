@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import styles from "./UserHome.module.css";
 import { useReveal } from "../../../../hooks/useReveal";
 import type { User, ContactInfo, DayKey, Schedule } from "../../../../types/index";
+import BusinessSEO from "../../../Common/BusinessSEO";
 import FreePlanAd from "../../../Common/FreePlanAd";
 
 // ── Tokens por template ───────────────────────────────────────────────────────
@@ -267,7 +268,21 @@ export default function BusinessLandingPage() {
   const templateId = (user.template ?? 1) as TemplateId;
   const tokens = TEMPLATE_TOKENS[templateId] ?? TEMPLATE_TOKENS[1];
 
-  return <Template user={user} tokens={tokens} goMenu={goMenu} />;
+  return (
+  <>
+    <BusinessSEO
+      user={user}
+      slug={slug!}
+      page="landing"
+    />
+
+    <Template
+      user={user}
+      tokens={tokens}
+      goMenu={goMenu}
+    />
+  </>
+);
 }
 
 // ── Template unificado ────────────────────────────────────────────────────────
@@ -316,10 +331,6 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
   const scheduleActive = scheduleHasData(schedule);
   const isOpenNow = scheduleActive ? getOpenStatus(schedule) : false;
   const showHeroBadges = hasDelivery || scheduleActive;
-
-  useEffect(() => {
-    document.title = businessName;
-  }, [businessName]);
 
   return (
     <div className="t-wrap" data-template={template}>
