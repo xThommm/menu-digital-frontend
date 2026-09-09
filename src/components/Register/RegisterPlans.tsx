@@ -53,6 +53,46 @@ function readSelectedPlan(): PlanId {
   return plan === "free" || plan === "basic" || plan === "pro" ? plan : "basic";
 }
 
+function GiftIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="8" width="18" height="4" rx="1" />
+      <path d="M12 8v13" />
+      <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" />
+      <path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8" />
+      <path d="M16.5 8a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8" />
+    </svg>
+  );
+}
+
+function FeatureCheckIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 const MONTH_OPTION_COPY: Record<
   1 | 3 | 6 | 12,
   { title: string; subtitle: string }
@@ -123,8 +163,9 @@ export default function RegisterPlansPage() {
   ]);
 
   const selected = catalog.data?.find((plan) => plan.name === selectedPlan);
+  const proPlan = catalog.data?.find((plan) => plan.name === "pro");
 
-  // Un código de vendedor válido ya no da un precio con descuento acá — da
+  // Un código de promoción válido ya no da un precio con descuento acá — da
   // acceso a la prueba gratis del plan Pro (ver handleStartTrial), que
   // reemplaza el pago inmediato. El precio de pago sigue siendo siempre el
   // de lista.
@@ -271,7 +312,7 @@ export default function RegisterPlansPage() {
     }
   };
 
-  // Con un código de vendedor válido, la única acción disponible es empezar
+  // Con un código de promoción válido, la única acción disponible es empezar
   // la prueba gratis (reemplaza pagar de una) — crea el User definitivo sin
   // pasar por Mercado Pago, siempre en plan Pro sin importar la card elegida.
   const handleStartTrial = async () => {
@@ -388,7 +429,7 @@ export default function RegisterPlansPage() {
 
         <div className={styles.sellerSection}>
           <label className={styles.sellerLabel} htmlFor="seller-code">
-            Código de vendedor
+            Código de promoción
             <span className={styles.sellerOptional}>opcional</span>
           </label>
             <div className={styles.sellerRow}>
@@ -442,10 +483,35 @@ export default function RegisterPlansPage() {
               )}
             </div>
             {appliedSellerCode && (
-              <p className={styles.sellerSuccess} role="status">
-                Código {appliedSellerCode} aplicado — activá 7 días del plan
-                Pro totalmente gratis, sin pagar nada ahora.
-              </p>
+              <div className={styles.trialPromo} role="status">
+                <div className={styles.trialPromoHeader}>
+                  <span className={styles.trialPromoIcon}>
+                    <GiftIcon />
+                  </span>
+                  <div>
+                    <p className={styles.trialPromoEyebrow}>
+                      Código {appliedSellerCode} aplicado
+                    </p>
+                    <h2 className={styles.trialPromoTitle}>
+                      7 días de Pro, totalmente gratis
+                    </h2>
+                  </div>
+                </div>
+                <p className={styles.trialPromoDesc}>
+                  Sin pagar nada ahora. Durante una semana vas a tener acceso
+                  a todo esto:
+                </p>
+                {proPlan && (
+                  <ul className={styles.trialPromoFeatures}>
+                    {getPlanFeatureLabels(proPlan.features).map((f) => (
+                      <li key={f}>
+                        <FeatureCheckIcon />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
             {sellerCodeError && (
               <p className={styles.sellerError} role="alert">
@@ -454,8 +520,8 @@ export default function RegisterPlansPage() {
             )}
             {!appliedSellerCode && !sellerCodeError && (
               <p className={styles.sellerHint}>
-                ¿Tenés un código de vendedor? Activalo para empezar una prueba
-                gratis del plan Pro por 7 días.
+                ¿Tenés un código de promoción? Activalo para empezar una
+                prueba gratis del plan Pro por 7 días.
               </p>
             )}
         </div>
