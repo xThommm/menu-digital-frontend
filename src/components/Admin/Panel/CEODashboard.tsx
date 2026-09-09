@@ -266,6 +266,7 @@ export default function CEODashboard() {
                   </span>
                   <span className={`${s.planPill} ${s[`plan_${effectivePlanForClient(client)}`]}`}>
                     {PLAN_LABEL[effectivePlanForClient(client)]}
+                    {client.isTrialActive && " · Prueba"}
                   </span>
                   <span className={`${s.accountStatus} ${client.active ? s.accountActive : s.accountInactive}`}>
                     {client.active ? "Activo" : "Inactivo"}

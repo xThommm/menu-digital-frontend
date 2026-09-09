@@ -465,6 +465,11 @@ export interface CrmClient {
     code: string
   } | null
   attention?: CrmAttentionCode[]
+  // Marca histórica: la cuenta se originó por la prueba gratis de 7 días de
+  // Pro. isTrialActive es el estado "en prueba ahora mismo" (lazy, false una
+  // vez vencido o al pagar un plan real, aunque trialActive siga en true).
+  trialActive?: boolean
+  isTrialActive?: boolean
 }
 
 export interface CrmAttentionSummary {
@@ -492,6 +497,8 @@ export interface CrmClientDetailUser {
   active: boolean
   hasDelivery: boolean
   createdAt: string
+  trialActive?: boolean
+  isTrialActive?: boolean
   contactInfo: Pick<ContactInfo, "businessName" | "mail" | "number" | "address">
 }
 
