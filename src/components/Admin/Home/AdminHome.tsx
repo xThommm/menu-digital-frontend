@@ -1,10 +1,33 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import {
+  MapPin,
+  Pizza,
+  Star,
+  Coffee,
+  ClipboardCheck,
+  UtensilsCrossed,
+  QrCode,
+  Zap,
+  FileSpreadsheet,
+  Palette,
+  FolderTree,
+  Clock,
+  Smartphone,
+  Handshake,
+  TrendingUp,
+  ShieldCheck,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import BrandMark from "../../Common/BrandMark";
 import styles from "./AdminHome.module.css";
 import { usePlans } from "../../../hooks/usePlans";
 import { getPlanFeatureLabels } from "../../../lib/plans";
 import Spinner from "../../Common/Spinner";
+
+const SITE_URL = "https://www.menudigitalapp.com.ar";
+const QR_REGISTER_SRC = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${SITE_URL}/register`;
 
 // ─────────────────────────────────────────────
 // DATOS
@@ -44,6 +67,30 @@ import Spinner from "../../Common/Spinner";
 //     initial: "H",
 //   },
 // ];
+
+type IconCard = { icon: LucideIcon; title: string; desc: string; n?: string };
+
+const STEPS: IconCard[] = [
+  { icon: ClipboardCheck, title: "Elegís tu plan", desc: "Seleccionás el plan que mejor se ajusta a tu negocio. Sin contratos, sin letras chicas.", n: "1" },
+  { icon: UtensilsCrossed, title: "Cargás tu menú", desc: "Usás nuestra interfaz sencilla o subís un Excel con todos tus productos de una. Agregás fotos, precios y categorías.", n: "2" },
+  { icon: QrCode, title: "Tus clientes lo ven", desc: "Tu menú queda disponible en menudigitalapp.com.ar/tu-local/menu. Lo compartís por WhatsApp, Instagram o imprimís el QR.", n: "3" },
+];
+
+const FEATURES: IconCard[] = [
+  { icon: Zap, title: "Actualizaciones instantáneas", desc: "Cambiá precios, ocultá platos agotados o agregá el especial del día. Se actualiza en tiempo real para todos tus clientes." },
+  { icon: FileSpreadsheet, title: "Carga masiva por Excel", desc: "¿Tenés 80 productos? Completá la plantilla y subila. El sistema detecta qué cambió y te muestra un resumen antes de confirmar." },
+  { icon: Palette, title: "Diseño a tu imagen", desc: "Elegí entre múltiples templates y personalizá con el logo y los colores de tu local. Tu menú, tu identidad." },
+  { icon: FolderTree, title: "Secciones y categorías", desc: "Organizá tu menú como más te guste: secciones generales, categorías, extras y destacados. La estructura que necesite tu negocio." },
+  { icon: Clock, title: "Ofertas programadas", desc: "Configurá un precio de oferta con fechas de inicio y fin. Se activa y desactiva solo, sin que tengas que acordarte." },
+  { icon: Smartphone, title: "Funciona en cualquier celular", desc: "Sin descargas, sin apps. Tus clientes entran desde el navegador y ven el menú al instante, desde cualquier dispositivo." },
+];
+
+const ABOUT_CARDS: IconCard[] = [
+  { icon: Handshake, title: "Soporte real", desc: "Respondemos por WhatsApp. Sin tickets, sin esperas de 48hs." },
+  { icon: TrendingUp, title: "Siempre mejorando", desc: "Escuchamos a nuestros clientes y lanzamos mejoras cada mes." },
+  { icon: ShieldCheck, title: "Tus datos, seguros", desc: "Información encriptada y respaldada todos los días." },
+  { icon: Wallet, title: "Sin sorpresas", desc: "Precio fijo mensual. Sin comisiones por venta ni costos ocultos." },
+];
 
 // ─────────────────────────────────────────────
 // HOOK: PARALLAX
@@ -138,6 +185,19 @@ function useCounterOnView(
 }
 
 // ─────────────────────────────────────────────
+// HOOK: TÍTULO DE PÁGINA (restaura el título anterior al desmontar)
+// ─────────────────────────────────────────────
+function useDocumentTitle(title: string) {
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = title;
+    return () => {
+      document.title = previousTitle;
+    };
+  }, [title]);
+}
+
+// ─────────────────────────────────────────────
 // SUBCOMPONENTE: CURSOR PERSONALIZADO
 // ─────────────────────────────────────────────
 function CustomCursor() {
@@ -203,10 +263,10 @@ function PhoneMockup() {
         <div className={styles.mockScreen}>
           <div className={styles.mockBar} />
           <div className={styles.mockBiz}>La Pérgola Café</div>
-          <div className={styles.mockLoc}>📍 Palermo, CABA</div>
-          <div className={styles.mockSection}>🍕 Pizzas</div>
+          <div className={styles.mockLoc}><MapPin className={styles.mockIcon} />Palermo, CABA</div>
+          <div className={styles.mockSection}><Pizza className={styles.mockIcon} />Pizzas</div>
           {[
-            { name: "Napolitana", desc: "Tomate y mozzarella", price: "$2.800", badge: "⭐ Destacada" },
+            { name: "Napolitana", desc: "Tomate y mozzarella", price: "$2.800", badge: "Destacada" },
             { name: "Fugazza", desc: "Cebolla y mozzarella", price: "$2.600" },
             { name: "Especial", desc: "Ingredientes de estación", price: "$3.200" },
           ].map((item, i) => (
@@ -214,12 +274,12 @@ function PhoneMockup() {
               <div>
                 <div className={styles.mockItemName}>{item.name}</div>
                 <div className={styles.mockItemDesc}>{item.desc}</div>
-                {item.badge && <div className={styles.mockBadge}>{item.badge}</div>}
+                {item.badge && <div className={styles.mockBadge}><Star className={styles.mockIcon} />{item.badge}</div>}
               </div>
               <div className={styles.mockItemPrice}>{item.price}</div>
             </div>
           ))}
-          <div className={styles.mockSection} style={{ marginTop: 16 }}>☕ Bebidas</div>
+          <div className={styles.mockSection} style={{ marginTop: 16 }}><Coffee className={styles.mockIcon} />Bebidas</div>
           {[
             { name: "Agua mineral", desc: "500ml", price: "$800" },
             { name: "Gaseosa", desc: "Lata 354ml", price: "$950" },
@@ -241,7 +301,7 @@ function PhoneMockup() {
 // ─────────────────────────────────────────────
 // SUBCOMPONENTE: QR FRAME
 // ─────────────────────────────────────────────
-function QRFrame({ children }: { children?: React.ReactNode }) {
+function QRFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className={styles.qrVisual}>
       <div className={styles.qrFrame}>
@@ -250,13 +310,7 @@ function QRFrame({ children }: { children?: React.ReactNode }) {
         <div className={`${styles.qrCorner} ${styles.qrBl}`} />
         <div className={`${styles.qrCorner} ${styles.qrBr}`} />
         <div className={styles.scanLine} />
-        {children ?? (
-          <img 
-            src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://www.menudigitalapp.com.ar/register" 
-            alt="QR Login Menu Digital App" 
-            style={{ width: '100%', height: 'auto', display: 'block' }}
-          />
-        )}
+        {children}
       </div>
       <p className={styles.qrLabel}>↑ Tu QR personalizado</p>
     </div>
@@ -285,6 +339,7 @@ export default function HomePage() {
 
   useParallax();
   useReveal();
+  useDocumentTitle("Menú Digital App — Tu menú, en el celular de tus clientes");
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 80);
@@ -342,7 +397,7 @@ useEffect(() => {
         <nav className={styles.nav} ref={navRef}>
   <a className={styles.navLogo} href="/">
     <BrandMark className={styles.navLogoMark} />
-    Menú<span> Digital</span>
+    Menú<span> Digital App</span>
   </a>
  
   {/* Links — ocultos en mobile, sin cambios en desktop */}
@@ -411,9 +466,9 @@ useEffect(() => {
 
           <div className={styles.heroInner}>
             <div className={styles.heroText}>
-              <div className={`${styles.heroTag} ${visible ? styles.vis : ""}`}>
+              {/* <div className={`${styles.heroTag} ${visible ? styles.vis : ""}`}>
                 🇦🇷 Hecho para gastronomía argentina
-              </div>
+              </div> */}
               <h1 className={`${styles.heroH1} ${visible ? styles.vis : ""}`}>
                 Tu menú,<br />en el <em>celular</em><br />de tus clientes.
               </h1>
@@ -468,20 +523,16 @@ useEffect(() => {
         <section className={styles.how} id="how">
           <div className={styles.sectionInner}>
             <div className={styles.reveal}>
-              <div className={styles.eyebrow}>¿Cómo funciona?</div>
+              {/* <div className={styles.eyebrow}>¿Cómo funciona?</div> */}
               <h2 className={styles.sectionH2}>
                 De cero a menú publicado<br />en <em>tres pasos.</em>
               </h2>
             </div>
             <div className={styles.steps}>
-              {[
-                { icon: "🧾", title: "Elegís tu plan", desc: "Seleccionás el plan que mejor se ajusta a tu negocio. Sin contratos, sin letras chicas.", n: "1" },
-                { icon: "🍽️", title: "Cargás tu menú", desc: "Usás nuestra interfaz sencilla o subís un Excel con todos tus productos de una. Agregás fotos, precios y categorías.", n: "2" },
-                { icon: "📲", title: "Tus clientes lo ven", desc: "Tu menú queda disponible en menudigitalapp.com.ar/tu-local/menu. Lo compartís por WhatsApp, Instagram o imprimís el QR.", n: "3" },
-              ].map((s, i) => (
+              {STEPS.map((s, i) => (
                 <div className={`${styles.step} ${styles.reveal}`} key={i} data-hover>
                   <div className={styles.stepNum}>{s.n}</div>
-                  <div className={styles.stepIcon}>{s.icon}</div>
+                  <s.icon className={styles.stepIcon} />
                   <div className={styles.stepTitle}>{s.title}</div>
                   <div className={styles.stepDesc}>{s.desc}</div>
                 </div>
@@ -503,22 +554,15 @@ useEffect(() => {
         <section className={styles.features} id="features">
           <div className={styles.sectionInner}>
             <div className={styles.reveal}>
-              <div className={styles.eyebrow}>Funcionalidades</div>
+              {/* <div className={styles.eyebrow}>Funcionalidades</div> */}
               <h2 className={styles.sectionH2}>
                 Todo lo que necesitás.<br /><em>Nada que sobre.</em>
               </h2>
             </div>
             <div className={styles.featGrid}>
-              {[
-                { icon: "⚡", title: "Actualizaciones instantáneas", desc: "Cambiá precios, ocultá platos agotados o agregá el especial del día. Se actualiza en tiempo real para todos tus clientes." },
-                { icon: "📊", title: "Carga masiva por Excel", desc: "¿Tenés 80 productos? Completá la plantilla y subila. El sistema detecta qué cambió y te muestra un resumen antes de confirmar." },
-                { icon: "🎨", title: "Diseño a tu imagen", desc: "Elegí entre múltiples templates y personalizá con el logo y los colores de tu local. Tu menú, tu identidad." },
-                { icon: "🗂️", title: "Secciones y categorías", desc: "Organizá tu menú como más te guste: secciones generales, categorías, extras y destacados. La estructura que necesite tu negocio." },
-                { icon: "🕐", title: "Ofertas programadas", desc: "Configurá un precio de oferta con fechas de inicio y fin. Se activa y desactiva solo, sin que tengas que acordarte." },
-                { icon: "📱", title: "Funciona en cualquier celular", desc: "Sin descargas, sin apps. Tus clientes entran desde el navegador y ven el menú al instante, desde cualquier dispositivo." },
-              ].map((f, i) => (
+              {FEATURES.map((f, i) => (
                 <div className={`${styles.featCard} ${styles.reveal}`} key={i} data-hover>
-                  <div className={styles.featIcon}>{f.icon}</div>
+                  <f.icon className={styles.featIcon} />
                   <div className={styles.featTitle}>{f.title}</div>
                   <div className={styles.featDesc}>{f.desc}</div>
                 </div>
@@ -531,7 +575,7 @@ useEffect(() => {
         <section className={styles.pricing} id="plans">
           <div className={styles.pricingInner}>
             <div className={`${styles.pricingHeader} ${styles.reveal}`}>
-              <div className={styles.eyebrow}>Planes y precios</div>
+              {/* <div className={styles.eyebrow}>Planes y precios</div> */}
               <h2 className={styles.sectionH2}>
                 Elegí cómo empezar.<br /><em>Sin sorpresas.</em>
               </h2>
@@ -572,15 +616,15 @@ useEffect(() => {
   <div className={styles.qrInner}>
     <div className={styles.reveal}>
       <QRFrame>
-        <img 
-          src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://www.menudigitalapp.com.ar/register" 
-          alt="QR Login Menu Digital App" 
+        <img
+          src={QR_REGISTER_SRC}
+          alt="Código QR para crear tu cuenta en Menú Digital App"
           style={{ width: '100%', height: 'auto', display: 'block' }}
         />
       </QRFrame>
     </div>
     <div className={styles.reveal}>
-      <div className={styles.eyebrow}>Sin complicaciones</div>
+      {/* <div className={styles.eyebrow}>Sin complicaciones</div> */}
       <h2 className={styles.sectionH2}>
         Un QR.<br /><em>Todo tu menú.</em>
       </h2>
@@ -608,7 +652,7 @@ useEffect(() => {
         <section className={styles.about} id="about">
           <div className={styles.aboutInner}>
             <div className={`${styles.aboutText} ${styles.reveal}`}>
-              <div className={styles.eyebrow}>Quiénes somos</div>
+              {/* <div className={styles.eyebrow}>Quiénes somos</div> */}
               <h2 className={styles.sectionH2}>
                 Construido por gente<br /><em>que ama la gastronomía.</em>
               </h2>
@@ -616,23 +660,18 @@ useEffect(() => {
                 Somos un equipo argentino que creció entre mesas, cocinas y cartas laminadas. Sabemos lo que cuesta imprimir el menú cada vez que cambia un precio, y la cara que pone el mozo cuando el cliente pide algo que ya no hay.
               </p>
               <p className={styles.aboutP}>
-                Menú Digital nació para resolver eso: una herramienta simple, pensada para dueños de locales reales, no para técnicos. Si podés mandar un WhatsApp, podés manejar tu menú digital.
+                Menú Digital App nació para resolver eso: una herramienta simple, pensada para dueños de locales reales, no para técnicos. Si podés mandar un WhatsApp, podés manejar tu menú digital.
               </p>
-              <div className={styles.aboutPills}>
+              {/* <div className={styles.aboutPills}>
                 <span className={styles.pill}>🇦🇷 100% argentino</span>
                 <span className={styles.pill}>💬 Soporte en español</span>
                 <span className={styles.pill}>🔒 Datos seguros</span>
-              </div>
+              </div> */}
             </div>
             <div className={styles.aboutVisual}>
-              {[
-                { icon: "🤝", title: "Soporte real", desc: "Respondemos por WhatsApp. Sin tickets, sin esperas de 48hs." },
-                { icon: "📈", title: "Siempre mejorando", desc: "Escuchamos a nuestros clientes y lanzamos mejoras cada mes." },
-                { icon: "🔒", title: "Tus datos, seguros", desc: "Información encriptada y respaldada todos los días." },
-                { icon: "💰", title: "Sin sorpresas", desc: "Precio fijo mensual. Sin comisiones por venta ni costos ocultos." },
-              ].map((c, i) => (
+              {ABOUT_CARDS.map((c, i) => (
                 <div className={`${styles.aboutCard} ${styles.reveal}`} key={i} data-hover>
-                  <div className={styles.aboutCardIcon}>{c.icon}</div>
+                  <c.icon className={styles.aboutCardIcon} />
                   <div className={styles.aboutCardTitle}>{c.title}</div>
                   <div className={styles.aboutCardDesc}>{c.desc}</div>
                 </div>
@@ -663,7 +702,7 @@ useEffect(() => {
           <div className={styles.footInner}>
             <div className={styles.footLogo}>
               <BrandMark className={styles.footLogoMark} />
-              <span>Menú Digital</span>
+              <span>Menú Digital App</span>
             </div>
             <div className={styles.footLinks}>
               <Link to="/terminos">Términos</Link>
@@ -673,7 +712,7 @@ useEffect(() => {
               <Link to="/arrepentimiento">Botón de Arrepentimiento</Link>
               <Link to="/baja">Botón de Baja de Servicio</Link>
             </div>
-            <div className={styles.footCopy}>© 2026 Menú Digital. Hecho en Argentina 🇦🇷</div>
+            <div className={styles.footCopy}>© 2026 Menú Digital App. Hecho en Argentina 🇦🇷</div>
           </div>
         </footer>
 

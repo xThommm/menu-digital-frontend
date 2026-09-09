@@ -929,7 +929,7 @@ onboarding/alertas CRM, `PlanFeatures` y `BooleanPlanFeature`. El DTO comercial 
   modo de atrapar errores de render). `getDerivedStateFromError`, `componentDidCatch`
   (loguea, hook para Sentry), `handleReload` y un fallback con botón "Recargar".
 - **`BrandMark.tsx`** — imagen decorativa compartida desde
-  `public/brand/menu-digital-app-brand-mark.png`, clase global `md-brand-mark`.
+  `public/brand/menu-digital-logo-mark.svg`, clase global `md-brand-mark`.
 - **`FreePlanAd.tsx`** — publicidad reutilizable en la landing/carta cuando
   `features.sin_publicidad` no está activo, cualquiera sea el plan. Marca y CTA a
   `/`; estilos globales `t-free-plan-ad*`.

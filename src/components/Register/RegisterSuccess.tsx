@@ -198,7 +198,7 @@ export default function RegisterSuccessPage() {
   return (
     <div className="auth-page-shell">
       <div className={`auth-surface ${styles.card}`} aria-live="polite">
-        <span className={styles.eyebrow}>Menú Digital · Activación</span>
+        <span className={styles.eyebrow}>Menú Digital App · Activación</span>
         <div className={`${styles.icon} ${error ? styles.iconError : styles.iconPending}`}>
           {error ? "!" : isPaymentPending ? "…" : "✓"}
         </div>

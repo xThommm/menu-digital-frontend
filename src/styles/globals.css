@@ -30,9 +30,9 @@
 
   /* — Paleta base — */
   --espresso:    #000000;
-  --gold:        #C9933A;
-  --gold-light:  #E0B86A;
-  --gold-dim:    #8A6224;
+  --gold:        #B9362A;
+  --gold-light:  #d3554a;
+  --gold-dim:    #8d1f15;
   --cream:       #FAF7F2;
   --sand:        #F5F0E8;
   --sage:        #5A6B4F;
@@ -153,9 +153,9 @@
   /* Bordes cálidos intermedios (oro al 10-40% sobre fondo oscuro),
      usados en hover de cards/botones donde --admin-border-warm
      es demasiado saturado y --admin-border-default muy neutro. */
-  --admin-border-gold-soft:   rgba(201, 168, 76, 0.10);
-  --admin-border-gold-mid:    rgba(201, 168, 76, 0.22);
-  --admin-border-gold-strong: rgba(201, 168, 76, 0.4);
+  --admin-border-gold-soft:   #b9362a2b;
+  --admin-border-gold-mid:    #b9362a80;
+  --admin-border-gold-strong: #B9362A;
 
   --admin-text-primary:   #ede4d0;
   --admin-text-secondary: #d4c9b0;
@@ -164,11 +164,11 @@
 
   /* Texto secundario "tibio" (entre muted y secondary), usado en
      stats pills y botones outline del Dashboard. */
-  --admin-text-warm:      #a09070;
+  --admin-text-warm:      #a07d7a;
 
-  --admin-gold:           #c9a84c;
-  --admin-gold-hover:     #dabb62;
-  --admin-gold-glow:      rgba(201, 168, 76, 0.12);
+  --admin-gold:           #B9362A;
+  --admin-gold-hover:     #d14f44;
+  --admin-gold-glow:      #b9362a1c;
   /* Tinta para texto/íconos SOBRE el dorado (botones primarios). Es
      deliberadamente oscura y NO se redefine en el tema claro: el dorado es
      de tono medio en ambos temas, así que el texto encima siempre tiene que
@@ -240,8 +240,8 @@
   /* Sombras específicas del Dashboard — glow dorado en el logo
      y en cards al hacer hover, y la sombra ambiental de la
      storefront card (reposo + hover). */
-  --admin-shadow-logo:          0 2px 10px rgba(201, 168, 76, 0.28);
-  --admin-shadow-logo-hover:    0 4px 18px rgba(201, 168, 76, 0.42);
+  --admin-shadow-logo:          0 2px 10px rgba(185, 54, 42, 0.28);
+  --admin-shadow-logo-hover:    0 4px 18px rgba(185, 54, 42, 0.42);
   --admin-shadow-card-rest:     0 0 0 0.5px rgba(201, 168, 76, 0.1) inset, 0 4px 32px rgba(0, 0, 0, 0.4);
   --admin-shadow-card-hover:    0 0 0 0.5px rgba(201, 168, 76, 0.15) inset, 0 8px 40px rgba(0, 0, 0, 0.45);
   --admin-shadow-navcard-hover:         0 4px 24px rgba(201, 168, 76, 0.08);
@@ -283,9 +283,9 @@
 
   /* Los border-gold-* son rgba de oro: sobre cream se ven más flojos que
      sobre negro, así que les subimos el alpha para conservar presencia. */
-  --admin-border-gold-soft:   rgba(184, 145, 47, 0.16);
-  --admin-border-gold-mid:    rgba(184, 145, 47, 0.32);
-  --admin-border-gold-strong: rgba(184, 145, 47, 0.50);
+ --admin-border-gold-soft:   #b9362a2b;
+  --admin-border-gold-mid:    #b9362a80;
+  --admin-border-gold-strong: #B9362A;
 
   --admin-text-primary:   #2a2118;
   --admin-text-secondary: #4a3d29;
@@ -295,9 +295,9 @@
 
   /* Oro un poco más profundo: #c9a84c sobre cream tiene poco contraste
      como texto/acento; este lee bien manteniéndose en la misma familia. */
-  --admin-gold:           #b8912f;
-  --admin-gold-hover:     #a37f24;
-  --admin-gold-glow:      rgba(184, 145, 47, 0.14);
+ --admin-gold:           #B9362A;
+  --admin-gold-hover:     #d14f44;
+  --admin-gold-glow:      #b9362a1c;
 
   /* Cores más profundos: en oscuro leían sobre negro; sobre cream
      necesitan más contraste. Los -bg/-border derivados se recalculan
@@ -318,8 +318,8 @@
   --admin-shadow-modal: 0 20px 52px rgba(44,24,16,0.18), 0 0 0 0.5px rgba(44,24,16,0.05) inset;
   --admin-shadow-dock: 0 12px 32px rgba(44,24,16,0.16), 0 0 0 0.5px rgba(44,24,16,0.04) inset;
   --admin-shadow-popover: 0 16px 36px rgba(44,24,16,0.18), 0 0 0 0.5px rgba(44,24,16,0.04) inset;
-  --admin-shadow-logo:          0 2px 10px rgba(184, 145, 47, 0.30);
-  --admin-shadow-logo-hover:    0 4px 18px rgba(184, 145, 47, 0.44);
+  --admin-shadow-logo:          0 2px 10px rgba(185, 54, 42, 0.30);
+  --admin-shadow-logo-hover:    0 4px 18px rgba(185, 54, 42, 0.44);
   --admin-shadow-card-rest:     0 0 0 0.5px rgba(184, 145, 47, 0.12) inset, 0 4px 24px rgba(44, 24, 16, 0.08);
   --admin-shadow-card-hover:    0 0 0 0.5px rgba(184, 145, 47, 0.20) inset, 0 8px 32px rgba(44, 24, 16, 0.12);
   --admin-shadow-navcard-hover:         0 4px 20px rgba(184, 145, 47, 0.10);
@@ -704,8 +704,8 @@
 
   /* Acento ámbar — antes #ff9500, ahora más cercano a la familia
      dorada del resto de la app (mismo matiz, menos saturado/neón) */
-  --auth-amber:       #ef9536;
-  --auth-amber-dim:   #b8701f;
+  --auth-amber:       #d25044;
+  --auth-amber-dim:   #ae372c;
   --auth-amber-glow:  rgba(239, 149, 54, 0.25);
 
   /* Texto */
@@ -740,6 +740,7 @@
   --auth-shadow-btn:   0 0 28px rgba(239, 149, 54, 0.35);
   --auth-shadow-btn-hover: 0 0 50px rgba(239, 149, 54, 0.6);
   --auth-shadow-logo:  0 0 16px rgba(239, 149, 54, 0.4);
+  --auth-shadow-logo-brand: 0 0 16px rgba(185, 54, 42, 0.4);
   --auth-shadow-checkbox: 0 0 15px rgba(239, 168, 54, 0.35), 0 0 30px rgba(239, 140, 0, 0.15);
 
   /* Checkbox marcado (Login "recordarme", Register "acepto términos") —
@@ -747,8 +748,8 @@
      Register.module.css. Deliberadamente más vívido/saturado que
      --auth-amber (necesita leerse como un check "activo" a simple
      vista), así que es su propio token en vez de reusar --auth-amber. */
-  --auth-checkbox-gradient: linear-gradient(135deg, #ffb000, #ff8c00);
-  --auth-checkbox-border:   #ffb000;
+  --auth-checkbox-gradient: linear-gradient(135deg, #B9362A, #B9362A);
+  --auth-checkbox-border:   #B9362A;
 
   /* Transición */
   --auth-transition:   0.2s ease;
@@ -1431,7 +1432,7 @@ a:hover { opacity: 0.75; }
   font-size: var(--text-base);
 }
 
-/* ── Publicidad de Menú Digital para cartas del plan gratuito ── */
+/* ── Publicidad de Menú Digital App para cartas del plan gratuito ── */
 
 .md-brand-mark {
   display: block;
@@ -1486,9 +1487,9 @@ a:hover { opacity: 0.75; }
 
 .t-free-plan-ad-logo {
   flex: 0 0 auto;
-  width: 32px;
+  width: 75px;
   height: 48px;
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--gold) 40%, transparent));
+  filter: drop-shadow(0 0 10px color-mix(in srgb, #B9362A 40%, transparent));
 }
 
 .t-free-plan-ad-copy {
@@ -1608,7 +1609,7 @@ a:hover { opacity: 0.75; }
   }
 
   .t-free-plan-ad-logo {
-    width: 28px;
+    width: 66px;
     height: 42px;
   }
 

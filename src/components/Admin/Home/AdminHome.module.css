@@ -67,9 +67,9 @@
 .navLogo span { font-style: normal; color: var(--auth-cream); opacity: .7; font-weight: 300; }
 
 .navLogoMark {
-  width: 20px;
+  width: 47px;
   height: 30px;
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--auth-amber) 42%, transparent));
+  filter: drop-shadow(0 0 10px color-mix(in srgb, #B9362A 42%, transparent));
 }
 
 .navLinks {
@@ -261,11 +261,16 @@
 
 .mockBar { width: 60px; height: 4px; background: color-mix(in srgb, var(--auth-amber) 40%, transparent); border-radius: 2px; margin: 0 auto 8px; }
 .mockBiz { font-family: var(--font-auth-display); font-size: .9rem; font-style: italic; color: var(--auth-amber); text-align: center; }
-.mockLoc { font-family: var(--font-auth-mono); font-size: .5rem; color: var(--auth-cream-dim); letter-spacing: .15em; text-align: center; }
+.mockLoc {
+  font-family: var(--font-auth-mono); font-size: .5rem; color: var(--auth-cream-dim); letter-spacing: .15em;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
 .mockSection {
   font-family: var(--font-auth-mono); font-size: .5rem; letter-spacing: .2em;
   color: var(--auth-amber); text-transform: uppercase; margin-top: 8px;
+  display: flex; align-items: center; gap: 4px;
 }
+.mockIcon { width: 10px; height: 10px; stroke-width: 2.5; flex-shrink: 0; }
 .mockItem {
   display: flex; justify-content: space-between; align-items: center;
   padding: 8px 10px;
@@ -276,7 +281,7 @@
 .mockItemDesc { font-size: .5rem; color: var(--auth-cream-dim); margin-top: 2px; }
 .mockItemPrice { font-family: var(--font-auth-mono); font-size: .6rem; color: var(--auth-amber); white-space: nowrap; }
 .mockBadge {
-  display: inline-block;
+  display: inline-flex; align-items: center; gap: 3px;
   background: color-mix(in srgb, var(--auth-amber) 15%, transparent); color: var(--auth-amber);
   font-size: .45rem; font-weight: 600;
   padding: 2px 6px; border-radius: 100px; margin-top: 3px;
@@ -363,7 +368,8 @@
   -webkit-text-stroke: 1px color-mix(in srgb, var(--auth-amber) 18%, transparent);
   position: absolute; top: 1.5rem; right: 2rem; pointer-events: none;
 }
-.stepIcon { font-size: 2.2rem; margin-bottom: 1.5rem; filter: drop-shadow(0 0 12px color-mix(in srgb, var(--auth-amber) 50%, transparent)); }
+.icon { color: var(--auth-amber); stroke-width: 1.75; }
+.stepIcon { composes: icon; width: 2.2rem; height: 2.2rem; margin-bottom: 1.5rem; filter: drop-shadow(0 0 12px color-mix(in srgb, var(--auth-amber) 50%, transparent)); }
 .stepTitle { font-family: var(--font-auth-display); font-size: 1.2rem; font-weight: 700; margin-bottom: .8rem; color: var(--auth-cream); }
 .stepDesc { font-size: .93rem; line-height: 1.75; color: var(--auth-cream-mid); }
 
@@ -413,7 +419,7 @@
 }
 .featCard:hover { border-color: color-mix(in srgb, var(--auth-amber) 25%, transparent); transform: translateY(-3px); }
 .featCard:hover::after { opacity: 1; }
-.featIcon { font-size: 2rem; margin-bottom: 1.2rem; }
+.featIcon { composes: icon; width: 2rem; height: 2rem; margin-bottom: 1.2rem; }
 .featTitle { font-family: var(--font-auth-display); font-size: 1rem; font-weight: 700; margin-bottom: .6rem; color: var(--auth-cream); }
 .featDesc { font-size: .88rem; line-height: 1.7; color: var(--auth-cream-mid); }
 
@@ -532,7 +538,7 @@
   transition: border-color .3s;
 }
 .aboutCard:hover { border-color: color-mix(in srgb, var(--auth-amber) 20%, transparent); }
-.aboutCardIcon { font-size: 1.8rem; margin-bottom: .8rem; }
+.aboutCardIcon { composes: icon; width: 1.8rem; height: 1.8rem; margin-bottom: .8rem; }
 .aboutCardTitle { font-size: .95rem; font-weight: 700; margin-bottom: .4rem; color: var(--auth-cream); }
 .aboutCardDesc { font-size: .82rem; color: var(--auth-cream-mid); line-height: 1.6; }
 
@@ -594,7 +600,7 @@
   color: var(--auth-amber);
 }
 .footLogoMark {
-  width: 18px;
+  width: 44px;
   height: 28px;
 }
 .footLinks { display: flex; gap: 2rem; }

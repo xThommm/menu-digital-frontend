@@ -98,7 +98,7 @@ const getRedirectPath = (user: AuthUser | null) => {
             <div className={styles.logoSq}>
               <BrandMark className={styles.brandMarkImage} />
             </div>
-            <div className={styles.brandName}>Menu<span>Digital</span></div>
+            <div className={styles.brandName}>Menú<span> Digital App</span></div>
           </div>
           <p>Panel de administración</p>
         </div>

@@ -89,10 +89,10 @@ export default function AdminLayout() {
 
         <button type="button" className={s.brand} onClick={() => navigate("/admin")} aria-label="Ir al panel general">
           <div className={s.logoSq} role="img" aria-label="MenuDigital">
-            <BrandMark className={s.brandMarkImage} />
+            <BrandMark inline className={s.brandMarkImage} />
           </div>
           <div className={s.brandText}>
-            <span className={s.brandName}>Menu<span>Digital</span></span>
+            <span className={s.brandName}>Menú<span> Digital App</span></span>
             <span className={s.brandSubtitle}>Panel CEO</span>
           </div>
         </button>
