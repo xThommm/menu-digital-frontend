@@ -34,10 +34,6 @@
       }
     </script>
     <script>
-      // Aplica el tema del panel (claro/oscuro) ANTES de pintar, para no
-      // mostrar un flash del tema equivocado al recargar. Solo escribe el
-      // atributo si el guardado es "light"; "dark" es el default sin atributo.
-      // Ver src/hooks/useTheme.ts.
       (function () {
         try {
           if (localStorage.getItem("panel-theme") === "light") {
