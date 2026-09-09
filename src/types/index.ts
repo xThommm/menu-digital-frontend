@@ -128,6 +128,10 @@ export interface AuthUser {
   // como verificado (`?? true`, ver AuthProvider.toAuthUser) para no
   // bloquear de golpe a nadie con una sesión previa.
   emailVerified?: boolean
+  // Presente si la cuenta vino de un código de promoción (ver registerTrial
+  // en el backend) — mientras esté seteado, cada pago real usa
+  // plan.discountPrice en vez de plan.price (ver UpgradeModal.tsx).
+  sellerID?: string | null
 }
 
 export interface Menu {
@@ -465,6 +469,11 @@ export interface CrmClient {
     code: string
   } | null
   attention?: CrmAttentionCode[]
+  // Marca histórica: la cuenta se originó por la prueba gratis de 7 días de
+  // Pro. isTrialActive es el estado "en prueba ahora mismo" (lazy, false una
+  // vez vencido o al pagar un plan real, aunque trialActive siga en true).
+  trialActive?: boolean
+  isTrialActive?: boolean
 }
 
 export interface CrmAttentionSummary {
@@ -492,6 +501,8 @@ export interface CrmClientDetailUser {
   active: boolean
   hasDelivery: boolean
   createdAt: string
+  trialActive?: boolean
+  isTrialActive?: boolean
   contactInfo: Pick<ContactInfo, "businessName" | "mail" | "number" | "address">
 }
 

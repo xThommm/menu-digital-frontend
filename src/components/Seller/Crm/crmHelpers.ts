@@ -98,6 +98,8 @@ export type SubscriptionView = {
   effectiveSubscription?: CrmClient["effectiveSubscription"];
   subscriptionStatus?: CrmClient["subscriptionStatus"];
   subscriptionExpiresAt?: string | null;
+  trialActive?: CrmClient["trialActive"];
+  isTrialActive?: CrmClient["isTrialActive"];
 };
 
 // El backend entrega el plan efectivo. El fallback mantiene el CRM correcto
@@ -113,8 +115,9 @@ export const effectiveSubscriptionFor = (record: SubscriptionView): CrmClient["s
 
 export const planBadgeLabel = (record: SubscriptionView) => {
   const effective = effectiveSubscriptionFor(record);
+  if (record.isTrialActive) return `${PLAN_LABEL[effective]} · Prueba`;
   if (effective === "free" && record.subscription !== "free") {
-    return `Gratis · ${PLAN_LABEL[record.subscription]} vencido`;
+    return `Gratis · ${PLAN_LABEL[record.subscription]} ${record.trialActive ? "(prueba vencida)" : "vencido"}`;
   }
   return PLAN_LABEL[effective];
 };

@@ -18,7 +18,7 @@ export interface PlanDefinition {
   description: string;
   price: number;
   discountPrice: number | null;
-  // Precio público/default. discountPrice requiere un código de vendedor válido.
+  // Precio público/default. discountPrice requiere un código de promoción válido.
   effectivePrice: number;
   currency: "ARS";
   features: PlanFeatures;
