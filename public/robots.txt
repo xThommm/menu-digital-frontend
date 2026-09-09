@@ -1,10 +1,4 @@
 User-agent: *
 Allow: /
 
-Disallow: /dashboard
-Disallow: /admin
-Disallow: /editor
-Disallow: /login
-Disallow: /register
-
 Sitemap: https://www.menudigitalapp.com.ar/sitemap.xml

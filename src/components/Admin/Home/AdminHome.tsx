@@ -339,7 +339,7 @@ export default function HomePage() {
 
   useParallax();
   useReveal();
-  useDocumentTitle("Menú Digital App — Tu menú, en el celular de tus clientes");
+  useDocumentTitle("Menú Digital QR para Restaurantes | Menú Digital App");
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 80);
@@ -470,10 +470,14 @@ useEffect(() => {
                 🇦🇷 Hecho para gastronomía argentina
               </div> */}
               <h1 className={`${styles.heroH1} ${visible ? styles.vis : ""}`}>
-                Tu menú,<br />en el <em>celular</em><br />de tus clientes.
+                Menú digital QR<br />
+                para <em>restaurantes</em>,<br />
+                bares y cafeterías.
               </h1>
               <p className={`${styles.heroSub} ${visible ? styles.vis : ""}`}>
-                Creá tu menú digital en minutos. Actualizá precios, ocultá platos agotados y dejá que tus clientes lo vean desde cualquier dispositivo — sin descargar nada.
+                Creá la carta digital de tu negocio en minutos. Actualizá productos,
+                precios, ofertas y disponibilidad, y compartí tu menú con un código QR
+                desde cualquier celular — sin apps ni descargas.
               </p>
               <div className={`${styles.heroBtns} ${visible ? styles.vis : ""}`}>
                 <button
