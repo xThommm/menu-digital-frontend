@@ -27,8 +27,8 @@
 }
 
 .logoSq {
-  width: 28px;
-  height: 40px;
+  width: 44px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -193,7 +193,7 @@
 }
 
 .freeBannerLogo {
-  width: 24px;
+  width: 53px;
   height: 34px;
   flex: 0 0 auto;
   filter: drop-shadow(var(--admin-shadow-logo));
@@ -267,7 +267,7 @@
   }
 
   .freeBannerLogo {
-    width: 22px;
+    width: 50px;
     height: 32px;
   }
 

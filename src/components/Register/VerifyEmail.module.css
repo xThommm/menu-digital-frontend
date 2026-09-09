@@ -22,7 +22,7 @@
 }
 
 .logoSq {
-  width: 28px; height: 40px;
+  width: 63px; height: 40px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -30,7 +30,7 @@
 .brandMarkImage {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(var(--auth-shadow-logo));
+  filter: drop-shadow(var(--auth-shadow-logo-brand));
 }
 
 .brandName {
