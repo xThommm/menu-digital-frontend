@@ -126,7 +126,7 @@ export default function UserDashboard() {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch("/api/users/me", {
+        const res = await fetch("/api/users/me/summary", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.status === 401) {

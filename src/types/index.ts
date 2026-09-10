@@ -487,6 +487,30 @@ export interface CrmAttentionSummary {
   noTraffic?: number
 }
 
+// Fila liviana de GET /sellers/crm/summary — mismo DTO que un CrmClient
+// recorta, para el listado de "últimos clientes" del dashboard ejecutivo.
+export interface CrmSummaryRecentClient {
+  _id: string
+  businessName: string
+  username: string
+  slug: string
+  active: boolean
+  createdAt: string
+  isTrialActive: boolean
+  effectiveSubscription: Subscription
+}
+
+// Resumen ejecutivo del CRM (dashboard del CEO): totales, altas del mes y
+// breakdown por plan calculados con una consulta liviana de User, más las
+// mismas alertas operativas que expone listClients bajo attentionSummary.
+export interface CrmSummary {
+  totalClients: number
+  newThisMonth: number
+  planBreakdown: Record<Subscription, number>
+  recentClients: CrmSummaryRecentClient[]
+  attentionSummary: CrmAttentionSummary
+}
+
 export interface CrmClientDetailUser {
   _id: string
   username: string

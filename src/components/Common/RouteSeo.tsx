@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { BLOG_META, BLOG_PATH, MENU_QR_GUIDE } from "../../pages/Blog/blogContent";
 
 const SITE_URL = "https://www.menudigitalapp.com.ar";
 
@@ -8,6 +9,8 @@ type SeoConfig = {
   description: string;
   robots: string;
   canonical?: string;
+  socialType?: "website" | "article";
+  structuredData?: Record<string, unknown>;
 };
 
 function setMeta(name: string, content: string) {
@@ -46,6 +49,51 @@ function setCanonical(url?: string) {
 }
 
 function getSeoConfig(pathname: string): SeoConfig {
+  // React Router acepta mayúsculas y barra final: ambas variantes comparten canonical.
+  const blogPath = pathname.toLowerCase().replace(/\/+$/, "");
+  if (blogPath === BLOG_PATH || blogPath === MENU_QR_GUIDE.path) {
+    const isArticle = blogPath === MENU_QR_GUIDE.path;
+    const title = isArticle ? `${MENU_QR_GUIDE.title} | Menú Digital App` : BLOG_META.title;
+    const description = isArticle ? MENU_QR_GUIDE.description : BLOG_META.description;
+    const canonical = `${SITE_URL}${blogPath}`;
+
+    return {
+      title,
+      description,
+      canonical,
+      robots: "index, follow",
+      socialType: isArticle ? "article" : "website",
+      structuredData: {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": isArticle ? "Article" : "CollectionPage",
+            "@id": `${canonical}#${isArticle ? "article" : "webpage"}`,
+            url: canonical,
+            name: isArticle ? MENU_QR_GUIDE.title : "Guías y preguntas",
+            ...(isArticle ? {
+              headline: MENU_QR_GUIDE.title,
+              mainEntityOfPage: canonical,
+              author: { "@id": `${SITE_URL}/#organization` },
+            } : {}),
+            description,
+            inLanguage: "es-AR",
+            publisher: { "@id": `${SITE_URL}/#organization` },
+            isPartOf: { "@id": `${SITE_URL}/#website` },
+          },
+          {
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Inicio", item: `${SITE_URL}/` },
+              { "@type": "ListItem", position: 2, name: "Guías y preguntas", item: `${SITE_URL}${BLOG_PATH}` },
+              ...(isArticle ? [{ "@type": "ListItem", position: 3, name: MENU_QR_GUIDE.title, item: canonical }] : []),
+            ],
+          },
+        ],
+      },
+    };
+  }
+
   // ─────────────────────────────────────────────
   // HOME
   // ─────────────────────────────────────────────
@@ -240,6 +288,47 @@ export default function RouteSEO() {
     setMeta("robots", config.robots);
 
     setCanonical(config.canonical);
+
+    if (!config.socialType || !config.structuredData) return;
+
+    // El blog también actualiza las vistas al compartir. Al salir, restaura
+    // estas etiquetas para no dejar los datos del artículo en otra página.
+    const socialTags = [
+      ["property", "og:title", config.title],
+      ["property", "og:description", config.description],
+      ["property", "og:url", config.canonical!],
+      ["property", "og:type", config.socialType],
+      ["property", "og:image", `${SITE_URL}/brand/menu-digital-logo-mark.svg`],
+      ["property", "og:image:alt", "Menú Digital App"],
+      ["name", "twitter:title", config.title],
+      ["name", "twitter:description", config.description],
+      ["name", "twitter:image", `${SITE_URL}/brand/menu-digital-logo-mark.svg`],
+      ["name", "twitter:image:alt", "Menú Digital App"],
+    ];
+    const restoreTags = socialTags.map(([attribute, name, content]) => {
+      const existing = document.querySelector<HTMLMetaElement>(`meta[${attribute}="${name}"]`);
+      const previous = existing?.getAttribute("content");
+      const meta = existing ?? document.createElement("meta");
+      meta.setAttribute(attribute, name);
+      meta.setAttribute("content", content);
+      if (!existing) document.head.appendChild(meta);
+      return () => {
+        if (!existing) meta.remove();
+        else if (previous == null) meta.removeAttribute("content");
+        else meta.setAttribute("content", previous);
+      };
+    });
+
+    const schema = document.createElement("script");
+    schema.type = "application/ld+json";
+    schema.dataset.blogSeo = "true";
+    schema.textContent = JSON.stringify(config.structuredData);
+    document.head.appendChild(schema);
+
+    return () => {
+      schema.remove();
+      restoreTags.forEach((restore) => restore());
+    };
   }, [pathname]);
 
   return null;

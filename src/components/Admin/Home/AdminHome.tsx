@@ -31,6 +31,7 @@ import { usePlans } from "../../../hooks/usePlans";
 import { useAuthTheme } from "../../../hooks/useAuthTheme";
 import { getPlanFeatureLabels } from "../../../lib/plans";
 import Spinner from "../../Common/Spinner";
+import { BLOG_PATH, MENU_QR_GUIDE } from "../../../pages/Blog/blogContent";
 
 const SITE_URL = "https://www.menudigitalapp.com.ar";
 const QR_REGISTER_SRC = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${SITE_URL}/register`;
@@ -530,7 +531,7 @@ useEffect(() => {
   <li><a href="#how">Cómo funciona</a></li>
   <li><a href="#features">Funciones</a></li>
   <li><a href="#plans">Precios</a></li>
-  <li><a href="#faq">Preguntas</a></li>
+  <li><Link to={BLOG_PATH}>Guías y preguntas</Link></li>
   <li><a href="#about">Quiénes somos</a></li>
 </ul>
  
@@ -569,13 +570,13 @@ useEffect(() => {
     <a href="#features" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
       Funciones
     </a>
-    <a
-  href="#faq"
+    <Link
+  to={BLOG_PATH}
   className={styles.mobileLink}
   onClick={() => setMenuOpen(false)}
 >
-  Preguntas frecuentes
-</a>
+  Guías y preguntas
+</Link>
     <a href="#about" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
       Quiénes somos
     </a>
@@ -768,56 +769,9 @@ useEffect(() => {
                   </div>
                 </div>
 
-                <div className={styles.seoGrid}>
-                  <article className={`${styles.seoCard} ${styles.reveal}`}>
-                    <h3>Actualizá precios sin reimprimir</h3>
-                    <p>
-                      Si cambia el precio de un producto, editás la carta desde tu panel
-                      y el cambio aparece automáticamente en el menú que ya utilizan tus
-                      clientes. El código QR sigue siendo el mismo.
-                    </p>
-                  </article>
-
-                  <article className={`${styles.seoCard} ${styles.reveal}`}>
-                    <h3>Mostrá solo lo que tenés disponible</h3>
-                    <p>
-                      Podés ocultar temporalmente productos agotados, destacar platos,
-                      organizar categorías y publicar ofertas sin eliminar información
-                      que después quieras volver a utilizar.
-                    </p>
-                  </article>
-
-                  <article className={`${styles.seoCard} ${styles.reveal}`}>
-                    <h3>Una carta pensada para celulares</h3>
-                    <p>
-                      El menú se consulta directamente desde el navegador y está diseñado
-                      para que los clientes puedan recorrer categorías, productos,
-                      fotografías y precios cómodamente desde el teléfono.
-                    </p>
-                  </article>
-
-                  <article className={`${styles.seoCard} ${styles.reveal}`}>
-                    <h3>Para restaurantes, bares y cafeterías</h3>
-                    <p>
-                      Podés usar Menú Digital App para cartas gastronómicas de distintos
-                      tamaños, desde una cafetería con pocos productos hasta restaurantes
-                      con múltiples secciones, categorías y variantes.
-                    </p>
-                  </article>
-                </div>
-
-                <div className={`${styles.seoCta} ${styles.reveal}`}>
-                  <h3>Creá tu menú digital QR</h3>
-
-                  <p>
-                    Empezá con tu carta online, cargá tus productos y compartila con tus
-                    clientes mediante un código QR.
-                  </p>
-
-                  <Link className={styles.btnPrimary} to="/register?plan=free">
-                    Crear mi menú digital →
-                  </Link>
-                </div>
+                <Link className={styles.btnPrimary} to={MENU_QR_GUIDE.path}>
+                  Leé la guía sobre menús digitales QR →
+                </Link>
               </div>
             </section>
 
@@ -934,6 +888,9 @@ useEffect(() => {
                   </details>
                 ))}
               </div>
+              <Link className={styles.btnPrimary} to={BLOG_PATH}>
+                Explorar guías y preguntas →
+              </Link>
             </div>
           </section>
 
@@ -999,6 +956,7 @@ useEffect(() => {
               <span>Menú Digital App</span>
             </div>
             <div className={styles.footLinks}>
+              <Link to={BLOG_PATH}>Guías y preguntas</Link>
               <Link to="/terminos">Términos</Link>
               <Link to="/privacidad">Privacidad</Link>
               <Link to="/contacto">Contacto</Link>

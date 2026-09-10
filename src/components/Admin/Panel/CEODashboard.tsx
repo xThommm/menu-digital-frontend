@@ -2,23 +2,16 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import apiClient from "../../../api/client";
 import { listAdminPayments } from "../../../api/adminPayments";
-import { listCrmClients } from "../../../api/crm";
+import { getCrmSummary } from "../../../api/crm";
 import { useAuth } from "../../../context/useAuth";
 import { formatPaymentAmount } from "../../../lib/adminPayments";
 import { PLAN_LABEL, PLAN_ORDER } from "../../../lib/plans";
 import type {
   AdminPaymentsResponse,
   AdminStats,
-  CrmAttentionSummary,
-  CrmClient,
-  Subscription,
+  CrmSummary,
 } from "../../../types";
 import s from "./CEODashboard.module.css";
-
-interface CrmDashboardData {
-  clients: CrmClient[];
-  attentionSummary?: CrmAttentionSummary;
-}
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -32,21 +25,10 @@ function timeAgo(dateStr: string) {
   return `Hace ${years} ${years === 1 ? "año" : "años"}`;
 }
 
-// El CRM ya entrega el plan efectivo. El fallback cubre respuestas antiguas
-// para que una suscripción vencida nunca vuelva a contarse como paga en el
-// resumen ejecutivo.
-function effectivePlanForClient(client: CrmClient): Subscription {
-  if (client.effectiveSubscription) return client.effectiveSubscription;
-  if (client.subscription === "free" || client.subscriptionStatus === "expired") return "free";
-  if (!client.subscriptionExpiresAt) return client.subscription;
-  const expiresAt = new Date(client.subscriptionExpiresAt).getTime();
-  return !Number.isFinite(expiresAt) || expiresAt <= Date.now() ? "free" : client.subscription;
-}
-
 export default function CEODashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
-  const [crmData, setCrmData] = useState<CrmDashboardData | null>(null);
+  const [crmSummary, setCrmSummary] = useState<CrmSummary | null>(null);
   const [paymentsData, setPaymentsData] = useState<AdminPaymentsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -56,13 +38,13 @@ export default function CEODashboard() {
 
     Promise.allSettled([
       apiClient.get<AdminStats>("/admin/stats").then((response) => response.data),
-      listCrmClients(),
+      getCrmSummary(),
       listAdminPayments({ page: 1, limit: 5 }),
     ]).then(([statsResult, crmResult, paymentsResult]) => {
       if (cancelled) return;
 
       if (statsResult.status === "fulfilled") setStats(statsResult.value);
-      if (crmResult.status === "fulfilled") setCrmData(crmResult.value);
+      if (crmResult.status === "fulfilled") setCrmSummary(crmResult.value);
       if (paymentsResult.status === "fulfilled") setPaymentsData(paymentsResult.value);
 
       const failedSources = [statsResult, crmResult, paymentsResult]
@@ -86,24 +68,18 @@ export default function CEODashboard() {
     );
   }
 
-  const clients = crmData?.clients ?? [];
-  const attention = crmData?.attentionSummary;
+  // El backend ya entrega estos totales calculados (totalClients, newThisMonth,
+  // planBreakdown, recentClients) desde una consulta liviana — el front solo
+  // los lee, no los deriva de la lista completa de clientes.
+  const attention = crmSummary?.attentionSummary;
   const payments = paymentsData?.summary;
-  const totalClients = crmData ? clients.length : null;
-  const newThisMonth = clients.filter((client) => {
-    const createdAt = new Date(client.createdAt);
-    const now = new Date();
-    return createdAt.getMonth() === now.getMonth()
-      && createdAt.getFullYear() === now.getFullYear();
-  }).length;
-  const planBreakdown = clients.reduce<Record<Subscription, number>>((totals, client) => {
-    totals[effectivePlanForClient(client)] += 1;
-    return totals;
-  }, { free: 0, basic: 0, pro: 0 });
+  const totalClients = crmSummary?.totalClients ?? null;
+  const newThisMonth = crmSummary?.newThisMonth ?? 0;
+  const planBreakdown = crmSummary?.planBreakdown ?? { free: 0, basic: 0, pro: 0 };
   const publishedPercent = stats && stats.usuarios.total > 0
     ? Math.round((stats.usuarios.conMenuPublicado / stats.usuarios.total) * 100)
     : 0;
-  const recentClients = clients.slice(0, 5);
+  const recentClients = crmSummary?.recentClients ?? [];
   const today = new Date().toLocaleDateString("es-AR", {
     weekday: "long",
     day: "numeric",
@@ -163,7 +139,7 @@ export default function CEODashboard() {
             eyebrow="Clientes 360"
             title="Gestionar CRM"
             description="Abrí fichas, onboarding, seguimientos y alertas de cada cliente."
-            metric={crmData ? `${attention?.clients ?? 0} requieren atención` : "Abrir módulo"}
+            metric={crmSummary ? `${attention?.clients ?? 0} requieren atención` : "Abrir módulo"}
           />
           <ModuleShortcut
             to="/admin/payments"
@@ -226,7 +202,7 @@ export default function CEODashboard() {
                   <div className={s.planRow} key={plan}>
                     <div className={s.planRowHeader}>
                       <span className={`${s.planPill} ${s[`plan_${plan}`]}`}>{PLAN_LABEL[plan]}</span>
-                      <span>{crmData ? `${count} · ${percent}%` : "—"}</span>
+                      <span>{crmSummary ? `${count} · ${percent}%` : "—"}</span>
                     </div>
                     <div className={s.planTrack} aria-hidden="true">
                       <span className={`${s.planFill} ${s[`planFill_${plan}`]}`} style={{ width: `${percent}%` }} />
@@ -236,7 +212,7 @@ export default function CEODashboard() {
               })}
             </div>
             <p className={s.panelFoot}>
-              {crmData ? `${newThisMonth} altas durante el mes actual` : "Cartera no disponible"}
+              {crmSummary ? `${newThisMonth} altas durante el mes actual` : "Cartera no disponible"}
             </p>
           </article>
 
@@ -264,8 +240,8 @@ export default function CEODashboard() {
                     <strong>{client.businessName || "Sin nombre comercial"}</strong>
                     <small>@{client.username} · {client.slug || "sin slug"}</small>
                   </span>
-                  <span className={`${s.planPill} ${s[`plan_${effectivePlanForClient(client)}`]}`}>
-                    {PLAN_LABEL[effectivePlanForClient(client)]}
+                  <span className={`${s.planPill} ${s[`plan_${client.effectiveSubscription}`]}`}>
+                    {PLAN_LABEL[client.effectiveSubscription]}
                     {client.isTrialActive && " · Prueba"}
                   </span>
                   <span className={`${s.accountStatus} ${client.active ? s.accountActive : s.accountInactive}`}>
@@ -278,7 +254,7 @@ export default function CEODashboard() {
             </div>
           ) : (
             <p className={s.emptyState}>
-              {crmData ? "Todavía no hay clientes registrados." : "No se pudo cargar la actividad reciente."}
+              {crmSummary ? "Todavía no hay clientes registrados." : "No se pudo cargar la actividad reciente."}
             </p>
           )}
         </section>

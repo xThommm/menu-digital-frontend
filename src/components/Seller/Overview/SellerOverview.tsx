@@ -23,9 +23,10 @@ export default function SellerOverview() {
   });
 
   // Solo para armar el <select> del filtro admin — la lista completa de
-  // vendedores, no la vista de comisiones.
+  // vendedores, no la vista de comisiones. Misma queryKey que AdminSellers
+  // (includeInactive=false) para compartir la caché en vez de re-fetchear.
   const sellersList = useQuery({
-    queryKey: ["admin-sellers", "picker"],
+    queryKey: ["admin-sellers", false],
     queryFn: () => listAdminSellers(false),
     enabled: isAdmin,
     staleTime: 60_000,
