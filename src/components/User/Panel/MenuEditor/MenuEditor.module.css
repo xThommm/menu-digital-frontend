@@ -1731,20 +1731,20 @@
 }
 
 .imagePreviewWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.imagePreviewFrame {
   position: relative;
   overflow: hidden;
-  cursor: pointer;
 
   border-radius: var(--admin-radius-2xl);
 
   border: 1px solid var(--admin-border-default);
 
   background: var(--admin-bg-elevated);
-}
-
-.imagePreviewWrapper:focus-visible {
-  outline: 2px solid var(--admin-gold);
-  outline-offset: 2px;
 }
 
 .imageUploadingOverlay {
@@ -1768,46 +1768,71 @@
   transition: transform .4s ease;
 }
 
-.imagePreviewWrapper:hover .imagePreview {
+.imagePreviewFrame:hover .imagePreview {
   transform: scale(1.03);
 }
 
-.removeImage {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-
-  width: var(--control-min-size);
-  height: var(--control-min-size);
-
-  border: none;
-  border-radius: 50%;
-
+.imagePreviewActions {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  gap: 8px;
+}
+
+.changeImageButton,
+.removeImageButton {
+  flex: 1;
+  min-height: var(--control-min-size);
+  padding: 0.6rem 0.75rem;
+
+  border-radius: var(--admin-radius-lg);
+
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
 
   cursor: pointer;
 
-  color: white;
-
-  backdrop-filter: blur(12px);
-
-  background: rgba(0,0,0,.45);
-
   transition:
-    transform .15s ease,
-    background .15s ease;
+    background .18s ease,
+    border-color .18s ease,
+    color .18s ease;
 }
 
-.removeImage:hover {
-  background: rgba(220, 38, 38, .85);
-  transform: scale(1.08);
+.changeImageButton {
+  border: 1px solid var(--admin-border-gold-strong);
+  background: color-mix(in srgb, var(--admin-gold) 6%, transparent);
+  color: var(--admin-gold);
 }
 
-.removeImage:focus-visible {
-  outline: 2px solid #e05555;
+.changeImageButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--admin-gold) 14%, transparent);
+  border-color: color-mix(in srgb, var(--admin-gold) 60%, transparent);
+}
+
+.changeImageButton:focus-visible {
+  outline: 2px solid var(--admin-gold);
   outline-offset: 2px;
+}
+
+.removeImageButton {
+  border: 0.5px solid var(--admin-red-border);
+  background: transparent;
+  color: var(--admin-red-text);
+}
+
+.removeImageButton:hover:not(:disabled) {
+  background: var(--admin-red-bg);
+  border-color: var(--admin-red-dark-border);
+}
+
+.removeImageButton:focus-visible {
+  outline: 2px solid var(--admin-danger-core);
+  outline-offset: 2px;
+}
+
+.changeImageButton:disabled,
+.removeImageButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ── Barra de acciones masivas (selección múltiple) ── */
