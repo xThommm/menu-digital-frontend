@@ -31,6 +31,8 @@ const Arrepentimiento = lazy(
 const Baja = lazy(
   () => import("../../src/pages/Legal/Unsubscribe")
 );
+const BlogHome = lazy(() => import("../pages/Blog/BlogHome"));
+const MenuQrGuide = lazy(() => import("../pages/Blog/MenuQrGuide"));
 
 // ─────────────────────────────────────────────
 // CEO / ADMIN INTERNO
@@ -169,6 +171,9 @@ export default function AppRoutes() {
           path="/login"
           element={<Login />}
         />
+
+        <Route path="/blog" element={<BlogHome />} />
+        <Route path="/blog/que-es-un-menu-digital-qr" element={<MenuQrGuide />} />
 
         <Route
           path="/register"
