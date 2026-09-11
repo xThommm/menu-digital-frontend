@@ -17,6 +17,7 @@ import { useNotifications } from "../../../context/useNotifications";
 import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
 import { formatPaymentAmount, PAYMENT_STATUS_LABEL } from "../../../lib/adminPayments";
 import { extractServerMessage } from "../../../lib/apiErrors";
+import { formatDateAR } from "../../../lib/dates";
 import DataTable, { type DataTableColumn } from "../../Common/DataTable/DataTable";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -209,6 +210,32 @@ export default function SellerCrm() {
           <small>{client.contactInfo?.number ? String(client.contactInfo.number) : "Sin teléfono"}</small>
         </div>
       ),
+    },
+    {
+      id: "lastConnection",
+      header: "Última conexión",
+      width: "160px",
+      initialDirection: "desc",
+      sortValue: (client) => {
+        const timestamp = client.lastConnectionAt ? Date.parse(client.lastConnectionAt) : NaN;
+        return Number.isFinite(timestamp) ? timestamp : null;
+      },
+      render: (client) => {
+        const date = formatDateAR(client.lastConnectionAt, {
+          day: "2-digit", month: "2-digit", year: "numeric", fallback: "",
+        });
+        if (!date) return <span className={s.tableMuted}>Sin registro</span>;
+        return (
+          <time
+            className={s.tableConnection}
+            dateTime={client.lastConnectionAt || undefined}
+            title="Horario de Buenos Aires (GMT-3)"
+          >
+            {date}
+            <small>{formatDateAR(client.lastConnectionAt, { hour: "2-digit", minute: "2-digit" })} h</small>
+          </time>
+        );
+      },
     },
     {
       id: "expiry",
@@ -510,7 +537,7 @@ export default function SellerCrm() {
             getRowId={(client) => client._id}
             defaultSort={{ columnId: "client", direction: "asc" }}
             layout="fixed"
-            minWidth={1260}
+            minWidth={1420}
             rowClassName={(client) => [
               s.clientTableRow,
               client.active ? "" : s.clientTableRowInactive,

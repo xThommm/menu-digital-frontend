@@ -365,6 +365,7 @@
 .tableContact,
 .tablePlan,
 .tablePayment,
+.tableConnection,
 .tableFollowUp {
   min-width: 0;
   display: flex;
@@ -381,7 +382,13 @@
 .tableContact small,
 .tablePlan small,
 .tablePayment small,
+.tableConnection small,
 .tableFollowUp small { color: var(--admin-text-muted); font-size: var(--text-xs); }
+.tableConnection {
+  color: var(--admin-text-secondary);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
 .tableStage { display: inline-flex; align-items: center; gap: 6px; color: var(--admin-text-secondary); font-size: var(--text-xs); }
 .tableOnboarding { display: grid; grid-template-columns: auto minmax(48px, 1fr); align-items: center; gap: var(--space-2); color: var(--admin-text-secondary); font-size: var(--text-xs); }
 .tableProgressTrack { height: 5px; overflow: hidden; border-radius: var(--radius-full); background: var(--admin-bg-elevated); }

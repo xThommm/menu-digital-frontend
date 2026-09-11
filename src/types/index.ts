@@ -445,6 +445,8 @@ export interface CrmClient {
   subscriptionExpiresAt?: string | null
   active: boolean
   createdAt: string
+  // Opcional para convivir con respuestas de una versión anterior del backend.
+  lastConnectionAt?: string | null
   contactInfo?: Pick<ContactInfo, "mail" | "number">
   stage: CrmStage
   tags: string[]
