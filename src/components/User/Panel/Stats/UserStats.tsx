@@ -4,6 +4,7 @@ import { useNotifications } from "../../../../context/useNotifications";
 import type { StatsData, ItemStatsData, DayCount } from "../../../../types";
 import { usePlans } from "../../../../hooks/usePlans";
 import { isSubscriptionExpired, PLAN_ORDER } from "../../../../lib/plans";
+import { formatDateAR } from "../../../../lib/dates";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import s from "./UserStats.module.css";
 
@@ -103,7 +104,7 @@ function buildInsights(days: DayCount[], totalViews: number): Insights {
   // cuándo conviene la promo).
   const buckets = new Map<number, { sum: number; samples: number }>();
   days.forEach((day) => {
-    const weekday = parseLocalDate(day.date)?.getDay();
+    const weekday = parseLocalDate(day.date)?.getUTCDay();
     if (weekday === undefined) return;
     const bucket = buckets.get(weekday) ?? { sum: 0, samples: 0 };
     bucket.sum += day.count;
@@ -431,7 +432,7 @@ function DailyChart({ days, average }: { days: DayCount[]; average: number }) {
         )}
 
         {days.map((d, i) => {
-          const weekday = parseLocalDate(d.date)?.getDay();
+          const weekday = parseLocalDate(d.date)?.getUTCDay();
           const isWeekend = weekday === 0 || weekday === 6;
           const height = d.count > 0 ? Math.max((d.count / maxCount) * 100, 6) : 3;
           return (
@@ -550,25 +551,18 @@ function WeekdayChart({
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-// Parseamos "YYYY-MM-DD" como fecha local (no UTC) para que no se corra un
-// día en husos horarios negativos como el de Argentina (UTC-3).
+// Fecha de calendario para calcular el día semanal con getters UTC.
 function parseLocalDate(dateStr?: string): Date | null {
-  if (!dateStr) return null;
-  const [y, m, d] = dateStr.split("-").map(Number);
-  if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d);
+  const day = formatDateAR(dateStr, { output: "date-input", fallback: "" });
+  return day ? new Date(`${day}T00:00:00Z`) : null;
 }
 
 function formatDay(dateStr?: string) {
-  const date = parseLocalDate(dateStr);
-  return date ? date.toLocaleDateString("es-AR", { day: "numeric", month: "short" }) : "";
+  return formatDateAR(dateStr, { day: "numeric", month: "short", fallback: "" });
 }
 
 function formatDayLong(dateStr?: string) {
-  const date = parseLocalDate(dateStr);
-  return date
-    ? date.toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })
-    : "";
+  return formatDateAR(dateStr, { weekday: "short", day: "numeric", month: "short", fallback: "" });
 }
 
 // Un decimal solo cuando aporta: "53" se lee mejor que "53,0".

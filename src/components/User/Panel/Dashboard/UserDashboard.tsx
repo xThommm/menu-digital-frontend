@@ -8,6 +8,7 @@ import { useNotifications } from "../../../../context/useNotifications";
 import { getPlanFeatureLabels, isSubscriptionExpired, PLAN_LABEL } from "../../../../lib/plans";
 import type { DashData } from "../../../../types";
 import { usePlans } from "../../../../hooks/usePlans";
+import { formatDateAR } from "../../../../lib/dates";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import s from "./UserDashboard.module.css";
 
@@ -47,7 +48,7 @@ export default function UserDashboard() {
   const previousPlanText = previousPlanLabel ? `plan ${previousPlanLabel}` : "plan pago";
   const downgradeDate = user?.downgradedAt || user?.subscriptionExpiresAt;
   const downgradeDateLabel = downgradeDate && Number.isFinite(new Date(downgradeDate).getTime())
-    ? new Date(downgradeDate).toLocaleDateString("es-AR")
+    ? formatDateAR(downgradeDate)
     : "";
   const effectiveSubscription = subscriptionExpired ? "free" : (user?.subscription ?? "free");
   const currentPlan = catalog.isError
@@ -322,7 +323,7 @@ export default function UserDashboard() {
               ) : user.subscription !== "free" && (
                 <span className={s.planExpiry}>
                   {user.subscriptionExpiresAt
-                    ? `Vigente hasta el ${new Date(user.subscriptionExpiresAt).toLocaleDateString("es-AR")}`
+                    ? `Vigente hasta el ${formatDateAR(user.subscriptionExpiresAt)}`
                     : "Sin vencimiento registrado"}
                 </span>
               )}

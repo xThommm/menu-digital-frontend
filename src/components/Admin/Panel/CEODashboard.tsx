@@ -6,6 +6,7 @@ import { getCrmSummary } from "../../../api/crm";
 import { useAuth } from "../../../context/useAuth";
 import { formatPaymentAmount } from "../../../lib/adminPayments";
 import { PLAN_LABEL, PLAN_ORDER } from "../../../lib/plans";
+import { formatDateAR } from "../../../lib/dates";
 import type {
   AdminPaymentsResponse,
   AdminStats,
@@ -14,7 +15,10 @@ import type {
 import s from "./CEODashboard.module.css";
 
 function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const today = formatDateAR(new Date(), { output: "date-input" });
+  const day = formatDateAR(dateStr, { output: "date-input", fallback: "" });
+  if (!day) return "—";
+  const diff = new Date(today).getTime() - new Date(day).getTime();
   const days = Math.max(0, Math.floor(diff / 86_400_000));
   if (days === 0) return "Hoy";
   if (days === 1) return "Ayer";
@@ -80,7 +84,7 @@ export default function CEODashboard() {
     ? Math.round((stats.usuarios.conMenuPublicado / stats.usuarios.total) * 100)
     : 0;
   const recentClients = crmSummary?.recentClients ?? [];
-  const today = new Date().toLocaleDateString("es-AR", {
+  const today = formatDateAR(new Date(), {
     weekday: "long",
     day: "numeric",
     month: "long",

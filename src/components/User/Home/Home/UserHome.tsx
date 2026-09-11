@@ -5,6 +5,7 @@ import { useReveal } from "../../../../hooks/useReveal";
 import type { User, ContactInfo, DayKey, Schedule } from "../../../../types/index";
 import BusinessSEO from "../../../Common/BusinessSEO";
 import FreePlanAd from "../../../Common/FreePlanAd";
+import { getOpenStatus, getBusinessDayIndex, JS_DAY_TO_KEY } from "../../../../Utils/businessSchedule";
 
 // ── Tokens por template ───────────────────────────────────────────────────────
 
@@ -36,22 +37,6 @@ const DAY_LABEL: Record<DayKey, string> = {
   sat: "Sábado",
   sun: "Domingo",
 };
-
-// Date.getDay(): 0 = domingo. Se mapea a nuestras claves fijas.
-const JS_DAY_TO_KEY: DayKey[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-
-// Nota: usa la hora local del navegador de quien visita la carta, no la del
-// negocio. Para el caso de uso real (negocio y clientes en la misma zona
-// horaria) es correcto; si el negocio pudiera cargar una carta desde otro
-// huso horario habría que guardar el horario junto con una zona horaria.
-function getOpenStatus(schedule?: Schedule): boolean {
-  if (!schedule) return false;
-  const now = new Date();
-  const today = schedule[JS_DAY_TO_KEY[now.getDay()]];
-  if (!today?.enabled) return false;
-  const hhmm = now.toTimeString().slice(0, 5);
-  return hhmm >= today.open && hhmm < today.close;
-}
 
 // true si el negocio cargó horario y tiene al menos un día abierto. Un
 // schedule con los 7 días en `enabled: false` se trata igual que no haber
@@ -548,7 +533,7 @@ function ContactList({ info, hasDelivery, showDeliveryRow, businessName }: Conta
 function ScheduleSection({ schedule }: { schedule?: Schedule }) {
   if (!scheduleHasData(schedule)) return null;
 
-  const todayKey = JS_DAY_TO_KEY[new Date().getDay()];
+  const todayKey = JS_DAY_TO_KEY[getBusinessDayIndex()];
 
   return (
     <div className="t-section">
@@ -563,7 +548,11 @@ function ScheduleSection({ schedule }: { schedule?: Schedule }) {
             >
               <span>{DAY_LABEL[day]}</span>
               <span className={!d?.enabled ? styles.scheduleTableClosed : undefined}>
-                {d?.enabled ? `${d.open} – ${d.close}` : "Cerrado"}
+                {d?.enabled
+                  ? d.open === d.close
+                    ? d.open === "00:00" ? "24 horas" : `24 horas desde ${d.open}`
+                    : `${d.open} – ${d.close}${d.close < d.open ? " (día siguiente)" : ""}`
+                  : "Cerrado"}
               </span>
             </div>
           );

@@ -1,4 +1,5 @@
 import type { AdminPaymentEntitlement, AdminPaymentOperation } from "../types"
+import { formatDateAR } from "./dates"
 
 export const PAYMENT_STATUS_LABEL: Record<string, string> = {
   approved: "Aprobado",
@@ -64,7 +65,7 @@ export const formatPaymentAmount = (amount: number | null, currency = "ARS") => 
 
 export const formatPaymentDate = (iso: string | null) => (
   iso
-    ? new Date(iso).toLocaleString("es-AR", {
+    ? formatDateAR(iso, {
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -78,7 +79,7 @@ export const formatPaymentDate = (iso: string | null) => (
 // y la fecha con hora ocupa el doble del ancho disponible.
 export const formatPaymentDay = (iso: string | null) => (
   iso
-    ? new Date(iso).toLocaleDateString("es-AR", {
+    ? formatDateAR(iso, {
         day: "2-digit",
         month: "short",
         year: "numeric",

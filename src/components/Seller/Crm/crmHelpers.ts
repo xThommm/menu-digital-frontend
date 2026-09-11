@@ -5,6 +5,7 @@ import type {
   CrmStage,
 } from "../../../types";
 import { PLAN_LABEL } from "../../../lib/plans";
+import { formatDateAR } from "../../../lib/dates";
 
 // ── Metadata de cada etapa del pipeline: etiqueta visible + color del punto. ──
 export const STAGE_META: Record<CrmStage, { label: string; color: string }> = {
@@ -49,25 +50,24 @@ export const ONBOARDING_ITEMS = [
 
 // ── Helpers de fecha ──
 export const fmtDate = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" }) : "";
+  formatDateAR(iso, { day: "numeric", month: "short", year: "numeric", fallback: "" });
 
 // Los seguimientos son días de calendario (no instantes). El backend los
 // persiste como Date a medianoche UTC, así que usamos YYYY-MM-DD para evitar
 // que Buenos Aires los muestre como el día anterior.
 export const calendarDate = (iso: string) => {
-  const [year, month, day] = iso.slice(0, 10).split("-").map(Number);
-  return new Date(year, month - 1, day);
+  const day = dateInputValue(iso);
+  return new Date(`${day}T00:00:00-03:00`);
 };
 export const fmtFollowUpDate = (iso: string) =>
-  calendarDate(iso).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
+  formatDateAR(iso, { calendarDate: true, day: "numeric", month: "short", year: "numeric" });
 
 // Una fecha de seguimiento está "vencida" si ya pasó (comparando por día).
 export const isOverdue = (iso: string | null) => {
   if (!iso) return false;
-  const d = calendarDate(iso);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return d < today;
+  const day = dateInputValue(iso);
+  const today = formatDateAR(new Date(), { output: "date-input" });
+  return !!day && day < today;
 };
 
 export const timeAgo = (iso: string) => {
@@ -79,11 +79,12 @@ export const timeAgo = (iso: string) => {
   if (h < 24) return `hace ${h} h`;
   const d = Math.floor(h / 24);
   if (d < 30) return `hace ${d} d`;
-  return new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+  return formatDateAR(iso, { day: "numeric", month: "short" });
 };
 
 // value del <input type="date"> (YYYY-MM-DD) desde un ISO.
-export const dateInputValue = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
+export const dateInputValue = (iso: string | null) =>
+  formatDateAR(iso, { calendarDate: true, output: "date-input", fallback: "" });
 
 export const planExpiryLabel = (subscription: CrmClient["subscription"], iso: string | null) => {
   if (subscription === "free") return "Sin vencimiento";

@@ -14,6 +14,7 @@ import {
 import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
 import { useNotifications } from "../../../context/useNotifications";
 import { formatPaymentDate } from "../../../lib/adminPayments";
+import { formatDateAR } from "../../../lib/dates";
 import DataTable, { type DataTableColumn } from "../../Common/DataTable/DataTable";
 import Spinner from "../../Common/Spinner";
 import s from "./AdminSellers.module.css";
@@ -39,8 +40,7 @@ function isValidMail(value: string) {
 // El input HTML type="date" trabaja con "YYYY-MM-DD"; el backend guarda un
 // Date completo. Se convierte en el borde, no se arrastra el formato adentro.
 function toDateInputValue(iso: string | null): string {
-  if (!iso) return "";
-  return iso.slice(0, 10);
+  return formatDateAR(iso, { calendarDate: true, output: "date-input", fallback: "" });
 }
 
 export default function AdminSellers() {
@@ -133,7 +133,7 @@ export default function AdminSellers() {
       sortValue: (seller) => Date.parse(seller.startDate ?? "") || null,
       render: (seller) => (
         <span className={s.dateCell}>
-          {seller.startDate ? formatPaymentDate(seller.startDate) : "Sin definir"}
+          {formatDateAR(seller.startDate, { calendarDate: true, fallback: "Sin definir" })}
         </span>
       ),
     },

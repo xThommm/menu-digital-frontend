@@ -4,6 +4,7 @@ import { useAuth } from "../../../context/useAuth";
 import { getSellerOverview, type SellerOverviewEntry } from "../../../api/sellers";
 import { listAdminSellers } from "../../../api/adminSellers";
 import { formatPaymentAmount } from "../../../lib/adminPayments";
+import { formatDateAR } from "../../../lib/dates";
 import DataTable, { type DataTableColumn } from "../../Common/DataTable/DataTable";
 import Spinner from "../../Common/Spinner";
 import s from "../sellerPanel.module.css";
@@ -176,8 +177,8 @@ export default function SellerOverview() {
                   </div>
                 </div>
                 <p className={s.hint}>
-                  Ciclo actual: {new Date(self.cycle.start).toLocaleDateString("es-AR")} al{" "}
-                  {new Date(self.cycle.end).toLocaleDateString("es-AR")}.
+                  Ciclo actual: {formatDateAR(self.cycle.start)} al{" "}
+                  {formatDateAR(self.cycle.end)}.
                 </p>
               </>
             ) : (

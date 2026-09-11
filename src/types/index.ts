@@ -57,6 +57,7 @@ export interface Media {
 }
 
 // Horario de atención del negocio: un DayHours fijo por día de la semana.
+// Cierre anterior a apertura: día siguiente. Horas iguales: turno de 24 horas.
 // `open`/`close` son horas locales del negocio en formato "HH:mm" (ej:
 // "09:00"); se ignoran cuando `enabled` es false. Opcional en `User` porque
 // los negocios creados antes de esta funcionalidad no lo tienen guardado

@@ -3,6 +3,7 @@ import { useAuth } from "../../../../context/useAuth";
 import { useFeedbackMessage } from "../../../../hooks/useFeedbackMessage";
 import type { Subscription, DayKey, DayHours, Schedule } from "../../../../types/index";
 import { usePlans } from "../../../../hooks/usePlans";
+import { BUSINESS_TIME_PATTERN } from "../../../../Utils/businessSchedule";
 import Spinner from "../../../Common/Spinner";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import styles from "./UserEditor.module.css";
@@ -294,8 +295,8 @@ export default function UserEditorPage() {
     }
     for (const day of DAY_ORDER) {
       const d = schedule[day];
-      if (d.enabled && d.open >= d.close) {
-        setError(`En ${DAY_LABEL[day]} la hora de cierre debe ser posterior a la de apertura.`);
+      if (d.enabled && (!BUSINESS_TIME_PATTERN.test(d.open) || !BUSINESS_TIME_PATTERN.test(d.close))) {
+        setError(`En ${DAY_LABEL[day]} ingresá una hora de apertura y de cierre válidas.`);
         return;
       }
     }
@@ -1027,13 +1028,19 @@ export default function UserEditorPage() {
                       ) : (
                         <span className={styles.scheduleClosedLabel}>Cerrado</span>
                       )}
+                      {d.enabled && BUSINESS_TIME_PATTERN.test(d.open) && BUSINESS_TIME_PATTERN.test(d.close) && d.close <= d.open && (
+                        <span className={styles.scheduleNote}>
+                          {d.close === d.open ? "Abierto 24 horas, hasta el día siguiente." : "Cierra al día siguiente."}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
               </div>
               <p className={styles.fieldHint}>
-                Se muestra en tu carta pública, junto con si el negocio está
-                abierto en este momento.
+                Si el cierre es anterior a la apertura, termina al día siguiente.
+                Para abrir las 24 horas del día, usá 00:00 a 00:00.
+                Se muestra en tu carta pública junto con el estado abierto/cerrado.
               </p>
             </div>
 

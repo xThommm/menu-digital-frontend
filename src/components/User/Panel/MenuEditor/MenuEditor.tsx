@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useAuth } from "../../../../context/useAuth";
 import { useNotifications } from "../../../../context/useNotifications";
 import { isSubscriptionExpired } from "../../../../lib/plans";
+import { formatDateAR } from "../../../../lib/dates";
 import { useFeedbackMessage } from "../../../../hooks/useFeedbackMessage";
 import MassiveImport from "../../../../Utils/MassiveImport";
 import ImageManager from "./ImageManager/ImageManager";
@@ -56,18 +57,8 @@ const emptyAvailabilitySchedule = (): ItemAvailabilitySchedule => ({
   mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [],
 });
 
-const toBuenosAiresDateTimeInput = (value?: string | null) => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Argentina/Buenos_Aires",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-  }).formatToParts(date);
-  const values = Object.fromEntries(parts.map(({ type, value: partValue }) => [type, partValue]));
-  return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}`;
-};
+const toBuenosAiresDateTimeInput = (value?: string | null) =>
+  formatDateAR(value, { output: "datetime-input", fallback: "" });
 
 const toBuenosAiresISOString = (value: string) => value ? `${value}:00-03:00` : null;
 

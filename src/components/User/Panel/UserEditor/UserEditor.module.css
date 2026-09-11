@@ -367,6 +367,12 @@
   font-style: italic;
 }
 
+.scheduleNote {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+  color: var(--admin-text-secondary);
+}
+
 @media (max-width: 420px) {
   .scheduleRow {
     align-items: flex-start;

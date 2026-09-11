@@ -4,6 +4,7 @@ import { useAuth } from "../../../../context/useAuth";
 import { useTheme } from "../../../../hooks/useTheme";
 import { usePlans } from "../../../../hooks/usePlans";
 import { isSubscriptionExpired, PLAN_LABEL } from "../../../../lib/plans";
+import { formatDateAR } from "../../../../lib/dates";
 import { MobileDockProvider } from "../../../../context/MobileDockProvider";
 import { useMobileDock } from "../../../../context/useMobileDock";
 import BrandMark from "../../../Common/BrandMark";
@@ -74,7 +75,7 @@ function DashboardLayoutInner() {
   const previousPlanText = previousPlanLabel ? `plan ${previousPlanLabel}` : "plan pago";
   const downgradeDate = user?.downgradedAt || user?.subscriptionExpiresAt;
   const downgradeDateLabel = downgradeDate && Number.isFinite(new Date(downgradeDate).getTime())
-    ? new Date(downgradeDate).toLocaleDateString("es-AR")
+    ? formatDateAR(downgradeDate)
     : "";
 
   return (
