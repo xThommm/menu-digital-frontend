@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import BlogLayout from "./BlogLayout";
+import GifClip from "../../components/Common/GifClip/GifClip";
 import { BLOG_PATH, MENU_QR_GUIDE } from "./blogContent";
 import styles from "./Blog.module.css";
 
@@ -65,6 +66,7 @@ export default function MenuQrGuide() {
                 <li><strong>Abre la carta.</strong> El navegador carga el menú con conexión a internet.</li>
                 <li><strong>Consulta los productos.</strong> Recorre las categorías y ve los nombres, descripciones y precios que publicaste.</li>
               </ol>
+              <GifClip alt="Un cliente escanea el QR y abre la carta en el celular" />
               <p>
                 En Menú Digital App, el cliente no necesita instalar una aplicación ni
                 registrarse para consultar la carta. Si tiene dificultades para escanear,
@@ -119,6 +121,7 @@ export default function MenuQrGuide() {
                 a la misma dirección. Antes de dar por terminada una actualización,
                 abrí el menú público y comprobá que el precio se vea como esperabas.
               </p>
+              <GifClip alt="Editar el precio de un producto desde el panel y guardar el cambio" />
               <aside className={styles.note}>
                 <strong>Conservá el enlace de tu carta.</strong>
                 <p>

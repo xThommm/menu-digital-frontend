@@ -93,7 +93,7 @@
   border-radius: var(--radius-md);
   background: var(--auth-bg-card);
 }
-.guideIcon { display: grid; place-items: center; aspect-ratio: 1; color: var(--auth-amber); background: var(--auth-bg-elevated); border-radius: var(--radius-full); }
+.guideClip { width: 100%; }
 .guideCard h3 { max-width: 660px; font-size: clamp(1.6rem, 3vw, 2.4rem); margin-bottom: 1rem; }
 .guideCard h3 a { color: var(--auth-cream); text-decoration: none; }
 .guideCard h3 a:hover { text-decoration: underline; }
@@ -132,6 +132,7 @@
 .prose p + p { margin-top: 1rem; }
 .prose ul, .prose ol { padding-left: 1.4rem; margin-block: 1rem; }
 .prose li + li { margin-top: .75rem; }
+.prose figure { margin: 1.75rem 0; }
 .prose a { color: var(--auth-cream); }
 .note { padding: 1.5rem; margin-top: 1.5rem; border-left: 3px solid var(--auth-amber); background: var(--auth-bg-card); }
 .note p { margin-top: .5rem; }
@@ -144,8 +145,7 @@
   .header { justify-content: center; }
   .navigation { justify-content: center; }
   .guideCard { grid-template-columns: 1fr; }
-  .guideIcon { width: 72px; }
-  .guideIcon svg { width: 28px; }
+  .guideClip { max-width: 220px; margin-inline: auto; }
   .faqSection, .articleLayout { grid-template-columns: 1fr; }
   .cta > div { flex-basis: 100%; }
   .articleHero { padding-block: 2.5rem; }

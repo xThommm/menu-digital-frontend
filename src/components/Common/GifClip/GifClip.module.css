@@ -1,0 +1,45 @@
+/* Componente de uso transversal (blog hoy, potencialmente panel/landing
+   después): en vez de depender de tokens de una identidad puntual como
+   --auth-* o --admin-*, deriva borde/fondo de currentColor. Así hereda el
+   color de texto que ya definió el contenedor y se ve correcto en cualquier
+   paleta sin tener que mantener una variante por contexto. */
+.clip {
+  --gifclip-border: color-mix(in srgb, currentColor 18%, transparent);
+  --gifclip-bg: color-mix(in srgb, currentColor 6%, transparent);
+  --gifclip-ratio: 16 / 10;
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--gifclip-border);
+  border-radius: var(--radius-md, 8px);
+  background: var(--gifclip-bg);
+}
+
+.media {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--gifclip-ratio);
+  object-fit: cover;
+}
+
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  aspect-ratio: var(--gifclip-ratio);
+  padding: 1.5rem;
+  border: 1px dashed var(--gifclip-border);
+  color: color-mix(in srgb, currentColor 65%, transparent);
+  font-size: .82rem;
+  text-align: center;
+}
+
+.caption {
+  padding: .7rem 1rem;
+  border-top: 1px solid var(--gifclip-border);
+  color: color-mix(in srgb, currentColor 75%, transparent);
+  font-size: .8rem;
+}

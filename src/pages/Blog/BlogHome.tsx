@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, BookOpen, ChevronDown } from "lucide-react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import BlogLayout from "./BlogLayout";
+import GifClip from "../../components/Common/GifClip/GifClip";
 import { BLOG_FAQS, MENU_QR_GUIDE } from "./blogContent";
 import styles from "./Blog.module.css";
 
@@ -22,7 +23,11 @@ export default function BlogHome() {
           <span className={styles.kicker}>Para tu local</span>
         </div>
         <article className={styles.guideCard}>
-          <div className={styles.guideIcon} aria-hidden="true"><BookOpen size={38} /></div>
+          <GifClip
+            className={styles.guideClip}
+            ratio="1/1"
+            alt="Vista previa de la guía: qué es un menú digital QR"
+          />
           <div>
             <p className={styles.eyebrow}>Guía para empezar</p>
             <h3><Link to={MENU_QR_GUIDE.path}>{MENU_QR_GUIDE.title}</Link></h3>
