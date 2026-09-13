@@ -149,7 +149,7 @@ export default function SellerCrm() {
   }, [clients, movingClientId, notifyError, notifySuccess, patchClient, refreshClients]);
 
   // Conteo por etapa (para los chips de filtro).
-  const countByStage = (stage: CrmStage) => clients.filter((c) => c.stage === stage).length;
+
 
   const filtered = clients.filter((c) => {
     if (stageFilter !== "all" && c.stage !== stageFilter) return false;
@@ -185,6 +185,8 @@ export default function SellerCrm() {
     {
       id: "client",
       header: "Cliente",
+      width: "220px",
+      minWidth: 160,
       sortValue: (client) => client.businessName || client.username,
       render: (client) => (
         <button type="button" className={s.tableClientButton} onClick={() => openDrawer(client._id)}>
@@ -240,6 +242,7 @@ export default function SellerCrm() {
     {
       id: "expiry",
       header: "Plan / vencimiento",
+      filter: { value: planFilter === "all" ? "" : planFilter, onChange: value => setPlanFilter((value || "all") as typeof planFilter), options: [{ value: "free", label: "Gratis" }, { value: "basic", label: "Básico" }, { value: "pro", label: "Pro" }] },
       width: "145px",
       // Sin fecha de vencimiento no es "vence lejísimos": es sin dato, y
       // DataTable lo manda al final en las dos direcciones.
@@ -256,6 +259,7 @@ export default function SellerCrm() {
     {
       id: "stage",
       header: "Etapa",
+      filter: { value: stageFilter === "all" ? "" : stageFilter, onChange: value => setStageFilter((value || "all") as typeof stageFilter), options: STAGE_ORDER.map(value => ({ value, label: STAGE_META[value].label })) },
       width: "120px",
       sortValue: (client) => STAGE_ORDER.indexOf(client.stage),
       render: (client) => (
@@ -330,6 +334,7 @@ export default function SellerCrm() {
     {
       id: "attention",
       header: "Alertas",
+      filter: { value: attentionFilter === "all" ? "" : attentionFilter, onChange: value => setAttentionFilter((value || "all") as typeof attentionFilter), options: Object.entries(ATTENTION_META).map(([value, meta]) => ({ value, label: meta.shortLabel })) },
       width: "105px",
       initialDirection: "desc",
       sortValue: (client) => (client.attention || []).length,
@@ -350,6 +355,7 @@ export default function SellerCrm() {
       id: "open",
       header: null,
       headerLabel: "Acciones",
+      resizable: false,
       width: "52px",
       render: (client) => (
         <button
@@ -362,7 +368,7 @@ export default function SellerCrm() {
         </button>
       ),
     },
-  ], [openDrawer, isAdmin]);
+  ], [openDrawer, isAdmin, planFilter, stageFilter, attentionFilter]);
 
   const selectAttention = (code: CrmAttentionCode | "all") => {
     setAttentionFilter((current) => (current === code ? "all" : code));
@@ -386,6 +392,63 @@ export default function SellerCrm() {
       setExporting(false);
     }
   };
+
+  const clearFilters = () => {
+    setSearch(""); setStageFilter("all"); setPlanFilter("all");
+    setAccountFilter("all"); setAttentionFilter("all"); setSellerFilter("all");
+  };
+  const activeFilters = [stageFilter, planFilter, accountFilter, attentionFilter, ...(isAdmin ? [sellerFilter] : [])].filter(value => value !== "all").length;
+  const extraFilters = <><select
+            className={s.toolbarSelect}
+            value={accountFilter}
+            onChange={(e) => setAccountFilter(e.target.value as "all" | "active" | "inactive")}
+            aria-label="Filtrar por estado de cuenta"
+          >
+            <option value="all">Todas las cuentas</option>
+            <option value="active">Activas</option>
+            <option value="inactive">Inactivas</option>
+          </select>
+
+          {isAdmin && (
+            <select
+              className={s.toolbarSelect}
+              value={sellerFilter}
+              onChange={(e) => setSellerFilter(e.target.value)}
+              aria-label="Filtrar por vendedor"
+            >
+              <option value="all">Todos los vendedores</option>
+              {(sellersList.data ?? []).map((seller) => (
+                <option key={seller._id} value={seller._id}>{seller.name}</option>
+              ))}
+            </select>
+          )}</>;
+  const viewActions = <><div className={s.viewToggle}>
+            <button
+              className={`${s.viewToggleBtn} ${viewMode === "list" ? s.viewToggleBtnActive : ""}`}
+              onClick={() => setViewMode("list")}
+              aria-label="Vista tabla"
+              aria-current={viewMode === "list" ? "true" : undefined}
+              type="button"
+            >
+              <ListIcon />
+            </button>
+            <button
+              className={`${s.viewToggleBtn} ${viewMode === "kanban" ? s.viewToggleBtnActive : ""}`}
+              onClick={() => setViewMode("kanban")}
+              aria-label="Vista kanban"
+              aria-current={viewMode === "kanban" ? "true" : undefined}
+              type="button"
+            >
+              <KanbanIcon />
+            </button>
+          </div>
+
+          {isAdmin && (
+            <button className={s.exportBtn} onClick={handleExport} disabled={exporting} type="button">
+              <DownloadIcon />
+              {exporting ? "Exportando…" : "Exportar a Excel"}
+            </button>
+          )}</>;
 
   if (loading) {
     return (
@@ -421,115 +484,25 @@ export default function SellerCrm() {
           onSelect={selectAttention}
         />
 
-        {/* ── Filtros por etapa (solo en vista lista — en kanban ya están separados por columna) ── */}
-        {viewMode === "list" && (
-          <div className={s.stageFilters}>
-            <button
-              className={`${s.stageChip} ${stageFilter === "all" ? s.stageChipActive : ""}`}
-              onClick={() => setStageFilter("all")}
-              type="button"
-            >
-              Todos <span className={s.chipCount}>{clients.length}</span>
-            </button>
-            {STAGE_ORDER.map((st) => (
-              <button
-                key={st}
-                className={`${s.stageChip} ${stageFilter === st ? s.stageChipActive : ""}`}
-                onClick={() => setStageFilter(st)}
-                type="button"
-              >
-                <span className={s.stageDot} style={{ background: STAGE_META[st].color }} />
-                {STAGE_META[st].label} <span className={s.chipCount}>{countByStage(st)}</span>
-              </button>
-            ))}
+        {viewMode === "kanban" && (
+          <div className={s.toolbarRow}>
+            <input className={s.searchInput} type="search" aria-label="Buscar clientes" placeholder="Buscar negocio, usuario, slug o email…" value={search} onChange={event => setSearch(event.target.value)} />
+            <select className={s.toolbarSelect} aria-label="Filtrar etapa" value={stageFilter} onChange={event => setStageFilter(event.target.value as typeof stageFilter)}>
+              <option value="all">Todas las etapas</option>
+              {STAGE_ORDER.map(stage => <option key={stage} value={stage}>{STAGE_META[stage].label}</option>)}
+            </select>
+            <select className={s.toolbarSelect} aria-label="Filtrar plan" value={planFilter} onChange={event => setPlanFilter(event.target.value as typeof planFilter)}>
+              <option value="all">Todos los planes</option><option value="free">Gratis</option><option value="basic">Básico</option><option value="pro">Pro</option>
+            </select>
+            {extraFilters}
+            {(activeFilters > 0 || search) && <button className={s.exportBtn} type="button" onClick={clearFilters}>Limpiar filtros</button>}
+            {viewActions}
           </div>
         )}
 
-        {/* ── Buscador + filtros operativos + vista + exportar ── */}
-        <div className={s.toolbarRow}>
-          <div className={s.searchRow}>
-            <svg className={s.searchIcon} width="15" height="15" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              className={s.searchInput}
-              placeholder="Buscar negocio, usuario, slug o email…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <select
-            className={s.toolbarSelect}
-            value={planFilter}
-            onChange={(e) => setPlanFilter(e.target.value as CrmClient["subscription"] | "all")}
-            aria-label="Filtrar por plan"
-          >
-            <option value="all">Todos los planes</option>
-            <option value="free">Gratis</option>
-            <option value="basic">Básico</option>
-            <option value="pro">Pro</option>
-          </select>
-
-          <select
-            className={s.toolbarSelect}
-            value={accountFilter}
-            onChange={(e) => setAccountFilter(e.target.value as "all" | "active" | "inactive")}
-            aria-label="Filtrar por estado de cuenta"
-          >
-            <option value="all">Todas las cuentas</option>
-            <option value="active">Activas</option>
-            <option value="inactive">Inactivas</option>
-          </select>
-
-          {isAdmin && (
-            <select
-              className={s.toolbarSelect}
-              value={sellerFilter}
-              onChange={(e) => setSellerFilter(e.target.value)}
-              aria-label="Filtrar por vendedor"
-            >
-              <option value="all">Todos los vendedores</option>
-              {(sellersList.data ?? []).map((seller) => (
-                <option key={seller._id} value={seller._id}>{seller.name}</option>
-              ))}
-            </select>
-          )}
-
-          <div className={s.viewToggle}>
-            <button
-              className={`${s.viewToggleBtn} ${viewMode === "list" ? s.viewToggleBtnActive : ""}`}
-              onClick={() => setViewMode("list")}
-              aria-label="Vista tabla"
-              aria-current={viewMode === "list" ? "true" : undefined}
-              type="button"
-            >
-              <ListIcon />
-            </button>
-            <button
-              className={`${s.viewToggleBtn} ${viewMode === "kanban" ? s.viewToggleBtnActive : ""}`}
-              onClick={() => setViewMode("kanban")}
-              aria-label="Vista kanban"
-              aria-current={viewMode === "kanban" ? "true" : undefined}
-              type="button"
-            >
-              <KanbanIcon />
-            </button>
-          </div>
-
-          {isAdmin && (
-            <button className={s.exportBtn} onClick={handleExport} disabled={exporting} type="button">
-              <DownloadIcon />
-              {exporting ? "Exportando…" : "Exportar a Excel"}
-            </button>
-          )}
-        </div>
-
         {/* ── Vista Clientes 360 ── */}
         {viewMode === "list" && (
-          // La búsqueda y los filtros quedan arriba, fuera de la tabla, porque
-          // también gobiernan el kanban: acá ya llegan las filas filtradas.
+          // Los controles de la tabla comparten estado con el kanban.
           <DataTable<CrmClient>
             caption="Clientes 360"
             rows={filtered}
@@ -537,7 +510,13 @@ export default function SellerCrm() {
             getRowId={(client) => client._id}
             defaultSort={{ columnId: "client", direction: "asc" }}
             layout="fixed"
-            minWidth={1420}
+            minWidth={1640}
+            search={{ value: search, onChange: setSearch, accessor: client => `${client.businessName} ${client.username} ${client.slug} ${client.contactInfo?.mail || ""}`, placeholder: "Negocio, usuario, slug o email…", label: "Buscar clientes" }}
+            filters={extraFilters}
+            actions={viewActions}
+            activeFilterCount={activeFilters}
+            onClearFilters={clearFilters}
+            countLabel={visible => `${visible} de ${clients.length} clientes`}
             rowClassName={(client) => [
               s.clientTableRow,
               client.active ? "" : s.clientTableRowInactive,
@@ -612,6 +591,7 @@ export default function SellerCrm() {
 
       {selectedId && (
         <ClientDrawer
+          key={selectedId}
           userID={selectedId}
           onClose={closeDrawer}
           onPatch={patchClient}

@@ -41,6 +41,8 @@ export default function SellerOverview() {
       {
         id: "name",
         header: "Vendedor",
+        width: "220px",
+        filter: { value: sellerID, onChange: setSellerID, options: (sellersList.data ?? []).map(seller => ({ value: seller._id, label: seller.name })) },
         sortValue: (r) => r.name,
         render: (r) => (
           <span className={s.barRowName} title={r.name}>
@@ -72,6 +74,7 @@ export default function SellerOverview() {
       {
         id: "tier",
         header: "Nivel",
+        filter: { accessor: tierLabel },
         sortValue: (r) => r.currentCycle.tier.rate,
         render: (r) => <span className={s.tierBadge}>{tierLabel(r)}</span>,
       },
@@ -95,7 +98,7 @@ export default function SellerOverview() {
     }
 
     return base;
-  }, [isAdmin]);
+  }, [isAdmin, sellerID, sellersList.data]);
 
   return (
     <main className={s.page}>
@@ -112,28 +115,14 @@ export default function SellerOverview() {
 
         {isAdmin && (
           <section className={s.section}>
-            <div className={s.toolbar}>
-              <label className={s.selectField} htmlFor="overview-seller-filter">
-                Vendedor
-                <select
-                  id="overview-seller-filter"
-                  value={sellerID}
-                  onChange={(event) => setSellerID(event.target.value)}
-                >
-                  <option value="">Todos</option>
-                  {(sellersList.data ?? []).map((seller) => (
-                    <option key={seller._id} value={seller._id}>{seller.name}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
             <DataTable<SellerOverviewEntry>
               caption="Panel general de vendedores"
               rows={rows}
               columns={columns}
               getRowId={(r) => r.sellerID}
-              minWidth={900}
+              minWidth={1100}
+              activeFilterCount={sellerID ? 1 : 0}
+              onClearFilters={() => setSellerID("")}
               defaultSort={{ columnId: "commission", direction: "desc" }}
               countLabel={(visible, total) => `${visible} de ${total} vendedores`}
               loading={overview.isPending}

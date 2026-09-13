@@ -1,15 +1,17 @@
 /* Estilos de la tabla de datos del panel admin. Salen de la tabla del CRM,
    que era la más trabajada de las tres, para que todas se lean igual. */
 
+.root { min-width: 0; max-width: 100%; }
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: end;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  margin-bottom: 0;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-lg);
+  border-radius: var(--admin-radius-lg) var(--admin-radius-lg) 0 0;
   background: var(--admin-bg-raised);
 }
 
@@ -64,6 +66,7 @@
   background: var(--admin-bg-raised);
   overflow-x: auto;
 }
+.toolbar + .tableWrap { border-top: 0; border-radius: 0 0 var(--admin-radius-lg) var(--admin-radius-lg); }
 
 .table {
   width: 100%;
@@ -73,7 +76,8 @@
 /* Con layout fijo el ancho de cada columna manda, así que el encabezado tiene
    que poder partirse en dos líneas en vez de desbordar la celda. */
 .tableFixed { table-layout: fixed; }
-.tableFixed thead th { white-space: normal; }
+.table.tableFixed thead th { white-space: normal; }
+.tableFixed td { overflow-wrap: anywhere; }
 
 .table th,
 .table td {
@@ -85,14 +89,64 @@
 }
 
 .table thead th {
+  position: relative;
+  padding-right: var(--space-5);
   background: var(--admin-bg-elevated);
-  color: var(--admin-text-muted);
+  color: var(--admin-text-secondary);
   font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
 }
+.table tbody tr:hover:not(.panelRow) { background: var(--admin-bg-elevated); }
+.table td.numeric, .table th.numeric { text-align: right; }
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  border-right: 2px solid var(--admin-border-default);
+}
+.resizeHandle:hover, .resizeHandle:focus-visible {
+  background: var(--admin-bg-raised-3);
+  border-right-color: var(--admin-gold);
+  outline: 2px solid var(--admin-gold);
+  outline-offset: -2px;
+}
+.filterRow td { padding: var(--space-2); background: var(--admin-bg-raised); }
+.filterRow input, .filterRow select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: var(--control-min-size);
+  padding: var(--space-2);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-bg-base);
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-size: var(--text-xs);
+}
+.filterRow input:focus-visible, .filterRow select:focus-visible { outline: 2px solid var(--admin-gold); outline-offset: 1px; }
+.toolButton {
+  min-height: var(--control-min-size);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-bg-elevated);
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.toolButton:hover { border-color: var(--admin-gold); }
+.toolButton:focus-visible { outline: 2px solid var(--admin-gold); outline-offset: 2px; }
 
 .table tbody tr:last-child td { border-bottom: 0; }
 

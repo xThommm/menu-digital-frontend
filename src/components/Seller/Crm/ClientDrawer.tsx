@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { AdminPayment, CrmClient, CrmClientDetail } from "../../../types";
 import {
@@ -66,7 +68,36 @@ export default function ClientDrawer({
   const [copyingLink, setCopyingLink] = useState(false);
   const { success: notifySuccess, error: notifyError } = useNotifications();
 
-  // Carga del detalle + cierre con Escape. Los pagos son solo para admin: un
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); onCloseRef.current(); }
+      if (event.key !== "Tab") return;
+      const focusable = [...(dialogRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]') ?? [])].filter(element => element.getClientRects().length > 0);
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && (document.activeElement === first || !dialogRef.current?.contains(document.activeElement))) {
+        event.preventDefault(); last?.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialogRef.current?.contains(document.activeElement))) {
+        event.preventDefault(); first?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = overflow;
+      document.removeEventListener("keydown", onKey);
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, []);
+
+  // Carga del detalle. Los pagos son solo para admin: un
   // vendedor no ve el historial financiero de sus clientes, sólo el resto de
   // la ficha CRM.
   useEffect(() => {
@@ -98,9 +129,7 @@ export default function ClientDrawer({
       setPaymentsLoading(false);
     };
     load();
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => { cancelled = true; window.removeEventListener("keydown", onKey); };
+    return () => { cancelled = true; };
   }, [notifyError, userID, onClose, isAdmin]);
 
   // Guarda etapa/tags/seguimiento y actualiza la UI solo con la respuesta
@@ -219,29 +248,24 @@ export default function ClientDrawer({
     ? Math.round((onboarding.completedCount / onboarding.total) * 100)
     : 0;
 
-  return (
-    <div className={s.drawerOverlay} onClick={onClose} role="dialog" aria-modal="true" aria-label="Detalle del cliente">
-      <div className={s.drawer} onClick={(e) => e.stopPropagation()}>
+  return createPortal(
+    <div className={`${s.drawerOverlay} admin-panel-graphite`} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
+      <div ref={dialogRef} className={s.drawer} role="dialog" aria-modal="true" aria-labelledby="crm-client-title">
+        <header className={s.drawerHeader}>
+          <div>
+            <p className={s.sectionLabel}>Ficha del cliente</p>
+            <h2 id="crm-client-title" className={s.drawerTitle}>{u?.contactInfo?.businessName || (u ? `@${u.username}` : "Cargando cliente…")}</h2>
+            {u && <p className={s.drawerSub}>@{u.username}</p>}
+          </div>
+          <button ref={closeRef} className={s.drawerClose} onClick={onClose} aria-label="Cerrar ficha del cliente" type="button"><X size={18} aria-hidden="true" /></button>
+        </header>
         {loading || !detail || !u || !crm ? (
-          <div className={s.drawerLoading}><div className="pageLoaderRing" /></div>
+          <div className={s.drawerLoading} role="status" aria-label="Cargando cliente"><div className="pageLoaderRing" /></div>
         ) : (
           <>
-            <header className={s.drawerHeader}>
-              <div>
-                <h2 className={s.drawerTitle}>{u.contactInfo?.businessName || `@${u.username}`}</h2>
-                <p className={s.drawerSub}>@{u.username}</p>
-              </div>
-              <button className={s.drawerClose} onClick={onClose} aria-label="Cerrar" type="button">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </header>
-
             <div className={s.drawerBody}>
               {/* ── Acciones operativas ── */}
-              <section className={s.section}>
+              <section className={`${s.section} ${s.modalFullWidth}`}>
                 <p className={s.sectionLabel}>Acciones rápidas</p>
                 <div className={s.actionGrid}>
                   {whatsappPhone && (
@@ -463,11 +487,12 @@ export default function ClientDrawer({
 
               {/* ── Actividad: notas manuales + eventos automáticos, mezclados
                    cronológicamente (el backend ya los inserta en orden). ── */}
-              <section className={s.section}>
+              <section className={`${s.section} ${s.modalFullWidth}`}>
                 <p className={s.sectionLabel}>Actividad ({crm.notes.length})</p>
                 <div className={s.noteComposer}>
                   <textarea
                     className={s.noteTextarea}
+                    aria-label="Nota de seguimiento"
                     placeholder="Escribí una nota de seguimiento…"
                     value={noteInput}
                     onChange={(e) => setNoteInput(e.target.value)}
@@ -509,6 +534,6 @@ export default function ClientDrawer({
           </>
         )}
       </div>
-    </div>
+    </div>, document.body
   );
 }

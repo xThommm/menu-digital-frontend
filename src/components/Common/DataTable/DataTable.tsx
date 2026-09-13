@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useId, useMemo, useRef, useState, type ReactNode, type PointerEvent } from "react";
 import Spinner from "../Spinner";
 import s from "./DataTable.module.css";
 
@@ -9,11 +9,9 @@ import s from "./DataTable.module.css";
 // con scroll horizontal, la barra de filtros, el orden por encabezado, las
 // filas desplegables y los estados de carga/error/vacío.
 //
-// Qué NO resuelve a propósito: el filtrado que no sea la búsqueda de texto, y
-// la paginación. En pagos ambos son del lado del servidor (los filtros viajan
-// a la API y devuelve una página), así que si el componente se los apropiara
-// no serviría para esa pantalla. Cada tabla arma sus propios controles y los
-// pasa por `filters`; acá solo se les da lugar y estilo.
+// Los filtros con accessor operan sobre las filas cargadas. Los controlados
+// sin accessor permiten mantener consultas al servidor y otras vistas (kanban)
+// en la pantalla de origen. La paginación sigue siendo responsabilidad del módulo.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type SortDirection = "asc" | "desc";
@@ -32,6 +30,17 @@ export interface DataTableColumn<T> {
   initialDirection?: SortDirection;
   align?: "left" | "right";
   width?: string;
+  minWidth?: number;
+  resizable?: boolean;
+  filter?: {
+    /** Sin accessor, la pantalla aplica el filtro (por ejemplo en el servidor). */
+    accessor?: (row: T) => string;
+    options?: { value: string; label: string }[];
+    value?: string;
+    onChange?: (value: string) => void;
+    label?: string;
+    placeholder?: string;
+  };
   /** Para columnas cuyo encabezado es un ícono o va vacío. */
   headerLabel?: string;
 }
@@ -45,9 +54,12 @@ export interface DataTableProps<T> {
 
   defaultSort?: { columnId: string; direction?: SortDirection };
   /** Búsqueda de texto en memoria sobre lo que devuelva el accessor. */
-  search?: { accessor: (row: T) => string; placeholder?: string; label?: string };
+  search?: { accessor: (row: T) => string; placeholder?: string; label?: string; value?: string; onChange?: (value: string) => void };
   /** Selects o chips propios de cada pantalla. */
   filters?: ReactNode;
+  /** Restablece filtros controlados por la pantalla, además de los internos. */
+  onClearFilters?: () => void;
+  activeFilterCount?: number;
   /** Acciones al final de la barra (links, botón de alta, exportar). */
   actions?: ReactNode;
   countLabel?: (visible: number, total: number) => string;
@@ -117,6 +129,8 @@ export default function DataTable<T>({
   defaultSort,
   search,
   filters,
+  onClearFilters,
+  activeFilterCount = 0,
   actions,
   countLabel,
   expandable,
@@ -135,20 +149,55 @@ export default function DataTable<T>({
   const [sortId, setSortId] = useState(defaultSort?.columnId ?? null);
   const [direction, setDirection] = useState<SortDirection>(defaultSort?.direction ?? "asc");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [widths, setWidths] = useState<Record<string, number>>({});
+  const tableRef = useRef<HTMLTableElement>(null);
+  const resizing = useRef<{ id: string; x: number; width: number } | null>(null);
+  const tableId = useId();
+  const searchTerm = search?.value ?? term;
+  const filterCount = activeFilterCount + columns.filter(c => !c.filter?.onChange && columnFilters[c.id]).length;
+  const hasColumnFilters = columns.some(c => c.filter);
+
+  const measureWidths = () => Object.fromEntries(
+    columns.map(column => [column.id, tableRef.current?.querySelector<HTMLElement>(`[data-column-id="${column.id}"]`)?.getBoundingClientRect().width || Number.parseFloat(column.width || "160")]),
+  );
+  const clampWidth = (id: string, value: number) => Math.min(640, Math.max(columns.find(c => c.id === id)?.minWidth ?? 88, Math.round(value)));
+  const startResize = (event: PointerEvent<HTMLSpanElement>, id: string) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const measured = measureWidths();
+    setWidths(measured);
+    resizing.current = { id, x: event.clientX, width: measured[id] };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const clearFilters = () => {
+    setTerm("");
+    search?.onChange?.("");
+    setColumnFilters({});
+    if (onClearFilters) onClearFilters();
+    else columns.forEach(column => column.filter?.onChange?.(""));
+  };
 
   const visibleRows = useMemo(() => {
-    const normalized = normalizeSearch(term);
+    const normalized = normalizeSearch(searchTerm);
 
-    const filtered = search && normalized
+    const searched = search && normalized
       ? rows.filter((row) => normalizeSearch(search.accessor(row)).includes(normalized))
       : rows;
+    const filtered = searched.filter(row => columns.every(column => {
+      const filter = column.filter;
+      const value = filter?.value ?? columnFilters[column.id] ?? "";
+      if (!filter?.accessor || !value) return true;
+      const actual = filter.accessor(row);
+      return filter.options ? actual === value : normalizeSearch(actual).includes(normalizeSearch(value));
+    }));
 
     const column = columns.find((c) => c.id === sortId && c.sortValue);
     if (!column?.sortValue) return filtered;
 
     const sortValue = column.sortValue;
     return [...filtered].sort((a, b) => compareValues(sortValue(a), sortValue(b), direction));
-  }, [rows, columns, search, term, sortId, direction]);
+  }, [rows, columns, search, searchTerm, columnFilters, sortId, direction]);
 
   const toggleSort = (columnId: string) => {
     if (sortId === columnId) {
@@ -160,10 +209,12 @@ export default function DataTable<T>({
   };
 
   const totalColumns = columns.length + (expandable ? 1 : 0);
-  const hasToolbar = Boolean(search || filters || actions || countLabel);
+  const hasToolbar = Boolean(search || filters || actions || countLabel || hasColumnFilters || columns.some(c => c.resizable !== false));
+  const resized = Object.keys(widths).length > 0;
+  const tableWidth = columns.reduce((sum, column) => sum + (widths[column.id] || Number.parseFloat(column.width || "160")), expandable ? 44 : 0);
 
   return (
-    <>
+    <div className={s.root}>
       {hasToolbar && (
         <section className={s.toolbar} aria-label={`Filtros de ${caption}`}>
           {search && (
@@ -171,13 +222,15 @@ export default function DataTable<T>({
               {search.label ?? "Buscar"}
               <input
                 type="search"
-                value={term}
+                value={searchTerm}
                 placeholder={search.placeholder}
-                onChange={(event) => setTerm(event.target.value)}
+                onChange={(event) => search?.onChange ? search.onChange(event.target.value) : setTerm(event.target.value)}
               />
             </label>
           )}
           {filters}
+          {(filterCount > 0 || searchTerm) && <button className={s.toolButton} type="button" onClick={clearFilters}>Limpiar filtros{filterCount > 0 ? ` (${filterCount})` : ""}</button>}
+          {resized && <button className={s.toolButton} type="button" onClick={() => setWidths({})}>Restaurar anchos</button>}
           {countLabel && (
             <p className={s.count} aria-live="polite">
               {countLabel(visibleRows.length, rows.length)}
@@ -198,17 +251,18 @@ export default function DataTable<T>({
             </button>
           )}
         </div>
-      ) : rows.length === 0 ? (
-        <div className={s.empty} role="status">{emptyMessage}</div>
-      ) : visibleRows.length === 0 ? (
-        <div className={s.empty} role="status">{noResultsMessage}</div>
       ) : (
         <div className={s.tableWrap}>
           <table
-            className={[s.table, layout === "fixed" ? s.tableFixed : ""].join(" ").trim()}
-            style={minWidth ? { minWidth } : undefined}
+            ref={tableRef}
+            className={[s.table, layout === "fixed" || resized ? s.tableFixed : ""].join(" ").trim()}
+            style={resized ? { width: tableWidth, minWidth: tableWidth } : minWidth ? { minWidth } : undefined}
           >
             <caption className={s.srOnly}>{caption}</caption>
+            <colgroup>
+              {expandable && <col style={{ width: 44 }} />}
+              {columns.map(column => <col key={column.id} style={{ width: widths[column.id] ?? column.width }} />)}
+            </colgroup>
             <thead>
               <tr>
                 {expandable && (
@@ -221,9 +275,9 @@ export default function DataTable<T>({
                   return (
                     <th
                       key={column.id}
+                      data-column-id={column.id}
                       scope="col"
                       className={column.align === "right" ? s.numeric : undefined}
-                      style={column.width ? { width: column.width } : undefined}
                       aria-sort={
                         column.sortValue
                           ? active
@@ -244,12 +298,57 @@ export default function DataTable<T>({
                       ) : (
                         column.header || <span className={s.srOnly}>{column.headerLabel}</span>
                       )}
+                      {column.resizable !== false && (
+                        <span
+                          className={s.resizeHandle}
+                          role="separator"
+                          tabIndex={0}
+                          aria-orientation="vertical"
+                          aria-label={`Ajustar ancho de ${column.headerLabel || column.header}`}
+                          aria-valuemin={column.minWidth ?? 88}
+                          aria-valuemax={640}
+                          aria-valuenow={Math.round(widths[column.id] || Number.parseFloat(column.width || "160"))}
+                          title="Arrastrá para ajustar. Con teclado: flechas izquierda y derecha."
+                          onPointerDown={event => startResize(event, column.id)}
+                          onPointerMove={event => {
+                            const drag = resizing.current;
+                            if (drag?.id === column.id) setWidths(current => ({ ...current, [column.id]: clampWidth(column.id, drag.width + event.clientX - drag.x) }));
+                          }}
+                          onPointerUp={() => { resizing.current = null; }}
+                          onPointerCancel={() => { resizing.current = null; }}
+                          onLostPointerCapture={() => { resizing.current = null; }}
+                          onKeyDown={event => {
+                            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+                            event.preventDefault();
+                            const measured = measureWidths();
+                            setWidths({ ...measured, [column.id]: clampWidth(column.id, measured[column.id] + (event.key === "ArrowRight" ? 16 : -16)) });
+                          }}
+                        />
+                      )}
                     </th>
                   );
                 })}
               </tr>
+              {hasColumnFilters && <tr className={s.filterRow}>
+                {expandable && <td />}
+                {columns.map(column => <td key={column.id}>
+                  {column.filter && (() => {
+                    const filter = column.filter;
+                    const value = filter.value ?? columnFilters[column.id] ?? "";
+                    const change = (next: string) => filter.onChange ? filter.onChange(next) : setColumnFilters(current => ({ ...current, [column.id]: next }));
+                    const label = filter.label || `Filtrar ${column.headerLabel || column.header}`;
+                    return filter.options ? (
+                      <select aria-label={label} value={value} onChange={event => change(event.target.value)}>
+                        <option value="">Todos</option>
+                        {filter.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                    ) : <input type="search" aria-label={label} placeholder={filter.placeholder || "Filtrar…"} value={value} onChange={event => change(event.target.value)} />;
+                  })()}
+                </td>)}
+              </tr>}
             </thead>
             <tbody>
+              {visibleRows.length === 0 && <tr><td colSpan={totalColumns}><div className={s.empty} role="status">{rows.length === 0 ? emptyMessage : noResultsMessage}</div></td></tr>}
               {visibleRows.map((row) => {
                 const id = getRowId(row);
                 const open = expandedId === id;
@@ -262,7 +361,7 @@ export default function DataTable<T>({
                             className={s.chevronButton}
                             type="button"
                             aria-expanded={open}
-                            aria-controls={`datatable-panel-${id}`}
+                            aria-controls={`${tableId}-panel-${id}`}
                             aria-label={expandable.label?.(row) ?? "Ver detalle"}
                             onClick={() => setExpandedId(open ? null : id)}
                           >
@@ -286,7 +385,7 @@ export default function DataTable<T>({
                     {expandable && open && (
                       <tr className={s.panelRow}>
                         <td colSpan={totalColumns}>
-                          <div id={`datatable-panel-${id}`} className={s.panel}>
+                          <div id={`${tableId}-panel-${id}`} className={s.panel}>
                             {expandable.renderPanel(row)}
                           </div>
                         </td>
@@ -300,6 +399,6 @@ export default function DataTable<T>({
           {footer}
         </div>
       )}
-    </>
+    </div>
   );
 }

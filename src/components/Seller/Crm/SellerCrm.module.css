@@ -605,19 +605,26 @@
   background: var(--admin-overlay-backdrop);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
   animation: crm-fade 0.2s ease both;
 }
 .drawer {
-  width: min(560px, 100%);
-  height: 100dvh;
+  width: min(1040px, 100%);
+  max-width: 100%;
+  height: min(860px, calc(100dvh - 2 * var(--space-5)));
+  min-height: 0;
+  overflow: hidden;
   background: var(--admin-bg-surface);
-  border-left: 0.5px solid var(--admin-border-subtle);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-lg);
   display: flex;
   flex-direction: column;
   animation: crm-slide 0.28s var(--ease-out) both;
-  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--admin-shadow-popover);
+  font-family: var(--font-sans);
+  color: var(--admin-text-primary);
 }
 
 @media (max-width: 1200px) {
@@ -629,11 +636,12 @@
   .toolbarSelect { flex: 1 1 180px; }
 }
 @keyframes crm-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes crm-slide { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes crm-slide { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 .drawerLoading { flex: 1; display: grid; place-items: center; }
 
 .drawerHeader {
+  flex-shrink: 0;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -668,12 +676,18 @@
 
 .drawerBody {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: var(--space-5);
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  align-items: start;
   gap: var(--space-6);
 }
+.drawerBody > .section { min-width: 0; padding: var(--space-4); border: 1px solid var(--admin-border-subtle); border-radius: var(--admin-radius-md); }
+.modalFullWidth { grid-column: 1 / -1; }
+.modalFullWidth .actionGrid { grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); }
 
 .section { display: flex; flex-direction: column; gap: var(--space-3); }
 .sectionLabel {
@@ -991,7 +1005,10 @@
 
 /* ── Mobile ── */
 @media (max-width: 599px) {
-  .drawer { width: 100%; border-left: none; }
+  .drawerOverlay { padding: 0; }
+  .drawer { width: 100%; height: 100dvh; border: 0; border-radius: 0; }
+  .drawerHeader { padding: var(--space-4); }
+  .drawerBody { grid-template-columns: minmax(0, 1fr); padding: var(--space-3); gap: var(--space-3); padding-bottom: max(var(--space-4), env(safe-area-inset-bottom)); }
 }
 
 @media (max-width: 420px) {

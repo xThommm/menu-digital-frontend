@@ -46,7 +46,8 @@ function toDateInputValue(iso: string | null): string {
 export default function AdminSellers() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
-  const [includeInactive, setIncludeInactive] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("active");
+  const includeInactive = statusFilter !== "active";
   const queryKey = ADMIN_SELLERS_QUERY_KEY(includeInactive);
   const sellers = useQuery({
     queryKey,
@@ -87,6 +88,7 @@ export default function AdminSellers() {
     {
       id: "seller",
       header: "Vendedor",
+      filter: { accessor: seller => `${seller.name} ${seller.dni}` },
       width: "220px",
       sortValue: (seller) => seller.name,
       render: (seller) => (
@@ -99,6 +101,7 @@ export default function AdminSellers() {
     {
       id: "code",
       header: "Código",
+      filter: { accessor: seller => seller.code },
       width: "120px",
       sortValue: (seller) => seller.code,
       render: (seller) => <code className={s.codeCell}>{seller.code}</code>,
@@ -106,6 +109,7 @@ export default function AdminSellers() {
     {
       id: "mail",
       header: "Contacto",
+      filter: { accessor: seller => `${seller.mail} ${seller.number || ""}` },
       width: "220px",
       sortValue: (seller) => seller.mail,
       render: (seller) => (
@@ -118,6 +122,12 @@ export default function AdminSellers() {
     {
       id: "status",
       header: "Estado",
+      filter: {
+        value: statusFilter,
+        onChange: setStatusFilter,
+        accessor: seller => seller.active ? "active" : "inactive",
+        options: [{ value: "active", label: "Activos" }, { value: "inactive", label: "Dados de baja" }],
+      },
       width: "110px",
       sortValue: (seller) => (seller.active ? 1 : 0),
       render: (seller) => (
@@ -144,7 +154,7 @@ export default function AdminSellers() {
       sortValue: (seller) => Date.parse(seller.createdAt) || null,
       render: (seller) => <span className={s.dateCell}>{formatPaymentDate(seller.createdAt)}</span>,
     },
-  ], []);
+  ], [statusFilter]);
 
   return (
     <main className={s.page}>
@@ -189,16 +199,8 @@ export default function AdminSellers() {
             </div>
           }
           noResultsMessage="No hay vendedores que coincidan con la búsqueda."
-          filters={
-            <label className={s.inlineCheckbox}>
-              <input
-                type="checkbox"
-                checked={includeInactive}
-                onChange={(event) => setIncludeInactive(event.target.checked)}
-              />
-              Mostrar dados de baja
-            </label>
-          }
+          activeFilterCount={statusFilter ? 1 : 0}
+          onClearFilters={() => setStatusFilter("")}
           actions={
             <>
               <Link className={s.sellerPanelLink} to="/sellers">
