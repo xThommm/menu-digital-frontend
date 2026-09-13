@@ -465,23 +465,93 @@
   color: var(--admin-red-text);
 }
 
-.planList {
-  display: grid;
-  gap: 18px;
+.planBreakdown {
+  display: flex;
+  align-items: center;
+  gap: 24px;
   padding-top: 20px;
 }
 
-.planRowHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+/* Donut armado con conic-gradient (sin librería de gráficos, siguiendo el
+   mismo criterio "a mano" que el resto del panel): el hueco central es un
+   círculo del color de fondo de la tarjeta superpuesto, no un SVG con
+   stroke — más simple y se adapta solo al tema claro/oscuro vía variables. */
+.donutChart {
+  position: relative;
+  flex: 0 0 118px;
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
 }
 
-.planRowHeader > span:last-child {
+.donutHole {
+  position: absolute;
+  inset: 15px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--admin-bg-raised);
+  text-align: center;
+}
+
+.donutHole strong {
+  display: block;
+  color: var(--admin-text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.donutHole span {
+  display: block;
+  margin-top: 3px;
+  color: var(--admin-text-faint);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.planLegend {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 13px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.legendLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--admin-text-secondary);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legendValue {
   color: var(--admin-text-muted);
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .planPill,
@@ -511,22 +581,6 @@
   border-color: var(--admin-border-gold-mid);
   background: var(--admin-gold-glow);
   color: var(--admin-plan-pro);
-}
-
-.planTrack {
-  height: 5px;
-  margin-top: 9px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--admin-bg-elevated);
-}
-
-.planFill {
-  display: block;
-  min-width: 2px;
-  height: 100%;
-  border-radius: inherit;
-  transition: width var(--admin-transition-spring);
 }
 
 .planFill_free {
@@ -771,11 +825,15 @@
   .recentRow .planPill {
     display: none;
   }
+
+  .planBreakdown {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .moduleShortcut,
-  .planFill {
+  .moduleShortcut {
     transition: none;
   }
 

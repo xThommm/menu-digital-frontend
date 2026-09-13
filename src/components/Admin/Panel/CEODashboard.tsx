@@ -14,6 +14,26 @@ import type {
 } from "../../../types";
 import s from "./CEODashboard.module.css";
 
+// Genera los cortes del conic-gradient del donut a partir del desglose por
+// plan. Usa las mismas variables --admin-plan-* que ya pintan los pills y
+// las barras de otras pantallas, así el color de cada plan es consistente
+// en todo el panel sin duplicar la paleta acá.
+function buildPlanDonutGradient(
+  breakdown: Record<(typeof PLAN_ORDER)[number], number>,
+  total: number
+) {
+  if (!total) return "conic-gradient(var(--admin-bg-elevated) 0deg 360deg)";
+  let start = 0;
+  const stops = PLAN_ORDER.map((plan) => {
+    const share = (breakdown[plan] ?? 0) / total;
+    const end = start + share * 360;
+    const stop = `var(--admin-plan-${plan}) ${start}deg ${end}deg`;
+    start = end;
+    return stop;
+  });
+  return `conic-gradient(${stops.join(", ")})`;
+}
+
 function timeAgo(dateStr: string) {
   const today = formatDateAR(new Date(), { output: "date-input" });
   const day = formatDateAR(dateStr, { output: "date-input", fallback: "" });
@@ -198,22 +218,30 @@ export default function CEODashboard() {
         <section className={s.secondaryGrid}>
           <article className={s.panel}>
             <PanelHeader eyebrow="Cartera" title="Clientes por plan" />
-            <div className={s.planList}>
-              {PLAN_ORDER.map((plan) => {
-                const count = planBreakdown[plan];
-                const percent = totalClients ? Math.round((count / totalClients) * 100) : 0;
-                return (
-                  <div className={s.planRow} key={plan}>
-                    <div className={s.planRowHeader}>
-                      <span className={`${s.planPill} ${s[`plan_${plan}`]}`}>{PLAN_LABEL[plan]}</span>
-                      <span>{crmSummary ? `${count} · ${percent}%` : "—"}</span>
-                    </div>
-                    <div className={s.planTrack} aria-hidden="true">
-                      <span className={`${s.planFill} ${s[`planFill_${plan}`]}`} style={{ width: `${percent}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
+            <div className={s.planBreakdown}>
+              <div
+                className={s.donutChart}
+                style={{ background: buildPlanDonutGradient(planBreakdown, totalClients ?? 0) }}
+                aria-hidden="true"
+              >
+                <div className={s.donutHole}>
+                  <strong>{totalClients ?? "—"}</strong>
+                  <span>Clientes</span>
+                </div>
+              </div>
+              <ul className={s.planLegend}>
+                {PLAN_ORDER.map((plan) => {
+                  const count = planBreakdown[plan];
+                  const percent = totalClients ? Math.round((count / totalClients) * 100) : 0;
+                  return (
+                    <li className={s.legendRow} key={plan}>
+                      <span className={`${s.legendDot} ${s[`planFill_${plan}`]}`} />
+                      <span className={s.legendLabel}>{PLAN_LABEL[plan]}</span>
+                      <span className={s.legendValue}>{crmSummary ? `${count} · ${percent}%` : "—"}</span>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
             <p className={s.panelFoot}>
               {crmSummary ? `${newThisMonth} altas durante el mes actual` : "Cartera no disponible"}
