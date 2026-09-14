@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AuthContext } from "./AuthContext";
 import type { AuthResponse, AuthUser } from '../types';
+import type { SellerProfile } from "../api/sellers";
 
 type AuthUserPayload = {
   _id: string
   username: string
   admin: boolean
   role: "admin" | "user" | "seller"
+  influencer?: boolean
   slug: string
   subscription?: AuthUser["subscription"]
   subscriptionExpiresAt?: string | null
@@ -22,6 +24,7 @@ const toAuthUser = (data: AuthUserPayload): AuthUser => ({
   id: data._id,
   name: data.username,
   role: data.role ?? (data.admin ? "admin" : "user"),
+  influencer: data.influencer === true,
   slug: data.slug,
   subscription: data.subscription ?? "free",
   subscriptionExpiresAt: data.subscriptionExpiresAt ?? null,
@@ -108,22 +111,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = useCallback(async (): Promise<AuthUser | null> => {
     if (!token) return null;
 
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/users/me`, {
+    const sellerSession = user?.role === "seller";
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/${sellerSession ? "sellers" : "users"}/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    // Un refresco iniciado antes de salir o cambiar de cuenta no debe
+    // reemplazar la nueva sesión ni cerrarla por el token anterior.
+    if (localStorage.getItem("token") !== token) return null;
     if (response.status === 401) {
       logout();
       return null;
     }
     if (!response.ok) return null;
 
-    const data = await response.json() as AuthUserPayload;
-    const refreshedUser = toAuthUser(data);
+    const data = await response.json() as AuthUserPayload | SellerProfile;
+    if (localStorage.getItem("token") !== token) return null;
+    const refreshedUser = toAuthUser(sellerSession ? {
+      _id: data._id,
+      username: (data as SellerProfile).name,
+      admin: false,
+      role: "seller",
+      slug: "",
+      influencer: (data as SellerProfile).influencer,
+    } : data as AuthUserPayload);
 
     setAuth(prev => ({ ...prev, user: refreshedUser }));
     localStorage.setItem("user", JSON.stringify(refreshedUser));
     return refreshedUser;
-  }, [token, logout]);
+  }, [token, user?.role, logout]);
 
   // La expiración se resuelve en el servidor en cada request. Este refresco
   // mantiene la sesión alineada sin exigir que el usuario cierre y vuelva a
@@ -131,10 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // a la pestaña y en el instante de vencimiento (con chequeos diarios para
   // fechas muy lejanas). Las cuentas legacy sin fecha no generan timers.
   useEffect(() => {
-    // Los sellers no tienen suscripción/plan (ni existen en la colección
-    // User que resuelve GET /users/me): sincronizar acá los desloguearía
-    // apenas inician sesión, con un 401 de un endpoint que nunca los va a
-    // reconocer.
+    // SellerRoute sincroniza las cuentas de vendedor contra /sellers/me
+    // antes de mostrar su panel; acá se sincronizan suscripciones de User.
     if (!token || user?.role === "seller") return;
 
     let cancelled = false;

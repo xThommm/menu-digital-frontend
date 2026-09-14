@@ -18,7 +18,7 @@ export default function SellerOverview() {
   const [sellerID, setSellerID] = useState("");
 
   const overview = useQuery({
-    queryKey: ["seller-overview", sellerID],
+    queryKey: ["seller-overview", user?.id, sellerID],
     queryFn: () => getSellerOverview(sellerID || undefined),
     staleTime: 15_000,
   });
@@ -42,7 +42,7 @@ export default function SellerOverview() {
         id: "name",
         header: "Vendedor",
         width: "220px",
-        filter: { value: sellerID, onChange: setSellerID, options: (sellersList.data ?? []).map(seller => ({ value: seller._id, label: seller.name })) },
+        filter: { value: sellerID, onChange: setSellerID, options: (sellersList.data ?? []).filter(seller => !seller.influencer).map(seller => ({ value: seller._id, label: seller.name })) },
         sortValue: (r) => r.name,
         render: (r) => (
           <span className={s.barRowName} title={r.name}>

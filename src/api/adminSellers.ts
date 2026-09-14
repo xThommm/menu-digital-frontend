@@ -9,6 +9,8 @@ export interface Seller {
   number: number | null;
   active: boolean;
   admin: boolean;
+  influencer: boolean;
+  receivesLeads: boolean;
   startDate: string | null;
   profilePicture: string | null;
   createdAt: string;
@@ -24,6 +26,8 @@ export interface SellerCreatePayload {
   startDate?: string | null;
   active?: boolean;
   admin?: boolean;
+  influencer?: boolean;
+  receivesLeads?: boolean;
 }
 
 export interface SellerUpdatePayload {
@@ -34,6 +38,8 @@ export interface SellerUpdatePayload {
   startDate?: string | null;
   active?: boolean;
   admin?: boolean;
+  influencer?: boolean;
+  receivesLeads?: boolean;
 }
 
 export async function listAdminSellers(

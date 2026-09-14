@@ -48,7 +48,7 @@ export const setCrmClientActive = async (userID: string, active: boolean): Promi
 // PATCH /api/sellers/crm/clients/:userID → actualiza etapa / tags / próximo seguimiento
 export const updateCrmProfile = async (
   userID: string,
-  data: Partial<Pick<CrmProfile, 'stage' | 'tags' | 'nextFollowUp'>>
+  data: Partial<Pick<CrmProfile, 'stage' | 'tags' | 'nextFollowUp'>> & { assignedSeller?: string | null }
 ): Promise<CrmProfile> => {
   const res = await apiClient.patch(`/sellers/crm/clients/${userID}`, data)
   return res.data

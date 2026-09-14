@@ -61,6 +61,7 @@ export default function SellerCrm() {
   const [accountFilter, setAccountFilter] = useState<"all" | "active" | "inactive">("all");
   const [attentionFilter, setAttentionFilter] = useState<CrmAttentionCode | "all">("all");
   const [sellerFilter, setSellerFilter] = useState("all");
+  const [leadFilter, setLeadFilter] = useState<"all" | "influencer" | "seller" | "pending">("all");
   const selectedId = urlParams.get("client");
   // En celular la tabla (pensada para desktop, con scroll horizontal) es
   // incómoda como primera vista — el kanban, con columnas angostas, se lee
@@ -157,7 +158,9 @@ export default function SellerCrm() {
     if (accountFilter === "active" && !c.active) return false;
     if (accountFilter === "inactive" && c.active) return false;
     if (attentionFilter !== "all" && !(c.attention || []).includes(attentionFilter)) return false;
-    if (isAdmin && sellerFilter !== "all" && c.seller?._id !== sellerFilter) return false;
+    if (isAdmin && sellerFilter !== "all" && c.seller?._id !== sellerFilter && c.assignedSeller?._id !== sellerFilter) return false;
+    if (leadFilter === "pending" && (c.leadSource !== "influencer" || c.assignedSeller)) return false;
+    if ((leadFilter === "influencer" || leadFilter === "seller") && c.leadSource !== leadFilter) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -194,13 +197,15 @@ export default function SellerCrm() {
             {client.businessName || <em>Sin nombre comercial</em>}
           </span>
           <span>@{client.username}</span>
-          {isAdmin && client.seller && (
-            <span className={s.tableSeller} title={`Vendedor: ${client.seller.name} (${client.seller.code})`}>
-              {client.seller.name}
-            </span>
-          )}
         </button>
       ),
+    },
+    {
+      id: "attribution",
+      header: "Origen y encargado",
+      width: "180px",
+      sortValue: (client) => client.assignedSeller?.name || client.seller?.name || null,
+      render: (client) => <LeadAttribution client={client} />,
     },
     {
       id: "contact",
@@ -368,7 +373,7 @@ export default function SellerCrm() {
         </button>
       ),
     },
-  ], [openDrawer, isAdmin, planFilter, stageFilter, attentionFilter]);
+  ], [openDrawer, planFilter, stageFilter, attentionFilter]);
 
   const selectAttention = (code: CrmAttentionCode | "all") => {
     setAttentionFilter((current) => (current === code ? "all" : code));
@@ -396,8 +401,9 @@ export default function SellerCrm() {
   const clearFilters = () => {
     setSearch(""); setStageFilter("all"); setPlanFilter("all");
     setAccountFilter("all"); setAttentionFilter("all"); setSellerFilter("all");
+    setLeadFilter("all");
   };
-  const activeFilters = [stageFilter, planFilter, accountFilter, attentionFilter, ...(isAdmin ? [sellerFilter] : [])].filter(value => value !== "all").length;
+  const activeFilters = [stageFilter, planFilter, accountFilter, attentionFilter, leadFilter, ...(isAdmin ? [sellerFilter] : [])].filter(value => value !== "all").length;
   const extraFilters = <><select
             className={s.toolbarSelect}
             value={accountFilter}
@@ -409,14 +415,21 @@ export default function SellerCrm() {
             <option value="inactive">Inactivas</option>
           </select>
 
+          <select className={s.toolbarSelect} value={leadFilter} onChange={(event) => setLeadFilter(event.target.value as typeof leadFilter)} aria-label="Filtrar por origen del lead">
+            <option value="all">Todos los orígenes</option>
+            <option value="influencer">Leads de influencers</option>
+            <option value="seller">Leads de vendedores</option>
+            {isAdmin && <option value="pending">Influencers · Sin encargado</option>}
+          </select>
+
           {isAdmin && (
             <select
               className={s.toolbarSelect}
               value={sellerFilter}
               onChange={(e) => setSellerFilter(e.target.value)}
-              aria-label="Filtrar por vendedor"
+              aria-label="Filtrar por vendedor o influencer"
             >
-              <option value="all">Todos los vendedores</option>
+              <option value="all">Vendedor o influencer</option>
               {(sellersList.data ?? []).map((seller) => (
                 <option key={seller._id} value={seller._id}>{seller.name}</option>
               ))}
@@ -510,7 +523,7 @@ export default function SellerCrm() {
             getRowId={(client) => client._id}
             defaultSort={{ columnId: "client", direction: "asc" }}
             layout="fixed"
-            minWidth={1640}
+            minWidth={1820}
             search={{ value: search, onChange: setSearch, accessor: client => `${client.businessName} ${client.username} ${client.slug} ${client.contactInfo?.mail || ""}`, placeholder: "Negocio, usuario, slug o email…", label: "Buscar clientes" }}
             filters={extraFilters}
             actions={viewActions}
@@ -573,6 +586,7 @@ export default function SellerCrm() {
                           <span className={`${s.planBadge} ${s[`plan_${effectiveSubscriptionFor(c)}`]}`}>{planBadgeLabel(c)}</span>
                           {!c.active && <span className={s.inactiveTag}>Inactivo</span>}
                         </span>
+                        <LeadAttribution client={c} />
                         {c.nextFollowUp && (
                           <span className={`${s.followUp} ${isOverdue(c.nextFollowUp) ? s.followUpOverdue : ""}`}>
                             {fmtFollowUpDate(c.nextFollowUp)}
@@ -600,4 +614,18 @@ export default function SellerCrm() {
       )}
     </div>
   );
+}
+
+function LeadAttribution({ client }: { client: CrmClient }) {
+  if (client.leadSource === "influencer") {
+    return (
+      <span className={s.leadAttribution}>
+        <span className={s.tableSeller}>Influencer: {client.seller?.name || "Sin registro"}</span>
+        <span className={client.assignedSeller ? s.tableMuted : s.tableFollowUpOverdue}>
+          {client.assignedSeller ? `Encargado: ${client.assignedSeller.name}` : "Pendiente de asignación"}
+        </span>
+      </span>
+    );
+  }
+  return <span className={s.tableMuted}>{client.seller ? `Vendedor: ${client.seller.name}` : "Sin vendedor"}</span>;
 }

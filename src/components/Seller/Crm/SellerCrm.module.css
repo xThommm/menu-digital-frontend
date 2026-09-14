@@ -685,6 +685,27 @@
   align-items: start;
   gap: var(--space-6);
 }
+
+.leadAttribution {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.assignmentField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--admin-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.assignmentField select {
+  width: 100%;
+  min-width: 0;
+}
 .drawerBody > .section { min-width: 0; padding: var(--space-4); border: 1px solid var(--admin-border-subtle); border-radius: var(--admin-radius-md); }
 .modalFullWidth { grid-column: 1 / -1; }
 .modalFullWidth .actionGrid { grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); }

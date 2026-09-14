@@ -117,6 +117,7 @@ export interface AuthUser {
   id: string
   name: string
   role: "admin" | "user" | "seller"
+  influencer?: boolean
   slug: string
   subscription: Subscription
   subscriptionExpiresAt?: string | null
@@ -184,6 +185,7 @@ export interface AuthResponse {
   username: string
   admin: boolean
   role: "admin" | "user" | "seller"
+  influencer?: boolean
   slug: string
   subscription: Subscription
   subscriptionExpiresAt?: string | null
@@ -471,6 +473,8 @@ export interface CrmClient {
     name: string
     code: string
   } | null
+  leadSource?: "influencer" | "seller" | null
+  assignedSeller?: { _id: string; name: string; code: string } | null
   attention?: CrmAttentionCode[]
   // Marca histórica: la cuenta se originó por la prueba gratis de 7 días de
   // Pro. isTrialActive es el estado "en prueba ahora mismo" (lazy, false una
@@ -528,6 +532,9 @@ export interface CrmClientDetailUser {
   active: boolean
   hasDelivery: boolean
   createdAt: string
+  leadSource?: CrmClient["leadSource"]
+  seller?: CrmClient["seller"]
+  assignedSeller?: CrmClient["assignedSeller"]
   trialActive?: boolean
   isTrialActive?: boolean
   contactInfo: Pick<ContactInfo, "businessName" | "mail" | "number" | "address">

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import type { AdminPayment, CrmClient, CrmClientDetail } from "../../../types";
 import {
   getCrmClient,
@@ -11,6 +12,7 @@ import {
   setCrmClientActive,
 } from "../../../api/crm";
 import { listAdminPayments } from "../../../api/adminPayments";
+import { listAdminSellers } from "../../../api/adminSellers";
 import { useAuth } from "../../../context/useAuth";
 import { useNotifications } from "../../../context/useNotifications";
 import {
@@ -64,9 +66,17 @@ export default function ClientDrawer({
   const [savingNote, setSavingNote] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [savingAssignment, setSavingAssignment] = useState(false);
   const [changingActive, setChangingActive] = useState(false);
   const [copyingLink, setCopyingLink] = useState(false);
   const { success: notifySuccess, error: notifyError } = useNotifications();
+  const receivers = useQuery({
+    queryKey: ["admin-sellers", false],
+    queryFn: ({ signal }) => listAdminSellers(false, signal),
+    enabled: isAdmin && detail?.user.leadSource === "influencer",
+    staleTime: 0,
+  });
+  const eligibleReceivers = (receivers.data ?? []).filter((seller) => seller.active && seller.receivesLeads && !seller.influencer);
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -131,6 +141,27 @@ export default function ClientDrawer({
     load();
     return () => { cancelled = true; };
   }, [notifyError, userID, onClose, isAdmin]);
+
+  const saveAssignment = async (assignedSeller: string) => {
+    if (savingAssignment || !detail) return;
+    setSavingAssignment(true);
+    try {
+      await updateCrmProfile(userID, { assignedSeller: assignedSeller || null });
+      notifySuccess(assignedSeller ? "Encargado asignado." : "Lead pendiente de asignación.");
+      try {
+        const refreshed = await getCrmClient(userID);
+        setDetail(refreshed);
+        onPatch(userID, { assignedSeller: refreshed.user.assignedSeller });
+        await onRefresh();
+      } catch {
+        notifyError("La asignación se guardó, pero no se pudo actualizar la ficha. Volvé a abrirla.");
+      }
+    } catch (err) {
+      notifyError(extractServerMessage(err, "No se pudo guardar el encargado."));
+    } finally {
+      setSavingAssignment(false);
+    }
+  };
 
   // Guarda etapa/tags/seguimiento y actualiza la UI solo con la respuesta
   // confirmada por el servidor. También bloquea cambios superpuestos.
@@ -328,6 +359,43 @@ export default function ClientDrawer({
                   </div>
                 </div>
               </section>
+
+              {u.leadSource === "influencer" && (
+                <section className={s.section}>
+                  <p className={s.sectionLabel}>Origen y seguimiento</p>
+                  <p className={s.metaValue}>Influencer: {u.seller?.name || "Sin registro"}</p>
+                  {isAdmin ? (
+                    <>
+                      <label className={s.assignmentField} htmlFor="crm-assigned-seller">
+                        Encargado del seguimiento
+                        <select
+                          id="crm-assigned-seller"
+                          className={s.toolbarSelect}
+                          value={u.assignedSeller?._id || ""}
+                          onChange={(event) => { void saveAssignment(event.target.value); }}
+                          disabled={savingAssignment || receivers.isPending || receivers.isError}
+                        >
+                          <option value="">Pendiente de asignación</option>
+                          {u.assignedSeller && !eligibleReceivers.some((seller) => seller._id === u.assignedSeller?._id) && (
+                            <option value={u.assignedSeller._id} disabled>{u.assignedSeller.name} · No recibe nuevos leads</option>
+                          )}
+                          {eligibleReceivers.map((seller) => <option key={seller._id} value={seller._id}>{seller.name} · {seller.code}</option>)}
+                        </select>
+                      </label>
+                      {savingAssignment && <p className={s.paymentHistoryHint} role="status">Guardando encargado…</p>}
+                      {receivers.isError ? (
+                        <p className={s.paymentHistoryError} role="alert">
+                          No se pudieron cargar los vendedores. <button className={s.clearBtn} type="button" onClick={() => void receivers.refetch()}>Reintentar</button>
+                        </p>
+                      ) : !receivers.isPending && eligibleReceivers.length === 0 ? (
+                        <p className={s.paymentHistoryHint}>No hay vendedores habilitados. Activá “Recibe leads” en Vendedores e influencers para poder asignar este lead.</p>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className={s.metaValue}>{u.assignedSeller ? `Encargado: ${u.assignedSeller.name}` : "Pendiente de asignación"}</p>
+                  )}
+                </section>
+              )}
 
               {/* ── Datos de contacto ── */}
               <section className={s.section}>

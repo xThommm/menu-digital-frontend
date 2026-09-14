@@ -74,6 +74,10 @@ const SellerOverview = lazy(
   () => import("../components/Seller/Overview/SellerOverview")
 );
 
+const InfluencerOverview = lazy(
+  () => import("../components/Seller/Influencer/InfluencerOverview")
+);
+
 const SellerSimulation = lazy(
   () => import("../components/Seller/Simulation/SellerSimulation")
 );
@@ -254,6 +258,7 @@ export default function AppRoutes() {
 
         <Route element={<SellerRoute />}>
           <Route element={<SellerLayout />}>
+            <Route path="/sellers/influencer" element={<InfluencerOverview />} />
             <Route
               path="/sellers"
               element={<SellerOverview />}

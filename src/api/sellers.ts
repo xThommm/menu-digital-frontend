@@ -10,6 +10,8 @@ export interface SellerProfile {
   startDate: string | null;
   profilePicture: string | null;
   admin: boolean;
+  influencer: boolean;
+  receivesLeads: boolean;
   createdAt: string;
 }
 
@@ -68,6 +70,32 @@ export interface SellerRankingEntry {
 export interface SellerRankingResponse {
   period: RankingPeriod;
   sellers: SellerRankingEntry[];
+}
+
+export interface InfluencerLead {
+  _id: string;
+  businessName: string;
+  username: string;
+  slug: string;
+  createdAt: string;
+  status: "pending" | "converted";
+  convertedAt: string | null;
+  commission: number;
+}
+
+export interface InfluencerOverviewResponse {
+  profile: { name: string; code: string };
+  totals: { leads: number; conversions: number; commission: number };
+  commissionRate: number;
+  leads: InfluencerLead[];
+}
+
+export async function getInfluencerOverview(signal?: AbortSignal): Promise<InfluencerOverviewResponse> {
+  const res = await apiClient.get<InfluencerOverviewResponse>("/sellers/influencer/overview", {
+    signal,
+    timeout: 10000,
+  });
+  return res.data;
 }
 
 // GET /api/sellers/me

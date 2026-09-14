@@ -28,15 +28,19 @@ const BASE_NAV_ITEMS = [
 // Ranking es exclusivo admin — se agrega condicionalmente para no mostrarle a
 // un vendedor un link que lo va a rebotar de vuelta a /sellers.
 const RANKING_ITEM = { path: "/sellers/ranking", label: "Ranking", short: "Ranking", icon: <BarChart3 size={20} strokeWidth={1.5} /> };
+const INFLUENCER_NAV_ITEMS = [
+  { path: "/sellers/influencer", label: "Mis referidos", short: "Referidos", icon: <Users size={20} strokeWidth={1.5} /> },
+];
 
 export default function SellerLayout() {
   const { logout, user } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const isInfluencer = user?.role === "seller" && user.influencer === true;
   const NAV_ITEMS = useMemo(
-    () => (user?.role === "admin" ? [...BASE_NAV_ITEMS, RANKING_ITEM] : BASE_NAV_ITEMS),
-    [user?.role],
+    () => isInfluencer ? INFLUENCER_NAV_ITEMS : (user?.role === "admin" ? [...BASE_NAV_ITEMS, RANKING_ITEM] : BASE_NAV_ITEMS),
+    [isInfluencer, user?.role],
   );
 
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
@@ -76,8 +80,8 @@ export default function SellerLayout() {
   // Este layout lo comparten sellers y admins (que pueden entrar a /sellers
   // a mirar) — el logo lleva al panel general de cada uno.
   const goToOwnPanel = useCallback(() => {
-    navigate(user?.role === "admin" ? "/admin" : "/sellers");
-  }, [navigate, user?.role]);
+    navigate(user?.role === "admin" ? "/admin" : isInfluencer ? "/sellers/influencer" : "/sellers");
+  }, [navigate, isInfluencer, user?.role]);
 
   const themeLabel = theme === "dark" ? "Activar tema claro" : "Activar tema oscuro";
 
@@ -87,7 +91,7 @@ export default function SellerLayout() {
       <aside
         id="seller-sidebar"
         className={`${s.sidebar} ${sidebarCollapsed ? s.sidebarCollapsed : ""}`}
-        aria-label="Navegación del panel de vendedor"
+        aria-label={isInfluencer ? "Navegación del panel de influencer" : "Navegación del panel de vendedor"}
         inert={sidebarCollapsed}
       >
         <button type="button" className={s.brand} onClick={goToOwnPanel} aria-label="Ir al panel general">
@@ -172,7 +176,7 @@ export default function SellerLayout() {
       </div>
 
       {/* ── Bottom nav (mobile) ───────────────────────────────────────────── */}
-      <nav className="admin-mobile-dock" aria-label="Navegación del panel de vendedor">
+      <nav className="admin-mobile-dock" aria-label={isInfluencer ? "Navegación del panel de influencer" : "Navegación del panel de vendedor"}>
         {NAV_ITEMS.map((item) => {
           const active = location.pathname === item.path;
           return (

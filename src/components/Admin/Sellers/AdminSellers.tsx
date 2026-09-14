@@ -120,6 +120,19 @@ export default function AdminSellers() {
       ),
     },
     {
+      id: "profile",
+      header: "Perfil",
+      width: "170px",
+      filter: { accessor: (seller) => seller.influencer ? "Influencer" : seller.receivesLeads ? "Vendedor · Recibe leads" : "Vendedor" },
+      sortValue: (seller) => seller.influencer ? "Influencer" : "Vendedor",
+      render: (seller) => (
+        <span className={s.rowName}>
+          <strong>{seller.influencer ? "Influencer" : "Vendedor"}</strong>
+          {!seller.influencer && <span>{seller.receivesLeads ? "Recibe leads" : "Sin reparto de leads"}</span>}
+        </span>
+      ),
+    },
+    {
       id: "status",
       header: "Estado",
       filter: {
@@ -161,16 +174,15 @@ export default function AdminSellers() {
       <div className={s.inner}>
         <header className={s.header}>
           <p className={s.eyebrow}>Administración de MenuDigital</p>
-          <h1>Vendedores</h1>
-          <p>Alta, baja y modificación del equipo de ventas.</p>
+          <h1>Vendedores e influencers</h1>
+          <p>Administrá las cuentas y quiénes reciben leads para hacer el seguimiento.</p>
         </header>
 
         <aside className={s.notice}>
           <strong>Nombre y DNI deben ser únicos.</strong>
           <p>
-            El código (ej. ABC-123) lo genera el backend. Las comisiones,
-            métricas y el CRM de cada vendedor viven en su propio panel
-            (/sellers), no acá.
+            Cada cuenta ingresa con su código y contraseña. Los influencers tienen
+            un panel exclusivo de referidos; los vendedores habilitados reciben sus leads por turnos.
           </p>
         </aside>
 
@@ -179,7 +191,7 @@ export default function AdminSellers() {
           rows={sellers.data ?? []}
           columns={columns}
           getRowId={(seller) => seller._id}
-          minWidth={900}
+          minWidth={1070}
           defaultSort={{ columnId: "seller" }}
           search={{
             accessor: (seller) => `${seller.name} ${seller.code} ${seller.dni} ${seller.mail}`,
@@ -244,6 +256,8 @@ function CreateSellerModal({
   const [number, setNumber] = useState("");
   const [password, setPassword] = useState("");
   const [startDate, setStartDate] = useState("");
+  const [influencer, setInfluencer] = useState(false);
+  const [receivesLeads, setReceivesLeads] = useState(false);
   const [error, setError] = useFeedbackMessage("error");
   const [saving, setSaving] = useState(false);
   const submitting = useRef(false);
@@ -268,6 +282,8 @@ function CreateSellerModal({
         dni: normalizeDni(dni),
         mail: normalizeText(mail),
         password,
+        influencer,
+        receivesLeads,
       };
       if (number.trim()) payload.number = Number(number);
       if (startDate) payload.startDate = startDate;
@@ -378,6 +394,14 @@ function CreateSellerModal({
               onChange={(event) => { setPassword(event.target.value); setError(""); }}
             />
           </label>
+          <SellerLeadOptions
+            idPrefix="seller-create"
+            influencer={influencer}
+            receivesLeads={receivesLeads}
+            disabled={saving}
+            onInfluencerChange={(checked) => { setInfluencer(checked); if (checked) setReceivesLeads(false); }}
+            onReceivesLeadsChange={setReceivesLeads}
+          />
         </div>
 
         {error && <p className={s.error} role="alert">{error}</p>}
@@ -410,6 +434,8 @@ function SellerEditPanel({
   const [number, setNumber] = useState(seller.number ? String(seller.number) : "");
   const [startDate, setStartDate] = useState(toDateInputValue(seller.startDate));
   const [admin, setAdmin] = useState(seller.admin);
+  const [influencer, setInfluencer] = useState(seller.influencer ?? false);
+  const [receivesLeads, setReceivesLeads] = useState(seller.receivesLeads ?? false);
   const [error, setError] = useFeedbackMessage("error");
   const [saving, setSaving] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
@@ -424,7 +450,9 @@ function SellerEditPanel({
     mail !== seller.mail ||
     number !== (seller.number ? String(seller.number) : "") ||
     startDate !== toDateInputValue(seller.startDate) ||
-    admin !== seller.admin;
+    admin !== seller.admin ||
+    influencer !== (seller.influencer ?? false) ||
+    receivesLeads !== (seller.receivesLeads ?? false);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -440,6 +468,8 @@ function SellerEditPanel({
         number: number.trim() ? Number(number) : null,
         startDate: startDate || null,
         admin,
+        influencer,
+        receivesLeads,
       });
       notifications.success(`Vendedor ${updated.name} actualizado.`);
       onUpdated(updated);
@@ -573,6 +603,14 @@ function SellerEditPanel({
             />
             Admin
           </label>
+          <SellerLeadOptions
+            idPrefix={`seller-${seller._id}`}
+            influencer={influencer}
+            receivesLeads={receivesLeads}
+            disabled={saving}
+            onInfluencerChange={(checked) => { setInfluencer(checked); if (checked) setReceivesLeads(false); }}
+            onReceivesLeadsChange={setReceivesLeads}
+          />
         </div>
 
         {error && <p className={s.error} role="alert">{error}</p>}
@@ -602,6 +640,35 @@ function SellerEditPanel({
         />
       )}
     </>
+  );
+}
+
+function SellerLeadOptions({
+  idPrefix, influencer, receivesLeads, disabled, onInfluencerChange, onReceivesLeadsChange,
+}: {
+  idPrefix: string;
+  influencer: boolean;
+  receivesLeads: boolean;
+  disabled: boolean;
+  onInfluencerChange: (checked: boolean) => void;
+  onReceivesLeadsChange: (checked: boolean) => void;
+}) {
+  return (
+    <fieldset className={s.leadOptions}>
+      <legend>Referidos y seguimiento</legend>
+      <label className={s.inlineCheckbox} htmlFor={`${idPrefix}-influencer`}>
+        <input id={`${idPrefix}-influencer`} type="checkbox" checked={influencer} disabled={disabled}
+          onChange={(event) => onInfluencerChange(event.target.checked)} />
+        Influencer
+      </label>
+      <p>Accede únicamente a sus referidos, primeras compras y comisiones.</p>
+      <label className={s.inlineCheckbox} htmlFor={`${idPrefix}-receives-leads`}>
+        <input id={`${idPrefix}-receives-leads`} type="checkbox" checked={receivesLeads} disabled={disabled || influencer}
+          onChange={(event) => onReceivesLeadsChange(event.target.checked)} />
+        Recibe leads de influencers / publicidad
+      </label>
+      <p>Participa del reparto de leads para hacer el seguimiento. Disponible para vendedores activos.</p>
+    </fieldset>
   );
 }
 

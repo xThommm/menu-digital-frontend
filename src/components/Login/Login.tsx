@@ -32,6 +32,7 @@ export default function LoginPage() {
 const getRedirectPath = (user: AuthUser | null) => {
   if (user?.role === "admin") return "/admin";
   if (user?.role === "user") return "/dashboard";
+  if (user?.influencer) return "/sellers/influencer";
   return "/sellers";
 };
 
@@ -112,7 +113,7 @@ const getRedirectPath = (user: AuthUser | null) => {
         >
           {/* Usuario */}
           <div className={styles.field}>
-            <label htmlFor="username">Usuario</label>
+            <label htmlFor="username">Usuario o código</label>
             <div className={`${styles.fieldWrap} ${fieldErrors.username ? styles.fieldWrapError : ""}`}>
               <svg className={styles.fieldIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
@@ -121,7 +122,7 @@ const getRedirectPath = (user: AuthUser | null) => {
                 ref={usernameRef}
                 id="username"
                 type="text"
-                placeholder="Nombre de usuario"
+                placeholder="Nombre de usuario o código"
                 value={username}
                 onChange={(e) => { setUsername(e.target.value); clearError("username"); }}
                 autoComplete="username"
