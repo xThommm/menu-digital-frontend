@@ -46,6 +46,9 @@
 
   /* CATEGORÍA – más presencia */
 .mpCatTitle {
+  grid-column: 1 / -1; /* ocupa toda la fila: si comparte fila con la
+    primera tarjeta, la fila toma la altura de la tarjeta (más alta) y
+    deja un hueco vacío debajo del título */
   font-size: 0.75rem;           /* sube un poco */
   font-weight: 650;
   letter-spacing: 0.14em;
