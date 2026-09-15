@@ -80,6 +80,55 @@
   cursor: not-allowed;
 }
 
+/* ── Buscador por producto asignado (nombre o código) ─────────────────────── */
+
+.productSearchWrap {
+  position: relative;
+  padding: 0.75rem 1rem 0;
+}
+
+.productSearchInput {
+  width: 100%;
+  min-height: var(--control-min-size);
+  padding: 0 2.4rem 0 0.9rem;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  font-family: var(--font-sans);
+  font-size: 0.86rem;
+  color: var(--admin-text-primary);
+}
+
+.productSearchInput::placeholder {
+  color: var(--admin-text-faint);
+}
+
+.productSearchInput:focus {
+  outline: none;
+  border-color: var(--admin-gold);
+}
+
+.productSearchClear {
+  position: absolute;
+  top: 50%;
+  right: 1.6rem;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--admin-text-faint);
+  cursor: pointer;
+}
+
+.productSearchClear:hover {
+  color: var(--admin-text-primary);
+}
+
 /* ── Toolbar ────────────────────────────────────────────────────────────── */
 
 .toolbar {
@@ -125,14 +174,37 @@
   cursor: pointer;
 }
 
-.stockPlaceholder {
+/* ── Toggle "Mis imágenes" / "Imágenes prediseñadas" ──────────────────────── */
+
+.viewModeToggle {
+  display: flex;
+  padding: 3px;
+  gap: 2px;
   background: var(--admin-bg-surface);
-  border: 0.5px dashed var(--admin-border-default);
+  border: 0.5px solid var(--admin-border-default);
   border-radius: var(--admin-radius-md);
-  padding: 0.5rem 0.75rem;
+}
+
+.viewModeBtn {
+  min-height: calc(var(--control-min-size) - 8px);
+  padding: 0 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--admin-radius-sm);
   font-size: 0.76rem;
-  color: var(--admin-text-faint);
-  cursor: not-allowed;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  transition: background var(--admin-transition), color var(--admin-transition);
+}
+
+.viewModeBtn:hover {
+  color: var(--admin-text-primary);
+}
+
+.viewModeBtnActive, .viewModeBtnActive:hover {
+  background: var(--admin-gold);
+  color: var(--admin-gold-ink);
 }
 
 /* ── Estados ────────────────────────────────────────────────────────────── */
@@ -266,6 +338,21 @@
   font-size: 0.68rem;
   color: var(--admin-text-primary);
   cursor: pointer;
+}
+
+.presetBadge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 1;
+  padding: 2px 6px;
+  border-radius: var(--admin-radius-sm);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  pointer-events: none;
 }
 
 .tileDeleteBtn {
