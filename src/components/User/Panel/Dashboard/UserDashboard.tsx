@@ -157,8 +157,14 @@ export default function UserDashboard() {
     return () => { cancelled = true; };
   }, [token, isLoading, notifyError, logout]);
 
-  const publicUrl = data?.slug
-    ? `${window.location.origin}/${data.slug}`
+  // El slug ya está disponible al instante vía AuthContext (localStorage, sin
+  // red) — se prioriza sobre data.slug para no atar el link ni la vista previa
+  // (más abajo) al fetch de /users/me/summary, que tarda mucho más y solo
+  // aporta datos secundarios (stats, nombre, delivery). data.slug queda como
+  // fallback por si el user de sesión no lo trajera por algún motivo.
+  const slug = user?.slug || data?.slug;
+  const publicUrl = slug
+    ? `${window.location.origin}/${slug}`
     : null;
 
   const handleCopy = useCallback(async () => {
