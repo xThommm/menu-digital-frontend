@@ -159,6 +159,7 @@ export default function UserEditorPage() {
   const [template,          setTemplate]   = useState(1);
   const [subscription,      setSubscription] = useState<Subscription>("free");
   const [lockedTemplate,    setLockedTemplate] = useState<typeof TEMPLATES[number] | null>(null);
+  const [nameChangeConfirmOpen, setNameChangeConfirmOpen] = useState(false);
 
   const currentPlan = catalog.isError ? undefined : catalog.data?.find(plan => plan.name === subscription);
 
@@ -278,30 +279,43 @@ export default function UserEditorPage() {
     fetchData();
   }, [token, setError, logout]);
 
-  // Save info
-  const saveInfo = async () => {
+  // Valida la pestaña "Información"; separado de saveInfo para poder
+  // correrlo también antes de abrir la confirmación de cambio de nombre,
+  // sin duplicar las reglas.
+  const validateInfoForm = (): boolean => {
     if (!form.businessName.trim()) {
       setError("El nombre del negocio es obligatorio.");
-      return;
+      return false;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.mail.trim())) {
       setError("Ingresá un email de contacto válido.");
-      return;
+      return false;
     }
     const numberDigits = form.number.replace(/\D/g, "");
     if (form.number.trim() && !numberDigits) {
       setError("El teléfono no es válido.");
-      return;
+      return false;
     }
     for (const day of DAY_ORDER) {
       const d = schedule[day];
       if (d.enabled && (!BUSINESS_TIME_PATTERN.test(d.open) || !BUSINESS_TIME_PATTERN.test(d.close))) {
         setError(`En ${DAY_LABEL[day]} ingresá una hora de apertura y de cierre válidas.`);
-        return;
+        return false;
       }
     }
+    return true;
+  };
 
+  // Cambiar el nombre cambia el slug de la carta pública (generateUniqueSlug
+  // en el backend) y por lo tanto la URL que codifica cualquier QR ya
+  // impreso o compartido — se confirma aparte para que el dueño no se lo
+  // pierda en medio del resto de los cambios de "Info".
+  const businessNameChanged = form.businessName.trim() !== initialFormRef.current.businessName.trim();
+
+  // Save info
+  const saveInfo = async () => {
     const trimmedMail = form.mail.trim();
+    const numberDigits = form.number.replace(/\D/g, "");
     // Cambiar el mail no pasa por este PUT (el backend lo rechaza): se manda
     // siempre el valor ya guardado, y si el dueño tipeó uno distinto se
     // dispara aparte el flujo de confirmación por código.
@@ -353,6 +367,22 @@ export default function UserEditorPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Si el nombre cambió, primero se confirma en un modal (ver
+  // businessNameChanged); si no, se guarda directo.
+  const handleSaveClick = () => {
+    if (!validateInfoForm()) return;
+    if (businessNameChanged) {
+      setNameChangeConfirmOpen(true);
+      return;
+    }
+    saveInfo();
+  };
+
+  const confirmBusinessNameChange = () => {
+    setNameChangeConfirmOpen(false);
+    saveInfo();
   };
 
   // Paso 1: pide el cambio de mail — manda un código a la casilla nueva, no
@@ -1046,7 +1076,7 @@ export default function UserEditorPage() {
 
             <button
               className={styles.saveBtn}
-              onClick={saveInfo}
+              onClick={handleSaveClick}
               disabled={saving || !isDirty || emailChangeStep === "pending"}
               aria-busy={saving}
             >
@@ -1253,6 +1283,45 @@ export default function UserEditorPage() {
         )}
 
       </div>
+
+      {/* ── Modal: confirmar cambio de nombre del negocio ── */}
+      {nameChangeConfirmOpen && (
+        <div
+          className={styles.modalOverlay}
+          onClick={() => setNameChangeConfirmOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="name-change-modal-title"
+        >
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <p id="name-change-modal-title" className={styles.modalTitle}>
+              ¿Cambiar el nombre del negocio?
+            </p>
+            <p className={styles.modalDesc}>
+              El nombre define el enlace de tu carta pública. Si ya imprimiste o
+              compartiste el código QR, dejará de funcionar y vas a tener que
+              generar uno nuevo con el enlace actualizado.
+            </p>
+            <div className={styles.modalBtns}>
+              <button
+                className={styles.modalCancel}
+                onClick={() => setNameChangeConfirmOpen(false)}
+                type="button"
+                autoFocus
+              >
+                Seguir editando
+              </button>
+              <button
+                className={styles.modalUpgrade}
+                onClick={confirmBusinessNameChange}
+                type="button"
+              >
+                Sí, cambiar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal: template bloqueado por plan ── */}
       {lockedTemplate && (
