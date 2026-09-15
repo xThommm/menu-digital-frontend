@@ -24,12 +24,12 @@ const columns: DataTableColumn<InfluencerLead>[] = [
     sortValue: (lead) => lead.status,
     filter: {
       accessor: (lead) => lead.status,
-      options: [{ value: "pending", label: "Sin primera compra" }, { value: "converted", label: "Con primera compra" }],
+      options: [{ value: "pending", label: "Sin convertir" }, { value: "converted", label: "Convertido" }],
     },
-    render: (lead) => lead.status === "converted" ? "Primera compra realizada" : "Sin primera compra",
+    render: (lead) => lead.status === "converted" ? "Convertido" : "Sin convertir",
   },
   {
-    id: "convertedAt", header: "Primera compra",
+    id: "convertedAt", header: "Conversión",
     sortValue: (lead) => lead.convertedAt ? Date.parse(lead.convertedAt) : null,
     render: (lead) => formatDateAR(lead.convertedAt, { fallback: "Pendiente" }),
   },
@@ -67,7 +67,7 @@ export default function InfluencerOverview() {
         <header className={s.header}>
           <p className={s.eyebrow}>Panel de influencer</p>
           <h1>Mis referidos</h1>
-          <p>Seguí los locales que llegaron con tu código, sus primeras compras y tus comisiones.</p>
+          <p>Seguí los locales que llegaron con tu código, los convertidos y tus comisiones.</p>
         </header>
 
         {data && !overview.isError && (
@@ -78,14 +78,9 @@ export default function InfluencerOverview() {
             </div>
             <div className={s.statGrid}>
               <div className={s.stat}><strong>{data.totals.leads.toLocaleString("es-AR")}</strong><span>Locales referidos</span></div>
-              <div className={s.stat}><strong>{data.totals.conversions.toLocaleString("es-AR")}</strong><span>Primeras compras</span></div>
+              <div className={s.stat}><strong>{data.totals.conversions.toLocaleString("es-AR")}</strong><span>Leads convertidos</span></div>
               <div className={s.stat}><strong>{formatPaymentAmount(data.totals.commission)}</strong><span>Comisiones generadas</span></div>
             </div>
-            <p className={s.hint}>
-              Tu comisión es del {Math.round(data.commissionRate * 100)}% sobre el importe pagado en la primera compra de cada local.
-              Las renovaciones no generan una nueva comisión y los reembolsos reducen la comisión correspondiente.
-              Los importes muestran comisiones generadas, no pagos liquidados.
-            </p>
           </section>
         )}
 
