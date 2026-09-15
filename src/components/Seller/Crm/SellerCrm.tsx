@@ -2,12 +2,10 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
   CrmAttentionCode,
-  CrmAttentionSummary,
   CrmClient,
   CrmStage,
 } from "../../../types";
 import {
-  listCrmClients,
   updateCrmProfile,
   exportCrmClients,
 } from "../../../api/crm";
@@ -15,6 +13,8 @@ import { listAdminSellers } from "../../../api/adminSellers";
 import { useAuth } from "../../../context/useAuth";
 import { useNotifications } from "../../../context/useNotifications";
 import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
+import { useCrmClients } from "../../../hooks/useCrmClients";
+import { useCrmAlerts } from "../../../hooks/useCrmAlerts";
 import { formatPaymentAmount, PAYMENT_STATUS_LABEL } from "../../../lib/adminPayments";
 import { extractServerMessage } from "../../../lib/apiErrors";
 import { formatDateAR } from "../../../lib/dates";
@@ -23,7 +23,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   STAGE_META,
   STAGE_ORDER,
-  EMPTY_ATTENTION_SUMMARY,
   ATTENTION_META,
   fmtDate,
   calendarDate,
@@ -32,8 +31,6 @@ import {
   effectiveSubscriptionFor,
   planBadgeLabel,
   planExpiryLabel,
-  normalizeAttention,
-  summarizeAttention,
 } from "./crmHelpers";
 import { AttentionInbox, TrafficTrend } from "./AttentionWidgets";
 import { ListIcon, KanbanIcon, DownloadIcon } from "./crmIcons";
@@ -51,15 +48,27 @@ export default function SellerCrm() {
   const isAdmin = user?.role === "admin";
   const { success: notifySuccess, error: notifyError } = useNotifications();
   const [urlParams, setUrlParams] = useSearchParams();
-  const [clients, setClients] = useState<CrmClient[]>([]);
-  const [attentionSummary, setAttentionSummary] = useState<CrmAttentionSummary>(EMPTY_ATTENTION_SUMMARY);
-  const [loading, setLoading] = useState(true);
+  const {
+    clients,
+    attentionSummary,
+    loading,
+    isError: loadError,
+    error: loadErrorDetail,
+    refetch: refetchClients,
+    patchClient,
+  } = useCrmClients();
+  const { markSeen } = useCrmAlerts();
   const [error, setError] = useFeedbackMessage("error");
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<CrmStage | "all">("all");
   const [planFilter, setPlanFilter] = useState<CrmClient["subscription"] | "all">("all");
   const [accountFilter, setAccountFilter] = useState<"all" | "active" | "inactive">("all");
-  const [attentionFilter, setAttentionFilter] = useState<CrmAttentionCode | "all">("all");
+  // El dashboard linkea a las tarjetas de alerta con ?attention=<code> — se
+  // toma solo como valor inicial (mismo criterio que viewMode más abajo).
+  const [attentionFilter, setAttentionFilter] = useState<CrmAttentionCode | "all">(() => {
+    const fromUrl = urlParams.get("attention");
+    return fromUrl && fromUrl in ATTENTION_META ? (fromUrl as CrmAttentionCode) : "all";
+  });
   const [sellerFilter, setSellerFilter] = useState("all");
   const [leadFilter, setLeadFilter] = useState<"all" | "influencer" | "seller" | "pending">("all");
   const selectedId = urlParams.get("client");
@@ -85,40 +94,23 @@ export default function SellerCrm() {
   });
 
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const response = await listCrmClients();
-        if (!cancelled) {
-          const normalizedClients = normalizeAttention(response.clients);
-          setClients(normalizedClients);
-          setAttentionSummary(response.attentionSummary || summarizeAttention(normalizedClients));
-        }
-      } catch (err) {
-        if (!cancelled) setError(extractServerMessage(err, "No se pudieron cargar los clientes."));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [setError]);
+    if (loadError) setError(extractServerMessage(loadErrorDetail, "No se pudieron cargar los clientes."));
+  }, [loadError, loadErrorDetail, setError]);
 
-  // El drawer avisa cuando cambió algo de un cliente (etapa/tags/seguimiento)
-  // para reflejarlo en la fila del listado sin volver a pedir todo.
-  const patchClient = useCallback((userID: string, patch: Partial<CrmClient>) => {
-    setClients((prev) => prev.map((c) => (c._id === userID ? { ...c, ...patch } : c)));
-  }, []);
+  // Entrar al CRM limpia el badge de "nuevas asignaciones" del sidebar/
+  // dashboard — patrón no-leído-hasta-que-lo-abrís. No hace nada si loguea
+  // un admin (sin bandeja personal) o mientras la carga todavía no terminó.
+  useEffect(() => {
+    if (!loading && !loadError) void markSeen();
+  }, [loading, loadError, markSeen]);
+
   const refreshClients = useCallback(async () => {
     try {
-      const response = await listCrmClients();
-      const normalizedClients = normalizeAttention(response.clients);
-      setClients(normalizedClients);
-      setAttentionSummary(response.attentionSummary || summarizeAttention(normalizedClients));
+      await refetchClients({ throwOnError: true });
     } catch (err) {
       setError(extractServerMessage(err, "El cambio se guardó, pero no se pudo actualizar la tabla 360."));
     }
-  }, [setError]);
+  }, [refetchClients, setError]);
   const openDrawer = useCallback((userID: string) => {
     const next = new URLSearchParams(urlParams);
     next.set("client", userID);

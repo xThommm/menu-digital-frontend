@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useTheme } from "../../hooks/useTheme";
+import { useCrmAlerts } from "../../hooks/useCrmAlerts";
 import BrandMark from "../Common/BrandMark";
 import s from "./SellerLayout.module.css";
 import {
@@ -42,6 +43,10 @@ export default function SellerLayout() {
     () => isInfluencer ? INFLUENCER_NAV_ITEMS : (user?.role === "admin" ? [...BASE_NAV_ITEMS, RANKING_ITEM] : BASE_NAV_ITEMS),
     [isInfluencer, user?.role],
   );
+  // Badge del ítem "CRM": seguimientos vencidos + leads nuevos asignados
+  // (0 para un influencer, que ni siquiera ve ese ítem).
+  const { overdueFollowUps, newAssignments } = useCrmAlerts();
+  const crmAlertCount = overdueFollowUps + newAssignments;
 
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const mobileMoreButtonRef = useRef<HTMLButtonElement>(null);
@@ -114,11 +119,16 @@ export default function SellerLayout() {
                 key={item.path}
                 className={`${s.navItem} ${active ? s.navItemActive : ""}`}
                 onClick={() => navigate(item.path)}
-                aria-label={item.label}
+                aria-label={item.path === "/sellers/crm" && crmAlertCount > 0
+                  ? `${item.label} (${crmAlertCount} alertas)`
+                  : item.label}
                 aria-current={active ? "page" : undefined}
               >
                 <span className={s.navIcon}>{item.icon}</span>
                 <span className={s.navLabel}>{item.label}</span>
+                {item.path === "/sellers/crm" && crmAlertCount > 0 && (
+                  <span className={s.navBadge}>{crmAlertCount > 99 ? "99+" : crmAlertCount}</span>
+                )}
               </button>
             );
           })}
@@ -188,10 +198,17 @@ export default function SellerLayout() {
                 setMobileMoreOpen(false);
                 navigate(item.path);
               }}
-              aria-label={item.label}
+              aria-label={item.path === "/sellers/crm" && crmAlertCount > 0
+                ? `${item.label} (${crmAlertCount} alertas)`
+                : item.label}
               aria-current={active ? "page" : undefined}
             >
-              <span className="admin-mobile-dock__icon">{item.icon}</span>
+              <span className="admin-mobile-dock__icon">
+                {item.icon}
+                {item.path === "/sellers/crm" && crmAlertCount > 0 && (
+                  <span className={s.navBadgeDot}>{crmAlertCount > 9 ? "9+" : crmAlertCount}</span>
+                )}
+              </span>
               {item.short}
             </button>
           );

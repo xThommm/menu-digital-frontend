@@ -1,0 +1,422 @@
+/* Dashboard del panel general de vendedor. Mismo lenguaje visual que
+   CEODashboard.module.css (hero, kpiGrid, panel, donut a mano con
+   conic-gradient) pero con sus propias clases — reusa en cambio
+   ../sellerPanel.module.css para el wrap de página (.page/.inner/.eyebrow)
+   y para el patrón de barra (.barRow y afines), que ya existía para
+   SellerRanking y no tiene sentido duplicar acá. */
+
+.hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--admin-border-subtle);
+}
+
+.heroCopy {
+  margin: var(--space-2) 0 0;
+  color: var(--admin-text-muted);
+  font-size: var(--text-sm);
+}
+
+.today {
+  padding-bottom: 3px;
+  color: var(--admin-text-muted);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.today::first-letter {
+  text-transform: uppercase;
+}
+
+/* ── KPIs ── */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.kpiCard {
+  padding: 14px 16px 16px;
+  border: 1px solid var(--admin-border-subtle);
+  border-radius: var(--admin-radius-lg);
+  background: var(--admin-bg-raised);
+  box-shadow: var(--admin-shadow-card);
+}
+
+.kpiHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--admin-text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.kpiIcon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-bg-elevated);
+  color: var(--admin-text-muted);
+}
+
+.kpiIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.kpiCard > strong {
+  display: block;
+  margin-top: 12px;
+  overflow: hidden;
+  color: var(--admin-text-primary);
+  font-size: clamp(1.25rem, 1.6vw, 1.55rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kpiCard > small {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--admin-text-muted);
+  font-size: 0.72rem;
+}
+
+.kpi_success {
+  border-color: var(--admin-success-border);
+}
+
+.kpi_success .kpiIcon {
+  border-color: var(--admin-success-border);
+  background: var(--admin-success-bg);
+  color: var(--admin-success-text);
+}
+
+.kpi_gold {
+  border-color: var(--admin-border-gold-soft);
+}
+
+.kpi_gold .kpiIcon {
+  border-color: var(--admin-border-gold-mid);
+  background: var(--admin-gold-glow);
+  color: var(--admin-gold);
+}
+
+.kpi_gold > strong {
+  color: var(--admin-gold);
+}
+
+/* ── Panel genérico (alertas, donut, actividad reciente) ── */
+.panel {
+  min-width: 0;
+  margin-top: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--admin-border-subtle);
+  border-radius: var(--admin-radius-lg);
+  background: var(--admin-bg-raised);
+  box-shadow: var(--admin-shadow-card);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--admin-border-subtle);
+}
+
+.panelHeader p {
+  margin: 0 0 5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--admin-text-faint);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.panelHeader h2 {
+  margin: 0;
+  color: var(--admin-text-primary);
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.panelHeader a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  color: var(--admin-text-warm);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.panelHeader a:hover {
+  color: var(--admin-gold);
+}
+
+.panelHeader a svg {
+  width: 14px;
+  height: 14px;
+}
+
+.panelFoot {
+  margin: var(--space-4) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--admin-border-subtle);
+  color: var(--admin-text-muted);
+  font-size: 0.72rem;
+}
+
+.secondaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.secondaryGrid > .panel {
+  margin-top: 0;
+}
+
+/* ── Alertas ── */
+.alertsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+}
+
+.alertCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--admin-border-subtle);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-bg-surface);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--admin-transition), background var(--admin-transition);
+}
+
+.alertCard:hover {
+  border-color: var(--admin-border-warm);
+  background: var(--admin-bg-elevated);
+}
+
+.alertCard strong {
+  color: var(--admin-text-primary);
+  font-size: 1.3rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.alertCard span {
+  color: var(--admin-text-muted);
+  font-size: 0.74rem;
+}
+
+.alert_gold strong {
+  color: var(--admin-gold);
+}
+
+.alert_danger strong {
+  color: var(--admin-red-text);
+}
+
+.alert_zero {
+  opacity: 0.6;
+}
+
+/* ── Donut (idéntico criterio que CEODashboard: conic-gradient a mano, sin
+   librería de gráficos, hueco central superpuesto). ── */
+.stageBreakdown {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding-top: var(--space-4);
+}
+
+.donutChart {
+  position: relative;
+  flex: 0 0 118px;
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+}
+
+.donutHole {
+  position: absolute;
+  inset: 15px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--admin-bg-raised);
+  text-align: center;
+}
+
+.donutHole strong {
+  display: block;
+  color: var(--admin-text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.donutHole span {
+  display: block;
+  margin-top: 3px;
+  color: var(--admin-text-faint);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.legend {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.legendLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--admin-text-secondary);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legendValue {
+  color: var(--admin-text-muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Actividad reciente ── */
+.recentList {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recentRow {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--admin-border-subtle);
+}
+
+.recentRow:last-child {
+  border-bottom: 0;
+}
+
+.recentAvatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--admin-border-gold-soft);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-gold-glow);
+  color: var(--admin-gold);
+  font-family: var(--font-serif);
+  font-size: 1rem;
+}
+
+.recentIdentity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.recentIdentity strong,
+.recentIdentity small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recentIdentity strong {
+  color: var(--admin-text-primary);
+  font-size: 0.82rem;
+}
+
+.recentIdentity small {
+  margin-top: 2px;
+  color: var(--admin-text-muted);
+  font-size: var(--text-xs);
+}
+
+.recentRow time {
+  color: var(--admin-text-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .secondaryGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .stageBreakdown {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

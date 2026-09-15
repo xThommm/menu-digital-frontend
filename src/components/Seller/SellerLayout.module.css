@@ -213,7 +213,8 @@
   white-space: nowrap;
 }
 
-/* Badge de alerta (seguimientos de CRM vencidos), a la derecha del label. */
+/* Badge de alerta (seguimientos vencidos + leads nuevos asignados), a la
+   derecha del label en el nav de escritorio. */
 .navBadge {
   flex-shrink: 0;
   min-width: 18px;
@@ -225,6 +226,26 @@
   font-size: 10px;
   font-weight: 700;
   line-height: 18px;
+  text-align: center;
+}
+
+/* Misma alerta, versión chica superpuesta al ícono — usada en el dock
+   mobile, donde no hay lugar para un badge inline junto al label. El
+   ícono padre (.admin-mobile-dock__icon, en globals.css) ya es
+   position: relative. */
+.navBadgeDot {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  background: var(--admin-danger-core);
+  color: var(--text-inv);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 16px;
   text-align: center;
 }
 

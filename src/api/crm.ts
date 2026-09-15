@@ -1,5 +1,6 @@
 import apiClient from './client'
 import type {
+  CrmAlertCounts,
   CrmAttentionSummary,
   CrmClient,
   CrmClientDetail,
@@ -66,10 +67,19 @@ export const deleteCrmNote = async (userID: string, noteID: string): Promise<Crm
   return res.data
 }
 
-// GET /api/sellers/crm/overdue-count → cantidad de clientes con seguimiento vencido (badge del sidebar)
-export const getCrmOverdueCount = async (): Promise<number> => {
+// GET /api/sellers/crm/overdue-count → seguimientos vencidos + leads nuevos
+// asignados desde la última vez que el vendedor revisó (badge del sidebar y
+// panel de alertas del dashboard). newAssignments siempre es 0 para un admin.
+export const getCrmAlertCounts = async (): Promise<CrmAlertCounts> => {
   const res = await apiClient.get('/sellers/crm/overdue-count')
-  return res.data.count
+  return res.data
+}
+
+// POST /api/sellers/crm/alerts/seen → marca que el vendedor revisó sus
+// alertas ahora, resetea newAssignments. No aplica a un admin (no tiene
+// bandeja personal).
+export const markCrmAlertsSeen = async (): Promise<void> => {
+  await apiClient.post('/sellers/crm/alerts/seen')
 }
 
 // GET /api/sellers/crm/export → descarga el listado (opcionalmente filtrado por etapa) como .xlsx (admin-only)

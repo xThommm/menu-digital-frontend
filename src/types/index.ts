@@ -475,6 +475,9 @@ export interface CrmClient {
   } | null
   leadSource?: "influencer" | "seller" | null
   assignedSeller?: { _id: string; name: string; code: string } | null
+  // Cuándo se fijó assignedSeller (reparto automático al alta o reasignación
+  // manual) — null en leads sin asignar o en registros previos a este campo.
+  assignedSellerAt?: string | null
   attention?: CrmAttentionCode[]
   // Marca histórica: la cuenta se originó por la prueba gratis de 7 días de
   // Pro. isTrialActive es el estado "en prueba ahora mismo" (lazy, false una
@@ -492,6 +495,14 @@ export interface CrmAttentionSummary {
   overdueFollowUps: number
   incompleteOnboarding: number
   noTraffic?: number
+}
+
+// GET /sellers/crm/overdue-count — badge de alertas del sidebar/dashboard.
+// newAssignments solo tiene sentido para un vendedor puntual (siempre 0
+// para un admin, que no tiene una bandeja de asignaciones personal).
+export interface CrmAlertCounts {
+  count: number
+  newAssignments: number
 }
 
 // Fila liviana de GET /sellers/crm/summary — mismo DTO que un CrmClient
@@ -535,6 +546,7 @@ export interface CrmClientDetailUser {
   leadSource?: CrmClient["leadSource"]
   seller?: CrmClient["seller"]
   assignedSeller?: CrmClient["assignedSeller"]
+  assignedSellerAt?: CrmClient["assignedSellerAt"]
   trialActive?: boolean
   isTrialActive?: boolean
   contactInfo: Pick<ContactInfo, "businessName" | "mail" | "number" | "address">
