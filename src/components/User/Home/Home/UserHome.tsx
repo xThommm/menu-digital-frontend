@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styles from "./UserHome.module.css";
 import { useReveal } from "../../../../hooks/useReveal";
-import type { User, ContactInfo, DayKey, Schedule } from "../../../../types/index";
+import type { User, ContactInfo, DayKey, DayHours, Schedule } from "../../../../types/index";
 import BusinessSEO from "../../../Common/BusinessSEO";
 import FreePlanAd from "../../../Common/FreePlanAd";
 import { getOpenStatus, getBusinessDayIndex, JS_DAY_TO_KEY } from "../../../../Utils/businessSchedule";
@@ -12,10 +12,7 @@ import { getOpenStatus, getBusinessDayIndex, JS_DAY_TO_KEY } from "../../../../U
 type TemplateId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
 
 interface TemplateTokens {
-  heroClass: string;
-  overlayClass?: string;
   titleClass: string;
-  showDeliveryRow: boolean;
   galleryRadius: string;
   btnLabel: string;
   useAvatar: boolean;
@@ -48,62 +45,42 @@ function scheduleHasData(schedule?: Schedule): boolean {
 
 const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
   1: {
-    showDeliveryRow: false,
-    heroClass: styles.heroT1,
-    overlayClass: styles.overlayT1,
     titleClass: "t-title",
     galleryRadius: "10px",
     btnLabel: "Ver menú",
     useAvatar: false,
   },
   2: {
-    showDeliveryRow: true,
-    heroClass: "",
     titleClass: "t-title-sans",
     galleryRadius: "6px",
     btnLabel: "Ver menú →",
     useAvatar: true,
   },
   3: {
-    showDeliveryRow: false,
-    heroClass: styles.heroT3,
-    overlayClass: styles.overlayT3,
     titleClass: "t-title",
     galleryRadius: "12px",
     btnLabel: "Ver menú",
     useAvatar: false,
   },
   4: {
-    showDeliveryRow: false,
-    heroClass: styles.heroT4,
-    overlayClass: styles.overlayT4,
     titleClass: "t-title",
     galleryRadius: "8px",
     btnLabel: "Ver menú",
     useAvatar: false,
   },
   5: {
-    showDeliveryRow: false,
-    heroClass: styles.heroT5,
-    overlayClass: styles.overlayT5,
     titleClass: "t-title-sans",
     galleryRadius: "8px",
     btnLabel: "Ver menú",
     useAvatar: false,
   },
   6: {
-    showDeliveryRow: false,
-    heroClass: styles.heroT6,
-    overlayClass: styles.overlayT6,
     titleClass: "t-title",
     galleryRadius: "14px",
     btnLabel: "Ver menú",
     useAvatar: false,
   },
   7: {
-    showDeliveryRow: false,
-    heroClass: styles.heroT7,
-    overlayClass: styles.overlayT7,
     titleClass: "t-title",
     galleryRadius: "6px",
     btnLabel: "Ver menú",
@@ -112,9 +89,6 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
   // ── Templates 8-15 ──
   // 8 Coastal — claro y aireado, título sans para un look fresco de costa.
   8: {
-    showDeliveryRow: false,
-    heroClass: styles.heroT8,
-    overlayClass: styles.overlayT8,
     titleClass: "t-title-sans",
     galleryRadius: "12px",
     btnLabel: "Ver menú",
@@ -122,8 +96,6 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
   },
   // 9 Charcoal — usa el layout con avatar (como el 2), sin hero con foto.
   9: {
-    showDeliveryRow: true,
-    heroClass: "",
     titleClass: "t-title-sans",
     galleryRadius: "8px",
     btnLabel: "Ver menú →",
@@ -131,9 +103,6 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
   },
   // 10 Terracotta — cálido y rústico, título serif.
   10: {
-    showDeliveryRow: false,
-    heroClass: styles.heroT10,
-    overlayClass: styles.overlayT10,
     titleClass: "t-title",
     galleryRadius: "10px",
     btnLabel: "Ver menú",
@@ -141,9 +110,6 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
   },
   // 11 Lavender — elegante, esquinas más redondeadas, serif.
   11: {
-    showDeliveryRow: false,
-    heroClass: styles.heroT11,
-    overlayClass: styles.overlayT11,
     titleClass: "t-title",
     galleryRadius: "14px",
     btnLabel: "Ver menú",
@@ -151,9 +117,6 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
   },
   // 12 Forest — oscuro luxe, serif.
   12: {
-    showDeliveryRow: false,
-    heroClass: styles.heroT12,
-    overlayClass: styles.overlayT12,
     titleClass: "t-title",
     galleryRadius: "8px",
     btnLabel: "Ver menú",
@@ -161,9 +124,6 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
   },
   // 13 Platinum — esquinas ajustadas para un look afilado.
   13: {
-    showDeliveryRow: false,
-    heroClass: styles.heroT13,
-    overlayClass: styles.overlayT13,
     titleClass: "t-title",
     galleryRadius: "6px",
     btnLabel: "Ver menú",
@@ -171,8 +131,6 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
   },
   // 14 Ocean — oscuro marino con acento turquesa.
   14: {
-    showDeliveryRow: true,
-    heroClass: "",
     titleClass: "t-title-sans",
     galleryRadius: "10px",
     btnLabel: "Ver menú →",
@@ -180,8 +138,6 @@ const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
   },
   // 15 Rosé — claro editorial con acento rosa profundo.
   15: {
-    showDeliveryRow: true,
-    heroClass: "",
     titleClass: "t-title",
     galleryRadius: "14px",
     btnLabel: "Ver menú",
@@ -311,84 +267,69 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
   const businessName = info.businessName || "Mi Negocio";
   const galleryImages = media?.pictures ?? [];
 
-  // Se calcula una sola vez acá (no dentro de cada variante de hero) porque
-  // se usa en las dos ramas de abajo y también lo necesita ScheduleSection.
   const scheduleActive = scheduleHasData(schedule);
   const isOpenNow = scheduleActive ? getOpenStatus(schedule) : false;
   const showHeroBadges = hasDelivery || scheduleActive;
 
   return (
-    <div className="t-wrap" data-template={template}>
+    <div className={`t-wrap ${styles.landing}`} data-template={template}>
       {user.features?.sin_publicidad !== true && <FreePlanAd />}
-      {tokens.useAvatar ? (
-        <div className="t-header">
-          <div
-            className="t-avatar"
-            style={showBg ? { backgroundImage: `url(${bg})` } : undefined}
-            role="img"
-            aria-label={`Foto de ${businessName}`}
+      <main className={styles.layout}>
+        <header className={`${styles.header} ${showBg && !tokens.useAvatar ? styles.headerWithCover : ""}`}>
+          {showBg && !tokens.useAvatar && (
+            <button
+              type="button"
+              className={styles.cover}
+              style={heroStyle}
+              aria-label={`Ampliar foto de ${businessName}`}
+              onClick={() => { setViewerIndex(-1); setViewerOpen(true); }}
+            />
+          )}
+          <div className={styles.intro}>
+            <div className={styles.identity}>
+              {tokens.useAvatar && showBg && (
+                <button
+                  type="button"
+                  className={`t-avatar ${styles.avatar}`}
+                  style={heroStyle}
+                  aria-label={`Ampliar foto de ${businessName}`}
+                  onClick={() => { setViewerIndex(-1); setViewerOpen(true); }}
+                />
+              )}
+              <div className={styles.identityText}>
+                <h1 className={`${tokens.titleClass} ${styles.title}`}>{businessName}</h1>
+                {showHeroBadges && (
+                  <div className={styles.badgeRow}>
+                    {scheduleActive && <OpenStatusBadge isOpen={isOpenNow} />}
+                    {hasDelivery && <DeliveryBadge />}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className={styles.actions}>
+              <button type="button" onClick={goMenu} className="t-btn">
+                {tokens.btnLabel}
+              </button>
+              {info.number && (
+                <ReserveButton number={String(info.number)} message={info.reservationMessage} businessName={businessName} />
+              )}
+            </div>
+            <MapBadge address={info.address} businessName={businessName} />
+          </div>
+        </header>
+        <div className={styles.content}>
+          <Gallery
+            pictures={media?.pictures}
+            radius={tokens.galleryRadius}
+            businessName={businessName}
+            onImageClick={(index) => { setViewerIndex(index); setViewerOpen(true); }}
           />
-          <div>
-            <h1 className={tokens.titleClass}>{businessName}</h1>
-            {showHeroBadges && (
-              <div className={styles.badgeRow}>
-                {hasDelivery && <DeliveryBadge />}
-                {scheduleActive && <OpenStatusBadge isOpen={isOpenNow} />}
-              </div>
-            )}
+          <div className={styles.practical}>
+            <ScheduleSection schedule={schedule} />
+            <ContactList info={info} />
           </div>
         </div>
-      ) : (
-        <div
-          className={`t-hero ${tokens.heroClass}`}
-          style={{
-            ...heroStyle,
-            cursor: showBg ? "zoom-in" : "default",
-          }}
-          onClick={() => {
-            if (!showBg || !bg) return;
-
-            setViewerIndex(-1);
-            setViewerOpen(true);
-          }}
-        >
-          <div className={`t-hero-overlay ${tokens.overlayClass ?? ""}`} />
-          <div className="t-hero-content">
-            <h1 className={tokens.titleClass}>{businessName}</h1>
-            {showHeroBadges && (
-              <div className={styles.badgeRow}>
-                {hasDelivery && <DeliveryBadge />}
-                {scheduleActive && <OpenStatusBadge isOpen={isOpenNow} />}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="t-body">
-        <MapBadge address={info.address} businessName={businessName} />
-        <ContactList
-          info={info}
-          hasDelivery={hasDelivery}
-          showDeliveryRow={tokens.showDeliveryRow}
-          businessName={businessName}
-        />
-
-        <ScheduleSection schedule={schedule} />
-
-        <Gallery
-  pictures={media?.pictures}
-  radius={tokens.galleryRadius}
-  businessName={businessName}
-  onImageClick={(index) => {
-    setViewerIndex(index);
-    setViewerOpen(true);
-  }}
-/>
-        <button onClick={goMenu} className="t-btn">
-          {tokens.btnLabel}
-        </button>
-      </div>
+      </main>
       {viewerOpen && (
   <ImageViewer
     images={galleryImages}
@@ -450,7 +391,10 @@ function MapBadge({ address, businessName }: MapBadgeProps) {
       <span className={styles.mapIcon}>
         <PinIcon />
       </span>
-      <span className={styles.mapText}>{address}</span>
+      <span className={styles.mapText}>
+        <span className={styles.mapLabel}>Cómo llegar</span>
+        <span>{address}</span>
+      </span>
       <ExternalIcon />
     </a>
   );
@@ -458,9 +402,6 @@ function MapBadge({ address, businessName }: MapBadgeProps) {
 
 interface ContactListProps {
   info: ContactInfo;
-  hasDelivery: boolean;
-  showDeliveryRow: boolean;
-  businessName: string;
 }
 
 // Los campos de redes sociales a veces se cargan con "@" adelante (el
@@ -469,7 +410,7 @@ interface ContactListProps {
 // link no quede roto sin importar cómo se haya guardado el dato.
 const stripHandle = (handle: string) => handle.trim().replace(/^@/, "");
 
-function ContactList({ info, hasDelivery, showDeliveryRow, businessName }: ContactListProps) {
+function ContactList({ info }: ContactListProps) {
   const instagram = info.social?.instagram ? stripHandle(info.social.instagram) : "";
   const facebook  = info.social?.facebook  ? stripHandle(info.social.facebook)  : "";
 
@@ -481,14 +422,13 @@ function ContactList({ info, hasDelivery, showDeliveryRow, businessName }: Conta
     info.number ||
     info.mail ||
     instagram ||
-    facebook ||
-    (showDeliveryRow && hasDelivery);
+    facebook;
 
   if (!hasAnyInfo) return null;
 
   return (
-    <div className="t-section">
-      <p className="t-section-label">Contacto</p>
+    <section className={styles.contactCard} aria-label="Contacto">
+      <h2 className={styles.sectionLabel}>Contacto</h2>
       <div className="t-info-list">
         {info.number && <PhoneRow number={String(info.number)} />}
         {info.mail && (
@@ -512,32 +452,34 @@ function ContactList({ info, hasDelivery, showDeliveryRow, businessName }: Conta
             href={`https://facebook.com/${facebook}`}
           />
         )}
-        {showDeliveryRow && hasDelivery && (
-          <InfoRow icon={<DeliveryIcon />} text="Delivery disponible" />
-        )}
       </div>
-      {info.number && (
-        <ReserveButton
-          number={String(info.number)}
-          message={info.reservationMessage}
-          businessName={businessName}
-        />
-      )}
-    </div>
+    </section>
   );
 }
 
 // Lista completa de la semana, con el día de hoy resaltado. El estado
 // "abierto/cerrado ahora" ya se muestra como badge arriba, en el hero
 // (ver OpenStatusBadge) — acá solo el detalle día por día.
+function formatHours(day?: DayHours): string {
+  if (!day?.enabled) return "Cerrado";
+  if (day.open === day.close) return day.open === "00:00" ? "24 horas" : `24 horas desde ${day.open}`;
+  return `${day.open} – ${day.close}${day.close < day.open ? " (día siguiente)" : ""}`;
+}
+
 function ScheduleSection({ schedule }: { schedule?: Schedule }) {
   if (!scheduleHasData(schedule)) return null;
 
   const todayKey = JS_DAY_TO_KEY[getBusinessDayIndex()];
 
   return (
-    <div className="t-section">
-      <p className="t-section-label">Horario</p>
+    <details className={styles.scheduleCard}>
+      <summary className={styles.scheduleSummary}>
+        <span>
+          <span className={styles.scheduleHeading}>Horarios</span>
+          <span className={styles.schedulePreview}>Hoy · {DAY_LABEL[todayKey]} · {formatHours(schedule?.[todayKey])}</span>
+        </span>
+        <span className={styles.scheduleChevron} aria-hidden>⌄</span>
+      </summary>
       <div className={styles.scheduleTable}>
         {DAY_ORDER.map(day => {
           const d = schedule![day];
@@ -548,17 +490,13 @@ function ScheduleSection({ schedule }: { schedule?: Schedule }) {
             >
               <span>{DAY_LABEL[day]}</span>
               <span className={!d?.enabled ? styles.scheduleTableClosed : undefined}>
-                {d?.enabled
-                  ? d.open === d.close
-                    ? d.open === "00:00" ? "24 horas" : `24 horas desde ${d.open}`
-                    : `${d.open} – ${d.close}${d.close < d.open ? " (día siguiente)" : ""}`
-                  : "Cerrado"}
+                {formatHours(d)}
               </span>
             </div>
           );
         })}
       </div>
-    </div>
+    </details>
   );
 }
 
@@ -709,15 +647,12 @@ function Gallery({
   if (!pictures?.length) return null;
 
   const shown = pictures.slice(0, 6);
-  // Bento: la primera foto ocupa el doble de ancho cuando hay variedad de
-  // sobra (3+) para llenar el resto de la grilla sin dejar huecos.
-  const featureFirst = shown.length >= 3;
 
   return (
-    <div className="t-section">
-      <p className="t-section-label">Galería</p>
+    <section className={styles.gallerySection} aria-label="Galería">
+      <h2 className={styles.galleryTitle}>Un vistazo a {businessName}</h2>
       <div
-        className="t-gallery"
+        className={styles.gallery}
         role="list"
         aria-label={`Fotos de ${businessName}`}
       >
@@ -728,12 +663,11 @@ function Gallery({
             index={i}
             radius={radius}
             businessName={businessName}
-            featured={featureFirst && i === 0}
             onClick={() => onImageClick(i)}
           />
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -742,14 +676,12 @@ function GalleryItem({
   index,
   radius,
   businessName,
-  featured,
   onClick,
 }: {
   url: string;
   index: number;
   radius: string;
   businessName: string;
-  featured: boolean;
   onClick: () => void;
 }) {
   const [error, setError] = useState(false);
@@ -759,15 +691,15 @@ function GalleryItem({
   return (
     <div
       ref={ref}
-      className={`t-gallery-item t-reveal ${featured ? "t-gallery-featured" : ""} ${revealed ? "t-reveal-in" : ""}`}
+      className={`${styles.galleryItem} t-reveal ${revealed ? "t-reveal-in" : ""}`}
       role="listitem"
       style={{
         borderRadius: radius,
         cursor: "zoom-in",
         "--reveal-delay": `${Math.min(index * 0.06, 0.3)}s`,
       } as React.CSSProperties}
-      onClick={onClick}
     >
+      <button type="button" className={styles.galleryButton} onClick={onClick} aria-label={`Ampliar foto ${index + 1} de ${businessName}`}>
       <img
         src={url}
         alt={`Foto ${index + 1} de ${businessName}`}
@@ -776,6 +708,7 @@ function GalleryItem({
         decoding="async"
         onError={() => setError(true)}
       />
+      </button>
     </div>
   );
 }
@@ -981,25 +914,6 @@ function FacebookIcon() {
       strokeLinejoin="round"
     >
       <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-    </svg>
-  );
-}
-
-function DeliveryIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="5.5" cy="17.5" r="2.5" />
-      <circle cx="18.5" cy="17.5" r="2.5" />
-      <path d="M15 17.5H9m6 0V6h-3l-6 6v5.5m6-11 4.5 4.5H21l-1.5-4.5H15Z" />
     </svg>
   );
 }
