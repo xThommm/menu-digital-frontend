@@ -22,6 +22,7 @@ export interface PlanFeatures {
   menu_pdf: boolean
   estadisticas: boolean
   image_manager: boolean
+  menu_templates: boolean
   item_limit: number | null
   templateIds: number[]
 }
@@ -304,6 +305,58 @@ export interface ImageAssignChange {
 export interface ImageAssignResponse {
   updatedCount: number
   pendingImages: string[]
+}
+
+// ── Plantillas de menú (Trello "Plantillas de menúes") ──────────────────────
+// Catálogo de solo lectura del usuario presetImagesUser, para elegir qué
+// copiar al propio menú. Ver GET /api/menu-templates.
+
+export interface MenuTemplateItem {
+  _id: string
+  title: string
+  description: string
+  price: number | null
+  offerPrice: number | null
+  offerRange?: { from: string | null; to: string | null }
+  options: Record<string, number>
+  image: string
+  isExtra: boolean
+  recommended: boolean
+  apt: Record<string, unknown>
+}
+
+export interface MenuTemplateCategoria {
+  _id: string
+  title: string
+  description: string
+  image: string
+  items: MenuTemplateItem[]
+}
+
+export interface MenuTemplateSeccion {
+  _id: string
+  title: string
+  description: string
+  image: string
+  categorias: MenuTemplateCategoria[]
+}
+
+export interface MenuTemplatesData {
+  secciones: MenuTemplateSeccion[]
+  sinSeccion: MenuTemplateCategoria[]
+}
+
+// POST /api/menu-templates/copy
+export interface CopyMenuTemplatesPayload {
+  sectionIds?: string[]
+  categoryIds?: string[]
+  itemIds?: string[]
+}
+
+export interface CopyMenuTemplatesResponse {
+  createdSections: number
+  createdCategories: number
+  createdItems: number
 }
 
 // ── Dashboard y estadísticas del dueño ──────────────────────────────────────

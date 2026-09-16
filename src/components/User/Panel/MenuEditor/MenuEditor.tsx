@@ -7,6 +7,7 @@ import { formatDateAR } from "../../../../lib/dates";
 import { useFeedbackMessage } from "../../../../hooks/useFeedbackMessage";
 import MassiveImport from "../../../../Utils/MassiveImport";
 import ImageManager from "./ImageManager/ImageManager";
+import MenuTemplatePicker from "./MenuTemplatePicker/MenuTemplatePicker";
 import type {
   AdminItem as Item,
   AdminCategoria as Categoria,
@@ -84,7 +85,7 @@ const MAX_IMAGE_MB = 5;
 
 // ── Vistas posibles ────────────────────────────────────────────────────────────
 
-type View = "menu" | "item-form" | "categoria-form" | "seccion-form" | "massive-import" | "image-manager";
+type View = "menu" | "item-form" | "categoria-form" | "seccion-form" | "massive-import" | "image-manager" | "template-picker";
 type ItemFormSection = "basics" | "promotions" | "availability";
 
 interface ItemFieldErrors {
@@ -213,6 +214,12 @@ const icons = {
       <circle cx="8.5" cy="8.5" r="1.5" />
       <path d="M3 13l3.5-3.5a2 2 0 0 1 2.8 0L13 13" />
       <path d="M21 8v11a2 2 0 0 1-2 2H8" />
+    </svg>
+  ),
+  sparkles: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" />
     </svg>
   ),
 };
@@ -540,6 +547,7 @@ export default function MenuEditorPage() {
     canScheduleItems?: boolean;
     canScheduleOffers?: boolean;
     canUseImageManager?: boolean;
+    canUseTemplates?: boolean;
     autoGenerateCodes?: boolean;
     disableMenuDelete?: boolean;
   } | null>(null);
@@ -550,7 +558,7 @@ export default function MenuEditorPage() {
   // Modal de upgrade compartido: se abre por el límite de productos
   // del plan free o por intentar usar el importador de Excel sin plan
   // pago. "reason" solo cambia el texto que se muestra.
-  const [upgradeReason, setUpgradeReason] = useState<"items" | "excel" | "pdf" | "schedule" | "offer" | "images" | null>(null);
+  const [upgradeReason, setUpgradeReason] = useState<"items" | "excel" | "pdf" | "schedule" | "offer" | "images" | "templates" | null>(null);
 
   const [imageUploading, setImageUploading] = useState(false);
   const itemImageInputRef = useRef<HTMLInputElement>(null);
@@ -1400,6 +1408,12 @@ export default function MenuEditorPage() {
     return <ImageManager onBack={() => setView("menu")} onSuccess={refetch} />;
   }
 
+  // ── Vista template-picker ─────────────────────────────────────────────────
+
+  if (view === "template-picker") {
+    return <MenuTemplatePicker onBack={() => setView("menu")} onSuccess={refetch} />;
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (!loading && limits?.canEditMenu === false) {
@@ -1635,6 +1649,25 @@ export default function MenuEditorPage() {
                   </svg>
                   <p>Tu menú está vacío.</p>
                   <p className={styles.emptySub}>Creá una categoría para empezar a agregar productos.</p>
+                  <button
+                    type="button"
+                    className={`${styles.sheetOption} ${!limits?.canUseTemplates ? styles.sheetOptionLocked : ""}`}
+                    onClick={() => {
+                      if (!limits?.canUseTemplates) { setUpgradeReason("templates"); return; }
+                      setView("template-picker");
+                    }}
+                  >
+                    <span className={styles.sheetOptionIcon}>
+                      {limits?.canUseTemplates ? icons.sparkles : icons.lock}
+                    </span>
+                    <span className={styles.sheetOptionText}>
+                      <span className={styles.sheetOptionTitle}>
+                        Elegir desde plantilla
+                        {!limits?.canUseTemplates && <span className={styles.sheetOptionPro}>VER PLANES</span>}
+                      </span>
+                      <span className={styles.sheetOptionDesc}>Cargá productos ya armados y editalos después</span>
+                    </span>
+                  </button>
                 </div>
               )}
                 </>
@@ -1674,6 +1707,27 @@ export default function MenuEditorPage() {
                     <span className={styles.sheetOptionText}>
                       <span className={styles.sheetOptionTitle}>Nueva sección</span>
                       <span className={styles.sheetOptionDesc}>Agrupa categorías, ej: Comidas</span>
+                    </span>
+                  </button>
+
+                  <button
+                    className={`${styles.sheetOption} ${!limits?.canUseTemplates ? styles.sheetOptionLocked : ""}`}
+                    type="button"
+                    onClick={() => {
+                      setMenuSheetOpen(false);
+                      if (!limits?.canUseTemplates) { setUpgradeReason("templates"); return; }
+                      setView("template-picker");
+                    }}
+                  >
+                    <span className={styles.sheetOptionIcon}>
+                      {limits?.canUseTemplates ? icons.sparkles : icons.lock}
+                    </span>
+                    <span className={styles.sheetOptionText}>
+                      <span className={styles.sheetOptionTitle}>
+                        Elegir desde plantilla
+                        {!limits?.canUseTemplates && <span className={styles.sheetOptionPro}>VER PLANES</span>}
+                      </span>
+                      <span className={styles.sheetOptionDesc}>Cargá productos ya armados y editalos después</span>
                     </span>
                   </button>
 
@@ -2546,6 +2600,7 @@ export default function MenuEditorPage() {
               upgradeReason === "excel" ? "carga_masiva_excel"
               : upgradeReason === "pdf" ? "menu_pdf"
               : upgradeReason === "images" ? "image_manager"
+              : upgradeReason === "templates" ? "menu_templates"
               : upgradeReason === "items" ? undefined
               : "programacion_productos"
             }

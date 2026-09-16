@@ -1,0 +1,247 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* ── Header (mismos tokens que ImageManager) ──────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  min-height: 72px;
+  padding: 0.875rem 1rem;
+  border-bottom: 0.5px solid var(--admin-border-subtle);
+  background: color-mix(in srgb, var(--admin-bg-base) 90%, transparent);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.backBtn {
+  width: var(--control-min-size);
+  height: var(--control-min-size);
+  flex-shrink: 0;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--admin-text-muted);
+}
+
+.backBtn:hover {
+  color: var(--admin-text-primary);
+  border-color: var(--admin-border-warm);
+}
+
+.headerTitle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.headerTitleText {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--admin-text-primary);
+}
+
+.headerSubtitle {
+  font-size: 0.76rem;
+  color: var(--admin-text-muted);
+}
+
+.saveBtn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--control-min-size);
+  padding: 0 1rem;
+  background: var(--admin-gold);
+  border: none;
+  border-radius: var(--admin-radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--admin-gold-ink);
+  cursor: pointer;
+  transition: opacity var(--admin-transition);
+}
+
+.saveBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Estados ────────────────────────────────────────────────────────────── */
+
+.errorBanner {
+  margin: 0.75rem 1rem 0;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-warm);
+  border-radius: var(--admin-radius-md);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.82rem;
+  color: var(--admin-red-text);
+}
+
+.successBanner {
+  margin: 0.75rem 1rem 0;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.82rem;
+  color: var(--admin-text-primary);
+}
+
+.loadingState {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+  color: var(--admin-text-muted);
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 1rem;
+  padding: 4rem 1rem;
+  border: 0.5px dashed var(--admin-border-default);
+  border-radius: var(--admin-radius-lg);
+  color: var(--admin-text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.emptyStateIcon {
+  color: var(--admin-text-faint);
+}
+
+/* ── Lista de secciones/categorías/productos ──────────────────────────────── */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.seccionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.seccionHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.seccionTitle {
+  flex: 1;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--admin-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.catBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--admin-bg-elevated);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-lg);
+  padding: 0.75rem;
+}
+
+.catBlockIndented {
+  margin-left: 1.25rem;
+}
+
+.catHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.catThumb {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--admin-radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.catTitle {
+  flex: 1;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--admin-text-primary);
+}
+
+.catCount {
+  font-size: 0.74rem;
+  color: var(--admin-text-faint);
+  white-space: nowrap;
+}
+
+.catEmptyNote {
+  padding-left: 1.75rem;
+  font-size: 0.78rem;
+  color: var(--admin-text-faint);
+}
+
+.itemList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 1.75rem;
+}
+
+.itemRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  cursor: pointer;
+}
+
+.itemThumb {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--admin-radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.itemTitle {
+  flex: 1;
+  font-size: 0.84rem;
+  color: var(--admin-text-secondary);
+}
+
+.itemPrice {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  white-space: nowrap;
+}

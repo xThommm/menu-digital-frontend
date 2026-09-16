@@ -25,6 +25,7 @@ export const FEATURE_LABELS: Record<BooleanPlanFeature, string> = {
   menu_pdf: "Exportar menú a PDF",
   estadisticas: "Estadísticas de visitas y productos",
   image_manager: "Gestor de imágenes",
+  menu_templates: "Plantillas de menú",
 };
 
 // Solo sirve para pintar el estado mientras llega el refresh del backend; los
