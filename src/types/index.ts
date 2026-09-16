@@ -323,9 +323,23 @@ export interface DayCount {
   count: number
 }
 
-export interface StatsData {
+export interface StatsPeriod {
+  windowDays: 7 | 30
+  todayDate: string
+  periodStart: string
+  periodEnd: string
+  previousStart: string
+  previousEnd: string
+  observedFrom: string | null
+  comparisonAvailable: boolean
+}
+
+export interface StatsData extends StatsPeriod {
   totalViews: number
-  last30Days: DayCount[]
+  previousTotalViews: number
+  todayViews: number
+  days: DayCount[]
+  previousDays: DayCount[]
 }
 
 export interface TopItemStat {
@@ -333,11 +347,11 @@ export interface TopItemStat {
   title: string
   image: string
   totalViews: number
+  previousViews: number
 }
 
-export interface ItemStatsData {
+export interface ItemStatsData extends StatsPeriod {
   topItems: TopItemStat[]
-  windowDays: number
 }
 
 // ── Import masivo (Excel) ──────────────────────────────────────────────────

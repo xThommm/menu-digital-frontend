@@ -1,149 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../../context/useAuth";
-import { useNotifications } from "../../../../context/useNotifications";
 import type { StatsData, ItemStatsData, DayCount } from "../../../../types";
 import { usePlans } from "../../../../hooks/usePlans";
 import { isSubscriptionExpired, PLAN_ORDER } from "../../../../lib/plans";
 import { formatDateAR } from "../../../../lib/dates";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import s from "./UserStats.module.css";
+import { buildInsights, parseLocalDate, type WeekdayStat } from "./statsInsights";
 
-// Pega a /me/stats y devuelve el resultado ya interpretado. Es pura (no toca
-// estado de React ni el DOM), así se puede reusar desde la carga inicial y
-// desde el refresh automático sin duplicar el fetch y sin volverse una
-// dependencia de efectos. Los efectos hacen el setState después del await.
-type StatsResult =
-  | { kind: "locked" }               // 403 — el plan del usuario no incluye stats
-  | { kind: "unauthorized" }         // 401 — token vencido/revocado
-  | { kind: "data"; data: StatsData } // 200 — datos ok
-  | { kind: "none" };                // otro estado — no tocamos nada
+import { requestStatsData, isStatsData, isItemStatsData } from "./statsRequests";
 
-async function requestStats(token: string): Promise<StatsResult> {
-  const res = await fetch("/api/users/me/stats", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 401) return { kind: "unauthorized" };
-  if (res.status === 403) return { kind: "locked" };
-  if (res.ok) return { kind: "data", data: await res.json() };
-  return { kind: "none" };
-}
-
-// Mismo patrón que requestStats, para el endpoint de "platos más vistos"
-// (mismo gate de plan — si /me/stats no está bloqueado, este tampoco).
-type ItemStatsResult =
-  | { kind: "unauthorized" }
-  | { kind: "data"; data: ItemStatsData }
-  | { kind: "none" };
-
-async function requestItemStats(token: string): Promise<ItemStatsResult> {
-  const res = await fetch("/api/users/me/item-stats", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 401) return { kind: "unauthorized" };
-  if (res.ok) return { kind: "data", data: await res.json() };
-  return { kind: "none" };
-}
-
-// ── Lectura de los datos ──────────────────────────────────────────────────────
-// Todo lo de acá sale de la misma serie de 30 días que ya devolvía el backend:
-// no hay endpoints nuevos, es la misma información contada de otra manera.
-
-const WEEKDAY_LABEL = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-// En la frase el día va completo y en plural: "los sáb" no se lee como
-// castellano. Lunes a viernes no cambian en plural; sábado y domingo sí.
-const WEEKDAY_PLURAL = [
-  "domingos", "lunes", "martes", "miércoles", "jueves", "viernes", "sábados",
-];
-// El gráfico semanal arranca en lunes, que es como se lee una semana acá.
-const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
-
-interface WeekdayStat {
-  weekday: number;
-  label: string;
-  average: number;
-  samples: number;
-}
-
-interface Insights {
-  total: number;
-  today: number;
-  last7: number;
-  previous7: number;
-  /** Variación de los últimos 7 días contra los 7 anteriores. */
-  trend: number | null;
-  dailyAverage: number;
-  best: DayCount | null;
-  weekdays: WeekdayStat[];
-  bestWeekday: WeekdayStat | null;
-  /** Días distintos con al menos una visita. */
-  daysWithViews: number;
-}
-
-// Piso de datos para mostrar el patrón semanal. Con una carta publicada hace
-// pocos días, cada día de la semana tiene una sola medición: un martes bueno
-// alcanzaría para que la app afirme "los martes son tu mejor día", que es
-// ruido disfrazado de conclusión. Con diez días con visitas ya hay al menos
-// un par de mediciones por día y la comparación empieza a significar algo.
-const MIN_DAYS_FOR_WEEKDAY_PATTERN = 10;
-
-function buildInsights(days: DayCount[], totalViews: number): Insights {
-  const last7 = days.slice(-7).reduce((sum, d) => sum + d.count, 0);
-  const previous7 = days.slice(-14, -7).reduce((sum, d) => sum + d.count, 0);
-
-  // Sin base previa no hay porcentaje: dividir por cero da "+∞%", y una carta
-  // recién publicada siempre "creció". Mismo criterio que el CRM.
-  const trend = previous7 > 0 ? Math.round(((last7 - previous7) / previous7) * 100) : null;
-
-  const best = days.reduce<DayCount | null>(
-    (top, day) => (day.count > 0 && (!top || day.count > top.count) ? day : top),
-    null,
-  );
-
-  // Promedio por día de la semana: en un negocio gastronómico el patrón
-  // semanal dice más que el total, porque es lo accionable (qué día reforzar,
-  // cuándo conviene la promo).
-  const buckets = new Map<number, { sum: number; samples: number }>();
-  days.forEach((day) => {
-    const weekday = parseLocalDate(day.date)?.getUTCDay();
-    if (weekday === undefined) return;
-    const bucket = buckets.get(weekday) ?? { sum: 0, samples: 0 };
-    bucket.sum += day.count;
-    bucket.samples += 1;
-    buckets.set(weekday, bucket);
-  });
-
-  const weekdays: WeekdayStat[] = WEEKDAY_ORDER.map((weekday) => {
-    const bucket = buckets.get(weekday);
-    return {
-      weekday,
-      label: WEEKDAY_LABEL[weekday],
-      average: bucket && bucket.samples > 0 ? bucket.sum / bucket.samples : 0,
-      samples: bucket?.samples ?? 0,
-    };
-  });
-
-  const bestWeekday = weekdays.reduce<WeekdayStat | null>(
-    (top, day) => (day.average > 0 && (!top || day.average > top.average) ? day : top),
-    null,
-  );
-
-  return {
-    total: totalViews,
-    today: days[days.length - 1]?.count ?? 0,
-    last7,
-    previous7,
-    trend,
-    dailyAverage: days.length > 0 ? totalViews / days.length : 0,
-    best,
-    weekdays,
-    bestWeekday,
-    daysWithViews: days.filter((day) => day.count > 0).length,
-  };
-}
+const WEEKDAY_PLURAL = ["domingos", "lunes", "martes", "miércoles", "jueves", "viernes", "sábados"];
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function UserStats() {
+  const { token } = useAuth();
+  return <UserStatsPanel key={token ?? "anonymous"} />;
+}
+
+function UserStatsPanel() {
   const { token, user, isLoading: authLoading, logout } = useAuth();
   const catalog = usePlans();
   const effectiveSubscription = user && isSubscriptionExpired(
@@ -156,93 +32,88 @@ export default function UserStats() {
   const statsPlan = catalog.isError
     ? undefined
     : catalog.data?.find(plan => plan.features.estadisticas && PLAN_ORDER.indexOf(plan.name) > PLAN_ORDER.indexOf(effectiveSubscription));
-  const { error: notifyError } = useNotifications();
 
   const [stats, setStats]         = useState<StatsData | null>(null);
   const [itemStats, setItemStats] = useState<ItemStatsData | null>(null);
   const [locked, setLocked]   = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [statsError, setStatsError] = useState(false);
+  const [itemsError, setItemsError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const [windowDays, setWindowDays] = useState<7 | 30>(30);
 
-  // Carga inicial: el spinner arranca en true (useState) y se apaga cuando la
-  // primera request termina. El setState ocurre después del await (no synchrono
-  // dentro del efecto), por eso no dispara renders en cascada.
+  // Una sola carga para inicio, reintento y refresco. La cancelación impide
+  // aplicar respuestas de una cuenta/período anterior o de una vista desmontada.
   useEffect(() => {
     if (authLoading || !token) return;
     let cancelled = false;
-    const run = async () => {
-      try {
-        const r = await requestStats(token);
-        if (cancelled) return;
-        if (r.kind === "unauthorized") { logout(); window.location.href = "/login"; return; }
-        if (r.kind === "locked") { setLocked(true); return; }
-        if (r.kind === "data") setStats(r.data);
-        // Mismo gate de plan que /me/stats — si esa no está bloqueada, esta
-        // tampoco. Se pide después (no en paralelo) para no duplicar el
-        // manejo del 403 en dos lugares.
-        const ir = await requestItemStats(token);
-        if (!cancelled && ir.kind === "data") setItemStats(ir.data);
-      } catch {
-        if (!cancelled) {
-          notifyError("No pudimos cargar las estadísticas. Intentá recargar la página.");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    run();
-    return () => { cancelled = true; };
-  }, [authLoading, token, notifyError, logout]);
-
-  // "Tiempo real": las visitas se registran en el backend en el momento
-  // (upsert por cada vista de la carta), así que refrescando periódicamente
-  // traemos el conteo al día sin recargar la página. Para no gastar red al
-  // pedo, solo hacemos polling mientras la pestaña está visible, y además
-  // refrescamos apenas el usuario vuelve a la pestaña (visibilitychange).
-  useEffect(() => {
-    if (authLoading || !token || locked) return;
-    const REFRESH_MS = 45_000;
-    let intervalId: number | undefined;
-
+    let inFlight = false;
+    let denied = false;
+    let controller: AbortController | undefined;
+    let timeoutId: number | undefined;
     const refresh = async () => {
+      if (inFlight || denied || cancelled) return;
+      inFlight = true;
+      controller = new AbortController();
+      timeoutId = window.setTimeout(() => controller?.abort(), 15_000);
+      setRefreshing(true);
       try {
-        const r = await requestStats(token);
-        if (r.kind === "unauthorized") { logout(); window.location.href = "/login"; return; }
-        if (r.kind === "locked") setLocked(true);
-        else if (r.kind === "data") setStats(r.data);
-      } catch {
-        // silencioso: es un refresh de fondo, no molestamos al usuario
+        const [r, ir] = await Promise.all([
+          requestStatsData<StatsData>(`/api/users/me/stats?days=${windowDays}`, token, controller.signal),
+          requestStatsData<ItemStatsData>(`/api/users/me/item-stats?days=${windowDays}`, token, controller.signal),
+        ]);
+        if (cancelled) return;
+        if (r.kind === "unauthorized" || ir.kind === "unauthorized") {
+          denied = true;
+          logout();
+          window.location.href = "/login";
+          return;
+        }
+        if (r.kind === "locked" || ir.kind === "locked") {
+          denied = true;
+          setLocked(true);
+          setStats(null);
+          setItemStats(null);
+          return;
+        }
+        setLocked(false);
+        // Un backend anterior debe mostrar error, nunca datos mal rotulados.
+        const validStats = r.kind === "data" && isStatsData(r.data, windowDays);
+        const validItems = ir.kind === "data" && isItemStatsData(ir.data, windowDays);
+        setStatsError(!validStats);
+        setItemsError(!validItems);
+        if (validStats) setStats(r.data);
+        if (validItems) setItemStats(ir.data);
+      } finally {
+        window.clearTimeout(timeoutId);
+        inFlight = false;
+        if (!cancelled) { setLoading(false); setHasLoaded(true); setRefreshing(false); }
       }
     };
-    const stopPolling = () => {
-      if (intervalId !== undefined) { window.clearInterval(intervalId); intervalId = undefined; }
-    };
-    const startPolling = () => {
-      stopPolling();
-      intervalId = window.setInterval(refresh, REFRESH_MS);
-    };
+    void refresh();
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, 45_000);
     const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        refresh(); // refresco inmediato al volver a la pestaña
-        startPolling();
-      } else {
-        stopPolling();
-      }
+      if (document.visibilityState === "visible") void refresh();
     };
-
-    if (document.visibilityState === "visible") startPolling();
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      stopPolling();
+      cancelled = true;
+      controller?.abort();
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [authLoading, token, locked, logout]);
+  }, [authLoading, token, logout, retry, windowDays, user?.subscription, user?.subscriptionStatus, user?.subscriptionExpiresAt]);
 
-  const days = useMemo(() => stats?.last30Days ?? [], [stats]);
-  const totalViews = stats?.totalViews ?? 0;
-  const insights = useMemo(() => buildInsights(days, totalViews), [days, totalViews]);
+  const days = useMemo(() => stats?.days ?? [], [stats]);
+  const insights = useMemo(() => buildInsights(stats), [stats]);
 
-  if (loading) {
+  if (loading && !hasLoaded) {
     return (
       <div className="pageLoaderScreen">
         <div className="pageLoaderRing" aria-label="Cargando estadísticas..." />
@@ -263,7 +134,7 @@ export default function UserStats() {
             <div className={s.lockIcon}><LockIcon /></div>
             <p className={s.lockTitle}>Estadísticas no incluidas en tu plan</p>
             <p className={s.lockDesc}>
-              Mirá cuántas veces escanearon el QR de tu carta y seguí la tendencia día a día.
+              Mirá cuántas veces abrieron tu carta y seguí la tendencia día a día.
               {statsPlan && ` Disponibles con ${statsPlan.label} desde ${statsPlan.effectivePrice.toLocaleString("es-AR")} ARS por mes.`}
             </p>
             <button className={s.lockBtn} onClick={() => setUpgradeOpen(true)} type="button">
@@ -295,29 +166,53 @@ export default function UserStats() {
           <h1 className={s.welcomeTitle}>Visitas a tu carta</h1>
           <p className={s.welcomeSub}>
             <span className={s.liveDot} aria-hidden />
-            Se actualiza solo, sin recargar la página
+            Visitas y productos se actualizan automáticamente
           </p>
         </header>
 
-        {!hasAnyView ? (
-          <EmptyState slug={user?.slug} />
-        ) : (
+        <fieldset className={s.periodPicker}>
+          <legend>Período de estadísticas</legend>
+          {([7, 30] as const).map(value => (
+            <button key={value} type="button" aria-pressed={windowDays === value}
+              onClick={() => {
+                if (value === windowDays) return;
+                setWindowDays(value);
+                setStats(null);
+                setItemStats(null);
+                setStatsError(false);
+                setItemsError(false);
+                setLoading(true);
+              }}>
+              {value} días completos
+            </button>
+          ))}
+        </fieldset>
+        {loading && <p className={s.periodDates} role="status">Cargando período…</p>}
+        {stats && <p className={s.periodDates}>
+          {formatDayLong(stats.periodStart)} al {formatDayLong(stats.periodEnd)} · Comparación: {formatDayLong(stats.previousStart)} al {formatDayLong(stats.previousEnd)}
+        </p>}
+        {(statsError || itemsError) && (
+          <section className={s.notice} role="status">
+            {statsError && <p>{stats ? "No pudimos actualizar las visitas. Mostramos los últimos datos recibidos." : "No pudimos cargar las visitas."}</p>}
+            {itemsError && <p>{itemStats ? "No pudimos actualizar los productos. Mostramos el último ranking recibido." : "No pudimos cargar los productos más vistos."}</p>}
+            <button className={s.lockBtn} type="button" disabled={refreshing} onClick={() => setRetry(value => value + 1)}>
+              {refreshing ? "Reintentando…" : "Reintentar"}
+            </button>
+          </section>
+        )}
+        {stats && (
           <>
             <section className={s.summaryRow} aria-label="Resumen de visitas">
               <SummaryCard
-                label="Últimos 30 días"
+                label={`Últimos ${windowDays} días completos`}
                 value={insights.total}
-                foot={`${formatDecimal(insights.dailyAverage)} por día en promedio`}
+                trend={insights.trend}
+                foot={insights.trend === null ? "Sin base completa para calcular una variación" : `${insights.previous.toLocaleString("es-AR")} visitas en el período anterior`}
               />
               <SummaryCard
-                label="Últimos 7 días"
-                value={insights.last7}
-                trend={insights.trend}
-                foot={
-                  insights.trend === null
-                    ? "Sin base previa para comparar"
-                    : `${insights.previous7.toLocaleString("es-AR")} en los 7 días anteriores`
-                }
+                label="Promedio diario"
+                value={insights.dailyAverage}
+                foot={insights.averageDays ? `Sobre ${insights.averageDays} días completos desde el alta` : "Sin días completos desde el alta"}
               />
               {/* "Hoy" va sin comparación a propósito: el día está a medio
                   transcurrir y compararlo contra días completos mostraría
@@ -325,11 +220,12 @@ export default function UserStats() {
               <SummaryCard
                 label="Hoy"
                 value={insights.today}
-                foot="Día en curso"
+                foot={`Día en curso · ${formatDay(stats.todayDate)}`}
                 accent
               />
             </section>
 
+            {!hasAnyView && <EmptyState slug={user?.slug} />}
             <section className={`${s.card} ${s.cardWide}`}>
               <div className={s.cardHead}>
                 <p className={s.cardLabel}>Visitas por día</p>
@@ -341,15 +237,15 @@ export default function UserStats() {
                   </p>
                 )}
               </div>
-              <DailyChart days={days} average={insights.dailyAverage} />
+              <DailyChart key={windowDays} days={days} average={insights.dailyAverage} />
             </section>
 
-            {insights.bestWeekday && insights.daysWithViews >= MIN_DAYS_FOR_WEEKDAY_PATTERN && (
+            {insights.bestWeekday && insights.hasWeekdayPattern && (
               <section className={s.card}>
                 <div className={s.cardHead}>
                   <p className={s.cardLabel}>Tu semana típica</p>
                   <p className={s.cardNote}>
-                    Promedio de visitas por día de la semana, sobre los últimos 30 días
+                    Promedio de los días completos desde el alta, dentro del período seleccionado
                   </p>
                 </div>
                 <WeekdayChart
@@ -360,40 +256,45 @@ export default function UserStats() {
               </section>
             )}
 
-            {itemStats && itemStats.topItems.length > 0 && (
-              <section className={s.card}>
-                <div className={s.cardHead}>
-                  <p className={s.cardLabel}>Productos más vistos</p>
-                  <p className={s.cardNote}>Últimos {itemStats.windowDays} días</p>
-                </div>
-                <ol className={s.topItemsList}>
-                  {itemStats.topItems.map((it, i) => {
-                    const maxViews = itemStats.topItems[0].totalViews || 1;
-                    return (
-                      <li key={it.itemID} className={s.topItemRow}>
-                        <span className={s.topItemRank}>{i + 1}</span>
-                        <ItemThumb image={it.image} title={it.title} />
-                        <div className={s.topItemMain}>
-                          <span className={s.topItemName}>{it.title}</span>
-                          <span className={s.topItemBarWrap}>
-                            <span
-                              className={s.topItemBar}
-                              style={{ width: `${Math.max((it.totalViews / maxViews) * 100, 4)}%` }}
-                            />
-                          </span>
-                        </div>
-                        <span className={s.topItemCount}>
-                          {it.totalViews.toLocaleString("es-AR")}
-                          <small>vistas</small>
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </section>
-            )}
+            {!insights.hasWeekdayPattern && <p className={s.measurementNote}>El patrón semanal necesita al menos dos días completos de cada día de la semana desde el alta y alguna visita. Seleccioná 30 días para verlo cuando haya datos suficientes.</p>}
           </>
         )}
+        {itemStats && (
+          <section className={s.card}>
+            <div className={s.cardHead}>
+              <p className={s.cardLabel}>Productos más vistos</p>
+              <p className={s.cardNote}>{formatDay(itemStats.periodStart)} al {formatDay(itemStats.periodEnd)} · Aperturas del detalle</p>
+              <p className={s.cardNote}>Antes: {formatDay(itemStats.previousStart)} al {formatDay(itemStats.previousEnd)}</p>
+            </div>
+            {itemStats.topItems.length === 0 && <p className={s.cardNote}>Todavía no hubo aperturas de productos en este período.</p>}
+            <ol className={s.topItemsList}>
+              {itemStats.topItems.map((it, i) => {
+                const maxViews = itemStats.topItems[0].totalViews || 1;
+                return (
+                  <li key={it.itemID} className={s.topItemRow}>
+                    <span className={s.topItemRank}>{i + 1}</span>
+                    <ItemThumb image={it.image} title={it.title} />
+                    <div className={s.topItemMain}>
+                      <span className={s.topItemName}>{it.title}</span>
+                      <span className={s.topItemBarWrap}>
+                        <span
+                          className={s.topItemBar}
+                          style={{ width: `${Math.max((it.totalViews / maxViews) * 100, 4)}%` }}
+                        />
+                      </span>
+                    </div>
+                    <span className={s.topItemCount}>
+                      {it.totalViews.toLocaleString("es-AR")}
+                      <small>vistas</small>
+                      <small>{itemStats.comparisonAvailable ? `${it.previousViews.toLocaleString("es-AR")} antes` : "Sin base previa"}</small>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        )}
+        <p className={s.measurementNote}>Las visitas cuentan cargas de la carta; las vistas de productos, aperturas de su detalle. Una persona puede generar varias visitas. No representan escaneos QR, pedidos ni ventas.</p>
       </main>
     </div>
   );
@@ -408,14 +309,13 @@ function DailyChart({ days, average }: { days: DayCount[]; average: number }) {
   // mouse y para tap.
   const [active, setActive] = useState<number | null>(null);
   const maxCount = Math.max(1, ...days.map(d => d.count));
-  const todayIndex = days.length - 1;
   const shown = active !== null ? days[active] : null;
 
   return (
     <div className={s.chartBlock}>
       <div
         className={s.chart}
-        role="img"
+        role="group"
         aria-label={`Visitas diarias de los últimos ${days.length} días. El detalle está en la tabla siguiente.`}
         onMouseLeave={() => setActive(null)}
       >
@@ -436,17 +336,22 @@ function DailyChart({ days, average }: { days: DayCount[]; average: number }) {
           const isWeekend = weekday === 0 || weekday === 6;
           const height = d.count > 0 ? Math.max((d.count / maxCount) * 100, 6) : 3;
           return (
-            <div
+            <button
+              type="button"
               key={d.date}
+              aria-label={`${formatDayLong(d.date)}: ${d.count} ${d.count === 1 ? "visita" : "visitas"}`}
+              aria-pressed={active === i}
               className={[
                 s.barWrap,
                 active === i ? s.barWrapActive : "",
-                i === todayIndex ? s.barWrapToday : "",
               ].join(" ").trim()}
               onMouseEnter={() => setActive(i)}
-              onClick={() => setActive((current) => (current === i ? null : i))}
+              onFocus={() => setActive(i)}
+              onBlur={() => setActive(null)}
+              onKeyDown={(event) => { if (event.key === "Escape") setActive(null); }}
+              onClick={() => setActive(i)}
             >
-              <div
+              <span
                 className={[
                   s.bar,
                   d.count === 0 ? s.barEmpty : "",
@@ -454,13 +359,14 @@ function DailyChart({ days, average }: { days: DayCount[]; average: number }) {
                 ].join(" ").trim()}
                 style={{ height: `${height}%`, animationDelay: `${i * 14}ms` }}
               />
-            </div>
+            </button>
           );
         })}
 
         {shown && active !== null && (
           <div
             className={s.tooltip}
+            aria-hidden="true"
             // Se ancla al centro de la barra y se corre hacia adentro en los
             // extremos para no salirse de la tarjeta.
             style={{
@@ -479,25 +385,26 @@ function DailyChart({ days, average }: { days: DayCount[]; average: number }) {
 
       <div className={s.chartAxis}>
         <span>{formatDay(days[0]?.date)}</span>
-        <span className={s.chartAxisToday}>Hoy</span>
+        <span>{formatDay(days.at(-1)?.date)}</span>
       </div>
 
-      {/* El gráfico es visual; el mismo dato en tabla para lectores de
-          pantalla, que no pueden recorrer 30 barras con el mouse. */}
-      <table className={s.srOnly}>
-        <caption>Visitas por día de los últimos {days.length} días</caption>
-        <thead>
-          <tr><th scope="col">Día</th><th scope="col">Visitas</th></tr>
-        </thead>
-        <tbody>
-          {days.map((d) => (
-            <tr key={d.date}>
-              <th scope="row">{formatDayLong(d.date)}</th>
-              <td>{d.count}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <details className={s.dailyDetails}>
+        <summary>Ver detalle de visitas por día</summary>
+        <table className={s.dataTable}>
+          <caption>Visitas por día de los últimos {days.length} días</caption>
+          <thead>
+            <tr><th scope="col">Día</th><th scope="col">Visitas</th></tr>
+          </thead>
+          <tbody>
+            {days.map((d) => (
+              <tr key={d.date}>
+                <th scope="row">{formatDayLong(d.date)}</th>
+                <td>{d.count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
     </div>
   );
 }
@@ -541,7 +448,7 @@ function WeekdayChart({
 
       {ratio >= 1.15 && (
         <p className={s.weekNote}>
-          Los <strong>{WEEKDAY_PLURAL[best.weekday]}</strong> son tu mejor día:{" "}
+          En este período, los <strong>{WEEKDAY_PLURAL[best.weekday]}</strong> tuvieron el mayor promedio:{" "}
           {formatDecimal(ratio)}× un día promedio.
         </p>
       )}
@@ -550,12 +457,6 @@ function WeekdayChart({
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-
-// Fecha de calendario para calcular el día semanal con getters UTC.
-function parseLocalDate(dateStr?: string): Date | null {
-  const day = formatDateAR(dateStr, { output: "date-input", fallback: "" });
-  return day ? new Date(`${day}T00:00:00Z`) : null;
-}
 
 function formatDay(dateStr?: string) {
   return formatDateAR(dateStr, { day: "numeric", month: "short", fallback: "" });
@@ -589,10 +490,10 @@ function SummaryCard({
     <div className={`${s.summaryCard} ${accent ? s.summaryCardAccent : ""}`}>
       <p className={s.summaryLabel}>{label}</p>
       <p className={s.summaryValue}>
-        {value.toLocaleString("es-AR")}
-        {typeof trend === "number" && trend !== 0 && (
-          <span className={`${s.trend} ${trend > 0 ? s.trendUp : s.trendDown}`}>
-            {trend > 0 ? "↑" : "↓"} {Math.abs(trend)}%
+        {formatDecimal(value)}
+        {typeof trend === "number" && (
+          <span className={`${s.trend} ${trend > 0 ? s.trendUp : trend < 0 ? s.trendDown : ""}`}>
+            {trend > 0 ? "↑" : trend < 0 ? "↓" : "→"} {Math.abs(trend)}%
           </span>
         )}
       </p>
@@ -615,14 +516,13 @@ function EmptyState({ slug }: { slug?: string | null }) {
   return (
     <div className={s.emptyCard}>
       <div className={s.emptyIcon}><ChartIcon /></div>
-      <p className={s.emptyTitle}>Todavía no hay visitas para mostrar</p>
+      <p className={s.emptyTitle}>No hubo visitas en este período</p>
       <p className={s.emptyDesc}>
-        Apenas alguien abra tu carta vas a ver acá las visitas por día, tu mejor
-        día de la semana y los productos que más miran. Compartí el link o pegá
-        el QR en las mesas para empezar.
+        Probá otro período para consultar visitas anteriores. Las visitas de hoy aparecen por separado.
+        Compartí el link o pegá el QR en las mesas para dar a conocer tu carta.
       </p>
       {slug && (
-        <a className={s.emptyLink} href={`/${slug}`} target="_blank" rel="noreferrer">
+        <a className={s.emptyLink} href={`/${slug}/menu`} target="_blank" rel="noreferrer">
           Ver mi carta
         </a>
       )}
