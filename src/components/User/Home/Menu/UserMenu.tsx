@@ -10,6 +10,7 @@ import styles from "./UserMenu.module.css";
 import BusinessSEO from "../../../Common/BusinessSEO";
 import FreePlanAd from "../../../Common/FreePlanAd";
 import { isOfferActive } from "../../../../lib/offers";
+import { buildOrderMessage, buildWaLink } from "../../../../lib/whatsapp";
 
 // ── Helpers de formato ────────────────────────────────────────────────────────
 
@@ -265,63 +266,70 @@ export default function MenuPage() {
             )}
           </div>
 
-          {/* ── Contenido del tab activo ── */}
-          <main
-            id="mp-tabpanel"
-            role="tabpanel"
-            aria-labelledby={`mp-tab-${activeTab}`}
-            className={styles.mpContent}
-            key={activeTab}
-          >
-            {totalItems === 0 ? (
-              <p className={styles.mpCatEmpty}>
-                Esta sección no tiene productos disponibles por ahora.
-              </p>
-            ) : (
-              currentTab.categorias.map((cat) => {
-                const visibleItems = cat.items.filter(
-                  (it) => !it.hidden
-                );
+          <div className={styles.mpShell}>
+            {/* ── Contenido del tab activo ── */}
+            <main
+              id="mp-tabpanel"
+              role="tabpanel"
+              aria-labelledby={`mp-tab-${activeTab}`}
+              className={styles.mpContent}
+              key={activeTab}
+            >
+              {totalItems === 0 ? (
+                <p className={styles.mpCatEmpty}>
+                  Esta sección no tiene productos disponibles por ahora.
+                </p>
+              ) : (
+                currentTab.categorias.map((cat) => {
+                  const visibleItems = cat.items.filter(
+                    (it) => !it.hidden
+                  );
 
-                if (visibleItems.length === 0) {
-                  return null;
-                }
+                  if (visibleItems.length === 0) {
+                    return null;
+                  }
 
-                return (
-                  <section
-                    key={cat._id}
-                    className={styles.mpCat}
-                  >
-                    <h2 className={styles.mpCatTitle}>
-                      {cat.title}
-                    </h2>
+                  return (
+                    <section
+                      key={cat._id}
+                      className={styles.mpCat}
+                    >
+                      <h2 className={styles.mpCatTitle}>
+                        {cat.title}
+                      </h2>
 
-                    {visibleItems.map((item, idx) => (
-                      <ItemCard
-                        key={item._id}
-                        item={item}
-                        index={idx}
-                        slug={slug ?? ""}
-                        hasDelivery={user.hasDelivery === true}
-                        onOpenPreview={() =>
-                          setPreviewIndex(
-                            visibleTabItems.findIndex(
-                              (i) => i._id === item._id
+                      {visibleItems.map((item, idx) => (
+                        <ItemCard
+                          key={item._id}
+                          item={item}
+                          index={idx}
+                          slug={slug ?? ""}
+                          hasDelivery={user.hasDelivery === true}
+                          onOpenPreview={() =>
+                            setPreviewIndex(
+                              visibleTabItems.findIndex(
+                                (i) => i._id === item._id
+                              )
                             )
-                          )
-                        }
-                      />
-                    ))}
-                  </section>
-                );
-              })
-            )}
-          </main>
+                          }
+                        />
+                      ))}
+                    </section>
+                  );
+                })
+              )}
+            </main>
 
-          {user.features?.pedido_whatsapp && (
-            <CartFab
-              onClick={() => setCartOpen(true)}
-            />
+            {user.features?.pedido_whatsapp === true && (
+              <OrderSummary
+                businessName={info.businessName || "el local"}
+                whatsappNumber={info.number}
+              />
+            )}
+          </div>
+
+          {user.features?.pedido_whatsapp === true && (
+            <CartBar onClick={() => setCartOpen(true)} />
           )}
 
           {/* El drawer queda dentro de .mp para heredar los tokens del template */}
@@ -357,15 +365,72 @@ export default function MenuPage() {
 // interno entre renders) ────────────────────────────────────────────────
 
 // ── Botón flotante del carrito ────────────────────────────────────────────────
-function CartFab({ onClick }: { onClick: () => void }) {
-  const { totalItems } = useCart();
+function CartBar({ onClick }: { onClick: () => void }) {
+  const { totalItems, totalPrice } = useCart();
   if (totalItems === 0) return null;
 
   return (
-    <button className={styles.cartFab} onClick={onClick} type="button" aria-label={`Ver pedido (${totalItems} productos)`}>
-      <CartIcon />
-      <span className={styles.cartFabBadge}>{totalItems}</span>
+    <button className={styles.cartBar} onClick={onClick} type="button" aria-label={`Ver pedido (${totalItems} productos)`}>
+      <span className={styles.cartBarCount}>{totalItems}</span>
+      <span className={styles.cartBarLabel}>Ver pedido</span>
+      <span className={styles.cartBarTotal}>{fmt(totalPrice)} <span aria-hidden>→</span></span>
     </button>
+  );
+}
+
+function OrderSummary({
+  businessName,
+  whatsappNumber,
+}: {
+  businessName: string;
+  whatsappNumber: number | null;
+}) {
+  const { items, totalPrice, updateQuantity, clearCart } = useCart();
+  if (items.length === 0) return null;
+
+  const waLink = buildWaLink(whatsappNumber, buildOrderMessage(items, businessName));
+
+  return (
+    <aside className={styles.orderSummary} aria-label="Tu pedido">
+      <div className={styles.orderSummaryHeader}>
+        <div>
+          <h2>Tu pedido</h2>
+          <span>{items.reduce((sum, item) => sum + item.quantity, 0)} productos</span>
+        </div>
+        <CartIcon />
+      </div>
+      <ul className={styles.orderLines}>
+        {items.map((line) => (
+          <li key={`${line.itemId}::${line.selectedOption ?? ""}`} className={styles.orderLine}>
+            <div className={styles.orderLineInfo}>
+              <strong>{line.title}</strong>
+              {line.selectedOption && <span>{line.selectedOption}</span>}
+              <span>{fmt(line.unitPrice * line.quantity)}</span>
+            </div>
+            <div className={styles.orderQty}>
+              <button type="button" onClick={() => updateQuantity(line.itemId, line.selectedOption, line.quantity - 1)} aria-label={`Quitar una unidad de ${line.title}`}>−</button>
+              <span>{line.quantity}</span>
+              <button type="button" onClick={() => updateQuantity(line.itemId, line.selectedOption, line.quantity + 1)} aria-label={`Agregar una unidad de ${line.title}`}>+</button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className={styles.orderTotal}><span>Total</span><strong>{fmt(totalPrice)}</strong></div>
+      {waLink ? (
+        <a className={styles.orderWhatsapp} href={waLink} target="_blank" rel="noopener noreferrer">Pedir por WhatsApp <span aria-hidden>↗</span></a>
+      ) : (
+        <p className={styles.orderNoWhatsapp}>Este local todavía no cargó un WhatsApp para pedidos.</p>
+      )}
+      <button
+        type="button"
+        className={styles.orderClear}
+        onClick={() => {
+          if (window.confirm("¿Vaciar todo el pedido?")) clearCart();
+        }}
+      >
+        Vaciar pedido
+      </button>
+    </aside>
   );
 }
 
