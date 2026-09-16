@@ -86,6 +86,13 @@ export const getPendingImages = async (): Promise<string[]> => {
   return res.data.pendingImages
 }
 
+// GET /api/items/images/presets  →  imágenes prediseñadas (genéricas)
+// disponibles para cualquier usuario, además de las propias
+export const getPresetImages = async (): Promise<string[]> => {
+  const res = await apiClient.get<{ presetImages: string[] }>('/items/images/presets')
+  return res.data.presetImages
+}
+
 // POST /api/items/images/upload  (multipart/form-data)  →  sube una imagen
 // al gestor sin asignarla todavía a ningún producto
 export const uploadLibraryImage = async (file: File): Promise<{ imageUrl: string }> => {

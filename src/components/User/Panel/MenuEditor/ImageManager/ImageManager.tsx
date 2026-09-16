@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { isAxiosError } from "axios";
 import { useAsyncAction } from "../../../../../hooks/useAsyncAction";
 import {
-  getLiteItems, getPendingImages, uploadLibraryImage, assignLibraryImages, deleteLibraryImage,
+  getLiteItems, getPendingImages, getPresetImages, uploadLibraryImage, assignLibraryImages, deleteLibraryImage,
 } from "../../../../../api/items";
 import { useMobileDock } from "../../../../../context/useMobileDock";
 import type { ItemLite, ImageAssignChange } from "../../../../../types";
@@ -30,6 +30,10 @@ interface TileState {
   pickerRows: string[];
   initialSelected: Set<string>; // foto inicial de qué productos tenía asignados, para el dirty-check
   sourceFile?: File; // se guarda solo mientras status es uploading/error, para poder reintentar
+  // Imagen prediseñada (banco compartido, ver Trello "Imágenes genéricas
+  // para el menú"): no se puede subir, no se puede eliminar, y al
+  // asignarla/desasignarla el backend nunca la mueve del array de su dueño.
+  isPreset: boolean;
 }
 
 const MAX_IMAGE_MB = 5;
@@ -60,7 +64,11 @@ const normalizeSearchValue = (value: string | null | undefined) =>
 const extractServerMessage = (cause: unknown): string | null =>
   isAxiosError<{ message?: string }>(cause) ? cause.response?.data?.message ?? null : null;
 
-const buildTilesFromServer = (liteItems: ItemLite[], pendingImages: string[]): TileState[] => {
+const buildTilesFromServer = (
+  liteItems: ItemLite[],
+  pendingImages: string[],
+  presetImages: string[],
+): TileState[] => {
   const byImage = new Map<string, string[]>();
   liteItems.forEach((item) => {
     if (!item.image) return;
@@ -69,12 +77,19 @@ const buildTilesFromServer = (liteItems: ItemLite[], pendingImages: string[]): T
     byImage.set(item.image, list);
   });
 
+  const pendingSet = new Set(pendingImages);
+  // Si el usuario logueado ES el dueño del banco de prediseñadas, sus
+  // propias pendingMenuImages ya se muestran como pendientes de siempre —
+  // no las duplicamos como tile de prediseñada aparte.
+  const presetSet = new Set(presetImages.filter((url) => !pendingSet.has(url)));
+
   const pendingTiles: TileState[] = pendingImages.map((imageUrl) => ({
     clientId: imageUrl,
     imageUrl,
     status: "ready",
     pickerRows: [""],
     initialSelected: new Set<string>(),
+    isPreset: false,
   }));
 
   const assignedTiles: TileState[] = [...byImage.entries()].map(([imageUrl, itemIds]) => ({
@@ -83,9 +98,23 @@ const buildTilesFromServer = (liteItems: ItemLite[], pendingImages: string[]): T
     status: "ready",
     pickerRows: itemIds,
     initialSelected: new Set(itemIds),
+    isPreset: presetSet.has(imageUrl),
   }));
 
-  return [...pendingTiles, ...assignedTiles];
+  // Prediseñadas que todavía no están asignadas a ningún producto propio —
+  // no aparecen en byImage porque ningún item propio las tiene hoy.
+  const unassignedPresetTiles: TileState[] = presetImages
+    .filter((imageUrl) => presetSet.has(imageUrl) && !byImage.has(imageUrl))
+    .map((imageUrl) => ({
+      clientId: imageUrl,
+      imageUrl,
+      status: "ready",
+      pickerRows: [""],
+      initialSelected: new Set<string>(),
+      isPreset: true,
+    }));
+
+  return [...pendingTiles, ...assignedTiles, ...unassignedPresetTiles];
 };
 
 const isTileDirty = (tile: TileState) => {
@@ -269,7 +298,9 @@ function ImageTile({
           ? <img src={tile.imageUrl} alt="" className={styles.tileThumb} />
           : <div className={styles.tileThumbPlaceholder} />}
 
-        {tile.status === "ready" && (
+        {tile.isPreset && <span className={styles.presetBadge}>Prediseñada</span>}
+
+        {tile.status === "ready" && !tile.isPreset && (
           <button
             type="button"
             className={styles.tileDeleteBtn}
@@ -388,6 +419,8 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
   const [items, setItems] = useState<ItemLite[]>([]);
   const [tiles, setTiles] = useState<TileState[]>([]);
   const [onlyPending, setOnlyPending] = useState(false);
+  const [viewMode, setViewMode] = useState<"mine" | "presets">("mine");
+  const [productQuery, setProductQuery] = useState("");
   const [gridColumns, setGridColumns] = useState<number>(readStoredGridColumns);
   // "No volver a preguntar" es por sesión de uso del gestor: vive en un
   // useState normal (no localStorage/sessionStorage) a propósito, así que se
@@ -415,9 +448,11 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
   const loadData = useCallback(async () => {
     await loadState.run(async () => {
       try {
-        const [liteItems, pendingImages] = await Promise.all([getLiteItems(), getPendingImages()]);
+        const [liteItems, pendingImages, presetImages] = await Promise.all([
+          getLiteItems(), getPendingImages(), getPresetImages(),
+        ]);
         setItems(liteItems);
-        setTiles(buildTilesFromServer(liteItems, pendingImages));
+        setTiles(buildTilesFromServer(liteItems, pendingImages, presetImages));
       } catch (cause) {
         throw new Error(extractServerMessage(cause) || "No se pudieron cargar las imágenes.", { cause });
       }
@@ -440,9 +475,32 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
     [items, assignedItemIdSet]
   );
 
+  // "Mis imágenes" muestra todo lo propio: imágenes propias + prediseñadas
+  // que YA están usando alguno de mis productos (para que la vista de "qué
+  // foto tiene cada producto" quede completa). Las prediseñadas todavía sin
+  // usar solo viven en la otra pestaña — no son "mías" hasta que las asigno.
+  // "Imágenes prediseñadas" siempre muestra el banco completo, se estén
+  // usando o no.
+  const scopedTiles = viewMode === "presets"
+    ? tiles.filter((tile) => tile.isPreset)
+    : tiles.filter((tile) => !tile.isPreset || tile.pickerRows.some(Boolean));
   const visibleTiles = onlyPending
-    ? tiles.filter((tile) => tile.pickerRows.filter(Boolean).length === 0)
-    : tiles;
+    ? scopedTiles.filter((tile) => tile.pickerRows.filter(Boolean).length === 0)
+    : scopedTiles;
+
+  // Buscador por producto asignado (nombre o código): solo puede matchear una
+  // imagen que ya tenga al menos un producto propio elegido — una pendiente
+  // sin asignar nunca aparece mientras haya texto escrito acá.
+  const normalizedProductQuery = normalizeSearchValue(productQuery);
+  const searchFilteredTiles = normalizedProductQuery
+    ? visibleTiles.filter((tile) => tile.pickerRows.some((itemID) => {
+        if (!itemID) return false;
+        const item = itemById.get(itemID);
+        if (!item) return false;
+        const haystack = `${normalizeSearchValue(item.title)} ${normalizeSearchValue(item.code)}`;
+        return haystack.includes(normalizedProductQuery);
+      }))
+    : visibleTiles;
 
   const dirtyTiles = tiles.filter((tile) => tile.status === "ready" && tile.imageUrl && isTileDirty(tile));
   const anyUploading = tiles.some((tile) => tile.status === "uploading");
@@ -489,19 +547,19 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
       const clientId = crypto.randomUUID();
       if (!file.type.startsWith("image/")) {
         return {
-          clientId, imageUrl: null, status: "error",
+          clientId, imageUrl: null, status: "error", isPreset: false,
           errorMessage: "El archivo debe ser una imagen.", pickerRows: [""], initialSelected: new Set<string>(),
         };
       }
       if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
         return {
-          clientId, imageUrl: null, status: "error",
+          clientId, imageUrl: null, status: "error", isPreset: false,
           errorMessage: `No puede superar los ${MAX_IMAGE_MB}MB.`, pickerRows: [""], initialSelected: new Set<string>(),
         };
       }
       toUpload.push({ file, clientId });
       return {
-        clientId, imageUrl: null, status: "uploading",
+        clientId, imageUrl: null, status: "uploading", isPreset: false,
         pickerRows: [""], initialSelected: new Set<string>(), sourceFile: file,
       };
     });
@@ -553,7 +611,7 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
   // DeleteConfirmModal más arriba. skipDeleteConfirm dura lo que dura el
   // componente montado (por sesión de uso del gestor), no para siempre.
   const requestDelete = useCallback((tile: TileState) => {
-    if (tile.status !== "ready" || !tile.imageUrl) return;
+    if (tile.status !== "ready" || !tile.imageUrl || tile.isPreset) return;
     if (skipDeleteConfirm) {
       performDelete(tile);
       return;
@@ -650,7 +708,47 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
         </button>
       </header>
 
+      <div className={styles.productSearchWrap}>
+        <input
+          type="text"
+          className={styles.productSearchInput}
+          placeholder="Buscar por nombre o código de producto…"
+          value={productQuery}
+          onChange={(e) => setProductQuery(e.target.value)}
+        />
+        {productQuery && (
+          <button
+            type="button"
+            className={styles.productSearchClear}
+            onClick={() => setProductQuery("")}
+            aria-label="Limpiar búsqueda"
+          >
+            {icons.close}
+          </button>
+        )}
+      </div>
+
       <div className={styles.toolbar}>
+        <div className={styles.viewModeToggle} role="tablist" aria-label="Origen de las imágenes">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === "mine"}
+            className={`${styles.viewModeBtn} ${viewMode === "mine" ? styles.viewModeBtnActive : ""}`}
+            onClick={() => setViewMode("mine")}
+          >
+            Mis imágenes
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === "presets"}
+            className={`${styles.viewModeBtn} ${viewMode === "presets" ? styles.viewModeBtnActive : ""}`}
+            onClick={() => setViewMode("presets")}
+          >
+            Imágenes prediseñadas
+          </button>
+        </div>
         <label className={styles.onlyPendingToggle}>
           <input
             type="checkbox"
@@ -674,9 +772,6 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
             aria-label="Cantidad de imágenes por fila"
           />
         </label>
-        <button type="button" className={styles.stockPlaceholder} disabled title="Próximamente">
-          Imágenes prediseñadas (Próximamente)
-        </button>
       </div>
 
       {errorMessage && <div className={styles.errorBanner} role="alert">{errorMessage}</div>}
@@ -692,14 +787,28 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
 
       {loadState.loading ? (
         <div className={styles.loadingState}><Spinner size={24} label="Cargando imágenes" /></div>
-      ) : tiles.length === 0 ? (
-        <button type="button" className={styles.emptyState} onClick={() => fileInputRef.current?.click()}>
-          <span className={styles.emptyStateIcon}>{icons.upload}</span>
-          <span>Seleccioná imágenes para importar</span>
-        </button>
+      ) : scopedTiles.length === 0 ? (
+        viewMode === "mine" ? (
+          <button type="button" className={styles.emptyState} onClick={() => fileInputRef.current?.click()}>
+            <span className={styles.emptyStateIcon}>{icons.upload}</span>
+            <span>Seleccioná imágenes para importar</span>
+          </button>
+        ) : (
+          <div className={styles.emptyState}>
+            <span>Todavía no hay imágenes prediseñadas cargadas.</span>
+          </div>
+        )
+      ) : searchFilteredTiles.length === 0 ? (
+        <div className={styles.emptyState}>
+          <span>
+            {productQuery
+              ? `Ningún producto coincide con "${productQuery}".`
+              : "No hay imágenes que coincidan con el filtro."}
+          </span>
+        </div>
       ) : (
         <div className={styles.grid} style={{ "--tile-columns": gridColumns } as CSSProperties}>
-          {visibleTiles.map((tile) => (
+          {searchFilteredTiles.map((tile) => (
             <ImageTile
               key={tile.clientId}
               tile={tile}
@@ -725,7 +834,7 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
           ancestro con su propio contexto de apilamiento en el medio. Se oculta
           en el estado vacío (tiles.length === 0), donde ese caso ya lo cubre
           el botón grande de emptyState de arriba. */}
-      {tiles.length > 0 && createPortal(
+      {viewMode === "mine" && scopedTiles.length > 0 && createPortal(
         <button
           type="button"
           className={styles.fabAddBtn}
