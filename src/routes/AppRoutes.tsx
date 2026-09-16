@@ -133,6 +133,13 @@ const UserStats = lazy(
     )
 );
 
+const SettingsPanel = lazy(
+  () =>
+    import(
+      "../../src/components/User/Panel/Settings/SettingsPanel"
+    )
+);
+
 // ─────────────────────────────────────────────
 // TENANT PÚBLICO
 // ─────────────────────────────────────────────
@@ -310,6 +317,11 @@ export default function AppRoutes() {
             <Route
               path="/estadisticas"
               element={<UserStats />}
+            />
+
+            <Route
+              path="/configuracion"
+              element={<SettingsPanel />}
             />
           </Route>
         </Route>

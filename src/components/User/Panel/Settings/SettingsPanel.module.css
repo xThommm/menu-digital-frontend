@@ -1,0 +1,283 @@
+/* Tokens de diseño: ver --admin-* en globals.css (única fuente de verdad,
+   mismo criterio que UserEditor.module.css/MenuEditor.module.css). */
+
+.sp {
+  min-height: 100vh;
+  background: var(--admin-bg-base);
+  font-family: var(--font-sans);
+  color: var(--admin-text-secondary);
+  display: flex;
+  flex-direction: column;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ── Top bar ── */
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  border-bottom: 0.5px solid var(--admin-border-subtle);
+  background: var(--admin-bg-base);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding-top: max(0.875rem, env(safe-area-inset-top));
+}
+
+.topTitle {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--admin-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.content {
+  flex: 1;
+  padding: 1.25rem 1rem 2.5rem;
+}
+
+/* ── Gate (crear/ingresar contraseña) ── */
+.gateLoading {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+  color: var(--admin-text-muted);
+}
+
+.gateCard {
+  max-width: 380px;
+  margin: 1.5rem auto 0;
+  text-align: center;
+}
+
+.gateIcon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--admin-gold-glow);
+  color: var(--admin-gold);
+  border: 0.5px solid var(--admin-border-gold-mid);
+}
+
+.gateTitle {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--admin-text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.gateDesc {
+  font-size: 0.82rem;
+  color: var(--admin-text-muted);
+  line-height: 1.55;
+  margin-bottom: 1.5rem;
+}
+
+.gateForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.gateForm input {
+  width: 100%;
+  background: var(--admin-bg-surface);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  color: var(--admin-text-secondary);
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.gateForm input:focus {
+  border-color: var(--admin-gold);
+}
+
+.gateForm input::placeholder {
+  color: var(--admin-text-faint);
+}
+
+.gateError {
+  font-size: 0.8rem;
+  color: var(--admin-red-text);
+  margin: -0.2rem 0 0;
+}
+
+.gateSuccess {
+  font-size: 0.8rem;
+  color: var(--admin-success-text);
+  margin: -0.2rem 0 0;
+}
+
+/* ── Banners ── */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--admin-red-bg);
+  border: 0.5px solid var(--admin-red-border);
+  border-radius: var(--admin-radius-md);
+  padding: 0.65rem 1rem;
+  font-size: 0.82rem;
+  color: var(--admin-red-text);
+  margin-bottom: 1rem;
+}
+
+/* ── Toggles ── */
+.toggleGroup {
+  margin: 0 0 1.75rem;
+  border: 0.5px solid var(--admin-border-subtle);
+  border-radius: var(--admin-radius-lg);
+  overflow: hidden;
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1rem;
+  border-bottom: 0.5px solid var(--admin-border-subtle);
+  gap: 1rem;
+}
+
+.toggleRow:last-child {
+  border-bottom: none;
+}
+
+.toggleLabel {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--admin-text-primary);
+}
+
+.toggleDesc {
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.toggle {
+  width: 44px;
+  height: var(--control-min-size);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.toggle::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  left: 0;
+  width: 44px;
+  height: 26px;
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: 13px;
+  background: var(--admin-border-subtle);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
+}
+
+.toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.toggle.on::before {
+  background: var(--admin-green-bg);
+  border-color: var(--admin-green-border);
+}
+
+.toggleKnob {
+  position: absolute;
+  top: 13px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--admin-text-muted);
+  transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1), background 0.2s;
+  pointer-events: none;
+}
+
+.toggle.on .toggleKnob {
+  transform: translateX(18px);
+  background: var(--admin-green);
+}
+
+/* ── Cambiar contraseña del panel ── */
+.passwordSection {
+  border-top: 0.5px solid var(--admin-border-subtle);
+  padding-top: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--admin-text-primary);
+  margin: 0 0 1rem;
+}
+
+/* ── Save button ── */
+.saveBtn {
+  min-height: 48px;
+  width: 100%;
+  background: var(--admin-gold);
+  border: none;
+  border-radius: var(--admin-radius-lg);
+  padding: 0.9rem;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--admin-gold-ink);
+  cursor: pointer;
+  margin-top: 0.25rem;
+  transition: background 0.2s, transform 0.1s, opacity 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.saveBtn:hover:not(:disabled) {
+  background: var(--admin-gold-hover);
+}
+
+.saveBtn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.saveBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.saveBtn:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toggleKnob {
+    animation: none;
+    transition: none;
+  }
+}

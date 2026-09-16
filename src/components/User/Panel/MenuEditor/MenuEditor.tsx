@@ -317,6 +317,7 @@ interface CategoriaAcordeonProps {
   cat: Categoria;
   expanded: boolean;
   atItemLimit: boolean;
+  deleteDisabled: boolean;
   onToggle: () => void;
   onEditCat: () => void;
   onDeleteCat: () => void;
@@ -338,7 +339,7 @@ interface CategoriaAcordeonProps {
 }
 
 const CategoriaAcordeon = memo(function CategoriaAcordeon({
-  cat, expanded, atItemLimit, onToggle, onEditCat, onDeleteCat, onNewItem,
+  cat, expanded, atItemLimit, deleteDisabled, onToggle, onEditCat, onDeleteCat, onNewItem,
   onEditItem, onToggleAvailable, onDragStart,
   onDragOver, onDragLeave, onDrop, onDragEnd, dragOverCat, draggedItem,
   selectionMode, selectedIds, onToggleSelectItem, onToggleSelectAllInCat,
@@ -395,7 +396,8 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
           <button
             className={`${styles.iconBtn} ${styles.danger}`}
             onClick={onDeleteCat}
-            title="Eliminar categoría"
+            disabled={deleteDisabled}
+            title={deleteDisabled ? "Eliminar deshabilitado desde Configuración" : "Eliminar categoría"}
             aria-label={`Eliminar ${cat.title}`}
           >
             {icons.trash}
@@ -538,6 +540,8 @@ export default function MenuEditorPage() {
     canScheduleItems?: boolean;
     canScheduleOffers?: boolean;
     canUseImageManager?: boolean;
+    autoGenerateCodes?: boolean;
+    disableMenuDelete?: boolean;
   } | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState(false);
@@ -807,7 +811,9 @@ export default function MenuEditorPage() {
 
     const nextFieldErrors: ItemFieldErrors = {};
     if (!itemForm.title.trim()) nextFieldErrors.title = "Ingresá el nombre del producto.";
-    if (!itemForm.code.trim()) nextFieldErrors.code = "Ingresá el código interno.";
+    // Con la generación automática de códigos activa (Configuración), dejarlo
+    // vacío no es un error: el backend le asigna uno al crear el producto.
+    if (!itemForm.code.trim() && !limits?.autoGenerateCodes) nextFieldErrors.code = "Ingresá el código interno.";
     if (!itemForm.price.trim()) nextFieldErrors.price = "Ingresá el precio.";
     else if (isNaN(Number(itemForm.price)) || Number(itemForm.price) <= 0) {
       nextFieldErrors.price = "El precio debe ser un número mayor a cero.";
@@ -1533,7 +1539,8 @@ export default function MenuEditorPage() {
                       <button
                         className={`${styles.iconBtn} ${styles.danger}`}
                         onClick={() => setDeleteModal({ type: "seccion", id: sec._id, name: sec.title })}
-                        title="Eliminar sección"
+                        disabled={limits?.disableMenuDelete === true}
+                        title={limits?.disableMenuDelete ? "Eliminar deshabilitado desde Configuración" : "Eliminar sección"}
                         aria-label={`Eliminar ${sec.title}`}
                       >
                         {icons.trash}
@@ -1547,6 +1554,7 @@ export default function MenuEditorPage() {
                       cat={cat}
                       expanded={expandedCats.has(cat._id)}
                       atItemLimit={atItemLimit}
+                      deleteDisabled={limits?.disableMenuDelete === true}
                       onToggle={() => toggleCat(cat._id)}
                       onEditCat={() => openEditCategoria(cat)}
                       onDeleteCat={() => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title })}
@@ -1592,6 +1600,7 @@ export default function MenuEditorPage() {
                       cat={cat}
                       expanded={expandedCats.has(cat._id)}
                       atItemLimit={atItemLimit}
+                      deleteDisabled={limits?.disableMenuDelete === true}
                       onToggle={() => toggleCat(cat._id)}
                       onEditCat={() => openEditCategoria(cat)}
                       onDeleteCat={() => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title })}
@@ -1804,7 +1813,8 @@ export default function MenuEditorPage() {
                   <button
                     type="button"
                     className={`${styles.bulkBarBtn} ${styles.bulkBarBtnDanger}`}
-                    disabled={selectedIds.size === 0 || bulkBusy}
+                    disabled={selectedIds.size === 0 || bulkBusy || limits?.disableMenuDelete === true}
+                    title={limits?.disableMenuDelete ? "Eliminar deshabilitado desde Configuración" : undefined}
                     onClick={() => setBulkDeleteConfirmOpen(true)}
                   >
                     Eliminar
@@ -1960,23 +1970,29 @@ export default function MenuEditorPage() {
               </div>
 
               <div className={styles.field}>
-                <label htmlFor="item-code">Código interno <span className={styles.requiredMark} aria-hidden="true">*</span></label>
+                <label htmlFor="item-code">
+                  Código interno {!limits?.autoGenerateCodes && <span className={styles.requiredMark} aria-hidden="true">*</span>}
+                </label>
                 <input
                   id="item-code"
                   type="text"
-                  placeholder="Ej: pizza-napo"
+                  placeholder={limits?.autoGenerateCodes ? "Se genera solo si lo dejás vacío" : "Ej: pizza-napo"}
                   value={itemForm.code}
                   onChange={e => {
                     setItemForm(f => ({ ...f, code: e.target.value }));
                     setItemFieldErrors(previous => ({ ...previous, code: undefined }));
                   }}
-                  required
+                  required={!limits?.autoGenerateCodes}
                   aria-invalid={Boolean(itemFieldErrors.code)}
                   aria-describedby={itemFieldErrors.code ? "item-code-error" : "item-code-hint"}
                 />
                 {itemFieldErrors.code
                   ? <span id="item-code-error" className={styles.fieldError}>{itemFieldErrors.code}</span>
-                  : <span id="item-code-hint" className={styles.fieldHint}>Usalo para identificar el producto dentro del editor.</span>}
+                  : <span id="item-code-hint" className={styles.fieldHint}>
+                      {limits?.autoGenerateCodes
+                        ? "Dejalo vacío para que se genere uno automáticamente, o escribí el tuyo."
+                        : "Usalo para identificar el producto dentro del editor."}
+                    </span>}
               </div>
               </FormSection>
 
@@ -2294,9 +2310,11 @@ export default function MenuEditorPage() {
                   <button
                     className={styles.deleteBtn}
                     type="button"
+                    disabled={limits?.disableMenuDelete === true}
+                    title={limits?.disableMenuDelete ? "Eliminar deshabilitado desde Configuración" : undefined}
                     onClick={() => setDeleteModal({ type: "item", id: activeItem._id, name: activeItem.title })}
                   >
-                    Eliminar producto
+                    {limits?.disableMenuDelete ? "Eliminar deshabilitado desde Configuración" : "Eliminar producto"}
                   </button>
                 </div>
               )}
@@ -2342,7 +2360,7 @@ export default function MenuEditorPage() {
                 <input
                   id="cat-code"
                   type="text"
-                  placeholder="Ej: pizzas"
+                  placeholder={limits?.autoGenerateCodes ? "Se genera solo si lo dejás vacío" : "Ej: pizzas"}
                   value={categoriaForm.code}
                   onChange={e => setCategoriaForm(f => ({ ...f, code: e.target.value }))}
                 />
@@ -2404,7 +2422,7 @@ export default function MenuEditorPage() {
                 <input
                   id="sec-code"
                   type="text"
-                  placeholder="Ej: comidas"
+                  placeholder={limits?.autoGenerateCodes ? "Se genera solo si lo dejás vacío" : "Ej: comidas"}
                   value={seccionForm.code}
                   onChange={e => setSeccionForm(f => ({ ...f, code: e.target.value }))}
                 />

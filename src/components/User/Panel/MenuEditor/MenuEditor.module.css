@@ -584,6 +584,17 @@
   outline-offset: 2px;
 }
 
+.iconBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.iconBtn.danger:disabled:hover {
+  border-color: transparent;
+  color: var(--admin-text-faint);
+  background: transparent;
+}
+
 /* ── Acordeón de categoría ── */
 .catAcordeon {
   margin-bottom: 0.4rem;
@@ -1253,6 +1264,16 @@
 .deleteBtn:focus-visible {
   outline: 2px solid var(--admin-danger-core);
   outline-offset: 2px;
+}
+
+.deleteBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.deleteBtn:disabled:hover {
+  background: none;
+  border-color: var(--admin-red-border);
 }
 
 /* ── Modal de confirmación ── */
