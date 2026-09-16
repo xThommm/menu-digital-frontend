@@ -30,9 +30,9 @@
 
   /* — Paleta base — */
   --espresso:    #000000;
-  --gold:        #B9362A;
-  --gold-light:  #d3554a;
-  --gold-dim:    #8d1f15;
+  --gold:        #E85D3C;
+  --gold-light:  color-mix(in srgb, var(--gold) 78%, white);
+  --gold-dim:    color-mix(in srgb, var(--gold) 80%, black);
   --cream:       #FAF7F2;
   --sand:        #F5F0E8;
   --sage:        #5A6B4F;
@@ -153,9 +153,9 @@
   /* Bordes cálidos intermedios (oro al 10-40% sobre fondo oscuro),
      usados en hover de cards/botones donde --admin-border-warm
      es demasiado saturado y --admin-border-default muy neutro. */
-  --admin-border-gold-soft:   #b9362a2b;
-  --admin-border-gold-mid:    #b9362a80;
-  --admin-border-gold-strong: #B9362A;
+  --admin-border-gold-soft:   color-mix(in srgb, var(--admin-gold) 17%, transparent);
+  --admin-border-gold-mid:    color-mix(in srgb, var(--admin-gold) 50%, transparent);
+  --admin-border-gold-strong: var(--admin-gold);
 
   --admin-text-primary:   #ede4d0;
   --admin-text-secondary: #d4c9b0;
@@ -166,9 +166,9 @@
      stats pills y botones outline del Dashboard. */
   --admin-text-warm:      #a07d7a;
 
-  --admin-gold:           #B9362A;
-  --admin-gold-hover:     #d14f44;
-  --admin-gold-glow:      #b9362a1c;
+  --admin-gold:           #E85D3C;
+  --admin-gold-hover:     color-mix(in srgb, var(--admin-gold) 85%, white);
+  --admin-gold-glow:      color-mix(in srgb, var(--admin-gold) 11%, transparent);
   /* Tinta para texto/íconos SOBRE el dorado (botones primarios). Es
      deliberadamente oscura y NO se redefine en el tema claro: el dorado es
      de tono medio en ambos temas, así que el texto encima siempre tiene que
@@ -231,7 +231,7 @@
   --admin-transition-spring: var(--transition-spring);
 
   --admin-shadow-card:    0 1px 3px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.03) inset;
-  --admin-shadow-fab:     0 4px 24px rgba(201,168,76,0.18), 0 1px 8px rgba(0,0,0,0.7);
+  --admin-shadow-fab:     0 4px 24px color-mix(in srgb, var(--admin-gold) 18%, transparent), 0 1px 8px rgba(0,0,0,0.7);
   --admin-overlay-backdrop: rgba(5, 5, 5, 0.72);
   --admin-shadow-modal: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
   --admin-shadow-dock: 0 12px 36px rgba(0,0,0,0.42), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
@@ -240,13 +240,13 @@
   /* Sombras específicas del Dashboard — glow dorado en el logo
      y en cards al hacer hover, y la sombra ambiental de la
      storefront card (reposo + hover). */
-  --admin-shadow-logo:          0 2px 10px rgba(185, 54, 42, 0.28);
-  --admin-shadow-logo-hover:    0 4px 18px rgba(185, 54, 42, 0.42);
-  --admin-shadow-card-rest:     0 0 0 0.5px rgba(201, 168, 76, 0.1) inset, 0 4px 32px rgba(0, 0, 0, 0.4);
-  --admin-shadow-card-hover:    0 0 0 0.5px rgba(201, 168, 76, 0.15) inset, 0 8px 40px rgba(0, 0, 0, 0.45);
-  --admin-shadow-navcard-hover:         0 4px 24px rgba(201, 168, 76, 0.08);
-  --admin-shadow-navcard-primary-hover: 0 4px 28px rgba(201, 168, 76, 0.12);
-  --admin-shadow-action-btn-hover:         0 2px 14px rgba(201, 168, 76, 0.3);
+  --admin-shadow-logo:          0 2px 10px color-mix(in srgb, var(--admin-gold) 28%, transparent);
+  --admin-shadow-logo-hover:    0 4px 18px color-mix(in srgb, var(--admin-gold) 42%, transparent);
+  --admin-shadow-card-rest:     0 0 0 0.5px color-mix(in srgb, var(--admin-gold) 10%, transparent) inset, 0 4px 32px rgba(0, 0, 0, 0.4);
+  --admin-shadow-card-hover:    0 0 0 0.5px color-mix(in srgb, var(--admin-gold) 15%, transparent) inset, 0 8px 40px rgba(0, 0, 0, 0.45);
+  --admin-shadow-navcard-hover:         0 4px 24px color-mix(in srgb, var(--admin-gold) 8%, transparent);
+  --admin-shadow-navcard-primary-hover: 0 4px 28px color-mix(in srgb, var(--admin-gold) 12%, transparent);
+  --admin-shadow-action-btn-hover:         0 2px 14px color-mix(in srgb, var(--admin-gold) 30%, transparent);
   --admin-shadow-action-btn-success-hover: 0 2px 14px color-mix(in srgb, var(--admin-success-core) 60%, transparent);
 }
 
@@ -283,9 +283,9 @@
 
   /* Los border-gold-* son rgba de oro: sobre cream se ven más flojos que
      sobre negro, así que les subimos el alpha para conservar presencia. */
- --admin-border-gold-soft:   #b9362a2b;
-  --admin-border-gold-mid:    #b9362a80;
-  --admin-border-gold-strong: #B9362A;
+ --admin-border-gold-soft:   color-mix(in srgb, var(--admin-gold) 17%, transparent);
+  --admin-border-gold-mid:    color-mix(in srgb, var(--admin-gold) 50%, transparent);
+  --admin-border-gold-strong: var(--admin-gold);
 
   --admin-text-primary:   #2a2118;
   --admin-text-secondary: #4a3d29;
@@ -295,9 +295,9 @@
 
   /* Oro un poco más profundo: #c9a84c sobre cream tiene poco contraste
      como texto/acento; este lee bien manteniéndose en la misma familia. */
- --admin-gold:           #B9362A;
-  --admin-gold-hover:     #d14f44;
-  --admin-gold-glow:      #b9362a1c;
+ --admin-gold:           #E85D3C;
+  --admin-gold-hover:     color-mix(in srgb, var(--admin-gold) 85%, white);
+  --admin-gold-glow:      color-mix(in srgb, var(--admin-gold) 11%, transparent);
 
   /* Cores más profundos: en oscuro leían sobre negro; sobre cream
      necesitan más contraste. Los -bg/-border derivados se recalculan
@@ -314,17 +314,17 @@
 
   /* Sombras suaves y cálidas en vez de negros densos. */
   --admin-shadow-card:    0 1px 3px rgba(44, 24, 16, 0.10), 0 0 0 0.5px rgba(44, 24, 16, 0.04) inset;
-  --admin-shadow-fab:     0 4px 24px rgba(184, 145, 47, 0.22), 0 1px 8px rgba(44, 24, 16, 0.14);
+  --admin-shadow-fab:     0 4px 24px color-mix(in srgb, var(--admin-gold) 22%, transparent), 0 1px 8px rgba(44, 24, 16, 0.14);
   --admin-shadow-modal: 0 20px 52px rgba(44,24,16,0.18), 0 0 0 0.5px rgba(44,24,16,0.05) inset;
   --admin-shadow-dock: 0 12px 32px rgba(44,24,16,0.16), 0 0 0 0.5px rgba(44,24,16,0.04) inset;
   --admin-shadow-popover: 0 16px 36px rgba(44,24,16,0.18), 0 0 0 0.5px rgba(44,24,16,0.04) inset;
-  --admin-shadow-logo:          0 2px 10px rgba(185, 54, 42, 0.30);
-  --admin-shadow-logo-hover:    0 4px 18px rgba(185, 54, 42, 0.44);
-  --admin-shadow-card-rest:     0 0 0 0.5px rgba(184, 145, 47, 0.12) inset, 0 4px 24px rgba(44, 24, 16, 0.08);
-  --admin-shadow-card-hover:    0 0 0 0.5px rgba(184, 145, 47, 0.20) inset, 0 8px 32px rgba(44, 24, 16, 0.12);
-  --admin-shadow-navcard-hover:         0 4px 20px rgba(184, 145, 47, 0.10);
-  --admin-shadow-navcard-primary-hover: 0 4px 24px rgba(184, 145, 47, 0.16);
-  --admin-shadow-action-btn-hover:         0 2px 14px rgba(184, 145, 47, 0.32);
+  --admin-shadow-logo:          0 2px 10px color-mix(in srgb, var(--admin-gold) 30%, transparent);
+  --admin-shadow-logo-hover:    0 4px 18px color-mix(in srgb, var(--admin-gold) 44%, transparent);
+  --admin-shadow-card-rest:     0 0 0 0.5px color-mix(in srgb, var(--admin-gold) 12%, transparent) inset, 0 4px 24px rgba(44, 24, 16, 0.08);
+  --admin-shadow-card-hover:    0 0 0 0.5px color-mix(in srgb, var(--admin-gold) 20%, transparent) inset, 0 8px 32px rgba(44, 24, 16, 0.12);
+  --admin-shadow-navcard-hover:         0 4px 20px color-mix(in srgb, var(--admin-gold) 10%, transparent);
+  --admin-shadow-navcard-primary-hover: 0 4px 24px color-mix(in srgb, var(--admin-gold) 16%, transparent);
+  --admin-shadow-action-btn-hover:         0 2px 14px color-mix(in srgb, var(--admin-gold) 32%, transparent);
   --admin-shadow-action-btn-success-hover: 0 2px 14px color-mix(in srgb, var(--admin-success-core) 55%, transparent);
 }
 
@@ -334,17 +334,15 @@
    se vende: no debería verse como la carta del restaurante. Acá se
    redefinen los tokens --admin-* SOLO dentro de .admin-panel-graphite
    (la raíz de AdminLayout), así el panel del dueño de restaurante —que
-   consume los mismos tokens— conserva su identidad dorada intacta.
+   consume los mismos tokens— conserva su identidad intacta.
 
-   Dos cambios de fondo respecto del default:
-   1. Superficies grafito neutro (frías) en vez de espresso cálido.
-   2. El rol de acento pasa a un azul acero. OJO con el nombre: los 5
-      módulos usan --admin-gold para "lo interactivo/enfatizado"
-      (botones, nav activa, hover), así que ese token acá lleva el azul
-      y NO se renombra —renombrarlo obligaría a tocar ~2.600 líneas sin
-      ganar nada—. El dorado como color sigue existiendo, degradado a
-      acento puntual, en --admin-plan-pro y --admin-money: dinero y
-      plan Pro, nada más.
+   Un solo cambio de fondo respecto del default: superficies grafito
+   neutro (frías) en vez de espresso cálido. El acento (--admin-gold)
+   se mantiene alineado a la marca (var(--gold), #E85D3C) igual que el
+   resto de la app — antes era un azul acero deliberadamente distinto,
+   pero ahora el logo/color de marca es consistente en todos los
+   paneles. --admin-money sigue existiendo aparte como acento puntual
+   de dinero/plan Pro, sin relación con el logo.
 
    Especificidad: (0,1,0), igual que :root, pero declarado después →
    gana. Para el tema claro se usa :root[data-theme="light"] .admin-…
@@ -364,8 +362,8 @@
   --admin-border-warm:    #3a3a46;
 
   --admin-border-gold-soft:   rgba(255, 255, 255, 0.06);
-  --admin-border-gold-mid:    rgba(111, 154, 239, 0.24);
-  --admin-border-gold-strong: rgba(111, 154, 239, 0.45);
+  --admin-border-gold-mid:    color-mix(in srgb, var(--admin-gold) 24%, transparent);
+  --admin-border-gold-strong: color-mix(in srgb, var(--admin-gold) 45%, transparent);
 
   --admin-text-primary:   #e8e8ee;
   --admin-text-secondary: #b3b3c0;
@@ -373,10 +371,10 @@
   --admin-text-faint:     #55555f;
   --admin-text-warm:      #9494a3;
 
-  /* Rol de acento (azul acero), no "dorado" — ver nota de arriba. */
-  --admin-gold:           #6f9aef;
-  --admin-gold-hover:     #89aef5;
-  --admin-gold-glow:      rgba(111, 154, 239, 0.14);
+  /* Acento de marca, igual que el resto de los paneles — ver nota de arriba. */
+  --admin-gold:           #E85D3C;
+  --admin-gold-hover:     color-mix(in srgb, var(--admin-gold) 80%, white);
+  --admin-gold-glow:      color-mix(in srgb, var(--admin-gold) 14%, transparent);
   --admin-gold-ink:       #0a0f1a;
 
   /* El dorado real, ya como acento puntual. */
@@ -417,7 +415,7 @@
   --admin-shadow-card-hover: 0 0 0 0.5px rgba(255, 255, 255, 0.08) inset, 0 4px 16px rgba(0, 0, 0, 0.45);
   --admin-shadow-navcard-hover:         0 2px 12px rgba(0, 0, 0, 0.4);
   --admin-shadow-navcard-primary-hover: 0 2px 16px rgba(0, 0, 0, 0.45);
-  --admin-shadow-action-btn-hover:      0 2px 12px rgba(111, 154, 239, 0.28);
+  --admin-shadow-action-btn-hover:      0 2px 12px color-mix(in srgb, var(--admin-gold) 28%, transparent);
 }
 
 :root[data-theme="light"] .admin-panel-graphite {
@@ -434,8 +432,8 @@
   --admin-border-warm:    #c3c7d3;
 
   --admin-border-gold-soft:   rgba(20, 24, 35, 0.06);
-  --admin-border-gold-mid:    rgba(47, 111, 208, 0.28);
-  --admin-border-gold-strong: rgba(47, 111, 208, 0.5);
+  --admin-border-gold-mid:    color-mix(in srgb, var(--admin-gold) 28%, transparent);
+  --admin-border-gold-strong: color-mix(in srgb, var(--admin-gold) 50%, transparent);
 
   --admin-text-primary:   #14181f;
   --admin-text-secondary: #495062;
@@ -443,10 +441,9 @@
   --admin-text-faint:     #a2a8b6;
   --admin-text-warm:      #5b6273;
 
-  --admin-gold:           #2f6fd0;
-  --admin-gold-hover:     #245cb4;
-  --admin-gold-glow:      rgba(47, 111, 208, 0.10);
-  --admin-gold-ink:       #ffffff;
+  --admin-gold:           #E85D3C;
+  --admin-gold-hover:     color-mix(in srgb, var(--admin-gold) 85%, black);
+  --admin-gold-glow:      color-mix(in srgb, var(--admin-gold) 10%, transparent);
 
   --admin-money:          #a17a1c;
   --admin-plan-basic:     #1c8f86;
@@ -468,7 +465,7 @@
   --admin-shadow-card-hover: 0 0 0 0.5px rgba(20, 24, 35, 0.08) inset, 0 4px 14px rgba(20, 24, 35, 0.08);
   --admin-shadow-navcard-hover:         0 2px 10px rgba(20, 24, 35, 0.08);
   --admin-shadow-navcard-primary-hover: 0 2px 14px rgba(20, 24, 35, 0.10);
-  --admin-shadow-action-btn-hover:      0 2px 12px rgba(47, 111, 208, 0.24);
+  --admin-shadow-action-btn-hover:      0 2px 12px color-mix(in srgb, var(--admin-gold) 24%, transparent);
 }
 
 /* ── Tipografía del panel CEO ──
@@ -706,11 +703,11 @@
      de mockups y superficies "elevadas" dentro de tarjetas oscuras. */
   --auth-bg-elevated: #1e1219;
 
-  /* Acento ámbar — antes #ff9500, ahora más cercano a la familia
-     dorada del resto de la app (mismo matiz, menos saturado/neón) */
-  --auth-amber:       #d25044;
-  --auth-amber-dim:   #ae372c;
-  --auth-amber-glow:  rgba(239, 149, 54, 0.25);
+  /* Acento ámbar — derivado de --gold (la misma marca que el logo),
+     así el login/register siempre queda "pariente" del resto de la app. */
+  --auth-amber:       var(--gold-light);
+  --auth-amber-dim:   var(--gold);
+  --auth-amber-glow:  color-mix(in srgb, var(--auth-amber) 25%, transparent);
 
   /* Texto */
   --auth-cream:       #f5ede0;
@@ -718,13 +715,13 @@
   --auth-cream-dim:   rgba(245, 237, 224, 0.22);
 
   /* Bordes */
-  --auth-border:      rgba(239, 149, 54, 0.15);
-  --auth-border-soft: rgba(239, 149, 54, 0.12);
+  --auth-border:      color-mix(in srgb, var(--auth-amber) 15%, transparent);
+  --auth-border-soft: color-mix(in srgb, var(--auth-amber) 12%, transparent);
   --auth-border-focus:var(--auth-amber);
 
   /* Input */
-  --auth-input-bg:        rgba(239, 149, 54, 0.03);
-  --auth-input-bg-focus:  rgba(239, 149, 54, 0.06);
+  --auth-input-bg:        color-mix(in srgb, var(--auth-amber) 3%, transparent);
+  --auth-input-bg-focus:  color-mix(in srgb, var(--auth-amber) 6%, transparent);
 
   /* Error */
   --auth-error-bg:        rgba(255, 80, 40, 0.06);
@@ -740,20 +737,20 @@
   --font-auth-mono:    'DM Mono', monospace;
 
   /* Sombras */
-  --auth-shadow-card:  0 0 60px rgba(239, 149, 54, 0.08), 0 40px 80px rgba(0, 0, 0, 0.6);
-  --auth-shadow-btn:   0 0 28px rgba(239, 149, 54, 0.35);
-  --auth-shadow-btn-hover: 0 0 50px rgba(239, 149, 54, 0.6);
-  --auth-shadow-logo:  0 0 16px rgba(239, 149, 54, 0.4);
-  --auth-shadow-logo-brand: 0 0 16px rgba(185, 54, 42, 0.4);
-  --auth-shadow-checkbox: 0 0 15px rgba(239, 168, 54, 0.35), 0 0 30px rgba(239, 140, 0, 0.15);
+  --auth-shadow-card:  0 0 60px color-mix(in srgb, var(--auth-amber) 8%, transparent), 0 40px 80px rgba(0, 0, 0, 0.6);
+  --auth-shadow-btn:   0 0 28px color-mix(in srgb, var(--auth-amber) 35%, transparent);
+  --auth-shadow-btn-hover: 0 0 50px color-mix(in srgb, var(--auth-amber) 60%, transparent);
+  --auth-shadow-logo:  0 0 16px color-mix(in srgb, var(--auth-amber) 40%, transparent);
+  --auth-shadow-logo-brand: 0 0 16px color-mix(in srgb, var(--gold) 40%, transparent);
+  --auth-shadow-checkbox: 0 0 15px color-mix(in srgb, var(--auth-amber) 35%, transparent), 0 0 30px color-mix(in srgb, var(--auth-amber) 15%, transparent);
 
   /* Checkbox marcado (Login "recordarme", Register "acepto términos") —
      antes duplicado como el mismo hex suelto en Login.module.css y
      Register.module.css. Deliberadamente más vívido/saturado que
      --auth-amber (necesita leerse como un check "activo" a simple
      vista), así que es su propio token en vez de reusar --auth-amber. */
-  --auth-checkbox-gradient: linear-gradient(135deg, #B9362A, #B9362A);
-  --auth-checkbox-border:   #B9362A;
+  --auth-checkbox-gradient: linear-gradient(135deg, var(--gold), var(--gold));
+  --auth-checkbox-border:   var(--gold);
 
   /* Transición */
   --auth-transition:   0.2s ease;
@@ -779,7 +776,7 @@
   --auth-cream-mid:   rgba(32, 21, 16, 0.62);
   --auth-cream-dim:   rgba(32, 21, 16, 0.34);
 
-  --auth-shadow-card: 0 0 60px rgba(210, 80, 68, 0.12), 0 30px 60px rgba(60, 40, 25, 0.18);
+  --auth-shadow-card: 0 0 60px color-mix(in srgb, var(--auth-amber) 12%, transparent), 0 30px 60px rgba(60, 40, 25, 0.18);
 
   /* --auth-error-text (#ff7a5a) da muy poco contraste sobre el fondo claro
      — en oscuro estaba pensado para leerse sobre --auth-bg casi negro. */
@@ -1519,7 +1516,7 @@ a:hover { opacity: 0.75; }
   flex: 0 0 auto;
   width: 75px;
   height: 48px;
-  filter: drop-shadow(0 0 10px color-mix(in srgb, #B9362A 40%, transparent));
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--gold) 40%, transparent));
 }
 
 .t-free-plan-ad-copy {

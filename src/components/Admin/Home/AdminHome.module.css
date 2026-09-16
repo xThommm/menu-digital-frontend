@@ -76,7 +76,7 @@
 .navLogoMark {
   width: 47px;
   height: 30px;
-  filter: drop-shadow(0 0 10px color-mix(in srgb, #B9362A 42%, transparent));
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--gold) 42%, transparent));
 }
 
 .navLinks {
