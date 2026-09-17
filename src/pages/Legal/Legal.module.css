@@ -169,6 +169,7 @@
 
 .link {
   color: var(--auth-amber); text-decoration: none;
+  overflow-wrap: anywhere;
   border-bottom: 1px solid color-mix(in srgb, var(--auth-amber) 30%, transparent);
   transition: border-color .2s;
 }
@@ -343,7 +344,8 @@
   .nav { padding: 1rem 1.5rem; }
   .hero { padding: 7rem 1.5rem 3rem; min-height: 36vh; }
   .main { padding: 3rem 1.5rem 4rem; }
-  .contactGrid { grid-template-columns: 1fr; padding: 3rem 1.5rem 4rem; gap: 2.5rem; }
+  /* minmax(0, 1fr): el mínimo "auto" de 1fr dejaba que el email (sin cortes) ensanchara la columna. */
+  .contactGrid { grid-template-columns: minmax(0, 1fr); padding: 3rem 1.5rem 4rem; gap: 2.5rem; }
   .formRow { grid-template-columns: 1fr; }
   .cookieRow { grid-template-columns: 1fr; }
   .cookieRow span { border-right: none; border-bottom: 1px solid color-mix(in srgb, var(--auth-amber) 8%, transparent); }

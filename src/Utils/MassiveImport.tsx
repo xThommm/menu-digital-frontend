@@ -334,12 +334,11 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
 
       {/* ── Estilos (mismo design system que MenuEditorPage) ───────────────── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         .me {
           min-height: 100vh; background: var(--admin-bg-base);
-          font-family: 'DM Sans', system-ui, sans-serif; color: var(--admin-text-secondary);
+          font-family: var(--font-sans); color: var(--admin-text-secondary);
           display: flex; flex-direction: column;
           max-width: 600px; margin: 0 auto;
         }
@@ -417,7 +416,7 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
         /* Buttons */
         .save-btn {
           width: 100%; background: var(--admin-gold); border: none; border-radius: 12px;
-          padding: .9rem; font-family: 'DM Sans', system-ui, sans-serif;
+          padding: .9rem; font-family: var(--font-sans);
           font-size: .95rem; font-weight: 500; color: var(--admin-bg-base);
           cursor: pointer; transition: background .2s;
         }
@@ -425,14 +424,14 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
         .save-btn:disabled { opacity: .4; cursor: not-allowed; }
         .outline-btn {
           background: none; border: 0.5px solid var(--admin-border-warm); border-radius: 10px;
-          padding: .7rem 1.1rem; font-family: 'DM Sans', system-ui, sans-serif;
+          padding: .7rem 1.1rem; font-family: var(--font-sans);
           font-size: .88rem; color: var(--admin-gold); cursor: pointer; transition: border-color .15s;
           white-space: nowrap;
         }
         .outline-btn:hover { border-color: var(--admin-gold); }
         .delete-btn {
           width: 100%; background: none; border: 0.5px solid var(--admin-border-default); border-radius: 12px;
-          padding: .9rem; font-family: 'DM Sans', system-ui, sans-serif;
+          padding: .9rem; font-family: var(--font-sans);
           font-size: .95rem; font-weight: 500; color: var(--admin-text-muted);
           cursor: pointer; transition: border-color .2s;
         }
