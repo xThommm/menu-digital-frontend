@@ -929,7 +929,12 @@ onboarding/alertas CRM, `PlanFeatures` y `BooleanPlanFeature`. El DTO comercial 
   modo de atrapar errores de render). `getDerivedStateFromError`, `componentDidCatch`
   (loguea, hook para Sentry), `handleReload` y un fallback con botón "Recargar".
 - **`BrandMark.tsx`** — imagen decorativa compartida desde
-  `public/brand/menu-digital-logo-mark.svg`, clase global `md-brand-mark`.
+  `public/brand/menu-digital-logo-mark.svg`, clase global `md-brand-mark`. Con
+  `inline` dibuja el mismo SVG en el DOM con el fondo en `currentColor` (paneles CEO y
+  vendedor). El logo es cuadrado: los contenedores van con ancho = alto. Los favicons
+  (`favicon.ico`, `favicon-*.png`, `apple-touch-icon.png`) y
+  `brand/menu-digital-logo-512.png` (og:image / logo de schema.org) son rasterizados
+  de ese SVG; si cambia el logo, hay que regenerarlos.
 - **`FreePlanAd.tsx`** — publicidad reutilizable en la landing/carta cuando
   `features.sin_publicidad` no está activo, cualquiera sea el plan. Marca y CTA a
   `/`; estilos globales `t-free-plan-ad*`.

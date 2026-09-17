@@ -1514,7 +1514,7 @@ a:hover { opacity: 0.75; }
 
 .t-free-plan-ad-logo {
   flex: 0 0 auto;
-  width: 75px;
+  width: 48px;
   height: 48px;
   filter: drop-shadow(0 0 10px color-mix(in srgb, var(--gold) 40%, transparent));
 }
@@ -1636,7 +1636,7 @@ a:hover { opacity: 0.75; }
   }
 
   .t-free-plan-ad-logo {
-    width: 66px;
+    width: 42px;
     height: 42px;
   }
 

@@ -87,7 +87,7 @@
   /* Mismo tamaño que .logoSq en AdminLayout.module.css, para que el logo
      se vea consistente entre los dos paneles. */
   width: 34px;
-  height: 22px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
