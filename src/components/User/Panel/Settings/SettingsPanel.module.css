@@ -223,6 +223,61 @@
   background: var(--admin-green);
 }
 
+/* ── Datos visibles en la página del local ── */
+.visibilitySection {
+  border-top: 0.5px solid var(--admin-border-subtle);
+  padding-top: 1.5rem;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.sectionHead .sectionTitle {
+  margin-bottom: 0.3rem;
+}
+
+.sectionDesc {
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.sectionLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  min-height: 32px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--admin-gold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sectionLink:hover {
+  text-decoration: underline;
+}
+
+.sectionLink:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (max-width: 420px) {
+  .sectionHead {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}
+
 /* ── Cambiar contraseña del panel ── */
 .passwordSection {
   border-top: 0.5px solid var(--admin-border-subtle);

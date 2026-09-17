@@ -2,10 +2,11 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styles from "./UserHome.module.css";
 import { useReveal } from "../../../../hooks/useReveal";
-import type { User, ContactInfo, DayKey, DayHours, Schedule } from "../../../../types/index";
+import type { User, ContactInfo, DayKey, DayHours, LandingVisibility, Schedule } from "../../../../types/index";
 import BusinessSEO from "../../../Common/BusinessSEO";
 import FreePlanAd from "../../../Common/FreePlanAd";
 import { getOpenStatus, getBusinessDayIndex, JS_DAY_TO_KEY } from "../../../../Utils/businessSchedule";
+import { resolveLandingVisibility } from "../../../../lib/landingVisibility";
 
 // ── Tokens por template ───────────────────────────────────────────────────────
 
@@ -267,7 +268,12 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
   const businessName = info.businessName || "Mi Negocio";
   const galleryImages = media?.pictures ?? [];
 
-  const scheduleActive = scheduleHasData(schedule);
+  // Lo que el dueño ocultó desde Configuración el backend ya no lo envía;
+  // igual se chequea acá porque el número puede venir solo para el botón de
+  // reservas (con la fila de teléfono oculta), o de un backend anterior.
+  const visible = resolveLandingVisibility(user.landingVisibility);
+
+  const scheduleActive = visible.schedule && scheduleHasData(schedule);
   const isOpenNow = scheduleActive ? getOpenStatus(schedule) : false;
   const showHeroBadges = hasDelivery || scheduleActive;
 
@@ -310,11 +316,11 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
               <button type="button" onClick={goMenu} className="t-btn">
                 {tokens.btnLabel}
               </button>
-              {info.number && (
+              {visible.whatsappReserve && info.number && (
                 <ReserveButton number={String(info.number)} message={info.reservationMessage} businessName={businessName} />
               )}
             </div>
-            <MapBadge address={info.address} businessName={businessName} />
+            {visible.address && <MapBadge address={info.address} businessName={businessName} />}
           </div>
         </header>
         <div className={styles.content}>
@@ -325,8 +331,8 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
             onImageClick={(index) => { setViewerIndex(index); setViewerOpen(true); }}
           />
           <div className={styles.practical}>
-            <ScheduleSection schedule={schedule} />
-            <ContactList info={info} />
+            {visible.schedule && <ScheduleSection schedule={schedule} />}
+            <ContactList info={info} visible={visible} />
           </div>
         </div>
       </main>
@@ -402,6 +408,7 @@ function MapBadge({ address, businessName }: MapBadgeProps) {
 
 interface ContactListProps {
   info: ContactInfo;
+  visible: LandingVisibility;
 }
 
 // Los campos de redes sociales a veces se cargan con "@" adelante (el
@@ -410,17 +417,20 @@ interface ContactListProps {
 // link no quede roto sin importar cómo se haya guardado el dato.
 const stripHandle = (handle: string) => handle.trim().replace(/^@/, "");
 
-function ContactList({ info }: ContactListProps) {
-  const instagram = info.social?.instagram ? stripHandle(info.social.instagram) : "";
-  const facebook  = info.social?.facebook  ? stripHandle(info.social.facebook)  : "";
+function ContactList({ info, visible }: ContactListProps) {
+  // Cada dato se resuelve a vacío si el dueño lo ocultó desde Configuración.
+  const number    = visible.phone && info.number ? String(info.number) : "";
+  const mail      = visible.mail ? info.mail : "";
+  const instagram = visible.instagram && info.social?.instagram ? stripHandle(info.social.instagram) : "";
+  const facebook  = visible.facebook  && info.social?.facebook  ? stripHandle(info.social.facebook)  : "";
 
   // Si no hay ningún dato de contacto, no renderizamos un contenedor vacío
   // (evita un hueco de espaciado sin contenido). La dirección NO entra acá:
   // ya se muestra arriba como MapBadge (clickeable a Maps), así que listarla
   // de nuevo en texto plano sería mostrar el mismo dato dos veces.
   const hasAnyInfo =
-    info.number ||
-    info.mail ||
+    number ||
+    mail ||
     instagram ||
     facebook;
 
@@ -430,12 +440,12 @@ function ContactList({ info }: ContactListProps) {
     <section className={styles.contactCard} aria-label="Contacto">
       <h2 className={styles.sectionLabel}>Contacto</h2>
       <div className="t-info-list">
-        {info.number && <PhoneRow number={String(info.number)} />}
-        {info.mail && (
+        {number && <PhoneRow number={number} />}
+        {mail && (
           <InfoRow
             icon={<MailIcon />}
-            text={info.mail}
-            href={`mailto:${info.mail}`}
+            text={mail}
+            href={`mailto:${mail}`}
           />
         )}
         {instagram && (

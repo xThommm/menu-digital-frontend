@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "../../../../context/useAuth";
 import { useFeedbackMessage } from "../../../../hooks/useFeedbackMessage";
+import { LANDING_VISIBILITY_KEYS, resolveLandingVisibility } from "../../../../lib/landingVisibility";
+import type { LandingVisibility, LandingVisibilityKey } from "../../../../types/index";
 import Spinner from "../../../Common/Spinner";
 import styles from "./SettingsPanel.module.css";
 
@@ -9,6 +11,7 @@ import styles from "./SettingsPanel.module.css";
 interface SettingsValues {
   autoGenerateCodes: boolean;
   disableMenuDelete: boolean;
+  landingVisibility: LandingVisibility;
 }
 
 // "loading": consultando si ya existe contraseña del panel.
@@ -17,7 +20,53 @@ interface SettingsValues {
 // "unlocked": contraseña verificada, muestra los toggles.
 type GateStatus = "loading" | "create" | "enter" | "unlocked";
 
-const EMPTY_SETTINGS: SettingsValues = { autoGenerateCodes: false, disableMenuDelete: false };
+const EMPTY_SETTINGS: SettingsValues = {
+  autoGenerateCodes: false,
+  disableMenuDelete: false,
+  landingVisibility: resolveLandingVisibility(),
+};
+
+// Textos de los toggles de "Datos visibles en tu página". El orden lo da
+// LANDING_VISIBILITY_KEYS.
+const LANDING_VISIBILITY_COPY: Record<LandingVisibilityKey, { label: string; desc: string }> = {
+  phone: {
+    label: "Teléfono",
+    desc: "En la sección de contacto, con las opciones de llamar o escribir por WhatsApp.",
+  },
+  whatsappReserve: {
+    label: "Botón «Reservar por WhatsApp»",
+    desc: "El botón que aparece junto a «Ver menú». Usa tu número de teléfono.",
+  },
+  mail: {
+    label: "Email",
+    desc: "Tu email de contacto, para que te escriban.",
+  },
+  address: {
+    label: "Dirección",
+    desc: "El acceso «Cómo llegar», que abre tu ubicación en Google Maps.",
+  },
+  schedule: {
+    label: "Horarios",
+    desc: "Los horarios de atención y el aviso de «Abierto ahora» o «Cerrado ahora».",
+  },
+  instagram: {
+    label: "Instagram",
+    desc: "El enlace a tu perfil de Instagram.",
+  },
+  facebook: {
+    label: "Facebook",
+    desc: "El enlace a tu página de Facebook.",
+  },
+};
+
+// Todas las respuestas de /me/settings traen los toggles con la misma forma.
+function toSettings(data: Partial<SettingsValues>): SettingsValues {
+  return {
+    autoGenerateCodes: !!data.autoGenerateCodes,
+    disableMenuDelete: !!data.disableMenuDelete,
+    landingVisibility: resolveLandingVisibility(data.landingVisibility),
+  };
+}
 
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
@@ -42,6 +91,18 @@ function Toggle({ checked, onChange, label, disabled }: {
   );
 }
 
+function ExternalIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+      strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+
 function LockIcon() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
@@ -56,7 +117,7 @@ function LockIcon() {
 // ── Componente principal ───────────────────────────────────────────────────────
 
 export default function SettingsPanel() {
-  const { token, logout } = useAuth();
+  const { user, token, logout } = useAuth();
 
   const [gate, setGate] = useState<GateStatus>("loading");
   const [settings, setSettings] = useState<SettingsValues>(EMPTY_SETTINGS);
@@ -66,7 +127,7 @@ export default function SettingsPanel() {
   const [gateError, setGateError] = useFeedbackMessage("error");
   const [gateSubmitting, setGateSubmitting] = useState(false);
 
-  const [savingToggle, setSavingToggle] = useState<keyof SettingsValues | null>(null);
+  const [savingToggle, setSavingToggle] = useState<string | null>(null);
   const [toggleError, setToggleError] = useFeedbackMessage("error");
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -135,7 +196,7 @@ export default function SettingsPanel() {
       if (res.status === 401) { handleExpiredSession(); return; }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "No se pudo verificar la contraseña.");
-      setSettings({ autoGenerateCodes: !!data.autoGenerateCodes, disableMenuDelete: !!data.disableMenuDelete });
+      setSettings(toSettings(data));
       setGate("unlocked");
       setPasswordInput("");
       setConfirmInput("");
@@ -147,28 +208,49 @@ export default function SettingsPanel() {
   };
 
   // ── Toggles (optimistas, con reversión si falla el PATCH) ────────────────
-  const toggleSetting = useCallback(async (key: keyof SettingsValues) => {
-    const previous = settings[key];
-    setSettings(s => ({ ...s, [key]: !previous }));
-    setSavingToggle(key);
+  // `optimistic` es el estado con el cambio ya aplicado y `body` el PATCH
+  // parcial que lo guarda. Revertir al snapshot completo es seguro porque
+  // todos los toggles quedan deshabilitados mientras uno se guarda.
+  const saveToggle = useCallback(async (
+    savingKey: string,
+    optimistic: SettingsValues,
+    body: Record<string, unknown>,
+  ) => {
+    const previous = settings;
+    setSettings(optimistic);
+    setSavingToggle(savingKey);
     setToggleError("");
     try {
       const res = await fetch("/api/users/me/settings", {
         method: "PATCH",
         headers: authHeaders,
-        body: JSON.stringify({ [key]: !previous }),
+        body: JSON.stringify(body),
       });
       if (res.status === 401) { handleExpiredSession(); return; }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "No se pudo guardar el cambio.");
-      setSettings({ autoGenerateCodes: !!data.autoGenerateCodes, disableMenuDelete: !!data.disableMenuDelete });
+      setSettings(toSettings(data));
     } catch (err) {
-      setSettings(s => ({ ...s, [key]: previous }));
+      setSettings(previous);
       setToggleError(err instanceof Error ? err.message : "No se pudo guardar el cambio.");
     } finally {
       setSavingToggle(null);
     }
   }, [settings, authHeaders, handleExpiredSession, setToggleError]);
+
+  const toggleSetting = (key: "autoGenerateCodes" | "disableMenuDelete") => {
+    const value = !settings[key];
+    saveToggle(key, { ...settings, [key]: value }, { [key]: value });
+  };
+
+  const toggleLandingVisibility = (key: LandingVisibilityKey) => {
+    const value = !settings.landingVisibility[key];
+    saveToggle(
+      `landingVisibility.${key}`,
+      { ...settings, landingVisibility: { ...settings.landingVisibility, [key]: value } },
+      { landingVisibility: { [key]: value } },
+    );
+  };
 
   // ── Cambiar la contraseña del panel ───────────────────────────────────────
   const invalidPasswordChange =
@@ -303,6 +385,47 @@ export default function SettingsPanel() {
                 />
               </div>
             </div>
+
+            <section className={styles.visibilitySection} aria-labelledby="landing-visibility-title">
+              <div className={styles.sectionHead}>
+                <div>
+                  <h2 id="landing-visibility-title" className={styles.sectionTitle}>
+                    Datos visibles en tu página
+                  </h2>
+                  <p className={styles.sectionDesc}>
+                    Elegí qué datos ven tus clientes en la página de tu local. Ocultar uno no lo
+                    borra: lo seguís teniendo cargado en Mi negocio.
+                  </p>
+                </div>
+                {user?.slug && (
+                  <a
+                    className={styles.sectionLink}
+                    href={`/${user.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Ver mi página <ExternalIcon />
+                  </a>
+                )}
+              </div>
+
+              <div className={styles.toggleGroup}>
+                {LANDING_VISIBILITY_KEYS.map(key => (
+                  <div className={styles.toggleRow} key={key}>
+                    <div>
+                      <p className={styles.toggleLabel}>{LANDING_VISIBILITY_COPY[key].label}</p>
+                      <p className={styles.toggleDesc}>{LANDING_VISIBILITY_COPY[key].desc}</p>
+                    </div>
+                    <Toggle
+                      checked={settings.landingVisibility[key]}
+                      onChange={() => toggleLandingVisibility(key)}
+                      disabled={savingToggle !== null}
+                      label={`Mostrar en tu página: ${LANDING_VISIBILITY_COPY[key].label}`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
 
             <section className={styles.passwordSection}>
               <h2 className={styles.sectionTitle}>Cambiar contraseña de configuración</h2>

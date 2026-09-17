@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { User } from "../../types/index";
+import { resolveLandingVisibility } from "../../lib/landingVisibility";
 
 const SITE_URL = "https://www.menudigitalapp.com.ar";
 const DEFAULT_IMAGE =
@@ -60,11 +61,15 @@ export default function BusinessSEO({
 }: BusinessSEOProps) {
   useEffect(() => {
     const info = user.contactInfo;
+    // Lo que el dueño ocultó de la landing tampoco va a los datos
+    // estructurados (Google los indexa igual que el texto visible). La carta
+    // no manda landingVisibility, así que ahí resuelve todo visible.
+    const visible = resolveLandingVisibility(user.landingVisibility);
 
     const businessName =
       info?.businessName?.trim() || "Menú Digital";
 
-    const address = info?.address?.trim();
+    const address = visible.address ? info?.address?.trim() : "";
 
     const baseUrl = `${SITE_URL}/${slug}`;
 
@@ -141,12 +146,12 @@ export default function BusinessSEO({
                   address: address,
                 }
               : {}),
-            ...(info?.number
+            ...(visible.phone && info?.number
               ? {
                   telephone: String(info.number),
                 }
               : {}),
-            ...(info?.mail
+            ...(visible.mail && info?.mail
               ? {
                   email: info.mail,
                 }

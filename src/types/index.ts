@@ -52,6 +52,19 @@ export interface ContactInfo {
   reservationMessage?: string
 }
 
+// Qué datos se muestran en la landing pública (panel de Configuración).
+// Espejo de panelSettings.landingVisibility en el backend (models/User.js).
+export type LandingVisibilityKey =
+  | "phone"            // fila "Teléfono" (llamar / WhatsApp)
+  | "whatsappReserve"  // botón "Reservar por WhatsApp"
+  | "mail"
+  | "address"          // "Cómo llegar"
+  | "schedule"         // horarios + badge "Abierto/Cerrado ahora"
+  | "instagram"
+  | "facebook"
+
+export type LandingVisibility = Record<LandingVisibilityKey, boolean>
+
 export interface Media {
   pictures: string[]
   backgroundPicture: string
@@ -106,6 +119,9 @@ export interface User {
   contactInfo: ContactInfo
   media: Media
   schedule?: Schedule
+  // Solo viene en la landing pública (GET /api/users/:slug). Opcional para
+  // tolerar un backend anterior a la opción: ausente = mostrar todo.
+  landingVisibility?: LandingVisibility
   createdAt: string
   updatedAt: string
 }
