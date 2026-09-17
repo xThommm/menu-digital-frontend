@@ -240,6 +240,14 @@
   --admin-shadow-card:    0 1px 3px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.03) inset;
   --admin-shadow-fab:     0 4px 24px color-mix(in srgb, var(--admin-gold) 18%, transparent), 0 1px 8px rgba(0,0,0,0.7);
   --admin-overlay-backdrop: rgba(5, 5, 5, 0.72);
+
+  /* Texto e iconos sobre un velo oscuro que tapa una imagen (overlays de
+     "subiendo…", "editar", errores de carga). A propósito NO se invierte
+     con el tema: el velo es rgba(0,0,0,·) fijo — está ahí para tapar la
+     foto, no para seguir el fondo de la página — así que si el texto usa
+     --admin-text-primary, en tema claro queda casi negro sobre negro. */
+  --admin-text-on-overlay: #f6f2ea;
+
   --admin-shadow-modal: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
   --admin-shadow-dock: 0 12px 36px rgba(0,0,0,0.42), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
   --admin-shadow-popover: 0 16px 40px rgba(0,0,0,0.48), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
@@ -684,11 +692,11 @@
    Prefijo --auth- para no colisionar con --admin- ni con los
    tokens claros del storefront. Única fuente de verdad para
    Login.module.css, Register.module.css, AdminHome.module.css
-   (landing pública) y Legal.module.css (términos, privacidad,
-   contacto, arrepentimiento, baja). Oscuro por defecto; AdminHome y
-   Legal además soportan un tema claro opcional — ver
-   [data-auth-theme="light"] más abajo. Login/Register quedan
-   siempre en oscuro.
+   (landing pública), Legal.module.css (términos, privacidad,
+   contacto, arrepentimiento, baja) y el flujo de auth
+   (Login/Register/VerifyEmail/RegisterPlans/RegisterSuccess).
+   Oscuro por defecto; todas soportan el tema claro — ver
+   [data-auth-theme="light"] más abajo.
 
    REFACTOR: el ámbar original (#ff9500) era esencialmente "iOS
    system orange" — un matiz que no tiene relación con el dorado
@@ -715,6 +723,13 @@
   --auth-amber:       var(--gold-light);
   --auth-amber-dim:   var(--gold);
   --auth-amber-glow:  color-mix(in srgb, var(--auth-amber) 25%, transparent);
+
+  /* El ámbar como TEXTO. En oscuro es el mismo de marca; existe aparte
+     porque en claro hay que oscurecerlo (ver [data-auth-theme="light"]):
+     sobre los fondos crema, --auth-amber da 2.17:1 y no se lee. Los
+     rellenos, bordes y glows siguen usando --auth-amber en los dos temas,
+     así la identidad no cambia. */
+  --auth-amber-text:  var(--auth-amber);
 
   /* Texto */
   --auth-cream:       #f5ede0;
@@ -766,8 +781,10 @@
 
 /* ── TEMA CLARO DE LAS PÁGINAS PÚBLICAS (--auth-*) ──
    Toggle opcional para las páginas "públicas" del sitio: la landing
-   (AdminHome.module.css) y las páginas legales (Legal.module.css). Login y
-   Register NO lo usan — siempre quedan en el tema oscuro por defecto.
+   (AdminHome.module.css), las páginas legales (Legal.module.css) y el
+   flujo de auth (Login, Register, VerifyEmail, RegisterPlans,
+   RegisterSuccess). El toggle visible vive en la landing, el blog y las
+   legales; el resto lee la misma preferencia (ver useAuthTheme.ts).
 
    Vive acá (no en cada .module.css) para que un solo bloque de tokens
    sirva a los dos módulos sin duplicarlo: cualquier contenedor con el
@@ -785,9 +802,15 @@
 
   --auth-shadow-card: 0 0 60px color-mix(in srgb, var(--auth-amber) 12%, transparent), 0 30px 60px rgba(60, 40, 25, 0.18);
 
-  /* --auth-error-text (#ff7a5a) da muy poco contraste sobre el fondo claro
-     — en oscuro estaba pensado para leerse sobre --auth-bg casi negro. */
-  --auth-error-text:  #b3261e;
+  /* --auth-error-text (#ff7a5a) y --auth-success-text (#6ddb8c) dan muy poco
+     contraste sobre el fondo claro — en oscuro estaban pensados para leerse
+     sobre --auth-bg casi negro. */
+  --auth-error-text:   #b3261e;
+  --auth-success-text: #176e36;
+
+  /* Mismo matiz de marca, oscurecido hasta pasar 4.5:1 sobre --auth-bg
+     (5.45:1) y sobre --auth-bg-card (4.83:1). */
+  --auth-amber-text:   #b03e1c;
 }
 
 /* ── Shell compartido de los pasos de autenticación ──
@@ -1476,12 +1499,38 @@ a:hover { opacity: 0.75; }
   font-size: var(--text-base);
 }
 
-/* ── Publicidad de Menú Digital App para cartas del plan gratuito ── */
+/* ── Logo de marca: ícono + wordmark ──────────────────────────────
+   Las dos piezas del logo con texto. Se combinan en horizontal (ícono a
+   la izquierda, wordmark a la derecha) en barras y navs, y en vertical
+   (ícono arriba, wordmark centrado abajo) donde hay aire, como las
+   tarjetas de autenticación. El tamaño lo pone siempre quien las usa. */
 
 .md-brand-mark {
   display: block;
   object-fit: contain;
 }
+
+/* "menudigital": minúscula y sin espacio, con el contraste en el peso
+   ("menu" bold, "digital" regular) y no en el color — hereda el `color`
+   del contexto, así queda negro sobre claro y blanco sobre oscuro sin
+   reglas por tema. Neutraliza la itálica y el `text-transform` de los
+   contenedores que lo alojan (navs, sidebars, la publicidad del plan
+   gratuito), porque el wordmark va siempre derecho y en minúscula. */
+.md-wordmark {
+  font-family: var(--font-brand);
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.md-wordmark b {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+/* ── Publicidad de Menú Digital App para cartas del plan gratuito ── */
 
 .t-free-plan-ad {
   /* Es publicidad de la plataforma aunque se renderice dentro de una carta
@@ -1555,10 +1604,7 @@ a:hover { opacity: 0.75; }
 
 .t-free-plan-ad-brand {
   color: var(--gold-light);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 0.95rem;
 }
 
 .t-free-plan-ad-badge {

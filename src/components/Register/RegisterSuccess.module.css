@@ -7,7 +7,7 @@
 .eyebrow {
   display: block;
   margin-bottom: var(--space-6);
-  color: var(--auth-amber);
+  color: var(--auth-amber-text);
   font-family: var(--font-auth-mono);
   font-size: var(--text-xs);
   letter-spacing: 0.16em;

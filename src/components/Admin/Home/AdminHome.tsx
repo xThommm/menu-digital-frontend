@@ -26,6 +26,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import BrandMark from "../../Common/BrandMark";
+import BrandWordmark from "../../Common/BrandWordmark";
 import styles from "./AdminHome.module.css";
 import { usePlans } from "../../../hooks/usePlans";
 import { useAuthTheme } from "../../../hooks/useAuthTheme";
@@ -523,7 +524,7 @@ useEffect(() => {
         <nav className={styles.nav} ref={navRef}>
   <a className={styles.navLogo} href="/">
     <BrandMark className={styles.navLogoMark} />
-    Menú<span> Digital App</span>
+    <BrandWordmark />
   </a>
  
   {/* Links — ocultos en mobile, sin cambios en desktop */}
@@ -953,7 +954,7 @@ useEffect(() => {
           <div className={styles.footInner}>
             <div className={styles.footLogo}>
               <BrandMark className={styles.footLogoMark} />
-              <span>Menú Digital App</span>
+              <BrandWordmark />
             </div>
             <div className={styles.footLinks}>
               <Link to={BLOG_PATH}>Guías y preguntas</Link>

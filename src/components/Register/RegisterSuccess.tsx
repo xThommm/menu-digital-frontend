@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useNotifications } from "../../context/useNotifications";
 import { useFeedbackMessage } from "../../hooks/useFeedbackMessage";
+import { useAuthTheme } from "../../hooks/useAuthTheme";
 import type { AuthResponse } from "../../types";
 import styles from "./RegisterSuccess.module.css";
 
@@ -29,6 +30,8 @@ function readRegistrationToken(): string | null {
 }
 
 export default function RegisterSuccessPage() {
+  // Comparte la preferencia clara/oscura con la landing y las páginas legales.
+  const { theme } = useAuthTheme();
   const navigate = useNavigate();
   const { completeLogin } = useAuth();
   const { success: notifySuccess } = useNotifications();
@@ -196,7 +199,10 @@ export default function RegisterSuccessPage() {
       : "Estamos activando tu cuenta. Al terminar vas a ingresar automáticamente al panel.");
 
   return (
-    <div className="auth-page-shell">
+    <div
+      className="auth-page-shell"
+      data-auth-theme={theme === "light" ? "light" : undefined}
+    >
       <div className={`auth-surface ${styles.card}`} aria-live="polite">
         <span className={styles.eyebrow}>Menú Digital App · Activación</span>
         <div className={`${styles.icon} ${error ? styles.iconError : styles.iconPending}`}>

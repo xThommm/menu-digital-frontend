@@ -76,7 +76,7 @@
 
 .hero { max-width: 900px; padding-block: clamp(3.5rem, 8vw, 6.5rem); }
 .hero h1 { font-size: clamp(2.4rem, 5.5vw, 4.7rem); letter-spacing: -.035em; }
-.hero h1 em { color: var(--auth-amber); }
+.hero h1 em { color: var(--auth-amber-text); }
 .page .eyebrow { margin-bottom: 1rem; color: var(--auth-cream); font-family: var(--font-auth-mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; }
 .lead { max-width: 740px; margin-top: 1.5rem; font-size: clamp(1.05rem, 2vw, 1.2rem); }
 .sectionHeading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.6rem; }

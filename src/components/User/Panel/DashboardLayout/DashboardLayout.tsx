@@ -8,6 +8,7 @@ import { formatDateAR } from "../../../../lib/dates";
 import { MobileDockProvider } from "../../../../context/MobileDockProvider";
 import { useMobileDock } from "../../../../context/useMobileDock";
 import BrandMark from "../../../Common/BrandMark";
+import BrandWordmark from "../../../Common/BrandWordmark";
 import s from "./DashboardLayout.module.css";
 
 const NAV_ITEMS = [
@@ -85,7 +86,7 @@ function DashboardLayoutInner() {
       {/* ── Sidebar (desktop) ─────────────────────────────────────────────── */}
       <aside className={s.sidebar} aria-label="Navegación principal">
 
-        <div className={s.logoSq} role="img" aria-label="MenuDigital">
+        <div className={s.logoSq} role="img" aria-label="menudigital">
           <BrandMark className={s.brandMarkImage} />
         </div>
 
@@ -143,10 +144,10 @@ function DashboardLayoutInner() {
           </aside>
         )}
         {!catalog.isError && catalog.data?.find(plan => plan.name === effectiveSubscription)?.features.sin_publicidad === false && (
-          <aside className={`${s.freeBanner} ${subscriptionExpired ? s.freeBannerAfterExpiry : ""}`} aria-label="Publicidad de MenuDigital">
+          <aside className={`${s.freeBanner} ${subscriptionExpired ? s.freeBannerAfterExpiry : ""}`} aria-label="Publicidad de menudigital">
             <BrandMark className={s.freeBannerLogo} />
             <div className={s.freeBannerCopy}>
-              <span className={s.freeBannerBrand}>Menú Digital App</span>
+              <span className={s.freeBannerBrand}><BrandWordmark /></span>
               <span className={s.freeBannerBadge}>Tu menú digital</span>
               <span className={s.freeBannerText}>
                 Tu carta online, siempre lista para vender.

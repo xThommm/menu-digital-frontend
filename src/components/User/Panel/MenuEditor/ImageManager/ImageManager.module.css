@@ -307,7 +307,7 @@
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.55);
-  color: var(--admin-text-primary);
+  color: var(--admin-text-on-overlay);
 }
 
 .tileOverlayError {
@@ -331,8 +331,8 @@
 }
 
 .tileErrorBtn {
-  background: rgba(255, 255, 255, 0.08);
-  border: 0.5px solid rgba(255, 255, 255, 0.14);
+  background: color-mix(in srgb, var(--admin-text-primary) 8%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--admin-text-primary) 18%, transparent);
   border-radius: var(--admin-radius-sm);
   padding: 3px 8px;
   font-size: 0.68rem;

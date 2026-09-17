@@ -209,8 +209,6 @@
 
 .freeBannerBrand {
   color: var(--admin-gold);
-  font-family: var(--font-serif);
-  font-weight: 700;
   white-space: nowrap;
 }
 

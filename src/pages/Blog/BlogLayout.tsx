@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ArrowRight, Moon, Sun } from "lucide-react";
 import BrandMark from "../../components/Common/BrandMark";
+import BrandWordmark from "../../components/Common/BrandWordmark";
 import { useAuthTheme } from "../../hooks/useAuthTheme";
 import { BLOG_PATH } from "./blogContent";
 import styles from "./Blog.module.css";
@@ -22,9 +23,9 @@ export default function BlogLayout({ children }: { children: ReactNode }) {
     <div className={styles.page} data-auth-theme={theme === "light" ? "light" : undefined}>
       <a className={styles.skipLink} href="#contenido">Saltar al contenido</a>
       <header className={styles.header}>
-        <Link className={styles.brand} to="/" aria-label="Menú Digital App, inicio">
+        <Link className={styles.brand} to="/" aria-label="menudigital, inicio">
           <BrandMark className={styles.brandMark} />
-          <span>Menú Digital App</span>
+          <BrandWordmark />
         </Link>
         <nav className={styles.navigation} aria-label="Navegación principal">
           <Link className={styles.navLink} to="/">Volver al inicio</Link>

@@ -44,15 +44,18 @@
   margin-bottom: var(--space-8);
 }
 
+/* Lockup vertical: la tarjeta está centrada y sobra alto, así que el
+   ícono va grande arriba y el wordmark centrado abajo. */
 .logoMark {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   margin-bottom: var(--space-2);
 }
 
 .logoSq {
-  width: 40px; height: 40px;
+  width: 64px; height: 64px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -64,14 +67,9 @@
 }
 
 .brandName {
-  font-family: var(--font-auth-display);
   font-size: var(--text-xl);
-  font-weight: 700;
-  font-style: italic;
   color: var(--auth-cream);
-  letter-spacing: -0.01em;
 }
-.brandName span { color: var(--auth-amber); }
 
 .brand p {
   font-family: var(--font-auth-mono);
@@ -100,7 +98,7 @@
   font-size: var(--text-xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--auth-amber);
+  color: var(--auth-amber-text);
   margin-bottom: var(--space-2);
 }
 
@@ -119,7 +117,7 @@
 }
 
 .field:focus-within .fieldIcon {
-  color: var(--auth-amber);
+  color: var(--auth-amber-text);
 }
 
 .field input {
@@ -163,7 +161,7 @@
   margin-top: var(--space-1);
   font-family: var(--font-auth-mono);
   font-size: var(--text-xs);
-  color: var(--auth-amber-dim);
+  color: var(--auth-amber-text);
   letter-spacing: 0.06em;
   animation: fadeIn 0.18s ease both;
 }
@@ -182,7 +180,7 @@
   display: flex; align-items: center; justify-content: center;
   transition: color var(--auth-transition);
 }
-.togglePw:hover { color: var(--auth-amber); }
+.togglePw:hover { color: var(--auth-amber-text); }
 
 /* ── REMEMBER ME ──────────────────────────────────────── */
 .rememberRow {
@@ -253,7 +251,7 @@
   text-transform: uppercase;
   transition: color var(--auth-transition);
 }
-.forgotBtn:hover { color: var(--auth-amber); }
+.forgotBtn:hover { color: var(--auth-amber-text); }
 
 /* ── ERROR BANNER ─────────────────────────────────────── */
 .errorBanner {
@@ -314,7 +312,7 @@
   color: var(--auth-cream-dim);
 }
 .registerLink a {
-  color: var(--auth-amber);
+  color: var(--auth-amber-text);
   text-decoration: none;
   border-bottom: 1px solid color-mix(in srgb, var(--auth-amber) 30%, transparent);
   transition: border-color var(--auth-transition);
@@ -347,7 +345,7 @@
   text-transform: uppercase;
   transition: color var(--auth-transition);
 }
-.homeLink:hover { color: var(--auth-amber); }
+.homeLink:hover { color: var(--auth-amber-text); }
 .homeLink svg { transition: transform var(--transition); }
 .homeLink:hover svg { transform: translateX(-3px); }
 
