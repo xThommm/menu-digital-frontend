@@ -4,6 +4,9 @@ import { useFeedbackMessage } from "../../../../hooks/useFeedbackMessage";
 import type { Subscription, DayKey, DayHours, Schedule } from "../../../../types/index";
 import { usePlans } from "../../../../hooks/usePlans";
 import { BUSINESS_TIME_PATTERN } from "../../../../Utils/businessSchedule";
+import WeeklySchedule from "../../../Common/WeeklySchedule/WeeklySchedule";
+import { WEEK_DAYS } from "../../../Common/WeeklySchedule/weekSchedule";
+import type { WeekRanges } from "../../../Common/WeeklySchedule/weekSchedule";
 import Spinner from "../../../Common/Spinner";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import styles from "./UserEditor.module.css";
@@ -69,6 +72,29 @@ function normalizeSchedule(raw: unknown): Schedule {
       open:    d?.open    ?? DEFAULT_DAY_HOURS.open,
       close:   d?.close   ?? DEFAULT_DAY_HOURS.close,
     };
+    return acc;
+  }, {} as Schedule);
+}
+
+// El horario de atención se edita con el mismo control que la programación
+// de productos (WeeklySchedule), que habla en rangos por día. Como el negocio
+// guarda un solo turno por día, va con maxRangesPerDay={1}.
+function scheduleToWeek(schedule: Schedule): WeekRanges {
+  return WEEK_DAYS.reduce((acc, day) => {
+    const d = schedule[day];
+    acc[day] = d?.enabled ? [{ from: d.open, to: d.close }] : [];
+    return acc;
+  }, {} as WeekRanges);
+}
+
+// Un día que queda cerrado conserva las horas que tenía guardadas: volver a
+// abrirlo no pierde lo que había cargado el dueño.
+function weekToSchedule(week: WeekRanges, previous: Schedule): Schedule {
+  return DAY_ORDER.reduce((acc, day) => {
+    const range = week[day]?.[0];
+    acc[day] = range
+      ? { enabled: true, open: range.from, close: range.to }
+      : { ...previous[day], enabled: false };
     return acc;
   }, {} as Schedule);
 }
@@ -765,23 +791,10 @@ export default function UserEditorPage() {
     if (files.length > 0) uploadGalleryFiles(files);
   };
 
-  const updateDay = (day: DayKey, patch: Partial<DayHours>) => {
-    setSchedule(s => ({ ...s, [day]: { ...s[day], ...patch } }));
-  };
+  const scheduleWeek = scheduleToWeek(schedule);
 
-  // Atajo para el caso común (mismo horario todos los días abiertos): copia
-  // apertura/cierre del lunes a los demás días, sin tocar cuáles están
-  // habilitados o cerrados.
-  const copyMondayToAll = () => {
-    const { open, close } = schedule.mon;
-    setSchedule(s => {
-      const next = { ...s };
-      for (const day of DAY_ORDER) {
-        if (day === "mon") continue;
-        next[day] = { ...next[day], open, close };
-      }
-      return next;
-    });
+  const handleScheduleChange = (week: WeekRanges) => {
+    setSchedule(s => weekToSchedule(week, s));
   };
 
   const changeTab = (next: Tab) => {
@@ -1014,62 +1027,26 @@ export default function UserEditorPage() {
             <div className={styles.scheduleSection}>
               <div className={styles.scheduleHeader}>
                 <p className={styles.mediaLabel}>Horario de atención</p>
-                <button
-                  type="button"
-                  className={styles.textBtn}
-                  onClick={copyMondayToAll}
-                >
-                  Copiar horario del lunes a todos
-                </button>
               </div>
 
-              <div className={styles.scheduleList}>
-                {DAY_ORDER.map(day => {
-                  const d = schedule[day];
-                  return (
-                    <div key={day} className={styles.scheduleRow}>
-                      <div className={styles.scheduleDay}>
-                        <Toggle
-                          checked={d.enabled}
-                          onChange={() => updateDay(day, { enabled: !d.enabled })}
-                          label={`Abierto los ${DAY_LABEL[day]}`}
-                        />
-                        <span className={d.enabled ? "" : styles.scheduleDayNameOff}>
-                          {DAY_LABEL[day]}
-                        </span>
-                      </div>
-
-                      {d.enabled ? (
-                        <div className={styles.scheduleTimes}>
-                          <input
-                            type="time"
-                            value={d.open}
-                            onChange={e => updateDay(day, { open: e.target.value })}
-                            aria-label={`Hora de apertura, ${DAY_LABEL[day]}`}
-                          />
-                          <span className={styles.scheduleSep}>a</span>
-                          <input
-                            type="time"
-                            value={d.close}
-                            onChange={e => updateDay(day, { close: e.target.value })}
-                            aria-label={`Hora de cierre, ${DAY_LABEL[day]}`}
-                          />
-                        </div>
-                      ) : (
-                        <span className={styles.scheduleClosedLabel}>Cerrado</span>
-                      )}
-                      {d.enabled && BUSINESS_TIME_PATTERN.test(d.open) && BUSINESS_TIME_PATTERN.test(d.close) && d.close <= d.open && (
-                        <span className={styles.scheduleNote}>
-                          {d.close === d.open ? "Abierto 24 horas, hasta el día siguiente." : "Cierra al día siguiente."}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+              <div className={styles.scheduleCard}>
+                <WeeklySchedule
+                  value={scheduleWeek}
+                  onChange={handleScheduleChange}
+                  idPrefix="business-hours"
+                  maxRangesPerDay={1}
+                  daysLabel="Días que abrís"
+                  timeLabel="Horario de atención"
+                  allDayLabel="Abierto 24 h"
+                  emptyLabel="Sin días abiertos: la carta no va a mostrar horarios."
+                  exceptionLabel="Algún día abro en otro horario"
+                />
               </div>
+
               <p className={styles.fieldHint}>
+                Cargá el horario una sola vez y prendé los días que abrís. Si algún
+                día tenés otro horario, marcá la opción y cambiá solo ese día.
                 Si el cierre es anterior a la apertura, termina al día siguiente.
-                Para abrir las 24 horas del día, usá 00:00 a 00:00.
                 Se muestra en tu carta pública junto con el estado abierto/cerrado.
               </p>
             </div>

@@ -1,0 +1,315 @@
+/* Editor semanal compartido por la programación de productos (MenuEditor)
+   y el horario de atención del negocio (UserEditor). Usa los tokens
+   --admin-* del panel, igual que el resto de las dos pantallas. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+}
+
+.block {
+  padding: 0.85rem 1rem;
+  border-top: 0.5px solid var(--admin-border-subtle);
+}
+
+.block:first-child {
+  border-top: 0;
+}
+
+.blockLabel {
+  margin: 0 0 0.6rem;
+  color: var(--admin-text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Días ── */
+
+.dayPills {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.dayPill {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 42px;
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-bg-raised);
+  color: var(--admin-text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--admin-transition), color var(--admin-transition),
+    border-color var(--admin-transition);
+}
+
+.dayPill:hover {
+  border-color: var(--admin-border-gold-soft);
+  color: var(--admin-text-secondary);
+}
+
+.dayPillOn {
+  background: var(--admin-gold);
+  border-color: var(--admin-gold);
+  color: var(--admin-gold-ink);
+}
+
+.dayPillOn:hover {
+  background: var(--admin-gold-hover);
+  border-color: var(--admin-gold-hover);
+  color: var(--admin-gold-ink);
+}
+
+.dayPill:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--admin-gold-glow);
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.9rem;
+  margin-top: 0.6rem;
+}
+
+/* ── Rangos horarios ── */
+
+.rangeRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.rangeRow + .rangeRow {
+  margin-top: 0.6rem;
+}
+
+.rangeTimes {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 210px;
+  min-width: 0;
+}
+
+.rangeTimes input {
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--admin-bg-raised);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  padding: 0.6rem 0.65rem;
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  color-scheme: dark;
+}
+
+.rangeTimes input:disabled {
+  opacity: 0.4;
+}
+
+.rangeTimes input:focus {
+  outline: none;
+  border-color: var(--admin-gold);
+  box-shadow: 0 0 0 3px var(--admin-gold-glow);
+}
+
+.rangeSep {
+  color: var(--admin-text-muted);
+  font-size: 0.76rem;
+}
+
+.rangeActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.rangeNote {
+  flex: 1 0 100%;
+  margin: 0;
+  color: var(--admin-text-faint);
+  font-size: 0.7rem;
+}
+
+.chip {
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-full, 9999px);
+  background: var(--admin-bg-raised);
+  color: var(--admin-text-muted);
+  padding: 0.4rem 0.7rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--admin-transition), color var(--admin-transition),
+    border-color var(--admin-transition);
+}
+
+.chipOn {
+  background: var(--admin-pill-on-bg);
+  border-color: var(--admin-green-border);
+  color: var(--admin-pill-on-text);
+}
+
+.chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--admin-gold-glow);
+}
+
+.linkBtn {
+  border: 0;
+  background: none;
+  padding: 0.35rem 0;
+  color: var(--admin-gold);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.linkBtn:hover {
+  color: var(--admin-gold-hover);
+}
+
+.linkBtn:focus-visible {
+  outline: none;
+  text-decoration: underline;
+}
+
+/* ── Excepciones por día ── */
+
+.exceptionToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--admin-text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.exceptionToggle input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--admin-gold);
+  cursor: pointer;
+}
+
+.exceptionList {
+  list-style: none;
+  margin: 0.7rem 0 0;
+  padding: 0;
+}
+
+.exceptionRow {
+  padding: 0.6rem 0;
+  border-top: 0.5px solid var(--admin-border-subtle);
+}
+
+.exceptionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.exceptionDay {
+  color: var(--admin-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.exceptionSame {
+  margin: 0.2rem 0 0;
+  color: var(--admin-text-faint);
+  font-size: 0.72rem;
+}
+
+.exceptionRow .rangeRow {
+  margin-top: 0.55rem;
+}
+
+/* ── Resumen ── */
+
+.summary {
+  padding: 0.75rem 1rem;
+  border-top: 0.5px solid var(--admin-border-subtle);
+  background: var(--admin-bg-raised-2, var(--admin-bg-raised));
+}
+
+.summary p {
+  margin: 0;
+  color: var(--admin-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryEmpty {
+  color: var(--admin-text-faint) !important;
+}
+
+/* ── Rango de fechas (ScheduleDateRange) ── */
+
+.dateFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem 0.75rem;
+  margin-top: 0.7rem;
+}
+
+.dateField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.dateField label {
+  color: var(--admin-text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.dateField input {
+  width: 100%;
+  min-width: 0;
+  background: var(--admin-bg-raised);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  padding: 0.6rem 0.65rem;
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-size: 0.85rem;
+  color-scheme: dark;
+}
+
+.dateField input:focus {
+  outline: none;
+  border-color: var(--admin-gold);
+  box-shadow: 0 0 0 3px var(--admin-gold-glow);
+}
+
+.dateHint {
+  grid-column: 1 / -1;
+  margin: 0.45rem 0 0;
+  color: var(--admin-text-faint);
+  font-size: 0.71rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 400px) {
+  .dateFields {
+    grid-template-columns: 1fr;
+  }
+}

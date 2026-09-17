@@ -14,8 +14,13 @@ import type {
   AdminSeccion as Seccion,
   AdminMenuData as MenuData,
   DayKey,
-  ItemAvailabilitySchedule,
+  TimeRange,
 } from "../../../../types";
+import { BUSINESS_TIME_PATTERN } from "../../../../Utils/businessSchedule";
+import WeeklySchedule from "../../../Common/WeeklySchedule/WeeklySchedule";
+import ScheduleDateRange from "../../../Common/WeeklySchedule/ScheduleDateRange";
+import { EMPTY_DATE_RANGE, WEEK_DAYS, emptyWeekRanges } from "../../../Common/WeeklySchedule/weekSchedule";
+import type { DateRangeValue, WeekRanges } from "../../../Common/WeeklySchedule/weekSchedule";
 import Spinner from "../../../Common/Spinner";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import styles from "./MenuEditor.module.css";
@@ -32,36 +37,64 @@ interface ItemFormState {
   description: string;
   price: string;
   offerPrice: string;
+  // ── Programación del producto ──
+  // La oferta y la disponibilidad se configuran igual: un horario semanal
+  // (días prendidos/apagados) más un rango de fechas opcional.
   offerScheduled: boolean;
-  offerRange: { from: string; to: string };
+  offerRange: DateRangeValue;
+  offerWeek: WeekRanges;
+  availabilityScheduled: boolean;
+  availabilityRange: DateRangeValue;
+  availabilityWeek: WeekRanges;
   code: string;
   image: string;
   available: boolean;
   hidden: boolean;
   recommended: boolean;
   options: OptionRow[];
-  availabilitySchedule: ItemAvailabilitySchedule;
 }
 
-const DAYS: { key: DayKey; label: string }[] = [
-  { key: "mon", label: "Lunes" },
-  { key: "tue", label: "Martes" },
-  { key: "wed", label: "Miércoles" },
-  { key: "thu", label: "Jueves" },
-  { key: "fri", label: "Viernes" },
-  { key: "sat", label: "Sábado" },
-  { key: "sun", label: "Domingo" },
-];
+// Al activar una programación sin horario guardado arrancamos con la semana
+// completa y "todo el día" (horas iguales, mismo criterio que el backend):
+// así prender el interruptor nunca cambia por sí solo lo que se ve en la
+// carta — el dueño recorta días, horas o fechas desde ahí.
+const ALL_DAY_RANGE: TimeRange = { from: "00:00", to: "00:00" };
 
-const emptyAvailabilitySchedule = (): ItemAvailabilitySchedule => ({
-  enabled: false,
-  mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [],
+const defaultWeekRanges = (): WeekRanges =>
+  WEEK_DAYS.reduce((acc, day) => { acc[day] = [{ ...ALL_DAY_RANGE }]; return acc; }, {} as WeekRanges);
+
+const toWeekRanges = (schedule?: Partial<Record<DayKey, TimeRange[]>> | null): WeekRanges =>
+  WEEK_DAYS.reduce((acc, day) => {
+    acc[day] = (schedule?.[day] ?? []).map(range => ({ ...range }));
+    return acc;
+  }, {} as WeekRanges);
+
+const hasAnyRange = (week: WeekRanges) => WEEK_DAYS.some(day => week[day].length > 0);
+
+const toDateRange = (range?: { from?: string | null; to?: string | null } | null): DateRangeValue => ({
+  from: formatDateAR(range?.from, { output: "date-input", fallback: "" }),
+  to: formatDateAR(range?.to, { output: "date-input", fallback: "" }),
 });
 
-const toBuenosAiresDateTimeInput = (value?: string | null) =>
-  formatDateAR(value, { output: "datetime-input", fallback: "" });
+const toApiDateRange = (range: DateRangeValue) => ({
+  from: range.from || null,
+  to: range.to || null,
+});
 
-const toBuenosAiresISOString = (value: string) => value ? `${value}:00-03:00` : null;
+// Espejo liviano de validateAvailabilitySchedule (backend): solo lo que el
+// dueño puede corregir sin esperar la respuesta. El solapamiento de rangos
+// lo sigue rechazando el servidor, con su propio mensaje.
+const validateWeekSchedule = (week: WeekRanges, range: DateRangeValue, subject: string): string | null => {
+  const ranges = WEEK_DAYS.flatMap(day => week[day]);
+  if (ranges.length === 0) return `Elegí al menos un día para ${subject}.`;
+  if (ranges.some(({ from, to }) => !BUSINESS_TIME_PATTERN.test(from) || !BUSINESS_TIME_PATTERN.test(to))) {
+    return `Revisá los horarios de ${subject}: cada uno necesita una hora de inicio y una de fin.`;
+  }
+  if (range.from && range.to && range.from > range.to) {
+    return `En ${subject}, la fecha de fin debe ser posterior a la de inicio.`;
+  }
+  return null;
+};
 
 const EMPTY_ITEM: ItemFormState = {
   title: "",
@@ -69,14 +102,17 @@ const EMPTY_ITEM: ItemFormState = {
   price: "",
   offerPrice: "",
   offerScheduled: false,
-  offerRange: { from: "", to: "" },
+  offerRange: { ...EMPTY_DATE_RANGE },
+  offerWeek: emptyWeekRanges(),
+  availabilityScheduled: false,
+  availabilityRange: { ...EMPTY_DATE_RANGE },
+  availabilityWeek: emptyWeekRanges(),
   code: "",
   image: "",
   available: true,
   hidden: false,
   recommended: false,
   options: [],
-  availabilitySchedule: emptyAvailabilitySchedule(),
 };
 
 // ── Subida de imagen de producto (por el backend, ver handleImageUpload) ──
@@ -86,7 +122,7 @@ const MAX_IMAGE_MB = 5;
 // ── Vistas posibles ────────────────────────────────────────────────────────────
 
 type View = "menu" | "item-form" | "categoria-form" | "seccion-form" | "massive-import" | "image-manager" | "template-picker";
-type ItemFormSection = "basics" | "promotions" | "availability";
+type ItemFormSection = "basics" | "promotions" | "scheduling" | "availability";
 
 interface ItemFieldErrors {
   title?: string;
@@ -97,17 +133,10 @@ interface ItemFieldErrors {
 const cloneItemForm = (form: ItemFormState): ItemFormState => ({
   ...form,
   offerRange: { ...form.offerRange },
+  offerWeek: toWeekRanges(form.offerWeek),
+  availabilityRange: { ...form.availabilityRange },
+  availabilityWeek: toWeekRanges(form.availabilityWeek),
   options: form.options.map(option => ({ ...option })),
-  availabilitySchedule: {
-    enabled: form.availabilitySchedule.enabled,
-    mon: form.availabilitySchedule.mon.map(range => ({ ...range })),
-    tue: form.availabilitySchedule.tue.map(range => ({ ...range })),
-    wed: form.availabilitySchedule.wed.map(range => ({ ...range })),
-    thu: form.availabilitySchedule.thu.map(range => ({ ...range })),
-    fri: form.availabilitySchedule.fri.map(range => ({ ...range })),
-    sat: form.availabilitySchedule.sat.map(range => ({ ...range })),
-    sun: form.availabilitySchedule.sun.map(range => ({ ...range })),
-  },
 });
 
 const normalizeSearchValue = (value: string | null | undefined) =>
@@ -702,7 +731,7 @@ export default function MenuEditorPage() {
     }
     setActiveCategoria(cat);
     setActiveItem(null);
-    const nextForm = cloneItemForm({ ...EMPTY_ITEM, availabilitySchedule: emptyAvailabilitySchedule() });
+    const nextForm = cloneItemForm(EMPTY_ITEM);
     setItemForm(nextForm);
     setInitialItemForm(cloneItemForm(nextForm));
     setItemFieldErrors({});
@@ -714,43 +743,36 @@ export default function MenuEditorPage() {
   const openEditItem = useCallback((item: Item, cat: Categoria) => {
     setActiveCategoria(cat);
     setActiveItem(item);
+    // Una oferta guardada con la interfaz anterior (solo fechas, sin horario
+    // semanal) se abre como "todos los días, todo el día": volver a guardarla
+    // sin tocar nada no cambia cuándo rige.
+    const offerWeek = toWeekRanges(item.offerSchedule);
+    const availabilityWeek = toWeekRanges(item.availabilitySchedule);
     const nextForm: ItemFormState = {
       title:       item.title,
       description: item.description || "",
       price:       item.price?.toString()      || "",
       offerPrice:  item.offerPrice?.toString() || "",
-      offerScheduled: Boolean(item.offerRange?.from || item.offerRange?.to),
-      offerRange: {
-        from: toBuenosAiresDateTimeInput(item.offerRange?.from),
-        to: toBuenosAiresDateTimeInput(item.offerRange?.to),
-      },
+      offerScheduled: Boolean(item.offerRange?.from || item.offerRange?.to || item.offerSchedule?.enabled),
+      offerRange: toDateRange(item.offerRange),
+      offerWeek: hasAnyRange(offerWeek) ? offerWeek : defaultWeekRanges(),
+      availabilityScheduled: item.availabilitySchedule?.enabled === true,
+      availabilityRange: toDateRange(item.availabilitySchedule?.dateRange),
+      availabilityWeek: hasAnyRange(availabilityWeek) ? availabilityWeek : defaultWeekRanges(),
       code:        item.code || "",
       available:   item.available,
       hidden:      item.hidden,
       recommended: item.recommended,
       image: item.image || "",
       options:     Object.entries(item.options || {}).map(([key, value]) => ({ key, value: value.toString() })),
-      availabilitySchedule: item.availabilitySchedule
-        ? {
-            enabled: item.availabilitySchedule.enabled,
-            mon: [...item.availabilitySchedule.mon],
-            tue: [...item.availabilitySchedule.tue],
-            wed: [...item.availabilitySchedule.wed],
-            thu: [...item.availabilitySchedule.thu],
-            fri: [...item.availabilitySchedule.fri],
-            sat: [...item.availabilitySchedule.sat],
-            sun: [...item.availabilitySchedule.sun],
-          }
-        : emptyAvailabilitySchedule(),
     };
     setItemForm(nextForm);
     setInitialItemForm(cloneItemForm(nextForm));
     setItemFieldErrors({});
     const initialSections = new Set<ItemFormSection>(["basics"]);
-    if (nextForm.offerPrice || nextForm.offerScheduled || nextForm.options.length > 0) initialSections.add("promotions");
-    if (nextForm.availabilitySchedule.enabled || nextForm.hidden || nextForm.recommended || !nextForm.available) {
-      initialSections.add("availability");
-    }
+    if (nextForm.offerPrice || nextForm.options.length > 0) initialSections.add("promotions");
+    if (nextForm.offerScheduled || nextForm.availabilityScheduled) initialSections.add("scheduling");
+    if (nextForm.hidden || nextForm.recommended || !nextForm.available) initialSections.add("availability");
     setOpenItemSections(initialSections);
     setError("");
     setView("item-form");
@@ -849,15 +871,9 @@ export default function MenuEditorPage() {
       return;
     }
     if (itemForm.offerScheduled && !preservesLockedOffer) {
-      if (!itemForm.offerPrice) { showSectionError("promotions", "Ingresá un precio de oferta antes de programarla."); return; }
-      if (!itemForm.offerRange.from || !itemForm.offerRange.to) {
-        showSectionError("promotions", "Indicá el inicio y el fin de la oferta.");
-        return;
-      }
-      if (itemForm.offerRange.from >= itemForm.offerRange.to) {
-        showSectionError("promotions", "El fin de la oferta debe ser posterior al inicio.");
-        return;
-      }
+      if (!itemForm.offerPrice) { showSectionError("scheduling", "Ingresá un precio de oferta antes de programarla."); return; }
+      const offerError = validateWeekSchedule(itemForm.offerWeek, itemForm.offerRange, "la oferta");
+      if (offerError) { showSectionError("scheduling", offerError); return; }
     }
 
     const normalizedOptions = itemForm.options
@@ -873,13 +889,11 @@ export default function MenuEditorPage() {
       return;
     }
 
-    if (itemForm.availabilitySchedule.enabled) {
-      const ranges = DAYS.flatMap(({ key }) => itemForm.availabilitySchedule[key]);
-      if (ranges.length === 0) { showSectionError("availability", "Agregá al menos un horario antes de activar la programación."); return; }
-      if (ranges.some(({ from, to }) => !from || !to || from === to)) {
-        showSectionError("availability", "Revisá los horarios: cada rango necesita un inicio y un fin diferentes.");
-        return;
-      }
+    if (itemForm.availabilityScheduled) {
+      const availabilityError = validateWeekSchedule(
+        itemForm.availabilityWeek, itemForm.availabilityRange, "la disponibilidad",
+      );
+      if (availabilityError) { showSectionError("scheduling", availabilityError); return; }
     }
     setSaving(true); setError("");
 
@@ -901,11 +915,11 @@ export default function MenuEditorPage() {
           : {
               offerPrice: itemForm.offerPrice !== "" ? Number(itemForm.offerPrice) : null,
               offerRange: itemForm.offerScheduled
-                ? {
-                    from: toBuenosAiresISOString(itemForm.offerRange.from),
-                    to: toBuenosAiresISOString(itemForm.offerRange.to),
-                  }
+                ? toApiDateRange(itemForm.offerRange)
                 : { from: null, to: null },
+              offerSchedule: itemForm.offerScheduled
+                ? { enabled: true, ...itemForm.offerWeek }
+                : { enabled: false, ...emptyWeekRanges() },
             }),
         code: itemForm.code.trim(),
         available: itemForm.available,
@@ -914,8 +928,16 @@ export default function MenuEditorPage() {
         options: optionsObj,
         // Si un plan pago venció, el horario guardado queda intacto e inactivo:
         // editar otro campo no debe borrarlo ni intentar volver a habilitarlo.
-        ...(canScheduleItems || !itemForm.availabilitySchedule.enabled
-          ? { availabilitySchedule: itemForm.availabilitySchedule }
+        ...(canScheduleItems || !itemForm.availabilityScheduled
+          ? {
+              availabilitySchedule: itemForm.availabilityScheduled
+                ? {
+                    enabled: true,
+                    ...itemForm.availabilityWeek,
+                    dateRange: toApiDateRange(itemForm.availabilityRange),
+                  }
+                : { enabled: false, ...emptyWeekRanges(), dateRange: { from: null, to: null } },
+            }
           : {}),
       };
       const url    = activeItem ? `/api/items/${activeItem._id}` : "/api/items";
@@ -1362,6 +1384,9 @@ export default function MenuEditorPage() {
   const promotionsSummary = itemForm.options.length > 0
     ? `${itemForm.options.length} variante${itemForm.options.length !== 1 ? "s" : ""}${itemForm.offerPrice ? " · Con oferta" : " · Sin oferta"}`
     : itemForm.offerPrice ? "Sin variantes · Con oferta" : "Sin variantes · Sin oferta";
+  const schedulingSummary = itemForm.offerScheduled
+    ? itemForm.availabilityScheduled ? "Oferta y disponibilidad programadas" : "Oferta programada"
+    : itemForm.availabilityScheduled ? "Disponibilidad programada" : "Sin programación";
   const availabilitySummary = `${itemForm.available ? "Disponible" : "Pausado"} · ${itemForm.hidden ? "Oculto" : "Visible"}`;
 
   const requestCloseItemForm = () => {
@@ -2071,66 +2096,6 @@ export default function MenuEditorPage() {
                 />
               </div>
 
-              <section className={styles.scheduleCard} aria-labelledby="offer-schedule-title">
-                <div className={styles.scheduleHeader}>
-                  <div>
-                    <div className={styles.scheduleTitleRow}>
-                      <p id="offer-schedule-title" className={styles.toggleLabel}>Programar oferta</p>
-                      {!canScheduleOffers && <span className={styles.schedulePlan}>VER PLANES</span>}
-                    </div>
-                    <p className={styles.toggleDesc}>Activá y desactivá el precio de oferta automáticamente.</p>
-                  </div>
-                  <Toggle
-                    checked={itemForm.offerScheduled}
-                    onChange={() => {
-                      if (!canScheduleOffers && !itemForm.offerScheduled) {
-                        setUpgradeReason("offer");
-                        return;
-                      }
-                      setItemForm(f => ({ ...f, offerScheduled: !f.offerScheduled }));
-                    }}
-                    label="Programar oferta"
-                  />
-                </div>
-
-                {itemForm.offerScheduled && !canScheduleOffers && (
-                  <p className={styles.scheduleInactive}>
-                    La programación guardada está inactiva con el plan Free. Podés desactivarla o mejorar el plan para recuperarla.
-                  </p>
-                )}
-
-                {itemForm.offerScheduled && canScheduleOffers && (
-                  <div className={styles.offerScheduleFields}>
-                    <div className={styles.field}>
-                      <label htmlFor="offer-from">Comienza</label>
-                      <input
-                        id="offer-from"
-                        type="datetime-local"
-                        value={itemForm.offerRange.from}
-                        onChange={e => setItemForm(f => ({
-                          ...f,
-                          offerRange: { ...f.offerRange, from: e.target.value },
-                        }))}
-                      />
-                    </div>
-                    <div className={styles.field}>
-                      <label htmlFor="offer-to">Finaliza</label>
-                      <input
-                        id="offer-to"
-                        type="datetime-local"
-                        value={itemForm.offerRange.to}
-                        min={itemForm.offerRange.from || undefined}
-                        onChange={e => setItemForm(f => ({
-                          ...f,
-                          offerRange: { ...f.offerRange, to: e.target.value },
-                        }))}
-                      />
-                    </div>
-                    <p className={styles.scheduleHint}>Horario de Argentina. Fuera de este período se muestra el precio original.</p>
-                  </div>
-                )}
-              </section>
-
               {/* Variantes */}
               <div className={styles.field}>
                 <div className={styles.fieldLabelRow}>
@@ -2187,12 +2152,78 @@ export default function MenuEditorPage() {
 
               <FormSection
                 number={3}
-                title="Disponibilidad y visibilidad"
-                summary={availabilitySummary}
-                expanded={openItemSections.has("availability")}
-                onToggle={() => toggleItemSection("availability")}
+                title="Programación del producto"
+                summary={schedulingSummary}
+                expanded={openItemSections.has("scheduling")}
+                onToggle={() => toggleItemSection("scheduling")}
               >
-              {/* Programación semanal de disponibilidad */}
+              <p className={styles.emptyHint}>
+                Cargá el horario una sola vez y prendé los días en los que se aplica.
+                Si además querés acotarlo a una temporada, agregá un rango de fechas.
+              </p>
+
+              {/* Oferta programada */}
+              <section className={styles.scheduleCard} aria-labelledby="offer-schedule-title">
+                <div className={styles.scheduleHeader}>
+                  <div>
+                    <div className={styles.scheduleTitleRow}>
+                      <p id="offer-schedule-title" className={styles.toggleLabel}>Programar oferta</p>
+                      {!canScheduleOffers && <span className={styles.schedulePlan}>VER PLANES</span>}
+                    </div>
+                    <p className={styles.toggleDesc}>El precio de oferta se activa y se desactiva solo, en los días y horarios que elijas.</p>
+                  </div>
+                  <Toggle
+                    checked={itemForm.offerScheduled}
+                    onChange={() => {
+                      if (!canScheduleOffers && !itemForm.offerScheduled) {
+                        setUpgradeReason("offer");
+                        return;
+                      }
+                      setItemForm(f => ({
+                        ...f,
+                        offerScheduled: !f.offerScheduled,
+                        offerWeek: !f.offerScheduled && !hasAnyRange(f.offerWeek) ? defaultWeekRanges() : f.offerWeek,
+                      }));
+                    }}
+                    label="Programar oferta"
+                  />
+                </div>
+
+                {itemForm.offerScheduled && !canScheduleOffers && (
+                  <p className={styles.scheduleInactive}>
+                    La programación guardada está inactiva con el plan Free. Podés desactivarla o mejorar el plan para recuperarla.
+                  </p>
+                )}
+
+                {itemForm.offerScheduled && canScheduleOffers && (
+                  <>
+                    {!itemForm.offerPrice && (
+                      <p className={styles.scheduleInactive}>
+                        Falta el precio de oferta: cargalo en «Variantes y promociones» para que la programación tenga efecto.
+                      </p>
+                    )}
+                    <WeeklySchedule
+                      key={"offer-week-" + (activeItem?._id ?? "nuevo")}
+                      value={itemForm.offerWeek}
+                      onChange={next => setItemForm(f => ({ ...f, offerWeek: next }))}
+                      idPrefix="offer-week"
+                      timeLabel="Horario de la oferta"
+                      emptyLabel="Elegí al menos un día para la oferta."
+                    />
+                    <ScheduleDateRange
+                      value={itemForm.offerRange}
+                      onChange={next => setItemForm(f => ({ ...f, offerRange: next }))}
+                      idPrefix="offer"
+                      hint="Opcional. Sin fechas, la oferta se repite todas las semanas en esos días y horarios."
+                    />
+                    <p className={styles.scheduleHint}>
+                      Horario de Argentina. Fuera de la programación se muestra el precio original.
+                    </p>
+                  </>
+                )}
+              </section>
+
+              {/* Disponibilidad programada */}
               <section className={styles.scheduleCard} aria-labelledby="item-schedule-title">
                 <div className={styles.scheduleHeader}>
                   <div>
@@ -2200,115 +2231,64 @@ export default function MenuEditorPage() {
                       <p id="item-schedule-title" className={styles.toggleLabel}>Programar disponibilidad</p>
                       {!canScheduleItems && <span className={styles.schedulePlan}>VER PLANES</span>}
                     </div>
-                    <p className={styles.toggleDesc}>Mostrá el plato solo en días y horarios determinados.</p>
+                    <p className={styles.toggleDesc}>Mostrá el producto solo en los días y horarios que elijas.</p>
                   </div>
                   <Toggle
-                    checked={itemForm.availabilitySchedule.enabled}
+                    checked={itemForm.availabilityScheduled}
                     onChange={() => {
-                      if (!canScheduleItems && !itemForm.availabilitySchedule.enabled) {
+                      if (!canScheduleItems && !itemForm.availabilityScheduled) {
                         setUpgradeReason("schedule");
                         return;
                       }
                       setItemForm(f => ({
                         ...f,
-                        availabilitySchedule: {
-                          ...f.availabilitySchedule,
-                          enabled: !f.availabilitySchedule.enabled,
-                        },
+                        availabilityScheduled: !f.availabilityScheduled,
+                        availabilityWeek: !f.availabilityScheduled && !hasAnyRange(f.availabilityWeek)
+                          ? defaultWeekRanges()
+                          : f.availabilityWeek,
                       }));
                     }}
                     label="Programar disponibilidad"
                   />
                 </div>
 
-                {itemForm.availabilitySchedule.enabled && !canScheduleItems && (
+                {itemForm.availabilityScheduled && !canScheduleItems && (
                   <p className={styles.scheduleInactive}>
                     El horario guardado está inactivo con el plan Free. Podés desactivarlo o mejorar el plan para volver a usarlo.
                   </p>
                 )}
 
-                {itemForm.availabilitySchedule.enabled && canScheduleItems && (
-                  <div className={styles.scheduleDays}>
-                    {DAYS.map(({ key, label }) => {
-                      const ranges = itemForm.availabilitySchedule[key];
-                      return (
-                        <div key={key} className={styles.scheduleDay}>
-                          <div className={styles.scheduleDayHeader}>
-                            <span>{label}</span>
-                            {ranges.length < 4 && (
-                              <button
-                                type="button"
-                                className={styles.textBtn}
-                                onClick={() => setItemForm(f => ({
-                                  ...f,
-                                  availabilitySchedule: {
-                                    ...f.availabilitySchedule,
-                                    [key]: [...f.availabilitySchedule[key], { from: "12:00", to: "15:00" }],
-                                  },
-                                }))}
-                              >
-                                + Horario
-                              </button>
-                            )}
-                          </div>
-                          {ranges.length === 0 && (
-                            <p className={styles.scheduleClosed}>No disponible este día</p>
-                          )}
-                          {ranges.map((range, index) => (
-                            <div key={`${key}-${index}`} className={styles.scheduleRange}>
-                              <input
-                                type="time"
-                                value={range.from}
-                                aria-label={`${label}, hora de inicio ${index + 1}`}
-                                onChange={e => setItemForm(f => {
-                                  const nextRanges = [...f.availabilitySchedule[key]];
-                                  nextRanges[index] = { ...nextRanges[index], from: e.target.value };
-                                  return {
-                                    ...f,
-                                    availabilitySchedule: { ...f.availabilitySchedule, [key]: nextRanges },
-                                  };
-                                })}
-                              />
-                              <span>a</span>
-                              <input
-                                type="time"
-                                value={range.to}
-                                aria-label={`${label}, hora de fin ${index + 1}`}
-                                onChange={e => setItemForm(f => {
-                                  const nextRanges = [...f.availabilitySchedule[key]];
-                                  nextRanges[index] = { ...nextRanges[index], to: e.target.value };
-                                  return {
-                                    ...f,
-                                    availabilitySchedule: { ...f.availabilitySchedule, [key]: nextRanges },
-                                  };
-                                })}
-                              />
-                              <button
-                                type="button"
-                                className={styles.removeBtn}
-                                aria-label={`Eliminar horario ${index + 1} del ${label}`}
-                                onClick={() => setItemForm(f => ({
-                                  ...f,
-                                  availabilitySchedule: {
-                                    ...f.availabilitySchedule,
-                                    [key]: f.availabilitySchedule[key].filter((_, rangeIndex) => rangeIndex !== index),
-                                  },
-                                }))}
-                              >
-                                {icons.close}
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })}
+                {itemForm.availabilityScheduled && canScheduleItems && (
+                  <>
+                    <WeeklySchedule
+                      key={"availability-week-" + (activeItem?._id ?? "nuevo")}
+                      value={itemForm.availabilityWeek}
+                      onChange={next => setItemForm(f => ({ ...f, availabilityWeek: next }))}
+                      idPrefix="availability-week"
+                      timeLabel="Horario disponible"
+                      emptyLabel="Elegí al menos un día para la disponibilidad."
+                    />
+                    <ScheduleDateRange
+                      value={itemForm.availabilityRange}
+                      onChange={next => setItemForm(f => ({ ...f, availabilityRange: next }))}
+                      idPrefix="availability"
+                      hint="Opcional. Sin fechas, la disponibilidad se repite todas las semanas."
+                    />
                     <p className={styles.scheduleHint}>
-                      Horario de Argentina. Podés usar rangos que terminen al día siguiente, por ejemplo 20:00 a 02:00.
+                      Horario de Argentina. Fuera de la programación el producto aparece como no disponible.
                     </p>
-                  </div>
+                  </>
                 )}
               </section>
+              </FormSection>
 
+              <FormSection
+                number={4}
+                title="Disponibilidad y visibilidad"
+                summary={availabilitySummary}
+                expanded={openItemSections.has("availability")}
+                onToggle={() => toggleItemSection("availability")}
+              >
               {/* Toggles */}
               <div className={styles.toggleGroup}>
                 {[

@@ -90,6 +90,14 @@ export interface TimeRange {
   to: string
 }
 
+// Rango de fechas opcional de una programación de producto. Los extremos
+// son independientes: solo "desde", solo "hasta", los dos o ninguno. Fuera
+// del rango la programación no rige (ver utils/itemAvailability.js).
+export interface ScheduleDateRange {
+  from: string | null
+  to: string | null
+}
+
 export interface ItemAvailabilitySchedule {
   enabled: boolean
   mon: TimeRange[]
@@ -99,7 +107,14 @@ export interface ItemAvailabilitySchedule {
   fri: TimeRange[]
   sat: TimeRange[]
   sun: TimeRange[]
+  // Opcional para tolerar productos guardados antes de esta funcionalidad.
+  dateRange?: ScheduleDateRange
 }
+
+// Días y horarios en los que rige el precio de oferta. Mismo shape que la
+// disponibilidad, sin dateRange propio: el rango de fechas de la oferta ya
+// vive en `offerRange`, que existía desde antes.
+export type ItemOfferSchedule = Omit<ItemAvailabilitySchedule, "dateRange">
 
 export type Schedule = Record<DayKey, DayHours>
 
@@ -176,6 +191,7 @@ export interface Item {
   price: number | null
   offerPrice: number | null
   offerRange: { from: string | null; to: string | null }
+  offerSchedule?: ItemOfferSchedule
   options: Record<string, number>
   image: string
   available: boolean
@@ -267,6 +283,7 @@ export interface AdminItem {
   price: number | null
   offerPrice: number | null
   offerRange?: { from: string | null; to: string | null }
+  offerSchedule?: ItemOfferSchedule
   options: Record<string, number>
   image: string
   available: boolean
@@ -334,6 +351,7 @@ export interface MenuTemplateItem {
   price: number | null
   offerPrice: number | null
   offerRange?: { from: string | null; to: string | null }
+  offerSchedule?: ItemOfferSchedule
   options: Record<string, number>
   image: string
   isExtra: boolean

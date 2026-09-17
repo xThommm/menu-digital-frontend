@@ -1,12 +1,69 @@
-import type { Item } from "../types";
+import type { DayKey, Item, ItemOfferSchedule, TimeRange } from "../types";
+import { formatDateAR } from "./dates.ts";
 
-export function isOfferActive(item: Item, now = Date.now()): boolean {
-  if (item.offerPrice == null || item.price == null) return false;
+// Espejo de utils/offers.js + utils/itemAvailability.js del backend. La API
+// pública ya devuelve offerPrice en null cuando la oferta no rige, pero la
+// carta puede quedar abierta cruzando el borde de un horario, así que el
+// front vuelve a resolverlo con los mismos datos.
 
-  const from = item.offerRange?.from ? new Date(item.offerRange.from).getTime() : null;
-  const to = item.offerRange?.to ? new Date(item.offerRange.to).getTime() : null;
+const DAY_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
+const toMinutes = (time: string): number | null => {
+  const match = TIME_PATTERN.exec(time);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+};
+
+function isWithinDateRange(
+  range: { from?: string | null; to?: string | null } | null | undefined,
+  now: number,
+): boolean {
+  const from = range?.from ? new Date(range.from).getTime() : null;
+  const to = range?.to ? new Date(range.to).getTime() : null;
   if (from !== null && Number.isFinite(from) && now < from) return false;
   if (to !== null && Number.isFinite(to) && now > to) return false;
   return true;
+}
+
+// El día y la hora se leen siempre en Buenos Aires, igual que
+// Utils/businessSchedule.ts y que el backend.
+function buenosAiresParts(now: number) {
+  const date = new Date(now);
+  const day = formatDateAR(date, { output: "date-input" });
+  const jsDay = new Date(`${day}T00:00:00Z`).getUTCDay();
+  const [hours, minutes] = formatDateAR(date, { hour: "2-digit", minute: "2-digit" })
+    .split(":")
+    .map(Number);
+  // getUTCDay() arranca en domingo; DAY_KEYS arranca en lunes.
+  return { dayIndex: (jsDay + 6) % 7, minutes: hours * 60 + minutes };
+}
+
+export function isScheduleActiveAt(
+  schedule: { enabled: boolean } & Partial<Record<DayKey, TimeRange[]>> | null | undefined,
+  now: number,
+): boolean {
+  if (!schedule?.enabled) return true;
+
+  const { dayIndex, minutes } = buenosAiresParts(now);
+  const today = schedule[DAY_KEYS[dayIndex]] ?? [];
+  const previousDay = schedule[DAY_KEYS[(dayIndex + 6) % 7]] ?? [];
+
+  const inside = (ranges: TimeRange[], overnightOnly: boolean) =>
+    ranges.some(({ from, to }) => {
+      const start = toMinutes(from);
+      const end = toMinutes(to);
+      if (start === null || end === null) return false;
+      // Horas iguales son las 24 horas del día a partir de `from`.
+      if (overnightOnly) return end <= start && minutes < end;
+      return end > start ? minutes >= start && minutes < end : minutes >= start;
+    });
+
+  return inside(today, false) || inside(previousDay, true);
+}
+
+export function isOfferActive(item: Item, now = Date.now()): boolean {
+  if (item.offerPrice == null || item.price == null) return false;
+  if (!isWithinDateRange(item.offerRange, now)) return false;
+  return isScheduleActiveAt(item.offerSchedule as ItemOfferSchedule | undefined, now);
 }
