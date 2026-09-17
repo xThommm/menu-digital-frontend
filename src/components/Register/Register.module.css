@@ -23,7 +23,7 @@
 }
 
 .logoSq {
-  width: 63px; height: 40px;
+  width: 40px; height: 40px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }

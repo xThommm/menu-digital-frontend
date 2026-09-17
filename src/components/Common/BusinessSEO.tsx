@@ -3,7 +3,7 @@ import type { User } from "../../types/index";
 
 const SITE_URL = "https://www.menudigitalapp.com.ar";
 const DEFAULT_IMAGE =
-  "https://www.menudigitalapp.com.ar/brand/menu-digital-logo-mark.svg";
+  "https://www.menudigitalapp.com.ar/brand/menu-digital-logo-512.png";
 
 type BusinessSEOProps = {
   user: User;
@@ -110,7 +110,8 @@ export default function BusinessSEO({
     setProperty("og:image", image);
 
     // Twitter / X
-    setMeta("twitter:card", "summary_large_image");
+    // El logo es cuadrado: la tarjeta grande (~2:1) lo recortaría arriba y abajo.
+    setMeta("twitter:card", image === DEFAULT_IMAGE ? "summary" : "summary_large_image");
     setMeta("twitter:title", title);
     setMeta("twitter:description", description);
     setMeta("twitter:image", image);

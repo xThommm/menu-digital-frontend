@@ -40,7 +40,7 @@
 }
 
 .brand { display: inline-flex; align-items: center; gap: .7rem; color: var(--auth-cream); text-decoration: none; font-weight: 600; }
-.brandMark { width: 48px; height: 32px; flex-shrink: 0; }
+.brandMark { width: 32px; height: 32px; flex-shrink: 0; }
 .navigation { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem; }
 .navLink { display: inline-flex; align-items: center; min-height: var(--control-min-size); color: var(--auth-cream); font-size: .85rem; }
 .themeToggle {

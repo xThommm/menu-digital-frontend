@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600;700&family=Fraunces:ital,wght@0,700;0,900;1,700;1,900&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+/* Poppins: plataforma. DM Sans + Playfair Display: cartas públicas ([data-template]). */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,300;1,400;1,500;1,600;1,700;1,900&display=swap');
 
 /* ═══════════════════════════════════════════════════════════════
    RESET & BASE
@@ -14,9 +15,15 @@
    ═══════════════════════════════════════════════════════════════ */
 :root {
   /* — Tipografía — */
-  --font-sans:   'DM Sans', system-ui, -apple-system, sans-serif;
-  --font-serif:  'Playfair Display', Georgia, serif;
-  --font-mono:   'DM Mono', monospace;
+  /* La plataforma (landing, auth, blog, legales, paneles) usa una sola
+     familia: --font-sans y --font-serif apuntan a la de marca. */
+  --font-brand:  'Poppins', system-ui, -apple-system, sans-serif;
+  --font-sans:   var(--font-brand);
+  --font-serif:  var(--font-brand);
+  /* Las cartas públicas conservan su tipografía: cada [data-template]
+     redefine --font-sans/--font-serif con estas (ver VARIABLES POR TEMPLATE). */
+  --font-template-sans:  'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-template-serif: 'Playfair Display', Georgia, serif;
 
   /* Área mínima recomendada para controles táctiles. */
   --control-min-size: 44px;
@@ -732,9 +739,9 @@
   /* Éxito / activación */
   --auth-success-text:    #6ddb8c;
 
-  /* Tipografías (además de --font-sans ya definido arriba) */
-  --font-auth-display: 'Fraunces', serif;
-  --font-auth-mono:    'DM Mono', monospace;
+  /* Tipografías: misma familia de marca que el resto de la plataforma */
+  --font-auth-display: var(--font-brand);
+  --font-auth-mono:    var(--font-brand);
 
   /* Sombras */
   --auth-shadow-card:  0 0 60px color-mix(in srgb, var(--auth-amber) 8%, transparent), 0 40px 80px rgba(0, 0, 0, 0.6);
@@ -864,6 +871,11 @@ img {
   display: block;
   max-width: 100%;
   height: auto;
+}
+
+/* El UA pone monospace en estos elementos; la plataforma usa una sola familia. */
+code, kbd, samp, pre {
+  font-family: inherit;
 }
 
 button {
@@ -1140,6 +1152,11 @@ a:hover { opacity: 0.75; }
 
 [data-template] {
   --focus-color: var(--t-accent);
+  /* La carta vuelve a su tipografía propia (la plataforma usa --font-brand).
+     Hay que redefinir las dos: --font-serif ya llega resuelta desde :root. */
+  --font-sans:  var(--font-template-sans);
+  --font-serif: var(--font-template-serif);
+  font-family: var(--font-sans);
 }
 
 /* Template 1 — Bourbon & Gold (oscuro cálido) */
@@ -1467,6 +1484,10 @@ a:hover { opacity: 0.75; }
 }
 
 .t-free-plan-ad {
+  /* Es publicidad de la plataforma aunque se renderice dentro de una carta
+     ([data-template]): vuelve a la tipografía de marca. */
+  --font-sans:  var(--font-brand);
+  --font-serif: var(--font-brand);
   position: sticky;
   top: 0;
   isolation: isolate;
@@ -1514,7 +1535,7 @@ a:hover { opacity: 0.75; }
 
 .t-free-plan-ad-logo {
   flex: 0 0 auto;
-  width: 75px;
+  width: 48px;
   height: 48px;
   filter: drop-shadow(0 0 10px color-mix(in srgb, var(--gold) 40%, transparent));
 }
@@ -1636,7 +1657,7 @@ a:hover { opacity: 0.75; }
   }
 
   .t-free-plan-ad-logo {
-    width: 66px;
+    width: 42px;
     height: 42px;
   }
 

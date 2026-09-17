@@ -74,7 +74,7 @@
 .navLogo span { font-style: normal; color: var(--auth-cream); opacity: .7; font-weight: 300; }
 
 .navLogoMark {
-  width: 47px;
+  width: 30px;
   height: 30px;
   filter: drop-shadow(0 0 10px color-mix(in srgb, var(--gold) 42%, transparent));
 }
@@ -872,7 +872,7 @@
   color: var(--auth-amber);
 }
 .footLogoMark {
-  width: 44px;
+  width: 28px;
   height: 28px;
 }
 .footLinks { display: flex; gap: 2rem; }

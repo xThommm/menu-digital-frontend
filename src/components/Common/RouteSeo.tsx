@@ -298,11 +298,11 @@ export default function RouteSEO() {
       ["property", "og:description", config.description],
       ["property", "og:url", config.canonical!],
       ["property", "og:type", config.socialType],
-      ["property", "og:image", `${SITE_URL}/brand/menu-digital-logo-mark.svg`],
+      ["property", "og:image", `${SITE_URL}/brand/menu-digital-logo-512.png`],
       ["property", "og:image:alt", "Menú Digital App"],
       ["name", "twitter:title", config.title],
       ["name", "twitter:description", config.description],
-      ["name", "twitter:image", `${SITE_URL}/brand/menu-digital-logo-mark.svg`],
+      ["name", "twitter:image", `${SITE_URL}/brand/menu-digital-logo-512.png`],
       ["name", "twitter:image:alt", "Menú Digital App"],
     ];
     const restoreTags = socialTags.map(([attribute, name, content]) => {

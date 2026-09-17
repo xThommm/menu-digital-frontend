@@ -1,16 +1,12 @@
-<?xml version="1.0" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
- "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
-<svg version="1.0" xmlns="http://www.w3.org/2000/svg"
- width="212.000000pt" height="214.000000pt" viewBox="0 0 212.000000 214.000000"
- preserveAspectRatio="xMidYMid meet">
-
-<g transform="translate(0.000000,214.000000) scale(0.100000,-0.100000)"
-fill="#E85D3C" stroke="none">
-<path d="M395 2130 c-161 -28 -290 -125 -358 -268 l-32 -67 0 -725 0 -725 32
--66 c60 -121 157 -206 282 -248 61 -21 73 -21 754 -19 l692 3 78 37 c131 63
-226 176 262 313 22 87 23 1322 0 1408 -42 162 -158 286 -318 340 -60 21 -78
-22 -702 23 -352 1 -662 -2 -690 -6z m1048 -568 l147 -147 0 -493 0 -492 -535
-0 -535 0 0 640 0 640 388 0 387 0 148 -148z"/>
-</g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Fondo: naranja de marca, igual al token gold de globals.css (#E85D3C) -->
+  <rect x="0" y="0" width="512" height="512" rx="110" ry="110" fill="#E85D3C"/>
+  <!-- Documento -->
+  <rect x="128" y="102.4" width="256" height="307.2" fill="#FFFFFF"/>
+  <!-- Plegado superior derecho: negro, igual al token espresso (#000000) -->
+  <polygon points="314,102.4 384,102.4 384,172.4" fill="#000000"/>
+  <!-- Cuadrado gris -->
+  <rect x="180" y="308" width="50" height="50" rx="6" ry="6" fill="#8F8A85"/>
+  <!-- Esquina inferior izquierda -->
+  <path d="M152 352 H165 V372 H185 V384 H163 Q152 384 152 375 V352 Z" fill="#8F8A85"/>
 </svg>
