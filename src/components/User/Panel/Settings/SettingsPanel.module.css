@@ -135,7 +135,6 @@
 
 /* ── Toggles ── */
 .toggleGroup {
-  margin: 0 0 1.75rem;
   border: 0.5px solid var(--admin-border-subtle);
   border-radius: var(--admin-radius-lg);
   overflow: hidden;
@@ -223,10 +222,13 @@
   background: var(--admin-green);
 }
 
-/* ── Datos visibles en la página del local ── */
-.visibilitySection {
-  border-top: 0.5px solid var(--admin-border-subtle);
+/* ── Secciones (Carta, Página del local, Editor de menú, Contraseña) ── */
+/* La línea va solo entre secciones: en la primera quedaría pegada al borde
+   inferior del top bar y se leería como una línea doble. */
+.section + .section {
+  margin-top: 1.75rem;
   padding-top: 1.5rem;
+  border-top: 0.5px solid var(--admin-border-subtle);
 }
 
 .sectionHead {
@@ -237,8 +239,14 @@
   margin-bottom: 1rem;
 }
 
-.sectionHead .sectionTitle {
-  margin-bottom: 0.3rem;
+/* Un escalón arriba de .toggleLabel para que el título de la sección no se
+   confunda con el de un ajuste. */
+.sectionTitle {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--admin-text-primary);
+  letter-spacing: -0.01em;
+  margin: 0 0 0.3rem;
 }
 
 .sectionDesc {
@@ -276,19 +284,6 @@
     flex-direction: column;
     gap: 0.25rem;
   }
-}
-
-/* ── Cambiar contraseña del panel ── */
-.passwordSection {
-  border-top: 0.5px solid var(--admin-border-subtle);
-  padding-top: 1.5rem;
-}
-
-.sectionTitle {
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: var(--admin-text-primary);
-  margin: 0 0 1rem;
 }
 
 /* ── Save button ── */

@@ -669,6 +669,13 @@
 }
 
 /* ── Templates ── */
+.appearanceHeading {
+  color: var(--admin-text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
 .templateDesc {
   font-size: 0.82rem;
   color: var(--admin-text-muted);

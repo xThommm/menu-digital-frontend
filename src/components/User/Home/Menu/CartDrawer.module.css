@@ -106,6 +106,9 @@
 
 .line:last-child { border-bottom: none; padding-bottom: 0; }
 
+/* Sin la columna del monto (precios ocultos): info, cantidad y quitar. */
+.lineNoPrice { grid-template-columns: 1fr auto auto; }
+
 .lineInfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 
 .lineTitle {
@@ -188,6 +191,13 @@
   gap: 0.5rem;
   padding: 0 1.25rem 1.25rem;
   flex-shrink: 0;
+}
+
+/* Sin fila de total (precios ocultos) las acciones quedan justo debajo de
+   la lista: heredan la línea y el aire que las separaba del total. */
+.lines + .checkoutActions {
+  padding-top: 0.9rem;
+  border-top: 0.5px solid var(--t-border);
 }
 
 .waBtn {

@@ -1159,6 +1159,15 @@ a:hover { opacity: 0.75; }
   font-family: var(--font-sans);
 }
 
+/* Diseño Bistró: tokens compartidos por carta, ficha y carrito.
+   Las paletas siguen resolviéndose exclusivamente con data-template. */
+[data-menu-style="bistro"] {
+  --font-serif: var(--font-template-sans);
+  --t-radius-modal: 30px;
+  --t-radius-control: 16px;
+  --t-bistro-shadow: 0 12px 30px color-mix(in srgb, var(--t-title) 10%, transparent);
+}
+
 /* Template 1 — Bourbon & Gold (oscuro cálido) */
 [data-template="1"] {
   --t-bg:          #0b0a08;

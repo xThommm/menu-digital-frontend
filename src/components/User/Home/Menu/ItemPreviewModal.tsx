@@ -5,6 +5,7 @@ import type { Item } from "../../../../types/index";
 import { useCart } from "../../../../context/useCart";
 import styles from "./ItemPreviewModal.module.css";
 import { isOfferActive } from "../../../../lib/offers";
+import { cartUnitPrice } from "../../../../lib/cartPricing";
 
 // ── Helpers de formato (mismos criterios que en UserMenu.tsx) ──────────────────
 
@@ -34,20 +35,23 @@ interface ItemPreviewModalProps {
   items: Item[]; // lista de productos en el orden en que se ven en el menú (ya filtrados de ocultos)
   index: number; // índice activo dentro de `items`
   hasDelivery: boolean; // si el usuario tiene delivery activo (para mostrar o no el control de agregar al pedido)
+  hidePrices: boolean; // carta sin precios (opción del dueño): no se muestra ninguno, pero se puede pedir igual
+  showOptionsInitially?: boolean;
   onClose: () => void;
   onNavigate: (index: number) => void;
 }
 
-export default function ItemPreviewModal({ items, index, onClose, onNavigate, hasDelivery }: ItemPreviewModalProps) {
+export default function ItemPreviewModal({ items, index, onClose, onNavigate, hasDelivery, hidePrices, showOptionsInitially = false }: ItemPreviewModalProps) {
   const item = items[index];
   const { items: cartItems, addItem, updateQuantity } = useCart();
 
   const [imgError, setImgError] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(showOptionsInitially);
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
 
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const touchStartY = useRef<number | null>(null);
   const startScrollTop = useRef(0);
   const maxScroll = useRef(0);
@@ -66,9 +70,32 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
   // producto anterior "arrastraría" visualmente al siguiente.
   useEffect(() => {
     setImgError(false);
-    setExpanded(false);
+    setExpanded(showOptionsInitially);
     setDragY(0);
-  }, [index]);
+  }, [index, showOptionsInitially]);
+
+  useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const controls = () => Array.from(dialogRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? [])
+      .filter(button => button.getClientRects().length > 0);
+    controls()[0]?.focus();
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const buttons = controls();
+      const first = buttons[0];
+      const last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault(); last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first?.focus();
+      }
+    };
+    document.addEventListener("keydown", trapFocus);
+    return () => {
+      document.removeEventListener("keydown", trapFocus);
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
+  }, []);
 
   // Navegación con teclado: ← → para cambiar de producto, Esc para cerrar.
   useEffect(() => {
@@ -96,7 +123,9 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
   const hasOptions  = Object.keys(item.options ?? {}).length > 0;
   const minPrice    = hasOptions ? minOption(item.options) : null;
   const basePrice   = item.price ?? minPrice;
-  const isOnOffer   = isOfferActive(item);
+  // Sin precios no hay oferta (mismo criterio que priceInfo en UserMenu.tsx):
+  // así "Opciones" sigue disponible para ver y pedir las variantes por nombre.
+  const isOnOffer   = !hidePrices && isOfferActive(item);
   const activePrice = isOnOffer ? item.offerPrice! : basePrice;
   const pct         = isOnOffer ? offerPct(item.price!, item.offerPrice!) : null;
   const canPickVariant = hasOptions && !isOnOffer;
@@ -106,14 +135,20 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
   const qtyOf = (selectedOption?: string) =>
     cartItems.find(l => l.itemId === item._id && l.selectedOption === selectedOption)?.quantity ?? 0;
 
+  // Precio con el que entra al carrito sin variante: el mismo activePrice
+  // de arriba, salvo con los precios ocultos, donde vale 0 aunque el
+  // producto no tenga precio. null = no se puede agregar.
+  const simplePrice = cartUnitPrice(item, undefined, { hidePrices });
+
   const handleAddSimple = () => {
-    if (!item.available || activePrice == null) return;
-    addItem({ itemId: item._id, title: item.title, unitPrice: activePrice });
+    if (!item.available || simplePrice == null) return;
+    addItem({ itemId: item._id, title: item.title, unitPrice: simplePrice });
   };
 
+  // Con los precios ocultos la variante se pide por nombre, sin precio.
   const handleAddVariant = (name: string, price: number) => {
     if (!item.available) return;
-    addItem({ itemId: item._id, title: item.title, unitPrice: price, selectedOption: name });
+    addItem({ itemId: item._id, title: item.title, unitPrice: hidePrices ? 0 : price, selectedOption: name });
   };
 
   // ── Swipe vertical, estilo TikTok: arriba = siguiente, abajo = anterior ──
@@ -171,7 +206,7 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
   };
 
   return (
-    <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true" aria-label={item.title}>
+    <div ref={dialogRef} className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true" aria-label={item.title}>
       {/* Flechas fuera del popup, pegadas a los bordes de la pantalla — solo
           desktop (ver CSS); en mobile se navega con el swipe vertical. */}
       {hasPrev && (
@@ -200,10 +235,10 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
             mismo efecto de TikTok de ver el próximo contenido antes de
             soltar. Solo una a la vez, según hacia dónde se está arrastrando. */}
         {dragging && gestureMode.current === "swipe" && dragY < 0 && hasNext && (
-          <PeekCard item={items[index + 1]} edge="bottom" dragY={dragY} />
+          <PeekCard item={items[index + 1]} edge="bottom" dragY={dragY} hidePrices={hidePrices} />
         )}
         {dragging && gestureMode.current === "swipe" && dragY > 0 && hasPrev && (
-          <PeekCard item={items[index - 1]} edge="top" dragY={dragY} />
+          <PeekCard item={items[index - 1]} edge="top" dragY={dragY} hidePrices={hidePrices} />
         )}
 
         <div
@@ -260,25 +295,27 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
             </dl>
           )}
 
-          <div className={styles.priceRow}>
-            {isOnOffer ? (
-              <>
-                <span className={styles.price}>{fmt(activePrice!)}</span>
-                <span className={styles.priceOld}>{fmt(item.price!)}</span>
-                <span className={`${styles.badge} ${styles.badgeOffer}`}>-{pct}%</span>
-              </>
-            ) : hasOptions ? (
-              <span className={styles.price}>
-                Desde {minPrice != null ? fmt(minPrice) : "Consultar"}
-              </span>
-            ) : (
-              activePrice != null && <span className={styles.price}>{fmt(activePrice)}</span>
-            )}
-          </div>
+          {!hidePrices && (
+            <div className={styles.priceRow}>
+              {isOnOffer ? (
+                <>
+                  <span className={styles.price}>{fmt(activePrice!)}</span>
+                  <span className={styles.priceOld}>{fmt(item.price!)}</span>
+                  <span className={`${styles.badge} ${styles.badgeOffer}`}>-{pct}%</span>
+                </>
+              ) : hasOptions ? (
+                <span className={styles.price}>
+                  Desde {minPrice != null ? fmt(minPrice) : "Consultar"}
+                </span>
+              ) : (
+                activePrice != null && <span className={styles.price}>{fmt(activePrice)}</span>
+              )}
+            </div>
+          )}
 
           {!item.available && <span className={styles.unavail}>No disponible</span>}
 
-          {(!hasOptions || isOnOffer) && item.available && activePrice != null && hasDelivery && (
+          {(!hasOptions || isOnOffer) && item.available && simplePrice != null && hasDelivery && (
             <AddControl
               qty={qtyOf(undefined)}
               onAdd={handleAddSimple}
@@ -302,7 +339,9 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
                     <div key={name} className={styles.optionRow}>
                       <span>{name}</span>
                       <div className={styles.optionRowRight}>
-                        <span className={styles.price}>{fmt(price)}</span>
+                        {/* Sin precios, el nombre y el control para pedirla
+                            (el valor viene en 0). */}
+                        {!hidePrices && <span className={styles.price}>{fmt(price)}</span>}
                         {item.available && (
                           <AddControl
                             qty={qtyOf(name)}
@@ -328,7 +367,7 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
 // Versión liviana (sin controles de carrito) del producto adyacente, para dar
 // la sensación de "ya viene lo siguiente" mientras se desliza — no es
 // interactiva, solo se ve hasta que el swipe se confirma o se cancela.
-function PeekCard({ item, edge, dragY }: { item: Item; edge: "top" | "bottom"; dragY: number }) {
+function PeekCard({ item, edge, dragY, hidePrices }: { item: Item; edge: "top" | "bottom"; dragY: number; hidePrices: boolean }) {
   const hasOptions = Object.keys(item.options ?? {}).length > 0;
   const minPrice    = hasOptions ? minOption(item.options) : null;
   const basePrice   = item.price ?? minPrice;
@@ -354,7 +393,7 @@ function PeekCard({ item, edge, dragY }: { item: Item; edge: "top" | "bottom"; d
       )}
       <div className={styles.peekBody}>
         <span className={styles.peekTitle}>{item.title}</span>
-        {activePrice != null && (
+        {!hidePrices && activePrice != null && (
           <span className={styles.price}>
             {hasOptions && !isOnOffer ? "Desde " : ""}{fmt(activePrice)}
           </span>

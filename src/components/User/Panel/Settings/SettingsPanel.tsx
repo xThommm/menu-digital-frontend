@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useAuth } from "../../../../context/useAuth";
 import { useFeedbackMessage } from "../../../../hooks/useFeedbackMessage";
 import { LANDING_VISIBILITY_KEYS, resolveLandingVisibility } from "../../../../lib/landingVisibility";
-import type { LandingVisibility, LandingVisibilityKey } from "../../../../types/index";
+import { MENU_DISPLAY_KEYS, resolveMenuDisplay } from "../../../../lib/menuDisplay";
+import type {
+  LandingVisibility,
+  LandingVisibilityKey,
+  MenuDisplay,
+  MenuDisplayKey,
+} from "../../../../types/index";
 import Spinner from "../../../Common/Spinner";
 import styles from "./SettingsPanel.module.css";
 
@@ -12,6 +18,7 @@ interface SettingsValues {
   autoGenerateCodes: boolean;
   disableMenuDelete: boolean;
   landingVisibility: LandingVisibility;
+  menuDisplay: MenuDisplay;
 }
 
 // "loading": consultando si ya existe contraseña del panel.
@@ -24,9 +31,26 @@ const EMPTY_SETTINGS: SettingsValues = {
   autoGenerateCodes: false,
   disableMenuDelete: false,
   landingVisibility: resolveLandingVisibility(),
+  menuDisplay: resolveMenuDisplay(),
 };
 
-// Textos de los toggles de "Datos visibles en tu página". El orden lo da
+// Textos de los toggles de la sección "Carta". El orden lo da MENU_DISPLAY_KEYS.
+const MENU_DISPLAY_COPY: Record<MenuDisplayKey, { label: string; desc: string }> = {
+  featuredSection: {
+    label: "Sección de destacados",
+    desc: "Los productos que marcás como «Recomendado» se muestran juntos en un carrusel al inicio de la carta. También siguen apareciendo en su categoría.",
+  },
+  collapsibleCategories: {
+    label: "Categorías desplegables",
+    desc: "Las categorías aparecen cerradas y tus clientes tocan el nombre para ver los productos.",
+  },
+  hidePrices: {
+    label: "Ocultar precios",
+    desc: "No se muestra ningún precio en la carta ni en el PDF. Tus clientes pueden seguir armando pedidos por WhatsApp: te llegan con los productos y las cantidades, sin precios.",
+  },
+};
+
+// Textos de los toggles de "Página del local". El orden lo da
 // LANDING_VISIBILITY_KEYS.
 const LANDING_VISIBILITY_COPY: Record<LandingVisibilityKey, { label: string; desc: string }> = {
   phone: {
@@ -65,15 +89,17 @@ function toSettings(data: Partial<SettingsValues>): SettingsValues {
     autoGenerateCodes: !!data.autoGenerateCodes,
     disableMenuDelete: !!data.disableMenuDelete,
     landingVisibility: resolveLandingVisibility(data.landingVisibility),
+    menuDisplay: resolveMenuDisplay(data.menuDisplay),
   };
 }
 
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
-function Toggle({ checked, onChange, label, disabled }: {
+function Toggle({ checked, onChange, label, describedBy, disabled }: {
   checked: boolean;
   onChange: () => void;
   label?: string;
+  describedBy?: string;
   disabled?: boolean;
 }) {
   return (
@@ -84,10 +110,68 @@ function Toggle({ checked, onChange, label, disabled }: {
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      aria-describedby={describedBy}
       disabled={disabled}
     >
       <span className={styles.toggleKnob} />
     </button>
+  );
+}
+
+// `ariaLabel` va cuando el título solo no alcanza fuera de contexto (un lector
+// de pantalla anuncia el switch sin la sección a la que pertenece). La
+// descripción queda asociada al switch para que también se lea: algunas avisan
+// consecuencias (p. ej. que con los precios ocultos no se puede pedir).
+function ToggleRow({ label, desc, checked, onChange, disabled, ariaLabel }: {
+  label: string;
+  desc: string;
+  checked: boolean;
+  onChange: () => void;
+  disabled: boolean;
+  ariaLabel?: string;
+}) {
+  const descId = useId();
+  return (
+    <div className={styles.toggleRow}>
+      <div>
+        <p className={styles.toggleLabel}>{label}</p>
+        <p className={styles.toggleDesc} id={descId}>{desc}</p>
+      </div>
+      <Toggle
+        checked={checked}
+        onChange={onChange}
+        disabled={disabled}
+        label={ariaLabel ?? label}
+        describedBy={descId}
+      />
+    </div>
+  );
+}
+
+// Encabezado común de las secciones del panel: título, descripción y, si la
+// sección cambia algo público, el link para ver el resultado en otra pestaña.
+function SettingsSection({ id, title, desc, link, children }: {
+  id: string;
+  title: string;
+  desc: string;
+  link?: { href: string; label: string };
+  children: ReactNode;
+}) {
+  return (
+    <section className={styles.section} aria-labelledby={id}>
+      <div className={styles.sectionHead}>
+        <div>
+          <h2 id={id} className={styles.sectionTitle}>{title}</h2>
+          <p className={styles.sectionDesc}>{desc}</p>
+        </div>
+        {link && (
+          <a className={styles.sectionLink} href={link.href} target="_blank" rel="noopener noreferrer">
+            {link.label} <ExternalIcon />
+          </a>
+        )}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -252,6 +336,15 @@ export default function SettingsPanel() {
     );
   };
 
+  const toggleMenuDisplay = (key: MenuDisplayKey) => {
+    const value = !settings.menuDisplay[key];
+    saveToggle(
+      `menuDisplay.${key}`,
+      { ...settings, menuDisplay: { ...settings.menuDisplay, [key]: value } },
+      { menuDisplay: { [key]: value } },
+    );
+  };
+
   // ── Cambiar la contraseña del panel ───────────────────────────────────────
   const invalidPasswordChange =
     !currentPassword || newPassword.length < 8 || newPassword !== confirmNewPassword;
@@ -353,82 +446,76 @@ export default function SettingsPanel() {
               <div className={styles.errorBanner} role="alert" aria-live="assertive">{toggleError}</div>
             )}
 
-            <div className={styles.toggleGroup}>
-              <div className={styles.toggleRow}>
-                <div>
-                  <p className={styles.toggleLabel}>Generar códigos automáticamente</p>
-                  <p className={styles.toggleDesc}>
-                    Cuando no indiques un código a mano para un producto, categoría o sección, se
-                    genera uno solo.
-                  </p>
-                </div>
-                <Toggle
+            <SettingsSection
+              id="menu-display-title"
+              title="Carta"
+              desc="Cómo ven tus clientes tu carta digital."
+              link={user?.slug ? { href: `/${user.slug}/menu`, label: "Ver mi carta" } : undefined}
+            >
+              <div className={styles.toggleGroup}>
+                {MENU_DISPLAY_KEYS.map(key => (
+                  <ToggleRow
+                    key={key}
+                    label={MENU_DISPLAY_COPY[key].label}
+                    desc={MENU_DISPLAY_COPY[key].desc}
+                    checked={settings.menuDisplay[key]}
+                    onChange={() => toggleMenuDisplay(key)}
+                    disabled={savingToggle !== null}
+                    ariaLabel={`${MENU_DISPLAY_COPY[key].label} en tu carta`}
+                  />
+                ))}
+              </div>
+            </SettingsSection>
+
+            <SettingsSection
+              id="landing-visibility-title"
+              title="Página del local"
+              desc="Elegí qué datos ven tus clientes en la página de tu local. Ocultar uno no lo borra: lo seguís teniendo cargado en Mi negocio."
+              link={user?.slug ? { href: `/${user.slug}`, label: "Ver mi página" } : undefined}
+            >
+              <div className={styles.toggleGroup}>
+                {LANDING_VISIBILITY_KEYS.map(key => (
+                  <ToggleRow
+                    key={key}
+                    label={LANDING_VISIBILITY_COPY[key].label}
+                    desc={LANDING_VISIBILITY_COPY[key].desc}
+                    checked={settings.landingVisibility[key]}
+                    onChange={() => toggleLandingVisibility(key)}
+                    disabled={savingToggle !== null}
+                    ariaLabel={`Mostrar en tu página: ${LANDING_VISIBILITY_COPY[key].label}`}
+                  />
+                ))}
+              </div>
+            </SettingsSection>
+
+            <SettingsSection
+              id="menu-editor-title"
+              title="Editor de menú"
+              desc="Ajustes para cuando cargás y editás tu carta."
+            >
+              <div className={styles.toggleGroup}>
+                <ToggleRow
+                  label="Generar códigos automáticamente"
+                  desc="Cuando no indiques un código a mano para un producto, categoría o sección, se genera uno solo."
                   checked={settings.autoGenerateCodes}
                   onChange={() => toggleSetting("autoGenerateCodes")}
                   disabled={savingToggle !== null}
-                  label="Generar códigos automáticamente"
                 />
-              </div>
-              <div className={styles.toggleRow}>
-                <div>
-                  <p className={styles.toggleLabel}>Deshabilitar eliminar en el editor de menú</p>
-                  <p className={styles.toggleDesc}>
-                    No va a ser posible eliminar productos, categorías ni secciones desde el editor
-                    de menú.
-                  </p>
-                </div>
-                <Toggle
+                <ToggleRow
+                  label="Deshabilitar eliminar en el editor de menú"
+                  desc="No va a ser posible eliminar productos, categorías ni secciones desde el editor de menú."
                   checked={settings.disableMenuDelete}
                   onChange={() => toggleSetting("disableMenuDelete")}
                   disabled={savingToggle !== null}
-                  label="Deshabilitar eliminar en el editor de menú"
                 />
               </div>
-            </div>
+            </SettingsSection>
 
-            <section className={styles.visibilitySection} aria-labelledby="landing-visibility-title">
-              <div className={styles.sectionHead}>
-                <div>
-                  <h2 id="landing-visibility-title" className={styles.sectionTitle}>
-                    Datos visibles en tu página
-                  </h2>
-                  <p className={styles.sectionDesc}>
-                    Elegí qué datos ven tus clientes en la página de tu local. Ocultar uno no lo
-                    borra: lo seguís teniendo cargado en Mi negocio.
-                  </p>
-                </div>
-                {user?.slug && (
-                  <a
-                    className={styles.sectionLink}
-                    href={`/${user.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Ver mi página <ExternalIcon />
-                  </a>
-                )}
-              </div>
-
-              <div className={styles.toggleGroup}>
-                {LANDING_VISIBILITY_KEYS.map(key => (
-                  <div className={styles.toggleRow} key={key}>
-                    <div>
-                      <p className={styles.toggleLabel}>{LANDING_VISIBILITY_COPY[key].label}</p>
-                      <p className={styles.toggleDesc}>{LANDING_VISIBILITY_COPY[key].desc}</p>
-                    </div>
-                    <Toggle
-                      checked={settings.landingVisibility[key]}
-                      onChange={() => toggleLandingVisibility(key)}
-                      disabled={savingToggle !== null}
-                      label={`Mostrar en tu página: ${LANDING_VISIBILITY_COPY[key].label}`}
-                    />
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className={styles.passwordSection}>
-              <h2 className={styles.sectionTitle}>Cambiar contraseña de configuración</h2>
+            <SettingsSection
+              id="settings-password-title"
+              title="Contraseña de configuración"
+              desc="La que te pide esta pantalla para entrar. Es distinta a la contraseña de tu cuenta."
+            >
               <form onSubmit={submitPasswordChange} className={styles.gateForm} noValidate>
                 <input
                   type="password"
@@ -462,7 +549,7 @@ export default function SettingsPanel() {
                   {changingPassword ? <><Spinner size={16} /> Guardando...</> : "Cambiar contraseña"}
                 </button>
               </form>
-            </section>
+            </SettingsSection>
           </>
         )}
       </div>

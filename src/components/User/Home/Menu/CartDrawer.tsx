@@ -10,14 +10,30 @@ interface CartDrawerProps {
   onClose: () => void;
   businessName: string;
   whatsappNumber: number | null;
+  // "Mensaje de pedido" de Mi negocio: se suma al final del texto del pedido.
+  orderMessage?: string;
+  // Opción "Ocultar precios" de la carta: se puede pedir igual, pero el
+  // drawer va sin montos por línea ni total (las líneas valen 0) y el
+  // mensaje de WhatsApp sale solo con productos y cantidades.
+  hidePrices?: boolean;
 }
 
-export default function CartDrawer({ open, onClose, businessName, whatsappNumber }: CartDrawerProps) {
+export default function CartDrawer({
+  open,
+  onClose,
+  businessName,
+  whatsappNumber,
+  orderMessage,
+  hidePrices = false,
+}: CartDrawerProps) {
   const { items, updateQuantity, removeItem, clearCart, totalPrice } = useCart();
 
   if (!open) return null;
 
-  const waLink = buildWaLink(whatsappNumber, buildOrderMessage(items, businessName));
+  const waLink = buildWaLink(
+    whatsappNumber,
+    buildOrderMessage(items, businessName, orderMessage, { hidePrices }),
+  );
 
   return (
     <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true" aria-label="Tu pedido">
@@ -35,7 +51,10 @@ export default function CartDrawer({ open, onClose, businessName, whatsappNumber
           <>
             <ul className={styles.lines}>
               {items.map((l) => (
-                <li key={`${l.itemId}::${l.selectedOption ?? ""}`} className={styles.line}>
+                <li
+                  key={`${l.itemId}::${l.selectedOption ?? ""}`}
+                  className={`${styles.line} ${hidePrices ? styles.lineNoPrice : ""}`}
+                >
                   <div className={styles.lineInfo}>
                     <span className={styles.lineTitle}>{l.title}</span>
                     {l.selectedOption && <span className={styles.lineVariant}>{l.selectedOption}</span>}
@@ -57,7 +76,9 @@ export default function CartDrawer({ open, onClose, businessName, whatsappNumber
                       +
                     </button>
                   </div>
-                  <span className={styles.linePrice}>{fmt(l.unitPrice * l.quantity)}</span>
+                  {!hidePrices && (
+                    <span className={styles.linePrice}>{fmt(l.unitPrice * l.quantity)}</span>
+                  )}
                   <button
                     className={styles.lineRemove}
                     onClick={() => removeItem(l.itemId, l.selectedOption)}
@@ -70,10 +91,12 @@ export default function CartDrawer({ open, onClose, businessName, whatsappNumber
               ))}
             </ul>
 
-            <div className={styles.total}>
-              <span>Total</span>
-              <span>{fmt(totalPrice)}</span>
-            </div>
+            {!hidePrices && (
+              <div className={styles.total}>
+                <span>Total</span>
+                <span>{fmt(totalPrice)}</span>
+              </div>
+            )}
 
             {/* Zona de acciones de checkout — separada a propósito: sumar acá
                 un botón de pago con MercadoPago (fase futura) es un cambio

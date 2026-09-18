@@ -9,6 +9,8 @@ import { WEEK_DAYS } from "../../../Common/WeeklySchedule/weekSchedule";
 import type { WeekRanges } from "../../../Common/WeeklySchedule/weekSchedule";
 import Spinner from "../../../Common/Spinner";
 import UpgradeModal from "../../../Common/UpgradeModal";
+import MenuStylePicker from "./MenuStylePicker";
+import { resolveMenuStyle, type MenuStyle } from "../../../../lib/menuStyles";
 import styles from "./UserEditor.module.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -24,6 +26,7 @@ interface FormState {
   facebook: string;
   hasDelivery: boolean;
   reservationMessage: string;
+  orderMessage: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -35,7 +38,11 @@ const EMPTY_FORM: FormState = {
   facebook: "",
   hasDelivery: false,
   reservationMessage: "",
+  orderMessage: "",
 };
+
+// Espejo del máximo de contactInfo.orderMessage en el backend.
+const ORDER_MESSAGE_MAX_LENGTH = 500;
 
 // ── Horario de atención ──
 // Los tipos (DayKey/DayHours/Schedule) viven en types/index.ts, espejo del
@@ -183,11 +190,20 @@ export default function UserEditorPage() {
   const [pictures,          setPictures]   = useState<string[]>([]);
   const [backgroundPicture, setBackground] = useState("");
   const [template,          setTemplate]   = useState(1);
+  const [menuStyle, setMenuStyle] = useState<MenuStyle>("classic");
+  const [savingAppearance, setSavingAppearance] = useState(false);
+  const appearanceSavingRef = useRef(false);
   const [subscription,      setSubscription] = useState<Subscription>("free");
   const [lockedTemplate,    setLockedTemplate] = useState<typeof TEMPLATES[number] | null>(null);
   const [nameChangeConfirmOpen, setNameChangeConfirmOpen] = useState(false);
 
   const currentPlan = catalog.isError ? undefined : catalog.data?.find(plan => plan.name === subscription);
+  // El mensaje de pedido se guarda con cualquier plan (así el dueño lo deja
+  // listo antes de cambiar), pero solo se usa donde la carta tiene carrito:
+  // en vez de bloquear el campo, se avisa y se nombra el plan que lo incluye,
+  // como en los diseños bloqueados. Mientras carga el catálogo no se avisa.
+  const orderMessageLocked = currentPlan?.features.pedido_whatsapp === false;
+  const orderMessagePlan = catalog.data?.find(plan => plan.features.pedido_whatsapp);
 
   const [isDirty, setIsDirty]   = useState(false);
   const initialFormRef = useRef<FormState>(EMPTY_FORM);
@@ -286,6 +302,7 @@ export default function UserEditorPage() {
           facebook:     data.contactInfo?.social?.facebook  || "",
           hasDelivery:  data.hasDelivery ?? false,
           reservationMessage: data.contactInfo?.reservationMessage || "",
+          orderMessage: data.contactInfo?.orderMessage || "",
         };
         setForm(loaded);
         initialFormRef.current = loaded;
@@ -295,6 +312,7 @@ export default function UserEditorPage() {
         setPictures(data.media?.pictures || []);
         setBackground(data.media?.backgroundPicture || "");
         setTemplate(data.template || 1);
+        setMenuStyle(resolveMenuStyle(data.menuStyle));
         setSubscription(data.subscription || "free");
       } catch (err) {
         setError(err instanceof Error ? err.message : "No se pudo cargar la información del negocio.");
@@ -363,6 +381,7 @@ export default function UserEditorPage() {
               facebook:  form.facebook.trim(),
             },
             reservationMessage: form.reservationMessage.trim(),
+            orderMessage: form.orderMessage.trim(),
           },
           hasDelivery: form.hasDelivery,
           schedule,
@@ -481,15 +500,20 @@ export default function UserEditorPage() {
   };
 
   // Save template
-  const saveTemplate = async (t: number) => {
+  const saveTemplate = async (t: number, nextStyle = menuStyle) => {
+    if (appearanceSavingRef.current) return;
+    appearanceSavingRef.current = true;
+    setSavingAppearance(true);
     const previous = template;
+    const previousStyle = menuStyle;
     setTemplate(t);
+    setMenuStyle(nextStyle);
     setError(""); setSuccess("");
     try {
       const res = await fetch("/api/users/template", {
         method: "PATCH",
         headers: authHeaders,
-        body: JSON.stringify({ template: t }),
+        body: JSON.stringify({ template: t, menuStyle: nextStyle }),
       });
       if (res.status === 401) {
         logout();
@@ -501,10 +525,22 @@ export default function UserEditorPage() {
         const fallback = res.status === 403 ? "Ese template requiere un plan pago." : "No se pudo guardar la apariencia.";
         throw new Error(data?.message || fallback);
       }
-      setSuccess("Apariencia actualizada.");
+      const data = await res.json();
+      // Un backend anterior ignora menuStyle: no confirmar un diseño que no guardó.
+      setTemplate(data.template);
+      setMenuStyle(resolveMenuStyle(data.menuStyle));
+      if (nextStyle !== "classic" && data.menuStyle !== nextStyle) {
+        setError("Este diseño todavía no está disponible. Tu paleta se guardó y la carta conserva el diseño Clásico.");
+      } else {
+        setSuccess("Apariencia actualizada.");
+      }
     } catch (err) {
       setTemplate(previous);
+      setMenuStyle(previousStyle);
       setError(err instanceof Error && err.message ? err.message : "No se pudo guardar la apariencia.");
+    } finally {
+      appearanceSavingRef.current = false;
+      setSavingAppearance(false);
     }
   };
 
@@ -980,10 +1016,39 @@ export default function UserEditorPage() {
                 placeholder="Hola! Quiero hacer una reserva en [nombre del negocio]."
                 value={form.reservationMessage}
                 onChange={e => setForm(f => ({ ...f, reservationMessage: e.target.value }))}
+                aria-describedby="reservationMessage-hint"
               />
-              <p className={styles.fieldHint}>
+              <p id="reservationMessage-hint" className={styles.fieldHint}>
                 Este texto se pre-carga cuando un cliente toca "Reservar por WhatsApp" en tu carta pública.
                 Si lo dejás vacío, se usa un mensaje genérico con el nombre de tu negocio.
+              </p>
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="orderMessage">Mensaje de pedido (WhatsApp)</label>
+              <textarea
+                id="orderMessage"
+                rows={3}
+                maxLength={ORDER_MESSAGE_MAX_LENGTH}
+                // Expresión JS y no atributo literal: en JSX "\n" dentro de
+                // comillas no es un salto de línea.
+                placeholder={"Nombre y apellido:\nDirección:\nEntre calles:"}
+                value={form.orderMessage}
+                onChange={e => setForm(f => ({ ...f, orderMessage: e.target.value }))}
+                // Así el lector de pantalla también lee la nota del plan cuando aparece.
+                aria-describedby="orderMessage-hint"
+              />
+              <p id="orderMessage-hint" className={styles.fieldHint}>
+                Se agrega al final del pedido que te mandan tus clientes por WhatsApp, después
+                del detalle y el total. Sirve para pedirles datos como nombre, dirección o entre calles.
+                Si lo dejás vacío, el pedido sale como siempre.
+                {orderMessageLocked && (
+                  <>
+                    {" "}Tu plan actual no incluye pedidos por WhatsApp: podés dejarlo cargado y se
+                    va a usar cuando tengas un plan que los incluya
+                    {orderMessagePlan ? ` (${orderMessagePlan.label})` : ""}.
+                  </>
+                )}
               </p>
             </div>
 
@@ -1214,8 +1279,16 @@ export default function UserEditorPage() {
         {tab === "template" && (
           <>
             <p className={styles.templateDesc}>
-              Elegí el estilo visual de tu carta pública. El cambio se aplica de inmediato.
+              Combiná un diseño de carta con los colores de tu negocio. Los cambios se guardan al elegir.
             </p>
+            <MenuStylePicker
+              value={menuStyle}
+              disabled={savingAppearance || !currentPlan || catalog.isFetching}
+              onChange={(value) => void saveTemplate(template, value)}
+            />
+            <h2 className={styles.appearanceHeading}>Paleta de colores</h2>
+            <p className={styles.templateDesc}>Se aplica al diseño elegido y a la página de tu local. Las paletas disponibles dependen de tu plan.</p>
+            {savingAppearance && <Spinner label="Guardando apariencia" />}
             {catalog.isPending && <Spinner label="Cargando diseños del plan" />}
             {catalog.isError && <div role="alert"><p>No se pudo consultar el catálogo.</p><button type="button" onClick={() => void catalog.refetch()} disabled={catalog.isFetching}>Reintentar</button></div>}
             <div className={styles.templateGrid}>
@@ -1227,7 +1300,7 @@ export default function UserEditorPage() {
                     key={t.id}
                     className={`${styles.templateCard} ${template === t.id ? styles.selected : ""} ${isLocked ? styles.locked : ""}`}
                     onClick={() => selectTemplate(t)}
-                    disabled={!currentPlan || catalog.isFetching}
+                    disabled={savingAppearance || !currentPlan || catalog.isFetching}
                     aria-pressed={template === t.id}
                     type="button"
                   >

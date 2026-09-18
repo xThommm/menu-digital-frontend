@@ -14,6 +14,46 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.mpEyebrow {
+  margin: 0 0 0.4rem;
+  color: var(--t-accent);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.mpCartShortcut {
+  position: relative;
+  flex-shrink: 0;
+  width: 48px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 15px 15px 22px 15px;
+  background: var(--t-title);
+  color: var(--t-bg);
+  cursor: pointer;
+}
+
+.mpCartShortcut span {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 20px;
+  height: 20px;
+  padding-inline: 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--t-accent);
+  color: var(--t-btn-text);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
 @media (min-width: 768px) {
   .mp {
     max-width: 960px;
@@ -271,6 +311,280 @@
   border-bottom: 1px solid color-mix(in srgb, var(--t-accent) 25%, var(--t-border));
 }
 
+/* ── Categorías desplegables (opción del dueño, ver lib/menuDisplay) ──
+   El título pasa a ser un botón que abre y cierra la lista. Arrancan
+   cerradas, así que la carta se lee como un índice: el espacio entre
+   categorías se achica respecto de la vista de siempre (.mpCat) y la
+   línea del título hace de separador entre filas. */
+.mpCatCollapsible {
+  margin-bottom: 0.25rem;
+}
+
+.mpCatCollapsible .mpCatTitle {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.mpCatToggle {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit; /* no entra en el shorthand font */
+  text-align: left;
+  transition: color 0.18s ease;
+}
+
+.mpCatToggle:hover {
+  color: color-mix(in srgb, var(--t-accent) 75%, var(--t-title));
+}
+
+.mpCatToggleLabel {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Cantidad de productos: mismo tratamiento que los badges de la tarjeta. */
+.mpCatCount {
+  flex-shrink: 0;
+  min-width: 1.5rem;
+  padding: 0 0.45rem;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--t-accent) 10%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--t-accent) 22%, transparent);
+  color: var(--t-text);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.mpCatChevron {
+  flex-shrink: 0;
+  transition: transform 0.22s var(--ease-out);
+}
+
+.mpCatToggle[aria-expanded="true"] .mpCatChevron {
+  transform: rotate(180deg);
+}
+
+/* Las tarjetas se montan al abrir y entran con el mismo reveal de siempre;
+   el contenedor suma un deslizamiento corto para que la apertura no sea
+   un salto seco. Al sacar [hidden] el display vuelve y la animación corre
+   de nuevo en cada apertura. */
+.mpCatItems {
+  padding: 0.875rem 0 1.25rem;
+  animation: fadeInOptions 0.2s ease;
+}
+
+/* [hidden] del UA pierde contra el display: grid de desktop. */
+.mpCatItems[hidden] {
+  display: none;
+}
+
+/* Desktop: la grilla de 2 columnas que en la vista de siempre tiene
+   .mpCat pasa al contenedor de las tarjetas — el título desplegable queda
+   afuera, ocupando su propia fila. */
+@media (min-width: 1024px) {
+  .mpCatItems {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem 0.875rem;
+    align-items: start;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DESTACADOS — carrusel con los recomendados arriba de todo, solo en
+   la primera pestaña (opción del dueño, ver lib/menuDisplay). Mismos
+   tokens que .itemCard.recommended: se ve bien en cualquier template
+   sin colores propios.
+   ═══════════════════════════════════════════════════════════════ */
+.featured {
+  /* Cuánto se come el carrusel del padding lateral de .mpContent. En
+     mobile llega al borde real de la pantalla: las tarjetas se cortan
+     contra el borde (no contra un margen), que es la pista de que se
+     desliza. El padding del track lo devuelve, así que la primera tarjeta
+     queda alineada con el resto del contenido. */
+  --featured-bleed: 1rem;
+  /* Tramo final que se desvanece (ver mask-image del track). */
+  --featured-fade: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .featured {
+    --featured-bleed: 1.5rem;
+  }
+}
+
+/* En la grilla de desktop .mpContent no tiene padding lateral: el carrusel
+   ocupa el ancho de la columna y apenas desborda (hacia el padding del
+   shell y el gap con el resumen del pedido) lo justo para no recortar el
+   anillo de foco de la primera tarjeta. */
+@media (min-width: 1024px) {
+  .featured {
+    --featured-bleed: 0.5rem;
+    margin-bottom: 2rem;
+  }
+}
+
+.featuredTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  color: var(--t-accent);
+  margin-bottom: 0.375rem;
+}
+
+.featuredTrack {
+  display: flex;
+  gap: 0.625rem;
+  margin: 0 calc(var(--featured-bleed) * -1);
+  /* Arriba/abajo: aire para el hover (translateY + sombra) y el anillo de
+     foco, que el overflow del scroll recortaría. Al final, al menos lo que
+     ocupa el desvanecido: al llegar al tope, la última tarjeta queda
+     entera y nítida. */
+  padding: 0.5rem max(var(--featured-bleed), var(--featured-fade)) 0.75rem var(--featured-bleed);
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--featured-bleed);
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--t-accent) 30%, transparent) transparent;
+  /* La tarjeta que queda cortada a la derecha se desvanece: se lee como
+     "hay más" sin sumar flechas ni puntos. */
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - var(--featured-fade)), transparent);
+  mask-image: linear-gradient(to right, black calc(100% - var(--featured-fade)), transparent);
+}
+
+/* Con ~2 tarjetas y media visibles en 375px, la siguiente siempre asoma. */
+.featuredSlide {
+  flex: 0 0 clamp(140px, 42%, 176px);
+  display: flex;
+  scroll-snap-align: start;
+}
+
+/* La columna de desktop mide entre ~540 y ~750px: con este ancho siempre
+   queda una tarjeta a medias en el borde. */
+@media (min-width: 1024px) {
+  .featuredSlide {
+    flex-basis: 196px;
+  }
+}
+
+.featuredCard {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--t-accent) 7%, var(--t-surface)) 0%,
+    var(--t-surface) 65%
+  );
+  border: 0.5px solid color-mix(in srgb, var(--t-accent) 22%, var(--t-border));
+  border-radius: var(--radius-lg);
+  color: inherit;
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+}
+
+.featuredCard:hover {
+  border-color: color-mix(in srgb, var(--t-accent) 35%, var(--t-border));
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--t-accent) 12%, transparent);
+  transform: translateY(-2px);
+}
+
+.featuredCard:active {
+  transform: translateY(0);
+  transition-duration: 0.06s;
+}
+
+.featuredImg,
+.featuredImgPlaceholder {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  flex-shrink: 0;
+}
+
+.featuredImg {
+  object-fit: cover;
+  background: color-mix(in srgb, var(--t-accent) 8%, var(--t-surface));
+  transition: transform 0.25s ease;
+}
+
+.featuredCard:hover .featuredImg {
+  transform: scale(1.04);
+}
+
+.featuredImgPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--t-accent) 6%, var(--t-surface));
+  border-bottom: 0.5px solid var(--t-border);
+  color: var(--t-muted);
+}
+
+.featuredBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.625rem 0.75rem 0.75rem;
+}
+
+.featuredName {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  color: var(--t-title);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* margin-top:auto: con nombres de una y dos líneas, los precios de la
+   fila quedan alineados abajo. */
+.featuredPrice {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--t-accent);
+}
+
+.featuredPriceOld {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: var(--t-muted);
+  text-decoration: line-through;
+  opacity: 0.65;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    ITEM CARD
    ═══════════════════════════════════════════════════════════════ */
@@ -356,7 +670,10 @@
   gap: 10px;
 }
 
-.optionRow span:last-child {
+/* El precio de la variante. Acotado a .optionRowRight para que nunca
+   alcance al nombre: con los precios ocultos la fila es el nombre y el
+   control de agregar, sin precio. */
+.optionRowRight > span:last-child {
   font-weight: 600;
 }
 
@@ -549,12 +866,17 @@
 .orderLineInfo { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.15rem 0.5rem; min-width: 0; }
 .orderLineInfo strong { min-width: 0; color: var(--t-title); font-size: 0.85rem; overflow-wrap: anywhere; }
 .orderLineInfo span { color: var(--t-muted); font-size: 0.7rem; }
-.orderLineInfo span:last-child { grid-column: 2; grid-row: 1; color: var(--t-title); font-size: 0.8rem; font-weight: 600; }
+/* Con clase propia y no como span:last-child: con los precios ocultos la
+   línea no lleva monto y el último span pasaría a ser la variante. */
+.orderLineInfo .orderLinePrice { grid-column: 2; grid-row: 1; color: var(--t-title); font-size: 0.8rem; font-weight: 600; }
 .orderQty { display: inline-flex; align-items: center; gap: 0.35rem; width: fit-content; min-height: 44px; padding: 0.15rem 0.35rem; border: 1px solid var(--t-border-md); border-radius: var(--radius-full); background: var(--t-bg); }
 .orderQty button { width: 36px; height: 36px; border: 0; background: transparent; color: var(--t-accent); font: inherit; cursor: pointer; }
 .orderQty span { min-width: 1.2ch; color: var(--t-title); font-size: 0.8rem; font-weight: 700; text-align: center; }
 .orderTotal { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; border-top: 1px solid var(--t-border); color: var(--t-title); font-size: 0.9rem; font-weight: 600; }
 .orderTotal strong { color: var(--t-title); font-size: 1.5rem; }
+/* Sin fila de total (precios ocultos) la lista se cierra con la misma línea
+   y el mismo aire que dejaba el total antes del botón de WhatsApp. */
+.orderLinesNoTotal { margin-bottom: 1rem; border-bottom: 1px solid var(--t-border); }
 .orderWhatsapp { display: flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 52px; border-radius: 12px; background: var(--t-accent); color: var(--t-btn-text); font-size: 0.85rem; font-weight: 700; text-decoration: none; }
 .orderWhatsapp:hover { opacity: 0.9; }
 .orderNoWhatsapp { margin: 0; color: var(--t-muted); font-size: 0.75rem; line-height: 1.4; text-align: center; }
@@ -895,4 +1217,93 @@
   .cartFab:hover {
     transform: none;
   }
+
+  .mpCatItems {
+    animation: none;
+  }
+
+  .mpCatChevron {
+    transition: none;
+  }
+
+  .featuredCard:hover,
+  .featuredCard:hover .featuredImg {
+    transform: none;
+  }
+}
+
+/* Bistró comparte los componentes y las reglas de compra con Clásico.
+   Solo cambia la presentación; cualquier paleta --t-* funciona aquí. */
+.mp[data-menu-style="bistro"] {
+  background-image: var(--t-bg-image, none);
+  background-attachment: fixed;
+}
+
+.mp[data-menu-style="bistro"] .mpHeader {
+  padding: 1.5rem 1.25rem 1rem;
+  border: 0;
+  background: var(--t-bg);
+  align-items: center;
+}
+
+.mp[data-menu-style="bistro"] .mpName {
+  font-weight: 750;
+  font-size: clamp(1.45rem, 5.5vw, 2.25rem);
+  line-height: 1.15;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  letter-spacing: -0.045em;
+}
+
+.mp[data-menu-style="bistro"] .mpMeta { color: var(--t-text); margin-top: 0.5rem; }
+.mp[data-menu-style="bistro"] .mpBack { border: 0; background: var(--t-surface); color: var(--t-title); }
+.mp[data-menu-style="bistro"] .mpTabs { padding-block: 0.5rem 1rem; gap: 0.625rem; }
+.mp[data-menu-style="bistro"] .mpTab { display: inline-flex; align-items: center; gap: 0.5rem; border-radius: 17px; border-color: transparent; color: var(--t-text); }
+.mp[data-menu-style="bistro"] .mpTab.active { background: var(--t-title); color: var(--t-bg); border-color: var(--t-title); }
+.mp[data-menu-style="bistro"] .mpContent { padding: 1.25rem 1.25rem 7rem; }
+.mp[data-menu-style="bistro"] .mpCat,
+.mp[data-menu-style="bistro"] .mpCatItems:not([hidden]) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.5rem 1rem; align-items: stretch; }
+.mp[data-menu-style="bistro"] .mpCat { margin-bottom: 2rem; }
+.mp[data-menu-style="bistro"] .mpCatTitle { grid-column: 1 / -1; margin: 0; padding: 0; border: 0; color: var(--t-title); font-size: 1.125rem; font-weight: 700; letter-spacing: -0.025em; }
+.mp[data-menu-style="bistro"] .mpCatItems { padding-top: 2.75rem; }
+.mp[data-menu-style="bistro"] .mpCatCollapsible { margin-bottom: 1rem; }
+.mp[data-menu-style="bistro"] .itemCard { position: relative; display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; min-height: 0; margin: 0; padding: 0 0.875rem 1rem; border-radius: 26px; border-color: color-mix(in srgb, var(--t-border) 55%, transparent); box-shadow: var(--t-bistro-shadow); background: var(--t-surface); }
+.mp[data-menu-style="bistro"] .itemCard.recommended { border-color: color-mix(in srgb, var(--t-accent) 45%, var(--t-border)); }
+.mp[data-menu-style="bistro"] .itemImg,
+.mp[data-menu-style="bistro"] .itemImgPlaceholder { width: min(100%, 180px); height: auto; aspect-ratio: 1; border-radius: 50%; margin: -1.3rem auto 0; box-shadow: var(--t-bistro-shadow); }
+.mp[data-menu-style="bistro"] .itemBody { flex: 1; min-height: 0; gap: 0.4rem; }
+.mp[data-menu-style="bistro"] .itemTop { flex-direction: column; gap: 0.4rem; }
+.mp[data-menu-style="bistro"] .itemName { padding: 0; border: 0; background: none; text-align: left; font: inherit; color: var(--t-title); font-weight: 750; font-size: 0.9375rem; line-height: 1.25; overflow-wrap: anywhere; cursor: pointer; }
+.mp[data-menu-style="bistro"] .itemDesc { color: color-mix(in srgb, var(--t-title) 70%, var(--t-bg)); font-size: 0.75rem; line-height: 1.5; -webkit-line-clamp: 2; margin: 0 0 0.4rem; }
+.mp[data-menu-style="bistro"] .itemBottom { margin-top: auto; gap: 0.4rem; padding-top: 0.3rem; }
+.mp[data-menu-style="bistro"] .itemPrice { color: var(--t-title); font-size: 0.875rem; font-weight: 750; overflow-wrap: anywhere; }
+.mp[data-menu-style="bistro"] .addBtn { margin-left: auto; background: var(--t-title); color: var(--t-bg); }
+.mp[data-menu-style="bistro"] .qtyStepper { padding: 2px; gap: 3px; margin-left: auto; max-width: 100%; }
+.mp[data-menu-style="bistro"] .badgeVariant { min-height: 36px; white-space: normal; }
+.mp[data-menu-style="bistro"] .badgeReco { font-size: 0.5625rem; letter-spacing: 0; padding-inline: 5px; }
+.mp[data-menu-style="bistro"] .cartBar { left: 1rem; right: 1rem; bottom: max(1rem, env(safe-area-inset-bottom)); width: auto; border: 0; border-radius: 22px; background: var(--t-title); color: var(--t-bg); box-shadow: var(--t-bistro-shadow); }
+.mp[data-menu-style="bistro"] .cartBarTotal { color: var(--t-bg); }
+.mp[data-menu-style="bistro"] .cartBarCount { background: var(--t-bg); color: var(--t-title); border-radius: 50%; }
+.mp[data-menu-style="bistro"] .featured { margin-bottom: 2rem; }
+.mp[data-menu-style="bistro"] .featuredTitle { color: var(--t-title); }
+.mp[data-menu-style="bistro"] .featuredSlide { flex-basis: 280px; }
+.mp[data-menu-style="bistro"] .featuredCard { border-radius: 22px; flex-direction: row-reverse; align-items: center; padding: 0.75rem; }
+.mp[data-menu-style="bistro"] .featuredBody { padding: 0.4rem; }
+.mp[data-menu-style="bistro"] .featuredImg { aspect-ratio: 1; border-radius: 50%; width: 100px; margin: 0; }
+.mp[data-menu-style="bistro"] .orderSummary { border-radius: 26px; box-shadow: var(--t-bistro-shadow); }
+
+@media (min-width: 768px) {
+  .mp[data-menu-style="bistro"] .mpHeader { padding: 2rem 2rem 1rem; }
+  .mp[data-menu-style="bistro"] .mpTabs { padding-inline: 2rem; }
+  .mp[data-menu-style="bistro"] .mpContent { padding-inline: 2rem; }
+  .mp[data-menu-style="bistro"] .mpCat,
+  .mp[data-menu-style="bistro"] .mpCatItems:not([hidden]) { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3rem 1.5rem; }
+}
+
+@media (min-width: 1024px) {
+  .mp[data-menu-style="bistro"] .mpShell { grid-template-columns: minmax(0, 1fr); }
+  .mp[data-menu-style="bistro"] .mpShell:has(.orderSummary) { grid-template-columns: minmax(0, 1fr) 300px; }
+  .mp[data-menu-style="bistro"] .mpShell:has(.orderSummary) .mpCat,
+  .mp[data-menu-style="bistro"] .mpShell:has(.orderSummary) .mpCatItems:not([hidden]) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mp[data-menu-style="bistro"] .mpContent { padding: 1.75rem 0 2rem; }
 }

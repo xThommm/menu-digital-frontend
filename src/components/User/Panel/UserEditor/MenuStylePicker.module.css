@@ -1,0 +1,14 @@
+.picker { border: 0; padding: 0; margin: 0 0 2rem; min-width: 0; }
+.picker legend { color: var(--admin-text-primary); font-size: 1rem; font-weight: 600; margin-bottom: 0.875rem; }
+.options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.option { position: relative; display: flex; align-items: flex-start; gap: 0.875rem; padding: 1.125rem; border: 1px solid var(--admin-border-default); border-radius: var(--admin-radius-xl); background: var(--admin-bg-raised); color: var(--admin-text-muted); text-align: left; cursor: pointer; }
+.option > svg { flex-shrink: 0; }
+.option[aria-pressed="true"] { border-color: var(--admin-gold); background: var(--admin-gold-glow); }
+.option:hover { border-color: var(--admin-gold); }
+.option:focus-visible { outline: 2px solid var(--admin-gold); outline-offset: 3px; }
+.picker:disabled .option { opacity: 0.6; cursor: wait; }
+.copy { display: grid; gap: 0.4rem; padding-right: 0.75rem; }
+.copy strong { color: var(--admin-text-primary); font-size: 0.95rem; }
+.copy > span { font-size: 0.78rem; line-height: 1.5; }
+.check { position: absolute; top: 0.6rem; right: 0.6rem; color: var(--admin-gold); }
+@media (max-width: 480px) { .options { grid-template-columns: 1fr; } }

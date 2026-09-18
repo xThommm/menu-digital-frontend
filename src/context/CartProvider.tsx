@@ -29,11 +29,29 @@ function readCart(slug: string): CartLine[] {
   }
 }
 
+interface CartProviderProps {
+  slug: string;
+  enabled: boolean;
+  // Ajusta el carrito guardado antes de usarlo (UserMenu le pasa
+  // repriceCartLines con la carta actual). Solo se aplica a lo leído de
+  // localStorage — al montar y al cambiar de local —, no a cada cambio del
+  // carrito: lo que se agrega en la sesión ya sale de la carta cargada.
+  // Tiene que ser de la carta del mismo `slug`: con la de otro local
+  // descartaría todas las líneas del carrito guardado.
+  normalize?: (lines: CartLine[]) => CartLine[];
+  children: ReactNode;
+}
+
 // El carrito vive por local (clave localStorage "cart:<slug>"), no global:
 // así no se mezcla si el cliente navega de la carta de un negocio a la de
 // otro sin recargar la página.
-export function CartProvider({ slug, enabled, children }: { slug: string; enabled: boolean; children: ReactNode }) {
-  const [items, setItems] = useState<CartLine[]>(() => readCart(slug));
+export function CartProvider({ slug, enabled, normalize, children }: CartProviderProps) {
+  const loadCart = (key: string) => {
+    const lines = readCart(key);
+    return normalize ? normalize(lines) : lines;
+  };
+
+  const [items, setItems] = useState<CartLine[]>(() => loadCart(slug));
 
   // Si el slug cambia (navegación SPA de una carta a otra sin recarga
   // completa), recargamos el carrito de ESE local en vez de arrastrar el
@@ -43,7 +61,7 @@ export function CartProvider({ slug, enabled, children }: { slug: string; enable
   const [prevSlug, setPrevSlug] = useState(slug);
   if (slug !== prevSlug) {
     setPrevSlug(slug);
-    setItems(readCart(slug));
+    setItems(loadCart(slug));
   }
 
   useEffect(() => {

@@ -50,7 +50,19 @@ export interface ContactInfo {
   social: Record<string, string>
   businessName: string
   reservationMessage?: string
+  // Texto fijo que se suma al final del pedido por WhatsApp (Mi negocio).
+  // Opcional: vacío o ausente = el mensaje sale como siempre.
+  orderMessage?: string
 }
+
+// Cómo se ve la carta pública (panel de Configuración, sección "Carta").
+// Espejo de panelSettings.menuDisplay en el backend (models/User.js).
+export type MenuDisplayKey =
+  | "featuredSection"        // carrusel "Destacados" con los recomendados al inicio
+  | "collapsibleCategories"  // títulos de categoría desplegables, cerradas al entrar
+  | "hidePrices"             // sin precios en la carta; desactiva el pedido por WhatsApp
+
+export type MenuDisplay = Record<MenuDisplayKey, boolean>
 
 // Qué datos se muestran en la landing pública (panel de Configuración).
 // Espejo de panelSettings.landingVisibility en el backend (models/User.js).
@@ -132,11 +144,15 @@ export interface User {
   hasDelivery: boolean
   template: number
   contactInfo: ContactInfo
+  menuStyle?: import("../lib/menuStyles").MenuStyle
   media: Media
   schedule?: Schedule
   // Solo viene en la landing pública (GET /api/users/:slug). Opcional para
   // tolerar un backend anterior a la opción: ausente = mostrar todo.
   landingVisibility?: LandingVisibility
+  // Solo viene en la carta pública (GET /api/users/:slug/menu). Opcional
+  // para tolerar un backend anterior a la opción: ausente = todo apagado.
+  menuDisplay?: MenuDisplay
   createdAt: string
   updatedAt: string
 }

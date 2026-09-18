@@ -24,15 +24,30 @@ export function sanitizePhoneForWa(number: number | null): string | null {
 
 // Arma el texto del pedido: cada línea con cantidad, variante (si la hay) y
 // subtotal, más el total al final. Formato legible para que el dueño no
-// tenga que interpretar nada al recibirlo por WhatsApp.
-export function buildOrderMessage(cart: CartLine[], businessName: string): string {
+// tenga que interpretar nada al recibirlo por WhatsApp. `extraText` es el
+// "Mensaje de pedido" de Mi negocio (contactInfo.orderMessage): va después
+// del detalle, separado por una línea en blanco; vacío = mensaje de siempre.
+// Con `hidePrices` (opción "Ocultar precios" de la carta) el carrito sigue
+// andando pero salen solo cantidades y productos, sin subtotales ni total.
+export function buildOrderMessage(
+  cart: CartLine[],
+  businessName: string,
+  extraText?: string,
+  { hidePrices = false }: { hidePrices?: boolean } = {},
+): string {
   const lines = cart.map((l) => {
     const variant = l.selectedOption ? ` (${l.selectedOption})` : "";
-    return `• ${l.quantity}x ${l.title}${variant} — ${fmt(l.unitPrice * l.quantity)}`;
+    const subtotal = hidePrices ? "" : ` — ${fmt(l.unitPrice * l.quantity)}`;
+    return `• ${l.quantity}x ${l.title}${variant}${subtotal}`;
   });
   const total = cart.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
+  const extra = extraText?.trim();
 
-  return [`¡Hola! Quiero hacer un pedido en *${businessName}*:`, "", ...lines, "", `*Total: ${fmt(total)}*`].join("\n");
+  return [
+    `¡Hola! Quiero hacer un pedido en *${businessName}*:`, "", ...lines,
+    ...(hidePrices ? [] : ["", `*Total: ${fmt(total)}*`]),
+    ...(extra ? ["", extra] : []),
+  ].join("\n");
 }
 
 // null si no hay número cargado — el caller oculta el botón en ese caso.
