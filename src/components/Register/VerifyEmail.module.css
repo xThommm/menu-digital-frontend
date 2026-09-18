@@ -15,14 +15,21 @@
   margin-bottom: var(--space-6);
 }
 
+/* Lockup vertical con la proporción del logo vertical: el wordmark mide
+   exactamente el ancho del ícono (la "m" y la "l" caen sobre sus bordes)
+   y el aire entre los dos es el 11% del ícono. Se fija solo el tamaño del
+   ícono; el texto y el aire salen de ahí (ver --md-wordmark-ink en
+   globals.css), así la proporción no se rompe si cambia. */
 .logoMark {
+  --lockup-icon: 112px;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: calc(var(--lockup-icon) * var(--md-lockup-gap));
 }
 
 .logoSq {
-  width: 40px; height: 40px;
+  width: var(--lockup-icon); height: var(--lockup-icon);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -34,14 +41,10 @@
 }
 
 .brandName {
-  font-family: var(--font-auth-display);
-  font-size: var(--text-xl);
-  font-weight: 700;
-  font-style: italic;
+  font-size: calc(var(--lockup-icon) / var(--md-wordmark-ink));
+  line-height: 1;
   color: var(--auth-cream);
-  letter-spacing: -0.01em;
 }
-.brandName span { color: var(--auth-amber); }
 
 /* ── ICON ─────────────────────────────────────────────── */
 .icon {
@@ -53,7 +56,7 @@
   border-radius: var(--radius-full);
   border: 1px solid color-mix(in srgb, var(--auth-amber) 38%, transparent);
   background: color-mix(in srgb, var(--auth-amber) 10%, transparent);
-  color: var(--auth-amber);
+  color: var(--auth-amber-text);
 }
 
 .card h1 {
@@ -153,7 +156,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--auth-amber);
+  color: var(--auth-amber-text);
   font-size: var(--text-sm);
   text-decoration: underline;
   text-underline-offset: 3px;

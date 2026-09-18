@@ -3,6 +3,8 @@ import { useNavigate, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useFeedbackMessage } from "../../hooks/useFeedbackMessage";
 import BrandMark from "../Common/BrandMark";
+import BrandWordmark from "../Common/BrandWordmark";
+import { useAuthTheme } from "../../hooks/useAuthTheme";
 import styles from "./Register.module.css";
 
 const PLAN_IDS = ["free", "basic", "pro"] as const;
@@ -18,6 +20,8 @@ function shouldResumePendingRegistration() {
 }
 
 export default function RegisterPage() {
+  // Comparte la preferencia clara/oscura con la landing y las páginas legales.
+  const { theme } = useAuthTheme();
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const requestedPlan = readRequestedPlan();
@@ -93,7 +97,10 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className={`${styles.lp} auth-page-shell`}>
+    <div
+      className={`${styles.lp} auth-page-shell`}
+      data-auth-theme={theme === "light" ? "light" : undefined}
+    >
       <div className={`${styles.card} auth-surface`}>
         {/* Brand */}
         <div className={styles.brand}>
@@ -102,7 +109,7 @@ export default function RegisterPage() {
               <BrandMark className={styles.brandMarkImage} />
             </div>
             <div className={styles.brandName}>
-              Menú<span> Digital App</span>
+              <BrandWordmark />
             </div>
           </div>
           <p>Crear cuenta</p>

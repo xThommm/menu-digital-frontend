@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 
 // ──────────────────────────────────────────────
-// Tema claro/oscuro de las páginas PÚBLICAS que usan los tokens --auth-*
-// (AdminHome = landing pública, y las páginas de Legal.module.css: términos,
-// privacidad, contacto, arrepentimiento, baja). Login y Register comparten
-// el mismo prefijo de tokens pero no usan este hook — quedan fijas en
-// oscuro.
+// Tema claro/oscuro de las páginas PÚBLICAS que usan los tokens --auth-*:
+// AdminHome (landing), el blog, las páginas de Legal.module.css (términos,
+// privacidad, contacto, arrepentimiento, baja) y el flujo de auth (Login,
+// Register, VerifyEmail, RegisterPlans, RegisterSuccess).
+//
+// El toggle visible está en la landing, el blog y las legales; las pantallas
+// de auth leen la misma preferencia para no cortar el tema a mitad del alta,
+// pero no la cambian.
 //
 // Independiente del tema del panel admin (--admin-*, useTheme.ts): storage
 // key y atributo propios, y el atributo se aplica sobre el contenedor de

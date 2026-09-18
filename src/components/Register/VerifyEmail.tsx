@@ -8,11 +8,15 @@ import { extractServerMessage } from "../../lib/apiErrors";
 import { verifyEmail, resendVerificationCode } from "../../api/users";
 import FullScreenLoader from "../Common/FullScreenLoader";
 import BrandMark from "../Common/BrandMark";
+import BrandWordmark from "../Common/BrandWordmark";
+import { useAuthTheme } from "../../hooks/useAuthTheme";
 import styles from "./VerifyEmail.module.css";
 
 const RESEND_COOLDOWN_S = 30;
 
 export default function VerifyEmailPage() {
+  // Comparte la preferencia clara/oscura con la landing y las páginas legales.
+  const { theme } = useAuthTheme();
   const { isAuthenticated, isLoading, user, refreshUser, logout } = useAuth();
   const { success: notifySuccess } = useNotifications();
   const navigate = useNavigate();
@@ -91,7 +95,10 @@ export default function VerifyEmailPage() {
   };
 
   return (
-    <div className={`${styles.lp} auth-page-shell`}>
+    <div
+      className={`${styles.lp} auth-page-shell`}
+      data-auth-theme={theme === "light" ? "light" : undefined}
+    >
       <div className={`${styles.card} auth-surface`}>
         <div className={styles.brand}>
           <div className={styles.logoMark}>
@@ -99,7 +106,7 @@ export default function VerifyEmailPage() {
               <BrandMark className={styles.brandMarkImage} />
             </div>
             <div className={styles.brandName}>
-              Menú<span> Digital App</span>
+              <BrandWordmark />
             </div>
           </div>
         </div>

@@ -4,10 +4,14 @@ import { useAuth } from "../../context/useAuth";
 import { useNotifications } from "../../context/useNotifications";
 import { useFeedbackMessage } from "../../hooks/useFeedbackMessage";
 import BrandMark from "../Common/BrandMark";
+import BrandWordmark from "../Common/BrandWordmark";
+import { useAuthTheme } from "../../hooks/useAuthTheme";
 import styles from "./Login.module.css";
 import type { AuthUser } from "../../types";
 
 export default function LoginPage() {
+  // Comparte la preferencia clara/oscura con la landing y las páginas legales.
+  const { theme } = useAuthTheme();
   const { login, isAuthenticated, isLoading, user } = useAuth();
   const { success: notifySuccess } = useNotifications();
   const navigate = useNavigate();
@@ -90,7 +94,10 @@ const getRedirectPath = (user: AuthUser | null) => {
   };
 
   return (
-    <div className={`${styles.lp} auth-page-shell`}>
+    <div
+      className={`${styles.lp} auth-page-shell`}
+      data-auth-theme={theme === "light" ? "light" : undefined}
+    >
       <div className={`${styles.card} auth-surface`}>
 
         {/* Brand */}
@@ -99,7 +106,7 @@ const getRedirectPath = (user: AuthUser | null) => {
             <div className={styles.logoSq}>
               <BrandMark className={styles.brandMarkImage} />
             </div>
-            <div className={styles.brandName}>Menú<span> Digital App</span></div>
+            <div className={styles.brandName}><BrandWordmark /></div>
           </div>
           <p>Panel de administración</p>
         </div>

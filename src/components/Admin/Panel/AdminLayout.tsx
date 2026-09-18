@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/useAuth";
 import { useTheme } from "../../../hooks/useTheme";
 import BrandMark from "../../Common/BrandMark";
+import BrandWordmark from "../../Common/BrandWordmark";
 import s from "./AdminLayout.module.css";
 import { ChevronDown,PanelLeft , DollarSign, LayoutPanelLeft, LogOut, MoreHorizontal, PlayingCards, Speech } from "lucide-react";
 
@@ -88,11 +89,11 @@ export default function AdminLayout() {
       >
 
         <button type="button" className={s.brand} onClick={() => navigate("/admin")} aria-label="Ir al panel general">
-          <div className={s.logoSq} role="img" aria-label="MenuDigital">
+          <div className={s.logoSq} role="img" aria-label="menudigital">
             <BrandMark inline className={s.brandMarkImage} />
           </div>
           <div className={s.brandText}>
-            <span className={s.brandName}>Menú<span> Digital App</span></span>
+            <span className={s.brandName}><BrandWordmark /></span>
             <span className={s.brandSubtitle}>Panel CEO</span>
           </div>
         </button>

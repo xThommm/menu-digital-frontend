@@ -788,6 +788,24 @@ Tema claro/oscuro del **panel** (solo tokens `--admin-*`).
 - **`useTheme()`** — devuelve `{theme, toggle, setTheme}`; persiste en localStorage. La
   primera aplicación (anti-flash) la hace un script inline en `index.html`.
 
+### `hooks/useAuthTheme.ts`
+
+Tema claro/oscuro de las páginas **públicas** (solo tokens `--auth-*`), independiente
+del panel: storage key propia (`public-theme`) y el atributo `data-auth-theme` sobre el
+contenedor de cada página en vez de `<html>`, así los dos sistemas no se pisan.
+
+- **`useAuthTheme()`** — devuelve `{theme, toggle}`.
+- Lo aplican la landing, el blog, las páginas legales y el flujo de auth
+  (Login, Register, VerifyEmail, RegisterPlans, RegisterSuccess). El **toggle visible**
+  está solo en la landing, el blog y las legales; las pantallas de auth leen la misma
+  preferencia para no cortar el tema a mitad del alta, pero no la cambian.
+- Los valores claros viven en un único bloque `[data-auth-theme="light"]` de
+  `globals.css`. Los tokens pensados para fondo casi negro tienen su variante clara
+  ahí (`--auth-error-text`, `--auth-success-text`) y el ámbar de marca se desdobla:
+  `--auth-amber` sigue igual en los dos temas para rellenos, bordes y glows, y
+  `--auth-amber-text` es el que se usa como color de texto porque en claro hay que
+  oscurecerlo (el de marca da 2.17:1 sobre crema).
+
 ### `hooks/usePlans.ts`
 
 React Query consulta `api/plans.ts` con `PLANS_QUERY_KEY`, `staleTime: 0` y refetch
@@ -934,7 +952,35 @@ onboarding/alertas CRM, `PlanFeatures` y `BooleanPlanFeature`. El DTO comercial 
   vendedor). El logo es cuadrado: los contenedores van con ancho = alto. Los favicons
   (`favicon.ico`, `favicon-*.png`, `apple-touch-icon.png`) y
   `brand/menu-digital-logo-512.png` (og:image / logo de schema.org) son rasterizados
-  de ese SVG; si cambia el logo, hay que regenerarlos.
+  de ese SVG; si cambia el logo, hay que regenerarlos. **A los favicons no se les
+  suma el texto de marca**: ahí va solo el ícono.
+- **`BrandWordmark.tsx`** — el texto del logo, "menudigital" en minúscula y sin
+  espacio, con `<b>menu</b>` en bold y "digital" en regular. El contraste lo da el
+  peso y no el color: hereda `color` del contexto, así queda tinta sobre claro y
+  crema sobre oscuro con un solo token y sin reglas por tema. Estilos en la clase
+  global `md-wordmark` (ver [styles/](#styles)), que además neutraliza itálica y
+  `text-transform` heredados. Se combina con `BrandMark` en dos lockups:
+  **vertical** (ícono arriba, wordmark centrado abajo) en las tarjetas de auth
+  (Login, Register, VerifyEmail), y **horizontal** (ícono a la izquierda) en la nav
+  y el footer de la landing, los sidebars de los paneles CEO y vendedor, el header
+  del blog y las dos publicidades del plan gratuito. Las páginas legales lo usan
+  solo (sin ícono), igual que la nav/footer de la landing de la que cuelgan. Cada
+  lugar sigue poniendo el tamaño y el color; el componente no los define.
+  El lockup vertical respeta la proporción del logo vertical: la tinta del wordmark
+  mide exactamente el ancho del ícono (la "m" y la "l" caen sobre sus bordes) y el
+  aire entre los dos es el 11% del ícono. Cada tarjeta fija solo `--lockup-icon`
+  (112px) y el font-size y el gap se derivan de los tokens `--md-wordmark-ink` y
+  `--md-lockup-gap` de `globals.css`, medidos sobre la tinta real de Poppins; si
+  cambia la fuente, un peso o el tracking del wordmark, hay que volver a medirlos.
+  El lockup horizontal es la clase global `.md-lockup` (ícono y wordmark como hijos
+  directos): la base del texto apoya en el borde de abajo del ícono (`align-items:
+  baseline`, que a la imagen le sintetiza la base ahí), el tope de la "m" cae a
+  365/512 del ícono y de la tinta del ícono a la de la "m" hay un 19.27% del ícono.
+  Cada lugar fija solo `--md-lockup-icon`: nav de la landing (40px), footer (34px),
+  header del blog (32px), banner del plan gratuito del panel de usuario (34px, 32px
+  en mobile) y la publicidad de las cartas (32px). En los dos anuncios el logo está
+  adentro del copy, pegado al wordmark, y el resto de la línea se alinea por
+  baseline con él. Los sidebars de los paneles CEO y vendedor no lo usan.
 - **`FreePlanAd.tsx`** — publicidad reutilizable en la landing/carta cuando
   `features.sin_publicidad` no está activo, cualquiera sea el plan. Marca y CTA a
   `/`; estilos globales `t-free-plan-ad*`.
@@ -1291,7 +1337,15 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   `.t-notfound`/`.t-notfound-title`/`.t-notfound-sub` (estado "no encontrado" de las
   vistas públicas — colores fijos porque sin negocio no hay template del que heredar),
   `.grain` (textura), `.t-reveal`/`.t-reveal-in` (scroll-reveal con `useReveal`).
-- **Marca y navegación mobile**: `.md-brand-mark`, `.t-free-plan-ad*`,
+- **Texto sobre imagen**: `--admin-text-on-overlay`. Los velos que tapan una foto
+  (`.tileOverlay`, `.imageUploadingOverlay`, `.overlayEdit`) son `rgba(0,0,0,·)`
+  fijos a propósito, así que su texto tampoco se invierte con el tema: con
+  `--admin-text-primary` quedaba casi negro sobre negro en tema claro.
+- **Marca y navegación mobile**: `.md-brand-mark` y `.md-wordmark` (las dos
+  piezas del logo con texto; el wordmark fija familia, peso, itálica y
+  `text-transform` en sí mismo para no depender del orden del bundle frente a las
+  clases del módulo que lo aloja), `.md-lockup` (lockup horizontal) y los tokens de
+  geometría del wordmark que lo encajan contra el ícono, `.t-free-plan-ad*`,
   `.admin-mobile-dock` y sus clases compartidas; los dos shells usan el mismo dock
   responsive con espacio para safe area.
 - **Componentes de template `.t-*`** (hero, header con avatar, badges, info-rows,

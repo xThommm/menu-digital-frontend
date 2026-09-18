@@ -12,7 +12,7 @@
 .eyebrow {
   display: block;
   margin-bottom: var(--space-2);
-  color: var(--auth-amber);
+  color: var(--auth-amber-text);
   font-family: var(--font-auth-mono);
   font-size: var(--text-xs);
   letter-spacing: 0.16em;
@@ -117,7 +117,7 @@
 
 .planPrice {
   margin-bottom: var(--space-2);
-  color: var(--auth-amber);
+  color: var(--auth-amber-text);
   font-family: var(--font-auth-display);
   font-size: var(--text-2xl);
   font-weight: 900;
@@ -148,7 +148,7 @@
 }
 
 .features li { display: flex; align-items: flex-start; gap: var(--space-2); }
-.features li span { color: var(--auth-amber); }
+.features li span { color: var(--auth-amber-text); }
 
 .monthsSection {
   margin-bottom: var(--space-5);
@@ -161,7 +161,7 @@
 .monthsLabel,
 .totalLabel {
   display: block;
-  color: var(--auth-amber);
+  color: var(--auth-amber-text);
   font-family: var(--font-auth-mono);
   font-size: var(--text-xs);
   letter-spacing: 0.12em;
@@ -323,7 +323,7 @@
   transition: color var(--auth-transition);
 }
 
-.back a:hover { color: var(--auth-amber); }
+.back a:hover { color: var(--auth-amber-text); }
 .back a:focus-visible { outline: 2px solid var(--auth-amber); outline-offset: 4px; }
 
 .sellerSection {
@@ -339,7 +339,7 @@
   align-items: baseline;
   gap: var(--space-2);
   margin-bottom: var(--space-3);
-  color: var(--auth-amber);
+  color: var(--auth-amber-text);
   font-family: var(--font-auth-mono);
   font-size: var(--text-xs);
   letter-spacing: 0.12em;
@@ -399,7 +399,7 @@
 .sellerApplyBtn {
   border: 1px solid var(--auth-amber);
   background: color-mix(in srgb, var(--auth-amber) 14%, transparent);
-  color: var(--auth-amber);
+  color: var(--auth-amber-text);
 }
 
 .sellerApplyBtn:hover:not(:disabled) {
@@ -461,12 +461,12 @@
   height: 40px;
   border-radius: var(--radius-full);
   background: color-mix(in srgb, var(--auth-amber) 20%, transparent);
-  color: var(--auth-amber);
+  color: var(--auth-amber-text);
 }
 
 .trialPromoEyebrow {
   margin: 0 0 2px;
-  color: var(--auth-amber);
+  color: var(--auth-amber-text);
   font-family: var(--font-auth-mono);
   font-size: var(--text-xs);
   letter-spacing: 0.1em;

@@ -4,6 +4,7 @@ import { useAuth } from "../../context/useAuth";
 import { useTheme } from "../../hooks/useTheme";
 import { useCrmAlerts } from "../../hooks/useCrmAlerts";
 import BrandMark from "../Common/BrandMark";
+import BrandWordmark from "../Common/BrandWordmark";
 import s from "./SellerLayout.module.css";
 import {
   BarChart3,
@@ -100,12 +101,12 @@ export default function SellerLayout() {
         inert={sidebarCollapsed}
       >
         <button type="button" className={s.brand} onClick={goToOwnPanel} aria-label="Ir al panel general">
-          <div className={s.logoSq} role="img" aria-label="MenuDigital">
+          <div className={s.logoSq} role="img" aria-label="menudigital">
             <BrandMark inline className={s.brandMarkImage} />
           </div>
           <div className={s.brandText}>
             <span className={s.brandName}>
-              Menú<span> Digital App</span>
+              <BrandWordmark />
             </span>
             <span className={s.brandSubtitle}>{user?.name}</span>
           </div>

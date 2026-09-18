@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useNotifications } from "../../context/useNotifications";
 import { useFeedbackMessage } from "../../hooks/useFeedbackMessage";
+import { useAuthTheme } from "../../hooks/useAuthTheme";
 import { usePlans } from "../../hooks/usePlans";
 import { getPlanFeatureLabels } from "../../lib/plans";
 import Spinner from "../Common/Spinner";
@@ -116,6 +117,8 @@ const MONTH_OPTION_COPY: Record<
 };
 
 export default function RegisterPlansPage() {
+  // Comparte la preferencia clara/oscura con la landing y las páginas legales.
+  const { theme } = useAuthTheme();
   const navigate = useNavigate();
   const catalog = usePlans();
   const { login } = useAuth();
@@ -356,7 +359,10 @@ export default function RegisterPlansPage() {
   }
 
   return (
-    <div className="auth-page-shell">
+    <div
+      className="auth-page-shell"
+      data-auth-theme={theme === "light" ? "light" : undefined}
+    >
       <div className={`auth-surface ${styles.card}`}>
         <div className={styles.header}>
           <span className={styles.eyebrow}>Menú Digital App · Alta de cuenta</span>

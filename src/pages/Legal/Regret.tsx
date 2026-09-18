@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import styles from "./Legal.module.css";
 import { Sun, Moon } from "lucide-react";
 import { useAuthTheme } from "../../hooks/useAuthTheme";
+import BrandWordmark from "../../components/Common/BrandWordmark";
 
 type FormState = {
   email: string;
@@ -160,7 +161,7 @@ export default function Arrepentimiento() {
     <div className={styles.page} data-auth-theme={theme === "light" ? "light" : undefined}>
       <nav className={styles.nav}>
         <Link to="/" className={styles.navLogo}>
-          Menú<span> Digital App</span>
+          <BrandWordmark />
         </Link>
         <div className={styles.navRight}>
           <button
@@ -407,7 +408,7 @@ export default function Arrepentimiento() {
 
       <footer className={styles.footer}>
         <div className={styles.footInner}>
-          <span className={styles.footLogo}>Menú Digital App</span>
+          <span className={styles.footLogo}><BrandWordmark /></span>
           <div className={styles.footLinks}>
             <Link to="/terminos">Términos</Link>
             <Link to="/privacidad">Privacidad</Link>
