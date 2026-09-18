@@ -97,3 +97,28 @@ del producto. La implementación usa exclusivamente `Item.image` de cada local.
 
 Revisar con las fotos de un local real: las imágenes cuyo plato ya es circular se acercan
 más a la referencia. La imagen cuadrada original permanece intacta; el recorte es solo CSS.
+
+## Corrección de paletas compartidas — 2026-09-18
+
+final result: passed
+
+- Se detectó que Bistró reasignaba colores de títulos a precios y botones, además de
+  cambiar fondos de tarjetas, encabezado, ficha y carrito. Usar tokens de la misma
+  paleta no alcanzaba: cada diseño los aplicaba a elementos diferentes.
+- Se retiraron esas sustituciones. Ambos diseños heredan las mismas reglas de color
+  y estados; Bistró conserva distribución, tipografía, formas y sombras. El fondo
+  degradado de la paleta también se aplica a Clásico. Los botones de agregar y el
+  acceso al carrito utilizan `--t-btn-text` sobre `--t-accent`.
+- Comparación en navegador de las 15 paletas: igualdad de color, fondo e imagen de
+  fondo en 14 elementos representativos de ambos diseños (630 comparaciones).
+  Incluye tarjetas comunes, recomendadas y no disponibles, precios, textos,
+  categorías, pestañas, ofertas y botones.
+- Ficha de producto y barra de carrito: colores iguales en las paletas 1 y 6,
+  comprobados al abrir la ficha y agregar un producto.
+- Comparación visual lado a lado aprobada con Aurora y la paleta oscura 1.
+  Evidencia en el mismo directorio de capturas: `palette-comparison-aurora.png`,
+  `palette-comparison-dark.png` y `palette-verification.json`. Comparador local:
+  `http://127.0.0.1:5178/__palettes`; cada carta se muestra en un iframe de 390 px.
+- `npm run typecheck`, `npm run build` y `git diff --check`: aprobados.
+- Validación con el fixture local. Esta corrección modifica CSS del frontend;
+  no requiere cambios de datos ni backend. Sin commit, push o despliegue de esta corrección.

@@ -289,7 +289,7 @@
   align-items: center;
   gap: 0.35rem;
   background: var(--t-accent);
-  color: var(--t-bg);
+  color: var(--t-btn-text);
   border: none;
   font-size: 0.85rem;
   font-weight: 600;
@@ -379,11 +379,9 @@
 }
 
 /* Ficha Bistró: misma información y controles, foto circular protagonista. */
-:global([data-menu-style="bistro"]) .sheet { background: var(--t-bg); box-shadow: var(--t-bistro-shadow); }
+:global([data-menu-style="bistro"]) .sheet { box-shadow: var(--t-bistro-shadow); }
 :global([data-menu-style="bistro"]) .imageZone { padding: 3.75rem 1.75rem 0.5rem; }
 :global([data-menu-style="bistro"]) .img,
 :global([data-menu-style="bistro"]) .imgPlaceholder { aspect-ratio: 1; width: min(100%, 310px, 38dvh); margin-inline: auto; border-radius: 50%; box-shadow: var(--t-bistro-shadow); }
 :global([data-menu-style="bistro"]) .content { padding: 1.25rem 1.5rem 1.75rem; }
 :global([data-menu-style="bistro"]) .name { font-weight: 750; font-size: 1.5rem; letter-spacing: -0.035em; }
-:global([data-menu-style="bistro"]) .close { color: var(--t-title); }
-:global([data-menu-style="bistro"]) .addBtn { background: var(--t-title); color: var(--t-bg); }

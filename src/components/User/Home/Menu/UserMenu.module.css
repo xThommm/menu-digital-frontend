@@ -6,6 +6,8 @@
   --floating-edge: var(--space-5);
   min-height: 100vh;
   background: var(--t-bg);
+  background-image: var(--t-bg-image, none);
+  background-attachment: fixed;
   font-family: var(--font-sans);
   font-size: 0.9375rem;
   color: var(--t-text);
@@ -33,8 +35,8 @@
   justify-content: center;
   border: 0;
   border-radius: 15px 15px 22px 15px;
-  background: var(--t-title);
-  color: var(--t-bg);
+  background: var(--t-accent);
+  color: var(--t-btn-text);
   cursor: pointer;
 }
 
@@ -691,7 +693,7 @@
   border-radius: 50%;
   border: none;
   background: var(--t-accent);
-  color: var(--t-bg);
+  color: var(--t-btn-text);
   font-size: 1rem;
   line-height: 1;
   font-weight: 600;
@@ -1232,17 +1234,12 @@
   }
 }
 
-/* Bistró comparte los componentes y las reglas de compra con Clásico.
-   Solo cambia la presentación; cualquier paleta --t-* funciona aquí. */
-.mp[data-menu-style="bistro"] {
-  background-image: var(--t-bg-image, none);
-  background-attachment: fixed;
-}
-
+/* Bistró solo modifica distribución, tamaños, tipografía y formas.
+   Los colores y estados heredan las reglas comunes de arriba: cambiar
+   de diseño conserva la misma paleta en tarjetas, precios y controles. */
 .mp[data-menu-style="bistro"] .mpHeader {
   padding: 1.5rem 1.25rem 1rem;
   border: 0;
-  background: var(--t-bg);
   align-items: center;
 }
 
@@ -1255,37 +1252,33 @@
   letter-spacing: -0.045em;
 }
 
-.mp[data-menu-style="bistro"] .mpMeta { color: var(--t-text); margin-top: 0.5rem; }
-.mp[data-menu-style="bistro"] .mpBack { border: 0; background: var(--t-surface); color: var(--t-title); }
+.mp[data-menu-style="bistro"] .mpMeta { margin-top: 0.5rem; }
+.mp[data-menu-style="bistro"] .mpBack { border: 0; }
 .mp[data-menu-style="bistro"] .mpTabs { padding-block: 0.5rem 1rem; gap: 0.625rem; }
-.mp[data-menu-style="bistro"] .mpTab { display: inline-flex; align-items: center; gap: 0.5rem; border-radius: 17px; border-color: transparent; color: var(--t-text); }
-.mp[data-menu-style="bistro"] .mpTab.active { background: var(--t-title); color: var(--t-bg); border-color: var(--t-title); }
+.mp[data-menu-style="bistro"] .mpTab { display: inline-flex; align-items: center; gap: 0.5rem; border-radius: 17px; }
 .mp[data-menu-style="bistro"] .mpContent { padding: 1.25rem 1.25rem 7rem; }
 .mp[data-menu-style="bistro"] .mpCat,
 .mp[data-menu-style="bistro"] .mpCatItems:not([hidden]) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.5rem 1rem; align-items: stretch; }
 .mp[data-menu-style="bistro"] .mpCat { margin-bottom: 2rem; }
-.mp[data-menu-style="bistro"] .mpCatTitle { grid-column: 1 / -1; margin: 0; padding: 0; border: 0; color: var(--t-title); font-size: 1.125rem; font-weight: 700; letter-spacing: -0.025em; }
+.mp[data-menu-style="bistro"] .mpCatTitle { grid-column: 1 / -1; margin: 0; padding: 0; border: 0; font-size: 1.125rem; font-weight: 700; letter-spacing: -0.025em; }
 .mp[data-menu-style="bistro"] .mpCatItems { padding-top: 2.75rem; }
 .mp[data-menu-style="bistro"] .mpCatCollapsible { margin-bottom: 1rem; }
-.mp[data-menu-style="bistro"] .itemCard { position: relative; display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; min-height: 0; margin: 0; padding: 0 0.875rem 1rem; border-radius: 26px; border-color: color-mix(in srgb, var(--t-border) 55%, transparent); box-shadow: var(--t-bistro-shadow); background: var(--t-surface); }
-.mp[data-menu-style="bistro"] .itemCard.recommended { border-color: color-mix(in srgb, var(--t-accent) 45%, var(--t-border)); }
+.mp[data-menu-style="bistro"] .itemCard { position: relative; display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; min-height: 0; margin: 0; padding: 0 0.875rem 1rem; border-radius: 26px; box-shadow: var(--t-bistro-shadow); }
 .mp[data-menu-style="bistro"] .itemImg,
 .mp[data-menu-style="bistro"] .itemImgPlaceholder { width: min(100%, 180px); height: auto; aspect-ratio: 1; border-radius: 50%; margin: -1.3rem auto 0; box-shadow: var(--t-bistro-shadow); }
 .mp[data-menu-style="bistro"] .itemBody { flex: 1; min-height: 0; gap: 0.4rem; }
 .mp[data-menu-style="bistro"] .itemTop { flex-direction: column; gap: 0.4rem; }
-.mp[data-menu-style="bistro"] .itemName { padding: 0; border: 0; background: none; text-align: left; font: inherit; color: var(--t-title); font-weight: 750; font-size: 0.9375rem; line-height: 1.25; overflow-wrap: anywhere; cursor: pointer; }
-.mp[data-menu-style="bistro"] .itemDesc { color: color-mix(in srgb, var(--t-title) 70%, var(--t-bg)); font-size: 0.75rem; line-height: 1.5; -webkit-line-clamp: 2; margin: 0 0 0.4rem; }
+.mp[data-menu-style="bistro"] .itemName { padding: 0; border: 0; background: none; text-align: left; font: inherit; font-weight: 750; font-size: 0.9375rem; line-height: 1.25; overflow-wrap: anywhere; cursor: pointer; }
+.mp[data-menu-style="bistro"] .itemDesc { font-size: 0.75rem; line-height: 1.5; -webkit-line-clamp: 2; margin: 0 0 0.4rem; }
 .mp[data-menu-style="bistro"] .itemBottom { margin-top: auto; gap: 0.4rem; padding-top: 0.3rem; }
-.mp[data-menu-style="bistro"] .itemPrice { color: var(--t-title); font-size: 0.875rem; font-weight: 750; overflow-wrap: anywhere; }
-.mp[data-menu-style="bistro"] .addBtn { margin-left: auto; background: var(--t-title); color: var(--t-bg); }
+.mp[data-menu-style="bistro"] .itemPrice { font-size: 0.875rem; font-weight: 750; overflow-wrap: anywhere; }
+.mp[data-menu-style="bistro"] .addBtn { margin-left: auto; }
 .mp[data-menu-style="bistro"] .qtyStepper { padding: 2px; gap: 3px; margin-left: auto; max-width: 100%; }
 .mp[data-menu-style="bistro"] .badgeVariant { min-height: 36px; white-space: normal; }
 .mp[data-menu-style="bistro"] .badgeReco { font-size: 0.5625rem; letter-spacing: 0; padding-inline: 5px; }
-.mp[data-menu-style="bistro"] .cartBar { left: 1rem; right: 1rem; bottom: max(1rem, env(safe-area-inset-bottom)); width: auto; border: 0; border-radius: 22px; background: var(--t-title); color: var(--t-bg); box-shadow: var(--t-bistro-shadow); }
-.mp[data-menu-style="bistro"] .cartBarTotal { color: var(--t-bg); }
-.mp[data-menu-style="bistro"] .cartBarCount { background: var(--t-bg); color: var(--t-title); border-radius: 50%; }
+.mp[data-menu-style="bistro"] .cartBar { left: 1rem; right: 1rem; bottom: max(1rem, env(safe-area-inset-bottom)); width: auto; border: 0; border-radius: 22px; box-shadow: var(--t-bistro-shadow); }
+.mp[data-menu-style="bistro"] .cartBarCount { border-radius: 50%; }
 .mp[data-menu-style="bistro"] .featured { margin-bottom: 2rem; }
-.mp[data-menu-style="bistro"] .featuredTitle { color: var(--t-title); }
 .mp[data-menu-style="bistro"] .featuredSlide { flex-basis: 280px; }
 .mp[data-menu-style="bistro"] .featuredCard { border-radius: 22px; flex-direction: row-reverse; align-items: center; padding: 0.75rem; }
 .mp[data-menu-style="bistro"] .featuredBody { padding: 0.4rem; }
