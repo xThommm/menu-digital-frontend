@@ -61,18 +61,13 @@
 }
 
 .navLogo {
-  display: inline-flex;
+  --md-lockup-icon: 40px;
   flex-shrink: 0;
   white-space: nowrap;
-  align-items: center;
-  gap: .55rem;
-  font-size: 1.3rem;
   color: var(--auth-cream); text-decoration: none;
 }
 
 .navLogoMark {
-  width: 30px;
-  height: 30px;
   filter: drop-shadow(0 0 10px color-mix(in srgb, var(--gold) 42%, transparent));
 }
 
@@ -859,15 +854,8 @@
   display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;
 }
 .footLogo {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 1.1rem;
+  --md-lockup-icon: 34px;
   color: var(--auth-cream);
-}
-.footLogoMark {
-  width: 28px;
-  height: 28px;
 }
 .footLinks { display: flex; gap: 2rem; }
 .footLinks a { font-size: .78rem; color: var(--auth-cream-dim); text-decoration: none; transition: color .2s; }

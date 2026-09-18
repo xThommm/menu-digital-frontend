@@ -36,11 +36,12 @@ export default function FreePlanAd() {
   return (
     <aside ref={ref} className="t-free-plan-ad" aria-label="Publicidad de menudigital">
       <div className="t-free-plan-ad-content">
-        <BrandMark className="t-free-plan-ad-logo" />
-
         <div className="t-free-plan-ad-copy">
           <div className="t-free-plan-ad-top">
-            <span className="t-free-plan-ad-brand"><BrandWordmark /></span>
+            <span className="t-free-plan-ad-brand md-lockup">
+              <BrandMark className="t-free-plan-ad-logo" />
+              <BrandWordmark />
+            </span>
             <span className="t-free-plan-ad-badge">Gratis</span>
           </div>
 

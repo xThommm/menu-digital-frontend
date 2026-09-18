@@ -145,9 +145,11 @@ function DashboardLayoutInner() {
         )}
         {!catalog.isError && catalog.data?.find(plan => plan.name === effectiveSubscription)?.features.sin_publicidad === false && (
           <aside className={`${s.freeBanner} ${subscriptionExpired ? s.freeBannerAfterExpiry : ""}`} aria-label="Publicidad de menudigital">
-            <BrandMark className={s.freeBannerLogo} />
             <div className={s.freeBannerCopy}>
-              <span className={s.freeBannerBrand}><BrandWordmark /></span>
+              <span className={`${s.freeBannerBrand} md-lockup`}>
+                <BrandMark className={s.freeBannerLogo} />
+                <BrandWordmark />
+              </span>
               <span className={s.freeBannerBadge}>Tu menú digital</span>
               <span className={s.freeBannerText}>
                 Tu carta online, siempre lista para vender.

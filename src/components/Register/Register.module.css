@@ -15,18 +15,24 @@
   margin-bottom: var(--space-8);
 }
 
-/* Lockup vertical: la tarjeta está centrada y sobra alto, así que el
-   ícono va grande arriba y el wordmark centrado abajo. */
+/* Lockup vertical con la proporción del logo vertical: el wordmark mide
+   exactamente el ancho del ícono (la "m" y la "l" caen sobre sus bordes)
+   y el aire entre los dos es el 11% del ícono. Se fija solo el tamaño del
+   ícono; el texto y el aire salen de ahí (ver --md-wordmark-ink en
+   globals.css), así la proporción no se rompe si cambia. */
 .logoMark {
+  --lockup-icon: 112px;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  gap: calc(var(--lockup-icon) * var(--md-lockup-gap));
+  /* Con line-height 1 la línea del wordmark ya no deja aire abajo: el
+     margen lo repone para que el subtítulo no quede pegado. */
+  margin-bottom: var(--space-4);
 }
 
 .logoSq {
-  width: 64px; height: 64px;
+  width: var(--lockup-icon); height: var(--lockup-icon);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -38,7 +44,8 @@
 }
 
 .brandName {
-  font-size: var(--text-xl);
+  font-size: calc(var(--lockup-icon) / var(--md-wordmark-ink));
+  line-height: 1;
   color: var(--auth-cream);
 }
 

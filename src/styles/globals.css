@@ -1530,6 +1530,67 @@ a:hover { opacity: 0.75; }
   letter-spacing: -0.03em;
 }
 
+/* Geometría de "menudigital" en em, para encajar el wordmark contra el
+   ícono en los dos lockups (vertical y horizontal). Medida en el navegador
+   sobre la tinta real de los glifos (Poppins, con los pesos y el tracking
+   de arriba) a 1000px, porque measureText redondea los bordes de tinta a
+   píxeles enteros y a tamaño chico eso mete hasta 1px de error por lado.
+   --md-wordmark-ink: ancho de la tinta, del borde de la "m" al de la "l".
+     Un ancho dividido por esto da el font-size con el que el wordmark mide
+     justo ese ancho. Los márgenes de la caja a la tinta son casi iguales a
+     los dos lados (0.063em y 0.054em), así que centrar la caja ya centra
+     la tinta.
+   --md-wordmark-m-top: alto de la "m" bold, contando el sobrepaso de sus
+     arcos por encima de la altura de x.
+   --md-wordmark-m-lsb: margen de la caja a la tinta de la "m".
+   Si cambia la fuente, un peso o el letter-spacing, hay que volver a medir. */
+:root {
+  --md-wordmark-ink:   5.776;
+  --md-wordmark-m-top: 0.5625;
+  --md-wordmark-m-lsb: 0.0625;
+
+  /* Lockup vertical: aire entre ícono y wordmark, como fracción del ícono.
+     El 11% del logo vertical menos lo que la línea (con line-height 1) ya
+     deja arriba de la tinta, 0.084em del texto. */
+  --md-lockup-gap: calc(0.11 - 0.084 / var(--md-wordmark-ink));
+
+  /* Lockup horizontal: font-size y gap como fracción del ícono. La "m"
+     mide el 28.65% del ícono (su tope cae a 365/512) y de la tinta del
+     ícono a la de la "m" hay un 19.27% del ícono, menos el margen propio
+     de la "m" porque el gap se mide entre cajas. */
+  --md-lockup-h-text: calc(0.2865 / var(--md-wordmark-m-top));
+  --md-lockup-h-gap:  calc(0.1927 - var(--md-wordmark-m-lsb) * var(--md-lockup-h-text));
+}
+
+/* Lockup horizontal: ícono a la izquierda y wordmark a la derecha, con la
+   proporción del logo horizontal. La base del texto apoya en el borde de
+   abajo del ícono y el tope de la "m" cae a 365/512 del ícono, a la altura
+   del hueco entre el cuadrado gris y la escuadra del documento. Quien lo
+   usa fija solo --md-lockup-icon; el texto y el aire se derivan de ahí.
+   Espera el ícono (.md-brand-mark) y el wordmark (.md-wordmark) como hijos
+   directos. */
+.md-lockup {
+  --md-lockup-icon: 32px;
+  display: inline-flex;
+  /* Una imagen no trae línea base: al alinear por baseline se le sintetiza
+     en su borde de abajo, y ahí apoya la base del texto. El lockup expone
+     esa misma base hacia afuera, así que un contenedor que alinee por
+     baseline pone su propio texto sobre la línea del wordmark. */
+  align-items: baseline;
+  gap: calc(var(--md-lockup-icon) * var(--md-lockup-h-gap));
+}
+
+.md-lockup > .md-brand-mark {
+  flex: none;
+  width: var(--md-lockup-icon);
+  height: var(--md-lockup-icon);
+}
+
+.md-lockup > .md-wordmark {
+  font-size: calc(var(--md-lockup-icon) * var(--md-lockup-h-text));
+  line-height: 1;
+}
+
 /* ── Publicidad de Menú Digital App para cartas del plan gratuito ── */
 
 .t-free-plan-ad {
@@ -1579,13 +1640,9 @@ a:hover { opacity: 0.75; }
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 0.85rem;
 }
 
 .t-free-plan-ad-logo {
-  flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
   filter: drop-shadow(0 0 10px color-mix(in srgb, var(--gold) 40%, transparent));
 }
 
@@ -1596,15 +1653,16 @@ a:hover { opacity: 0.75; }
   gap: 2px;
 }
 
+/* baseline: el badge apoya en la misma línea que el wordmark. */
 .t-free-plan-ad-top {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.5rem;
 }
 
 .t-free-plan-ad-brand {
+  --md-lockup-icon: 32px;
   color: var(--gold-light);
-  font-size: 0.95rem;
 }
 
 .t-free-plan-ad-badge {
@@ -1696,15 +1754,6 @@ a:hover { opacity: 0.75; }
     width: 100%;
     border-radius: 0;
     border-width: 0 0 1px;
-  }
-
-  .t-free-plan-ad-content {
-    gap: 0.75rem;
-  }
-
-  .t-free-plan-ad-logo {
-    width: 42px;
-    height: 42px;
   }
 
   .t-free-plan-ad-title {

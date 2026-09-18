@@ -185,7 +185,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-6);
 }
 
 .freeBannerAfterExpiry {
@@ -193,21 +192,21 @@
 }
 
 .freeBannerLogo {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
   filter: drop-shadow(var(--admin-shadow-logo));
 }
 
+/* baseline: el badge y el texto apoyan en la misma línea que el wordmark,
+   que el lockup ubica en el borde de abajo del ícono. */
 .freeBannerCopy {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: center;
   gap: var(--space-3);
   min-width: 0;
 }
 
 .freeBannerBrand {
+  --md-lockup-icon: 34px;
   color: var(--admin-gold);
   white-space: nowrap;
 }
@@ -264,9 +263,8 @@
     top: 86px;
   }
 
-  .freeBannerLogo {
-    width: 32px;
-    height: 32px;
+  .freeBannerBrand {
+    --md-lockup-icon: 32px;
   }
 
   .freeBannerCopy {

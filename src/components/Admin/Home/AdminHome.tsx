@@ -522,7 +522,7 @@ useEffect(() => {
 
         {/* ── NAV ── */}
         <nav className={styles.nav} ref={navRef}>
-  <a className={styles.navLogo} href="/">
+  <a className={`${styles.navLogo} md-lockup`} href="/">
     <BrandMark className={styles.navLogoMark} />
     <BrandWordmark />
   </a>
@@ -952,8 +952,8 @@ useEffect(() => {
         {/* ── FOOTER ── */}
         <footer className={styles.footer}>
           <div className={styles.footInner}>
-            <div className={styles.footLogo}>
-              <BrandMark className={styles.footLogoMark} />
+            <div className={`${styles.footLogo} md-lockup`}>
+              <BrandMark />
               <BrandWordmark />
             </div>
             <div className={styles.footLinks}>

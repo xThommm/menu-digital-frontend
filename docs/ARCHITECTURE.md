@@ -966,6 +966,21 @@ onboarding/alertas CRM, `PlanFeatures` y `BooleanPlanFeature`. El DTO comercial 
   del blog y las dos publicidades del plan gratuito. Las páginas legales lo usan
   solo (sin ícono), igual que la nav/footer de la landing de la que cuelgan. Cada
   lugar sigue poniendo el tamaño y el color; el componente no los define.
+  El lockup vertical respeta la proporción del logo vertical: la tinta del wordmark
+  mide exactamente el ancho del ícono (la "m" y la "l" caen sobre sus bordes) y el
+  aire entre los dos es el 11% del ícono. Cada tarjeta fija solo `--lockup-icon`
+  (112px) y el font-size y el gap se derivan de los tokens `--md-wordmark-ink` y
+  `--md-lockup-gap` de `globals.css`, medidos sobre la tinta real de Poppins; si
+  cambia la fuente, un peso o el tracking del wordmark, hay que volver a medirlos.
+  El lockup horizontal es la clase global `.md-lockup` (ícono y wordmark como hijos
+  directos): la base del texto apoya en el borde de abajo del ícono (`align-items:
+  baseline`, que a la imagen le sintetiza la base ahí), el tope de la "m" cae a
+  365/512 del ícono y de la tinta del ícono a la de la "m" hay un 19.27% del ícono.
+  Cada lugar fija solo `--md-lockup-icon`: nav de la landing (40px), footer (34px),
+  header del blog (32px), banner del plan gratuito del panel de usuario (34px, 32px
+  en mobile) y la publicidad de las cartas (32px). En los dos anuncios el logo está
+  adentro del copy, pegado al wordmark, y el resto de la línea se alinea por
+  baseline con él. Los sidebars de los paneles CEO y vendedor no lo usan.
 - **`FreePlanAd.tsx`** — publicidad reutilizable en la landing/carta cuando
   `features.sin_publicidad` no está activo, cualquiera sea el plan. Marca y CTA a
   `/`; estilos globales `t-free-plan-ad*`.
@@ -1329,7 +1344,8 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
 - **Marca y navegación mobile**: `.md-brand-mark` y `.md-wordmark` (las dos
   piezas del logo con texto; el wordmark fija familia, peso, itálica y
   `text-transform` en sí mismo para no depender del orden del bundle frente a las
-  clases del módulo que lo aloja), `.t-free-plan-ad*`,
+  clases del módulo que lo aloja), `.md-lockup` (lockup horizontal) y los tokens de
+  geometría del wordmark que lo encajan contra el ícono, `.t-free-plan-ad*`,
   `.admin-mobile-dock` y sus clases compartidas; los dos shells usan el mismo dock
   responsive con espacio para safe area.
 - **Componentes de template `.t-*`** (hero, header con avatar, badges, info-rows,
