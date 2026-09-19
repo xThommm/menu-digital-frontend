@@ -3,9 +3,10 @@
 
 /* ── Shell ── */
 .me {
+  composes: admin-editor from global;
   min-height: 100vh;
   width: 100%;
-  background: var(--admin-bg-base);
+  background: var(--admin-editor-canvas);
   font-family: var(--font-sans);
   color: var(--admin-text-secondary);
   display: flex;
@@ -15,17 +16,11 @@
 
 /* ── Top bar ── */
 .topBar {
+  composes: admin-editor-header from global;
   display: flex;
   align-items: center;
   gap: 0.875rem;
-  min-height: 72px;
-  padding: 0.875rem 1rem;
-  border-bottom: 0.5px solid var(--admin-border-subtle);
-  /* bg-base semi-transparente para que el blur del sticky deje ver algo
-     por detrás; con color-mix sigue el tema (antes era rgba fija oscura). */
-  background: color-mix(in srgb, var(--admin-bg-base) 90%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  padding: 1.25rem clamp(1rem, 3vw, 1.75rem);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -60,7 +55,7 @@
 
 .topCenter .topTitle {
   font-family: var(--font-sans);
-  font-size: 0.95rem;
+  font-size: 1.45rem;
   font-weight: 600;
 }
 
@@ -95,11 +90,12 @@
 }
 
 .backBtn {
+  composes: md-glass-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
   background: var(--admin-bg-elevated);
   border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -127,7 +123,7 @@
 /* ── Contenido ── */
 .content {
   flex: 1;
-  padding: 1rem 1rem 2rem;
+  padding: 1.25rem clamp(1rem, 3vw, 1.75rem) 2rem;
 }
 
 .formContent {
@@ -157,14 +153,14 @@
 /* ── Buscador del editor ── */
 .searchPanel {
   position: sticky;
-  top: 72px;
+  top: calc(var(--admin-editor-header-height) + env(safe-area-inset-top));
   z-index: 8;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.5rem;
   margin-bottom: 1.25rem;
   padding: 0.15rem 0 0.75rem;
-  background: color-mix(in srgb, var(--admin-bg-base) 94%, transparent);
+  background: color-mix(in srgb, var(--admin-bg-base) 96%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -172,10 +168,10 @@
 .searchInput {
   width: 100%;
   min-height: 48px;
-  border: 0.5px solid var(--admin-border-default);
+  border: 1px solid var(--admin-editor-border);
   border-radius: var(--admin-radius-lg);
   outline: none;
-  background: var(--admin-bg-surface);
+  background: var(--admin-editor-surface);
   padding: 0 0.95rem;
   color: var(--admin-text-primary);
   font: 0.92rem var(--font-sans);
@@ -196,11 +192,12 @@
 }
 
 .searchClear {
+  composes: md-glass-button from global;
   min-width: 72px;
   min-height: var(--control-min-size);
   align-self: center;
   border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   background: var(--admin-bg-raised);
   padding: 0 0.75rem;
   color: var(--admin-text-secondary);
@@ -420,7 +417,11 @@
 }
 
 .formSection {
-  border-bottom: 0.5px solid var(--admin-border-subtle);
+  margin: 0.65rem 1rem;
+  overflow: hidden;
+  border: 1px solid var(--admin-editor-border);
+  border-radius: var(--admin-radius-2xl);
+  background: var(--admin-editor-surface);
 }
 
 .formSectionHeader {
@@ -497,6 +498,11 @@
   font-size: 1rem;
 }
 
+.formSectionOpen {
+  border-color: var(--admin-border-gold-mid);
+  background: var(--admin-editor-highlight), var(--admin-editor-surface);
+}
+
 .formSectionBody {
   padding: 1.25rem clamp(2rem, 10vw, 2.5rem) 1.5rem;
   animation: slideUp 0.18s ease both;
@@ -553,16 +559,17 @@
 }
 
 .iconBtn {
+  composes: md-glass-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
-  border-radius: var(--admin-radius-sm);
+  border-radius: var(--control-glass-radius);
   background: transparent;
   border: 0.5px solid transparent;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--admin-text-faint);
+  color: var(--admin-text-muted);
   transition: border-color var(--admin-transition), color var(--admin-transition), background var(--admin-transition);
   flex-shrink: 0;
 }
@@ -597,19 +604,21 @@
 
 /* ── Acordeón de categoría ── */
 .catAcordeon {
-  margin-bottom: 0.4rem;
-  border-radius: var(--admin-radius-lg);
+  margin-bottom: 0.8rem;
+  border: 1px solid var(--admin-editor-border);
+  border-radius: var(--admin-editor-radius);
+  background: var(--admin-editor-surface);
   overflow: hidden;
-  box-shadow: var(--admin-shadow-card);
+  box-shadow: var(--admin-editor-shadow);
 }
 
 .catHeader {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  background: var(--admin-bg-raised);
-  border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-lg);
+  background: var(--admin-editor-highlight), var(--admin-editor-surface);
+  border: 0;
+  border-radius: 0;
   padding: 0.8rem 0.9rem;
   cursor: pointer;
   transition: border-color var(--admin-transition), background var(--admin-transition);
@@ -621,11 +630,11 @@
   border-color: var(--admin-border-warm);
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
-  background: var(--admin-bg-raised);
+  background: var(--admin-editor-highlight), var(--admin-editor-surface);
 }
 
 .catHeader:hover {
-  background: var(--admin-bg-raised);
+  background: var(--admin-editor-surface);
 }
 
 /* Botón de chevron independiente (accesible) */
@@ -807,6 +816,7 @@
 
 /* ── Pill disponible/pausado ── */
 .pillBtn {
+  composes: md-glass-button from global;
   font-size: 0.65rem;
   letter-spacing: 0.03em;
   padding: 3px 8px;
@@ -840,9 +850,11 @@
 }
 
 .addItemBtn {
-  background: none;
-  border: none;
-  border-radius: var(--admin-radius-sm);
+  composes: md-glass-button from global;
+  min-height: var(--control-min-size);
+  background: var(--admin-gold-glow);
+  border: 1px solid var(--admin-border-gold-mid);
+  border-radius: var(--control-glass-radius);
   padding: 0.35rem 0.75rem;
   font-family: var(--font-sans);
   font-size: 0.75rem;
@@ -855,7 +867,7 @@
 .addItemBtn:hover {
   color: var(--admin-gold-hover);
   background: var(--admin-gold-glow);
-  border-radius: var(--admin-radius-sm);
+  border-radius: var(--control-glass-radius);
 }
 
 .addItemBtn:focus-visible {
@@ -964,9 +976,10 @@
 }
 
 .removeBtn {
+  composes: md-glass-button from global;
   background: transparent;
   border: 0.5px solid var(--admin-red-border);
-  border-radius: var(--admin-radius-sm);
+  border-radius: var(--control-glass-radius);
   width: var(--control-min-size);
   height: var(--control-min-size);
   display: flex;
@@ -1140,12 +1153,25 @@
   margin-top: 0.5rem;
 }
 
+.itemForm .formBtns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  margin: 1rem;
+}
+
+.dangerZone {
+  margin: 0 1rem 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--admin-editor-border);
+}
+
 .saveBtn {
+  composes: md-glass-button from global;
   min-height: 48px;
   width: 100%;
   background: var(--admin-gold);
   border: none;
-  border-radius: var(--admin-radius-lg);
+  border-radius: var(--control-glass-radius);
   padding: 0.875rem;
   font-family: var(--font-sans);
   font-size: 0.93rem;
@@ -1180,11 +1206,12 @@
 }
 
 .deleteBtn {
+  composes: md-glass-button from global;
   min-height: 48px;
   width: 100%;
   background: none;
   border: 0.5px solid var(--admin-red-border);
-  border-radius: var(--admin-radius-lg);
+  border-radius: var(--control-glass-radius);
   padding: 0.875rem;
   font-family: var(--font-sans);
   font-size: 0.93rem;
@@ -1288,10 +1315,11 @@
 }
 
 .modalCancel {
+  composes: md-glass-button from global;
   flex: 1;
   background: var(--admin-bg-raised);
   border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   padding: 0.72rem;
   font-family: var(--font-sans);
   font-size: 0.88rem;
@@ -1312,10 +1340,11 @@
 }
 
 .modalConfirm {
+  composes: md-glass-button from global;
   flex: 1;
   background: var(--admin-red-bg);
   border: 0.5px solid var(--admin-red-border);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   padding: 0.72rem;
   font-family: var(--font-sans);
   font-size: 0.88rem;
@@ -1336,6 +1365,7 @@
 }
 
 .modalUpgrade {
+  composes: md-glass-button from global;
   flex: 1;
   display: flex;
   align-items: center;
@@ -1343,7 +1373,7 @@
   gap: 6px;
   background: var(--admin-gold);
   border: none;
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   padding: 0.72rem;
   font-family: var(--font-sans);
   font-size: 0.88rem;
@@ -1478,10 +1508,11 @@
 }
 
 .sheetCancel {
+  composes: md-glass-button from global;
   margin-top: 0.2rem;
   background: transparent;
   border: 0.5px solid var(--admin-border-subtle);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   padding: 0.7rem;
   font-family: var(--font-sans);
   font-size: 0.87rem;
@@ -1567,7 +1598,7 @@
 /* ── Responsive web (desktop) ── */
 @media (min-width: 600px) {
   .me {
-    max-width: 600px;
+    max-width: 880px;
     margin: 0 auto;
     border-left: 0.5px solid var(--admin-border-subtle);
     border-right: 0.5px solid var(--admin-border-subtle);
@@ -1600,6 +1631,25 @@
 }
 
 /* ── Responsive pequeño ── */
+@media (max-width: 599px) {
+  .formSectionHeader {
+    grid-template-columns: 32px minmax(0, 1fr) 24px;
+    gap: 0.2rem 0.65rem;
+    padding: 0.9rem;
+  }
+
+  .formSectionNumber { grid-row: 1 / 3; }
+  .formSectionSummary { grid-column: 2; grid-row: 2; max-width: none; }
+  .formSectionChevron { grid-column: 3; grid-row: 1 / 3; }
+  .formSectionBody { padding: 1rem 1.25rem 1.25rem; }
+}
+
+.cancelBtn {
+  composes: modalCancel;
+  min-height: 48px;
+  color: var(--admin-text-secondary);
+}
+
 @media (max-width: 400px) {
   .fieldRow {
     grid-template-columns: 1fr;
@@ -1738,7 +1788,7 @@
   min-height: var(--control-min-size);
   padding: 0.6rem 0.75rem;
 
-  border-radius: var(--admin-radius-lg);
+  border-radius: var(--control-glass-radius);
 
   font-family: var(--font-sans);
   font-size: 0.85rem;
@@ -1753,6 +1803,7 @@
 }
 
 .changeImageButton {
+  composes: md-glass-button from global;
   border: 1px solid var(--admin-border-gold-strong);
   background: color-mix(in srgb, var(--admin-gold) 6%, transparent);
   color: var(--admin-gold);
@@ -1769,6 +1820,7 @@
 }
 
 .removeImageButton {
+  composes: md-glass-button from global;
   border: 0.5px solid var(--admin-red-border);
   background: transparent;
   color: var(--admin-red-text);
@@ -1828,11 +1880,12 @@
 }
 
 .bulkBarBtn {
+  composes: md-glass-button from global;
   font-family: var(--font-sans);
   font-size: 0.78rem;
   font-weight: 500;
   padding: 0.5rem 0.75rem;
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   border: 0.5px solid var(--admin-border-default);
   background: var(--admin-bg-raised);
   color: var(--admin-text-secondary);

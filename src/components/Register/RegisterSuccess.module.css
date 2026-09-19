@@ -68,13 +68,14 @@
 }
 
 .btn {
+  composes: md-glass-button from global;
   min-height: 44px;
   margin-top: var(--space-6);
   padding: var(--space-3) var(--space-6);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-xs);
+  border-radius: var(--control-glass-radius);
   background: var(--auth-amber);
   color: var(--auth-bg);
   box-shadow: var(--auth-shadow-btn);

@@ -21,12 +21,13 @@
 }
 
 .backBtn {
+  composes: md-glass-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
   flex-shrink: 0;
   background: var(--admin-bg-elevated);
   border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -59,6 +60,7 @@
 }
 
 .saveBtn {
+  composes: md-glass-button from global;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -67,7 +69,7 @@
   padding: 0 1rem;
   background: var(--admin-gold);
   border: none;
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--admin-gold-ink);
@@ -186,11 +188,12 @@
 }
 
 .viewModeBtn {
+  composes: md-glass-button from global;
   min-height: calc(var(--control-min-size) - 8px);
   padding: 0 0.75rem;
   background: transparent;
   border: none;
-  border-radius: var(--admin-radius-sm);
+  border-radius: var(--control-glass-radius);
   font-size: 0.76rem;
   font-weight: 600;
   color: var(--admin-text-muted);
@@ -331,9 +334,10 @@
 }
 
 .tileErrorBtn {
+  composes: md-glass-button from global;
   background: color-mix(in srgb, var(--admin-text-primary) 8%, transparent);
   border: 0.5px solid color-mix(in srgb, var(--admin-text-primary) 18%, transparent);
-  border-radius: var(--admin-radius-sm);
+  border-radius: var(--control-glass-radius);
   padding: 3px 8px;
   font-size: 0.68rem;
   color: var(--admin-text-primary);
@@ -356,6 +360,7 @@
 }
 
 .tileDeleteBtn {
+  composes: md-glass-button from global;
   position: absolute;
   top: 6px;
   right: 6px;
@@ -558,6 +563,7 @@
    la derecha, siempre a la vista. Portal a document.body (ver ImageManager.tsx). */
 
 .fabAddBtn {
+  composes: md-glass-button from global;
   position: fixed;
   right: var(--space-5);
   bottom: var(--space-5);
@@ -646,13 +652,14 @@
 .confirmCancelBtn, .confirmDeleteBtn {
   min-height: var(--control-min-size);
   padding: 0 var(--space-4);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   font-weight: 700;
   cursor: pointer;
   transition: background var(--admin-transition), border-color var(--admin-transition), color var(--admin-transition), transform var(--admin-transition-spring);
 }
 
 .confirmCancelBtn {
+  composes: md-glass-button from global;
   border: 1px solid var(--admin-border-default);
   color: var(--admin-text-secondary);
   background: transparent;
@@ -665,6 +672,7 @@
 }
 
 .confirmDeleteBtn {
+  composes: md-glass-button from global;
   display: inline-flex;
   align-items: center;
   gap: 6px;

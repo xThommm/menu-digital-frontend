@@ -89,6 +89,7 @@
 }
 
 .close {
+  composes: md-glass-button from global;
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
@@ -113,6 +114,7 @@
    muestran con puntero fino: en mobile la navegación es por swipe
    vertical sobre la imagen. */
 .navBtn {
+  composes: md-glass-button from global;
   display: none;
   position: fixed;
   top: 50%;
@@ -283,6 +285,7 @@
 }
 
 .addBtn {
+  composes: md-glass-button from global;
   min-height: var(--control-min-size);
   align-self: flex-start;
   display: flex;

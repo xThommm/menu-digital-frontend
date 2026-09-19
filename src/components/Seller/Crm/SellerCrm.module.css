@@ -209,6 +209,7 @@
   margin-bottom: var(--space-4);
 }
 .stageChip {
+  composes: md-glass-button from global;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -262,13 +263,14 @@
   flex-shrink: 0;
 }
 .viewToggleBtn {
+  composes: md-glass-button from global;
   display: flex;
   align-items: center;
   justify-content: center;
   width: var(--control-min-size);
   height: var(--control-min-size);
   border: none;
-  border-radius: var(--admin-radius-sm);
+  border-radius: var(--control-glass-radius);
   background: none;
   color: var(--admin-text-muted);
   cursor: pointer;
@@ -280,6 +282,7 @@
   color: var(--admin-gold);
 }
 .exportBtn {
+  composes: md-glass-button from global;
   min-height: var(--control-min-size);
   display: inline-flex;
   align-items: center;
@@ -289,7 +292,7 @@
   color: var(--admin-text-secondary);
   background: var(--admin-bg-raised);
   border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   padding: 0.5rem 0.85rem;
   cursor: pointer;
   white-space: nowrap;
@@ -439,12 +442,13 @@
 .tableAlerts small { color: var(--admin-text-muted); font-size: var(--text-xs); }
 .tableOk { color: var(--admin-success-text); font-size: var(--text-xs); font-weight: 600; }
 .tableOpenButton {
+  composes: md-glass-button from global;
   width: 32px;
   height: 32px;
   display: grid;
   place-items: center;
   border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-sm);
+  border-radius: var(--control-glass-radius);
   background: var(--admin-bg-elevated);
   color: var(--admin-text-warm);
   cursor: pointer;
@@ -659,13 +663,14 @@
 }
 .drawerSub { font-size: var(--text-xs); color: var(--admin-text-muted); margin: 2px 0 0; }
 .drawerClose {
+  composes: md-glass-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   border: 0.5px solid var(--admin-border-default);
   background: var(--admin-bg-elevated);
   color: var(--admin-text-muted);
@@ -727,6 +732,7 @@
   gap: var(--space-2);
 }
 .actionButton {
+  composes: md-glass-button from global;
   min-height: var(--control-min-size);
   display: inline-flex;
   align-items: center;
@@ -735,7 +741,7 @@
   color: var(--admin-text-secondary);
   background: var(--admin-bg-raised);
   border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   padding: 0.5rem 0.7rem;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
@@ -858,6 +864,7 @@
 /* Etapa */
 .stagePicker { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .stageOption {
+  composes: md-glass-button from global;
   min-height: var(--control-min-size);
   display: inline-flex;
   align-items: center;
@@ -965,13 +972,14 @@
 .noteTextarea:focus { outline: none; border-color: var(--admin-gold); }
 .noteTextarea::placeholder { color: var(--admin-text-faint); }
 .noteAddBtn {
+  composes: md-glass-button from global;
   align-self: flex-end;
   font-size: var(--text-sm);
   font-weight: 500;
   color: var(--admin-gold-ink);
   background: var(--admin-gold);
   border: none;
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   padding: 0.5rem 0.9rem;
   cursor: pointer;
   transition: background var(--admin-transition), opacity var(--admin-transition);

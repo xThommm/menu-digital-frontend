@@ -35,7 +35,7 @@
 .option, .month {
   min-height: var(--control-min-size);
   border: 1px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   color: var(--admin-text-secondary);
   background: var(--admin-bg-base);
   cursor: pointer;
@@ -45,9 +45,11 @@
   border-color: var(--admin-border-gold-mid);
   color: var(--admin-text-primary);
 }
-.option { display: flex; flex-direction: column; gap: 3px; padding: var(--space-3); text-align: left; }
+.option {
+  composes: md-glass-button from global; display: flex; flex-direction: column; gap: 3px; padding: var(--space-3); text-align: left; }
 .option span { font-size: 0.78rem; }
-.month { padding: var(--space-3) var(--space-2); font-weight: 600; }
+.month {
+  composes: md-glass-button from global; padding: var(--space-3) var(--space-2); font-weight: 600; }
 .selected {
   border-color: var(--admin-gold);
   color: var(--admin-text-primary);
@@ -126,14 +128,16 @@
 .cancel, .pay {
   min-height: var(--control-min-size);
   padding: 0 var(--space-4);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   font-weight: 700;
   cursor: pointer;
   transition: background var(--admin-transition), border-color var(--admin-transition), color var(--admin-transition), box-shadow var(--admin-transition), transform var(--admin-transition-spring);
 }
-.cancel { border: 1px solid var(--admin-border-default); color: var(--admin-text-secondary); background: transparent; }
+.cancel {
+  composes: md-glass-button from global; border: 1px solid var(--admin-border-default); color: var(--admin-text-secondary); background: transparent; }
 .cancel:hover:not(:disabled) { border-color: var(--admin-border-gold-mid); color: var(--admin-text-primary); background: var(--admin-bg-raised); }
-.pay { display: inline-flex; align-items: center; gap: var(--space-2); border: 0; color: var(--admin-gold-ink); background: var(--admin-gold); }
+.pay {
+  composes: md-glass-button from global; display: inline-flex; align-items: center; gap: var(--space-2); border: 0; color: var(--admin-gold-ink); background: var(--admin-gold); }
 .pay:hover:not(:disabled) { background: var(--admin-gold-hover); box-shadow: var(--admin-shadow-action-btn-hover); transform: translateY(-1px); }
 .pay:active:not(:disabled) { transform: translateY(0); }
 .cancel:disabled, .pay:disabled, .option:disabled, .month:disabled { cursor: not-allowed; opacity: 0.6; }

@@ -43,6 +43,7 @@
 .navigation { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem; }
 .navLink { display: inline-flex; align-items: center; min-height: var(--control-min-size); color: var(--auth-cream); font-size: .85rem; }
 .themeToggle {
+  composes: md-glass-button from global;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -51,11 +52,12 @@
   background: transparent;
   color: var(--auth-cream);
   border: 1px solid var(--auth-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--control-glass-radius);
   cursor: pointer;
 }
 
 .button {
+  composes: md-glass-button from global;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -63,7 +65,7 @@
   min-height: var(--control-min-size);
   padding: .7rem 1.2rem;
   border: 1px solid var(--auth-amber);
-  border-radius: var(--radius-sm);
+  border-radius: var(--control-glass-radius);
   background: var(--auth-amber-dim);
   color: var(--text-inv);
   text-decoration: none;

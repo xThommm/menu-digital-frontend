@@ -26,6 +26,7 @@
 }
 
 .mpCartShortcut {
+  composes: md-glass-button from global;
   position: relative;
   flex-shrink: 0;
   width: 48px;
@@ -161,12 +162,13 @@
 }
 
 .mpBack {
+  composes: md-glass-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
   flex-shrink: 0;
   background: var(--t-bg);
   border: 0.5px solid var(--t-border-md);
-  border-radius: var(--t-radius-control);
+  border-radius: var(--control-glass-radius);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -239,12 +241,13 @@
 .mpTabs::-webkit-scrollbar { display: none; }
 
 .mpTab {
+  composes: md-glass-button from global;
   flex-shrink: 0;
   min-height: 44px;
   padding: 0.7rem 1.1rem;
   background: var(--t-surface);
   border: 1px solid var(--t-border-md);
-  border-radius: 12px;
+  border-radius: var(--control-glass-radius);
   font-family: var(--font-sans);
   font-size: 0.875rem;
   font-weight: 500;
@@ -684,6 +687,7 @@
    flotante.
    ═══════════════════════════════════════════════════════════════ */
 .addBtn {
+  composes: md-glass-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
   flex-shrink: 0;
@@ -738,6 +742,7 @@
 }
 
 .cartFab {
+  composes: md-glass-button from global;
   position: fixed;
   bottom: var(--floating-edge);
   right: var(--floating-edge);
@@ -796,6 +801,7 @@
    revisar cantidades y total. Ambos estados usan el mismo CartProvider y el
    mismo enlace de WhatsApp. */
 .cartBar {
+  composes: md-glass-button from global;
   position: fixed;
   z-index: calc(var(--z-raised) + 20);
   left: 0;
@@ -879,7 +885,8 @@
 /* Sin fila de total (precios ocultos) la lista se cierra con la misma línea
    y el mismo aire que dejaba el total antes del botón de WhatsApp. */
 .orderLinesNoTotal { margin-bottom: 1rem; border-bottom: 1px solid var(--t-border); }
-.orderWhatsapp { display: flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 52px; border-radius: 12px; background: var(--t-accent); color: var(--t-btn-text); font-size: 0.85rem; font-weight: 700; text-decoration: none; }
+.orderWhatsapp {
+  composes: md-glass-button from global; display: flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 52px; border-radius: var(--control-glass-radius); background: var(--t-accent); color: var(--t-btn-text); font-size: 0.85rem; font-weight: 700; text-decoration: none; }
 .orderWhatsapp:hover { opacity: 0.9; }
 .orderNoWhatsapp { margin: 0; color: var(--t-muted); font-size: 0.75rem; line-height: 1.4; text-align: center; }
 .orderClear { display: block; width: 100%; min-height: 44px; border: 0; background: transparent; color: var(--t-muted); font: inherit; font-size: 0.75rem; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
@@ -1095,9 +1102,10 @@
 }
 
 .emptyMenuBtn {
+  composes: md-glass-button from global;
   background: none;
   border: 0.5px solid var(--t-border-md, #312d22);
-  border-radius: 8px;
+  border-radius: var(--control-glass-radius);
   padding: 0.625rem 1.5rem;
   color: var(--t-accent, #c9a84c);
   cursor: pointer;

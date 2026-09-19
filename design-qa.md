@@ -122,3 +122,53 @@ final result: passed
 - `npm run typecheck`, `npm run build` y `git diff --check`: aprobados.
 - Validación con el fixture local. Esta corrección modifica CSS del frontend;
   no requiere cambios de datos ni backend. Sin commit, push o despliegue de esta corrección.
+
+
+## 2026-09-19 — Editores y botones liquid glass
+
+- Referencia: [Liquid Glass Generator](https://design.dev/tools/liquid-glass-generator/?blur=22&sat=140&tint=%23ca6412&opacity=55&radius=24&hl=24&border=14&shadow=36&text=%23ffffff&sheen=55&scene=mono&format=css). Se adapta el acabado al coral de MenuDigital, sin copiar el naranja de la referencia.
+- Receta compartida en globals.css: reflejo, borde interior, sombra suave, estados de foco/pulsación/deshabilitado, movimiento reducido y colores forzados. Integración explícita mediante CSS Modules (100 clases), además de los botones globales de carta y las acciones de importación. No se aplica un selector genérico a todos los botones, interruptores, filas o enlaces.
+- Los fondos y la tinta siguen definidos por cada variante --admin-*, --auth-* o --t-*. La capa óptica no agrega saturación a los botones; evita alterar el color de marca. Las 15 definiciones de paleta y sus degradados premium se mantienen.
+- MenuEditor y UserEditor: ancho máximo de 880px, cabeceras con vidrio, mejor contraste secundario, tarjetas y pestañas. El formulario de producto separa cancelar/guardar de eliminar; se completa el estilo de cancelBtn y dangerZone, ya referenciados por el TSX.
+- Cascada revisada: la posición compartida del botón usa :where para respetar las posiciones absolutas/fijas de cada módulo; el reflejo ocupa ::after sin tapar el contenido ni interceptar clics. No se modificaron estilos del dock móvil ni su espacio reservado.
+
+### Comprobación local
+
+- Build, TypeScript, lint del TSX modificado (MassiveImport) y git diff --check: correctos.
+- Lint global: dos diagnósticos previos de react-hooks/refs en UserEditor.tsx:357. El archivo TSX no se modificó.
+- Navegador con componentes reales y datos simulados: editores, categorías desplegadas, formulario de producto, pestañas Información/Imágenes/Apariencia; temas claro y oscuro; anchos de 320, 390 y 1280px. Revisión visual y de foco, sin afirmar auditoría completa de accesibilidad.
+- Carta pública: agregar al carrito funciona en la vista local. Verificación de fondo/tinta y capa óptica en las 15 paletas; sin desbordamiento horizontal en las vistas revisadas.
+- Sin validación autenticada de producción, sin pagos, sin escrituras en backend, sin commit/push/deploy.
+
+### Archivos de implementación
+
+- src/Utils/MassiveImport.tsx
+- src/components/Admin/Home/AdminHome.module.css
+- src/components/Admin/Payments/AdminPayments.module.css
+- src/components/Admin/Plans/AdminPlans.module.css
+- src/components/Admin/Sellers/AdminSellers.module.css
+- src/components/Common/DataTable/DataTable.module.css
+- src/components/Common/ErrorBoundary.module.css
+- src/components/Common/UpgradeModal.module.css
+- src/components/Common/WeeklySchedule/WeeklySchedule.module.css
+- src/components/Login/Login.module.css
+- src/components/Register/Register.module.css
+- src/components/Register/RegisterPlans.module.css
+- src/components/Register/RegisterSuccess.module.css
+- src/components/Register/VerifyEmail.module.css
+- src/components/Seller/Crm/SellerCrm.module.css
+- src/components/Seller/sellerPanel.module.css
+- src/components/User/Home/Menu/CartDrawer.module.css
+- src/components/User/Home/Menu/ItemPreviewModal.module.css
+- src/components/User/Home/Menu/UserMenu.module.css
+- src/components/User/Panel/Dashboard/UserDashboard.module.css
+- src/components/User/Panel/DashboardLayout/DashboardLayout.module.css
+- src/components/User/Panel/MenuEditor/ImageManager/ImageManager.module.css
+- src/components/User/Panel/MenuEditor/MenuEditor.module.css
+- src/components/User/Panel/MenuEditor/MenuTemplatePicker/MenuTemplatePicker.module.css
+- src/components/User/Panel/Settings/SettingsPanel.module.css
+- src/components/User/Panel/Stats/UserStats.module.css
+- src/components/User/Panel/UserEditor/UserEditor.module.css
+- src/pages/Blog/Blog.module.css
+- src/pages/Legal/Legal.module.css
+- src/styles/globals.css

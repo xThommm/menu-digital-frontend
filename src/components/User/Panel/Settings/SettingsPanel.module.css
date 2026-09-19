@@ -288,11 +288,12 @@
 
 /* ── Save button ── */
 .saveBtn {
+  composes: md-glass-button from global;
   min-height: 48px;
   width: 100%;
   background: var(--admin-gold);
   border: none;
-  border-radius: var(--admin-radius-lg);
+  border-radius: var(--control-glass-radius);
   padding: 0.9rem;
   font-family: var(--font-sans);
   font-size: 0.95rem;

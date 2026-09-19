@@ -684,9 +684,10 @@
 }
 
 .lockBtn {
+  composes: md-glass-button from global;
   min-height: var(--control-min-size);
   padding: 0.7rem var(--space-6);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 600;

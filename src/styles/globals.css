@@ -27,6 +27,12 @@
 
   /* Área mínima recomendada para controles táctiles. */
   --control-min-size: 44px;
+  --control-glass-radius: 14px;
+  --control-glass-blur: 12px;
+  --control-glass-sheen: rgba(255, 255, 255, 0.16);
+  --control-glass-rim: rgba(255, 255, 255, 0.22);
+  --control-glass-edge: rgba(0, 0, 0, 0.12);
+  --control-glass-shadow: rgba(0, 0, 0, 0.14);
 
   /* Estados semánticos compartidos por los templates públicos. */
   --t-offer:       #e2543d;
@@ -2059,7 +2065,7 @@ a.t-info-row:focus-visible {
   background: var(--t-btn-bg, var(--t-accent));
   color: var(--t-btn-text);
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: var(--control-glass-radius);
   padding: 0.9rem var(--space-6);
   font-family: var(--font-sans);
   font-size: var(--text-base);
@@ -2112,6 +2118,119 @@ a.t-info-row:focus-visible {
 .t-btn-ghost:hover {
   background: var(--t-accent-soft, color-mix(in srgb, var(--t-accent) 8%, transparent));
   box-shadow: none;
+}
+
+/* Liquid glass compartido: los módulos componen esta clase explícitamente.
+   Conserva fondo, tinta, variantes y posición de cada control. El reflejo
+   va detrás del contenido, sin interceptar clics ni ocupar ::before.
+   Las cartas siguen usando --t-* (incluidos sus degradados premium).
+   El fondo de cada módulo es también el fallback sin backdrop-filter. */
+:where(.md-glass-button),
+.t-btn,
+.t-notfound-retry {
+  position: relative;
+  isolation: isolate;
+}
+
+.md-glass-button::after,
+.t-btn::after,
+.t-notfound-retry::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(ellipse 120% 90% at 50% -25%, var(--control-glass-sheen), transparent 75%);
+  box-shadow:
+    0 4px 12px var(--control-glass-shadow),
+    inset 0 1px 0 var(--control-glass-rim),
+    inset 0 0 0 1px var(--control-glass-edge),
+    inset 0 -1px 0 var(--control-glass-edge);
+  transition: opacity var(--transition);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .md-glass-button::after,
+  .t-btn::after {
+    backdrop-filter: blur(var(--control-glass-blur));
+    -webkit-backdrop-filter: blur(var(--control-glass-blur));
+  }
+}
+
+@media (hover: hover) {
+  .md-glass-button:enabled:hover::after,
+  a.md-glass-button:hover::after,
+  .t-btn:hover::after {
+    --control-glass-sheen: rgba(255, 255, 255, 0.25);
+    --control-glass-rim: rgba(255, 255, 255, 0.36);
+  }
+}
+
+.md-glass-button:focus-visible,
+.t-btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+.md-glass-button:disabled::after,
+.md-glass-button[aria-disabled="true"]::after {
+  opacity: 0.35;
+}
+
+.md-glass-button:enabled:active::after,
+a.md-glass-button:active::after {
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .md-glass-button,
+  .md-glass-button::after,
+  .t-btn,
+  .t-btn::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .md-glass-button::after,
+  .t-btn::after { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+@media (forced-colors: active) {
+  .md-glass-button,
+  .t-btn { border: 1px solid ButtonText; }
+  .md-glass-button::after,
+  .t-btn::after { display: none; }
+}
+
+/* Superficies de ambos editores. Las variables se resuelven aquí para
+   heredar el tema vigente, también cuando se cambia sin recargar. */
+.admin-editor {
+  --admin-text-muted: color-mix(in srgb, var(--admin-text-primary) 68%, var(--admin-bg-base));
+  --admin-text-faint: color-mix(in srgb, var(--admin-text-primary) 52%, var(--admin-bg-base));
+  --admin-editor-header-height: 88px;
+  --admin-editor-radius: 24px;
+  --admin-editor-border: color-mix(in srgb, var(--admin-text-primary) 14%, var(--admin-bg-base));
+  --admin-editor-surface: color-mix(in srgb, var(--admin-bg-elevated) 98%, var(--admin-gold));
+  --admin-editor-canvas: radial-gradient(ellipse 90% 440px at 5% 0%, var(--admin-gold-glow), transparent 75%), var(--admin-bg-base);
+  --admin-editor-highlight: linear-gradient(135deg, var(--admin-gold-glow), transparent 65%);
+  --admin-editor-shadow: 0 12px 32px color-mix(in srgb, var(--admin-bg-base) 18%, transparent);
+}
+
+.admin-editor-header {
+  min-height: calc(var(--admin-editor-header-height) + env(safe-area-inset-top));
+  border-bottom: 1px solid var(--admin-editor-border);
+  background: var(--admin-editor-surface);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .admin-editor-header {
+    background: color-mix(in srgb, var(--admin-editor-surface) 88%, transparent);
+    backdrop-filter: blur(22px) saturate(140%);
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+  }
 }
 
 /* ── Divider ── */

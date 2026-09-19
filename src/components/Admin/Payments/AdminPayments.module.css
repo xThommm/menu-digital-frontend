@@ -108,10 +108,11 @@
 .searchInput:focus,
 .select:focus { outline: none; border-color: var(--admin-gold); box-shadow: 0 0 0 3px var(--admin-gold-glow); }
 .searchButton {
+  composes: md-glass-button from global;
   min-height: var(--control-min-size);
   padding: 0.5rem 0.9rem;
   border: 0;
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   background: var(--admin-gold);
   color: var(--admin-gold-ink);
   font-family: var(--font-sans);
@@ -159,10 +160,11 @@
 .toneDanger { color: var(--admin-red-text); border-color: var(--admin-red-border); background: var(--admin-red-bg); }
 .toneNeutral { color: var(--admin-text-muted); border-color: var(--admin-border-default); background: var(--admin-bg-elevated); }
 .expandButton {
+  composes: md-glass-button from global;
   width: 34px;
   height: 34px;
   border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-sm);
+  border-radius: var(--control-glass-radius);
   background: var(--admin-bg-elevated);
   color: var(--admin-text-warm);
   font-size: var(--text-lg);

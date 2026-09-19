@@ -58,6 +58,7 @@
 }
 
 .close {
+  composes: md-glass-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
   display: flex;
@@ -201,6 +202,7 @@
 }
 
 .waBtn {
+  composes: md-glass-button from global;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -210,7 +212,7 @@
   font-weight: 600;
   font-size: 0.9rem;
   padding: 0.75rem 1rem;
-  border-radius: 10px;
+  border-radius: var(--control-glass-radius);
   text-decoration: none;
   min-height: 46px;
   transition: transform 0.15s ease, opacity 0.15s ease;

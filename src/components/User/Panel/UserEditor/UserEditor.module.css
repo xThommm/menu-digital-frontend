@@ -3,24 +3,25 @@
 
 /* ── Shell ── */
 .ne {
+  composes: admin-editor from global;
   min-height: 100vh;
-  background: var(--admin-bg-base);
+  background: var(--admin-editor-canvas);
   font-family: var(--font-sans);
   color: var(--admin-text-secondary);
   display: flex;
   flex-direction: column;
-  max-width: 600px;
+  width: 100%;
+  max-width: 880px;
   margin: 0 auto;
 }
 
 /* ── Top bar ── */
 .topBar {
+  composes: admin-editor-header from global;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.875rem 1rem;
-  border-bottom: 0.5px solid var(--admin-border-subtle);
-  background: var(--admin-bg-base);
+  padding: 1.25rem clamp(1rem, 3vw, 1.75rem);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -29,18 +30,19 @@
 }
 
 .topTitle {
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: 1.45rem;
+  font-weight: 600;
   color: var(--admin-text-primary);
   letter-spacing: -0.01em;
 }
 
 .backBtn {
+  composes: md-glass-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
   background: var(--admin-bg-elevated);
   border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -64,15 +66,21 @@
 /* ── Tabs ── */
 .tabs {
   display: flex;
-  border-bottom: 0.5px solid var(--admin-border-subtle);
-  background: var(--admin-bg-base);
+  gap: 0.5rem;
+  padding: 0.75rem clamp(1rem, 3vw, 1.75rem);
+  border-bottom: 1px solid var(--admin-editor-border);
+  background: var(--admin-editor-surface);
   position: sticky;
-  top: calc(52px + env(safe-area-inset-top));
+  top: calc(var(--admin-editor-header-height) + env(safe-area-inset-top));
   z-index: 9;
 }
 
 .tabBtn {
+  composes: md-glass-button from global;
   flex: 1;
+  min-width: 0;
+  min-height: var(--control-min-size);
+  border-radius: var(--control-glass-radius);
   padding: 0.75rem 0.5rem;
   background: none;
   border: none;
@@ -80,7 +88,7 @@
   font-size: 0.82rem;
   color: var(--admin-text-muted);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
+  border: 1px solid transparent;
   transition: color var(--admin-transition), border-color var(--admin-transition);
   position: relative;
   display: flex;
@@ -95,8 +103,10 @@
 }
 
 .tabBtn.active {
-  color: var(--admin-gold);
-  border-bottom-color: var(--admin-gold);
+  color: var(--admin-gold-ink);
+  background: var(--admin-gold);
+  border-color: var(--admin-gold);
+  font-weight: 600;
 }
 
 /* Indicador de cambios sin guardar */
@@ -105,14 +115,14 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--admin-gold);
+  background: currentColor;
   animation: pulse 2s ease-in-out infinite;
 }
 
 /* ── Content ── */
 .content {
   flex: 1;
-  padding: 1.25rem 1rem 2.5rem;
+  padding: 1.5rem clamp(1rem, 3vw, 1.75rem) 2.5rem;
 }
 
 /* ── Banners ── */
@@ -153,11 +163,10 @@
   display: flex;
   align-items: center;
   font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   color: var(--admin-text-muted);
   margin-bottom: 0.4rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .required {
@@ -169,22 +178,23 @@
 .field textarea,
 .field select {
   width: 100%;
-  background: var(--admin-bg-surface);
-  border: 0.5px solid var(--admin-border-default);
+  background: var(--admin-editor-surface);
+  border: 1px solid var(--admin-editor-border);
   border-radius: var(--admin-radius-md);
   padding: 0.75rem 1rem;
   font-size: 0.9rem;
   color: var(--admin-text-secondary);
   font-family: var(--font-sans);
   outline: none;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 
 .field input:focus,
 .field textarea:focus,
 .field select:focus {
   border-color: var(--admin-gold);
-  background: var(--admin-bg-surface);
+  background: var(--admin-editor-surface);
+  box-shadow: 0 0 0 3px var(--admin-gold-glow);
 }
 
 .field input::placeholder,
@@ -254,11 +264,12 @@
 }
 
 .emailChangeConfirmBtn {
+  composes: md-glass-button from global;
   min-height: 40px;
   padding: 0 1.1rem;
   background: var(--admin-gold);
   border: none;
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--admin-gold-ink);
@@ -302,17 +313,18 @@
 }
 
 .scheduleCard {
-  border: 0.5px solid var(--admin-border-subtle);
-  border-radius: var(--admin-radius-lg);
-  background: var(--admin-bg-surface);
+  border: 1px solid var(--admin-editor-border);
+  border-radius: var(--admin-editor-radius);
+  background: var(--admin-editor-surface);
   overflow: hidden;
 }
 
 /* ── Toggle ── */
 .toggleGroup {
   margin: 1.25rem 0;
-  border: 0.5px solid var(--admin-border-subtle);
-  border-radius: var(--admin-radius-lg);
+  border: 1px solid var(--admin-editor-border);
+  border-radius: var(--admin-editor-radius);
+  background: var(--admin-editor-highlight), var(--admin-editor-surface);
   overflow: hidden;
 }
 
@@ -395,11 +407,12 @@
 
 /* ── Save button ── */
 .saveBtn {
+  composes: md-glass-button from global;
   min-height: 48px;
   width: 100%;
   background: var(--admin-gold);
   border: none;
-  border-radius: var(--admin-radius-lg);
+  border-radius: var(--control-glass-radius);
   padding: 0.9rem;
   font-family: var(--font-sans);
   font-size: 0.95rem;
@@ -604,6 +617,7 @@
 }
 
 .galleryItemRemove {
+  composes: md-glass-button from global;
   position: absolute;
   top: 5px;
   right: 5px;
@@ -641,8 +655,9 @@
 }
 
 .galleryAdd {
+  composes: md-glass-button from global;
   aspect-ratio: 1;
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   border: 0.5px dashed var(--admin-border-default);
   background: var(--admin-bg-surface);
   display: flex;
@@ -914,11 +929,12 @@
 }
 
 .modalCancel {
+  composes: md-glass-button from global;
   min-height: var(--control-min-size);
   flex: 1;
   background: var(--admin-bg-raised);
   border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   padding: 0.72rem;
   font-family: var(--font-sans);
   font-size: 0.88rem;
@@ -939,6 +955,7 @@
 }
 
 .modalUpgrade {
+  composes: md-glass-button from global;
   min-height: var(--control-min-size);
   flex: 1;
   display: flex;
@@ -946,7 +963,7 @@
   justify-content: center;
   background: var(--admin-gold);
   border: none;
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   padding: 0.72rem;
   font-family: var(--font-sans);
   font-size: 0.88rem;

@@ -85,10 +85,11 @@
 .navActions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; white-space: nowrap; }
 
 .themeToggle {
+  composes: md-glass-button from global;
   display: inline-flex; align-items: center; justify-content: center;
   width: var(--control-min-size); height: var(--control-min-size);
   border: 1px solid color-mix(in srgb, var(--auth-amber) 20%, transparent);
-  border-radius: 3px;
+  border-radius: var(--control-glass-radius);
   background: transparent; cursor: pointer;
   color: var(--auth-amber-text);
   transition: border-color .25s, background .25s, color .25s;
@@ -97,10 +98,11 @@
 .themeToggle svg { width: 18px; height: 18px; stroke-width: 1.75; }
 
 .navRegister {
+  composes: md-glass-button from global;
   min-height: var(--control-min-size);
   font-size: .78rem; font-weight: 500; letter-spacing: .08em;
   text-transform: uppercase; text-decoration: none;
-  padding: .55rem 1.2rem; border-radius: 3px;
+  padding: .55rem 1.2rem; border-radius: var(--control-glass-radius);
   background: transparent; cursor: pointer;
   transition: border-color .25s, color .25s;
   display: inline-flex; align-items: center;
@@ -109,10 +111,11 @@
 .navRegister:hover { border-color: var(--auth-amber); color: var(--auth-amber-text); }
 
 .navLogin {
+  composes: md-glass-button from global;
   min-height: var(--control-min-size);
   font-size: .78rem; font-weight: 400; letter-spacing: .08em;
   text-transform: uppercase; text-decoration: none;
-  padding: .55rem .9rem; border-radius: 3px;
+  padding: .55rem .9rem; border-radius: var(--control-glass-radius);
   color: var(--auth-cream-mid);
   background: transparent; cursor: pointer;
   transition: color .25s;
@@ -122,6 +125,7 @@
 
 /* ── HAMBURGER — oculto en desktop siempre ── */
 .hamburger {
+  composes: md-glass-button from global;
   display: none;
 }
 
@@ -823,9 +827,10 @@
 
 /* ── BUTTONS ── */
 .btnPrimary {
+  composes: md-glass-button from global;
   font-family: var(--font-sans); font-size: .82rem; font-weight: 700;
   letter-spacing: .1em; text-transform: uppercase;
-  padding: .9rem 2.2rem; border-radius: 3px;
+  padding: .9rem 2.2rem; border-radius: var(--control-glass-radius);
   background: var(--auth-amber); color: #000;
   display: inline-flex; align-items: center; justify-content: center;
   text-decoration: none;
@@ -835,9 +840,10 @@
 }
 .btnPrimary:hover { box-shadow: 0 0 55px color-mix(in srgb, var(--auth-amber) 70%, transparent); transform: translateY(-2px); }
 .btnSecondary {
+  composes: md-glass-button from global;
   font-family: var(--font-sans); font-size: .82rem; font-weight: 500;
   letter-spacing: .1em; text-transform: uppercase;
-  padding: .9rem 2.2rem; border-radius: 3px;
+  padding: .9rem 2.2rem; border-radius: var(--control-glass-radius);
   border: 1px solid var(--auth-cream-dim); color: var(--auth-cream-mid);
   background: transparent; cursor: pointer;
   transition: border-color .25s, color .25s;
@@ -901,8 +907,9 @@
 .planFeat li { padding-left: 1.4rem; position: relative; }
 .planFeat li::before { content: '→'; position: absolute; left: 0; color: var(--auth-amber-text); font-size: .75rem; }
 .planCta {
+  composes: md-glass-button from global;
   width: 100%; background: var(--auth-amber); color: #000; text-decoration: none;
-  border: none; border-radius: 3px; padding: 1.1rem;
+  border: none; border-radius: var(--control-glass-radius); padding: 1.1rem;
   font-family: var(--font-sans); font-size: .85rem; font-weight: 700;
   letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
   box-shadow: 0 0 30px color-mix(in srgb, var(--auth-amber) 40%, transparent);
@@ -938,7 +945,7 @@
     height: var(--control-min-size);
     background: transparent;
     border: 1px solid color-mix(in srgb, var(--auth-amber) 25%, transparent);
-    border-radius: 4px;
+    border-radius: var(--control-glass-radius);
     cursor: pointer;
     padding: 0;
     flex-shrink: 0;
@@ -1142,6 +1149,7 @@
 }
 
 .contactFabBtn {
+  composes: md-glass-button from global;
   width: 56px; height: 56px;
   border-radius: 50%;
   border: 1px solid color-mix(in srgb, var(--auth-amber) 30%, transparent);

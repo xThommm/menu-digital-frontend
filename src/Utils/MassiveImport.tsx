@@ -131,7 +131,7 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
 
       {/* Top bar */}
       <header className="top-bar">
-        <button className="back-btn" onClick={onBack}>
+        <button className="back-btn md-glass-button" onClick={onBack}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
@@ -184,7 +184,7 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
                   <p className="info-card-desc">Incluye tus categorías y productos actuales para que puedas editarlos directamente.</p>
                 </div>
               </div>
-              <button className="outline-btn" onClick={downloadTemplate} disabled={downloading}>
+              <button className="outline-btn md-glass-button" onClick={downloadTemplate} disabled={downloading}>
                 {downloading ? "Descargando…" : "Descargar"}
               </button>
             </div>
@@ -229,7 +229,7 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
             <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }}
               onChange={e => { handleFileSelect(e.target.files?.[0] ?? null); e.target.value = ""; }} />
 
-            <button className="save-btn" onClick={preview} disabled={!file || loading}>
+            <button className="save-btn md-glass-button" onClick={preview} disabled={!file || loading}>
               {loading ? "Procesando..." : "Ver resumen de cambios →"}
             </button>
           </>
@@ -283,10 +283,10 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
             )}
 
             <div className="form-btns">
-              <button className="delete-btn" onClick={() => setStep("upload")} disabled={loading}>
+              <button className="delete-btn md-glass-button" onClick={() => setStep("upload")} disabled={loading}>
                 ← Volver
               </button>
-              <button className="save-btn" onClick={confirm} disabled={loading || (totalCrear + totalActualizar === 0)}>
+              <button className="save-btn md-glass-button" onClick={confirm} disabled={loading || (totalCrear + totalActualizar === 0)}>
                 {loading ? "Importando..." : `Confirmar importación`}
               </button>
             </div>
@@ -325,8 +325,8 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
             />
 
             <div className="form-btns">
-              <button className="outline-btn" onClick={reset}>Importar otro</button>
-              <button className="save-btn" onClick={onBack}>Volver al menú</button>
+              <button className="outline-btn md-glass-button" onClick={reset}>Importar otro</button>
+              <button className="save-btn md-glass-button" onClick={onBack}>Volver al menú</button>
             </div>
           </>
         )}
@@ -417,7 +417,7 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
         .save-btn {
           width: 100%; background: var(--admin-gold); border: none; border-radius: 12px;
           padding: .9rem; font-family: var(--font-sans);
-          font-size: .95rem; font-weight: 500; color: var(--admin-bg-base);
+          font-size: .95rem; font-weight: 500; color: var(--admin-gold-ink);
           cursor: pointer; transition: background .2s;
         }
         .save-btn:hover:not(:disabled) { background: var(--admin-gold-hover); }

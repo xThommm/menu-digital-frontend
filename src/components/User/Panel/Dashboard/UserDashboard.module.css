@@ -168,11 +168,12 @@
 .planExpiry { margin-top: var(--space-2); color: var(--admin-text-muted); font-size: var(--text-xs); }
 
 .planUpgradeBtn {
+  composes: md-glass-button from global;
   flex: 0 0 auto;
   min-height: var(--control-min-size);
   padding: 0 var(--space-4);
   border: 0;
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   color: var(--admin-gold-ink);
   background: var(--admin-gold);
   font-weight: 700;
@@ -279,12 +280,13 @@
 }
 
 .actionBtn {
+  composes: md-glass-button from global;
   min-height: var(--control-min-size);
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
   padding: 0.55rem var(--space-4);
-  border-radius: var(--admin-radius-md);
+  border-radius: var(--control-glass-radius);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 500;
@@ -646,6 +648,7 @@
 }
 
 .previewRefreshBtn {
+  composes: md-glass-button from global;
   display: grid;
   place-items: center;
   width: var(--control-min-size);
