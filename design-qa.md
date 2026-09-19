@@ -172,3 +172,83 @@ final result: passed
 - src/pages/Blog/Blog.module.css
 - src/pages/Legal/Legal.module.css
 - src/styles/globals.css
+
+## 2026-09-19 — Editor de menú en escritorio y vidrio en el resto de la app
+
+final result: passed
+
+### Alcance
+
+Dos cambios sobre el commit anterior (`a783177`, «cambios de diseño en menu y user
+editor»), que había introducido el acabado liquid glass en botones (clase global
+`md-glass-button`) y en las cabeceras de los dos editores.
+
+1. **Editor de menú, escritorio (≥1024px).** Deja de ser una columna centrada de
+   880px donde el formulario reemplaza la lista. Ahora hay un espacio de trabajo
+   con tres zonas: estructura del menú (desde 1280px), tablero de categorías y
+   panel de edición. Debajo de 1024px no cambia nada: sigue el flujo móvil de una
+   vista por vez.
+2. **Liquid glass en el resto de la app.** Se agrega la receta de superficie
+   (`md-glass-surface` en globals.css), hermana de la de botones, y se aplica a
+   las superficies que flotan sobre el contenido. Se completa el acabado en los
+   controles que habían quedado afuera.
+
+### Espacio de trabajo (escritorio)
+
+- **Estructura** (columna izquierda, sticky): secciones y categorías con su
+  conteo. Al hacer clic lleva a la categoría; la actual se resalta con un
+  observador de intersección. Es zona de drop: arrastrar un producto sobre una
+  categoría lo mueve, igual que sobre el tablero.
+- **Tablero** (centro): categorías con sus productos en filas de foto, nombre,
+  descripción, etiquetas (variantes, programación, código), precio —con el
+  original tachado si hay oferta— y estado. Cada fila abre el producto en el
+  panel, con ojo para ocultar/mostrar y pastilla para activar/pausar.
+  Filtros rápidos: Todos, Activos, Pausados, Ocultos, Sin foto, En oferta.
+- **Panel** (derecha, sticky): el formulario de producto, categoría o sección,
+  con guardar y cancelar siempre visibles abajo. Sin nada abierto muestra el
+  resumen del menú (los mismos filtros como accesos), el enlace a la carta
+  pública y los atajos.
+- Atajos: `/` busca, `Ctrl/⌘ + S` guarda, `Esc` cierra el panel.
+- Al crear productos, «Crear y seguir» guarda y deja listo el siguiente en la
+  misma categoría. El producto guardado se resalta un momento en el tablero.
+- Cambiar de producto con cambios sin guardar pide confirmación (el mismo modal
+  de descarte que ya existía) y continúa con la acción pedida.
+- Disponibilidad y visibilidad se sincronizan con el formulario abierto si es el
+  mismo producto, así guardar después no revierte el cambio hecho en la fila.
+
+### Liquid glass
+
+- `md-glass-surface`: velo translúcido del color de la superficie, desenfoque del
+  fondo, filo de luz arriba y sombra suave. El contorno va como anillo interior
+  para no chocar con los bordes propios de cada módulo. Tono y sombra se ajustan
+  por variables (`--md-glass-tint`, `--md-glass-border`, `--md-glass-shadow`,
+  `--md-glass-opacity`), que se resuelven en el elemento y siguen el tema vigente
+  (panel, grafito, auth o la paleta `--t-*` del local).
+- Aplicado a: dock móvil y su menú «Más» (panel de usuario, CEO y vendedor),
+  modales y hojas del editor de menú, modal de Mi negocio, modal de planes,
+  confirmación del gestor de imágenes, barra de selección múltiple, avisos
+  (toasts), cajón de CRM, y —con la paleta del local— el carrito y la ficha de
+  producto de la carta pública.
+- Botones: se completó el acabado en pasos de cantidad del carrito y de la ficha,
+  quitar producto del pedido, visor de fotos de la landing, gestor de imágenes,
+  selector de plantillas, cerrar aviso, CRM, reenviar código, toggle de tema
+  móvil de la landing, ítem activo y toggle de las barras laterales de CEO y
+  vendedor. Cobertura: 205 de 298 botones.
+- Sin vidrio a propósito: interruptores, enlaces de texto, filas de listas y
+  acordeones, tarjetas de contenido y botones que son una imagen (portada,
+  avatar, galería). El vidrio marca controles, no contenido.
+
+### Comprobación local
+
+- `npm run typecheck`, `npm run build` y `npx eslint src`: correctos. Lint deja
+  los dos diagnósticos previos de `react-hooks/refs` en UserEditor.tsx:357, que
+  ya estaban antes de este cambio y no se tocaron.
+- Navegador con datos simulados (servidor local en memoria, sin MongoDB ni
+  producción): editor a 1440, 1280 y 390px, temas claro y oscuro; filtros,
+  búsqueda, selección múltiple, alta de producto, edición de categoría, ir a una
+  categoría desde la estructura, atajos de teclado y aviso de guardado.
+- Carta pública, panel del dueño y dock móvil revisados con la paleta Aurora.
+- No se revisaron: arrastrar y soltar con mouse real, las 15 paletas una por una,
+  panel de CEO y de vendedor con datos, ni lectores de pantalla.
+- Sin validación contra el backend real, sin pagos, sin escrituras en producción
+  y sin commit, push ni deploy.

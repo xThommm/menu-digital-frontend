@@ -286,10 +286,13 @@
   transform: translateY(-50%) scale(0.9);
 }
 
-.tViewerPrev { left: clamp(0.75rem, 3vw, 2rem); }
-.tViewerNext { right: clamp(0.75rem, 3vw, 2rem); }
+.tViewerPrev {
+  composes: md-glass-button from global; left: clamp(0.75rem, 3vw, 2rem); }
+.tViewerNext {
+  composes: md-glass-button from global; right: clamp(0.75rem, 3vw, 2rem); }
 
 .tViewerClose {
+  composes: md-glass-button from global;
   top: clamp(0.75rem, 3vw, 1.5rem);
   right: clamp(0.75rem, 3vw, 1.5rem);
   width: var(--control-min-size);

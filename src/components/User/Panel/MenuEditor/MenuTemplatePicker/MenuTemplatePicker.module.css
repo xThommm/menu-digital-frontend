@@ -123,6 +123,7 @@
 }
 
 .searchClear {
+  composes: md-glass-button from global;
   position: absolute;
   right: 0.7rem;
   width: 24px;

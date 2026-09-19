@@ -552,12 +552,11 @@
     display: flex;
     align-items: stretch;
     gap: var(--space-1);
-    border: 0.5px solid var(--admin-border-default);
     border-radius: var(--admin-radius-2xl);
-    background: color-mix(in srgb, var(--admin-bg-surface) 88%, transparent);
-    box-shadow: var(--admin-shadow-dock);
-    backdrop-filter: blur(18px) saturate(135%);
-    -webkit-backdrop-filter: blur(18px) saturate(135%);
+    /* Fondo, anillo y desenfoque los pone .md-glass-surface (ver el TSX de
+       cada layout): el dock flota sobre el contenido igual que los paneles. */
+    --md-glass-tint: var(--admin-bg-surface);
+    --md-glass-border: var(--admin-border-default);
   }
 
   .admin-mobile-dock__button {
@@ -641,12 +640,10 @@
     padding: var(--space-2);
     display: grid;
     gap: var(--space-1);
-    border: 0.5px solid var(--admin-border-default);
     border-radius: var(--admin-radius-xl);
-    background: color-mix(in srgb, var(--admin-bg-surface) 94%, transparent);
-    box-shadow: var(--admin-shadow-popover);
-    backdrop-filter: blur(18px) saturate(135%);
-    -webkit-backdrop-filter: blur(18px) saturate(135%);
+    --md-glass-tint: var(--admin-bg-surface);
+    --md-glass-border: var(--admin-border-default);
+    --md-glass-shadow: var(--admin-shadow-popover);
     transform-origin: bottom right;
     animation: admin-mobile-more-in var(--admin-transition-spring) both;
   }
@@ -2203,6 +2200,54 @@ a.md-glass-button:active::after {
   .t-btn { border: 1px solid ButtonText; }
   .md-glass-button::after,
   .t-btn::after { display: none; }
+}
+
+/* Liquid glass para superficies flotantes: barras, docks, paneles, hojas,
+   diálogos y avisos. Mismo acabado que .md-glass-button (velo translúcido,
+   filo de luz arriba, sombra suave) pero sobre el propio elemento, para que
+   el contenido que pasa por detrás se vea desenfocado.
+   Los módulos componen la clase y NO declaran background ni box-shadow
+   propios: ajustan el tono con variables, que se resuelven en el elemento y
+   siguen el tema vigente (panel, grafito, auth o paleta --t-*).
+     --md-glass-tint    color base del velo (default: superficie elevada)
+     --md-glass-border  color del anillo
+     --md-glass-shadow  sombra exterior
+     --md-glass-opacity cuánto tinte conserva el velo (default 76%)
+   El contorno va como anillo interior, no como `border`: así cada módulo
+   conserva sus propios bordes (un solo lado, por ejemplo) y el tamaño del
+   elemento no cambia. Sin backdrop-filter, o con transparencia reducida,
+   queda el tinte opaco. */
+.md-glass-surface {
+  background: var(--md-glass-tint, var(--admin-bg-elevated));
+  box-shadow:
+    inset 0 0 0 1px var(--md-glass-border, color-mix(in srgb, var(--admin-text-primary) 12%, transparent)),
+    inset 0 1px 0 var(--control-glass-rim),
+    var(--md-glass-shadow, var(--admin-shadow-dock));
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .md-glass-surface {
+    background:
+      linear-gradient(180deg, var(--md-glass-sheen, rgba(255, 255, 255, 0.06)), transparent 96px),
+      color-mix(in srgb, var(--md-glass-tint, var(--admin-bg-elevated)) var(--md-glass-opacity, 76%), transparent);
+    backdrop-filter: blur(22px) saturate(140%);
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .md-glass-surface {
+    background: var(--md-glass-tint, var(--admin-bg-elevated));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .md-glass-surface {
+    border: 1px solid CanvasText;
+    box-shadow: none;
+  }
 }
 
 /* Superficies de ambos editores. Las variables se resuelven aquí para

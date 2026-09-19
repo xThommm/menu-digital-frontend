@@ -23,17 +23,20 @@
   .overlay { align-items: center; }
 }
 
+/* El vidrio toma el color de la paleta del local (--t-*), no el del panel. */
 .drawer {
+  composes: md-glass-surface from global;
+  --md-glass-tint: var(--t-surface);
+  --md-glass-border: var(--t-border);
+  --md-glass-shadow: 0 -8px 40px rgba(0, 0, 0, 0.3);
   width: 100%;
   max-width: 480px;
   max-height: 85dvh;
-  background: var(--t-surface);
   border-radius: var(--t-radius-sheet) var(--t-radius-sheet) 0 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   animation: cartSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
-  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.3);
 }
 
 @media (min-width: 768px) {
@@ -158,6 +161,7 @@
 }
 
 .lineRemove {
+  composes: md-glass-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
   display: flex;

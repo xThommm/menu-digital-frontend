@@ -1032,6 +1032,7 @@
   .mobileLinkRegister:hover { background: color-mix(in srgb, var(--auth-amber) 6%, transparent); }
 
   .mobileThemeToggle {
+  composes: md-glass-button from global;
     width: 100%;
     display: flex; align-items: center; gap: .6rem;
     border: none;

@@ -38,6 +38,7 @@
    salta a la esquina superior izquierda (estilo ChatGPT/Claude) para seguir
    visible sin la sidebar — ver .sidebarToggleCollapsed y .contentExpanded. */
 .sidebarToggle {
+  composes: md-glass-button from global;
   position: fixed;
   top: 22px;
   left: calc(var(--sidebar-width) - 32px - var(--space-3));
@@ -173,6 +174,7 @@
 }
 
 .navItemActive {
+  composes: md-glass-button from global;
   background: var(--admin-bg-raised-2);
   color: var(--admin-gold);
   box-shadow: inset 2px 0 0 var(--admin-gold);

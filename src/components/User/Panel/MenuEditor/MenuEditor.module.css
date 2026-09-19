@@ -1257,14 +1257,14 @@
 }
 
 .modal {
-  background: var(--admin-bg-elevated);
-  border: 0.5px solid var(--admin-border-warm);
+  composes: md-glass-surface from global;
+  --md-glass-border: var(--admin-border-warm);
+  --md-glass-shadow: var(--admin-shadow-modal);
   border-radius: var(--admin-radius-2xl);
   padding: 1.5rem;
   width: 100%;
   max-width: 380px;
   animation: scaleIn 0.18s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: var(--admin-shadow-modal);
 }
 
 @keyframes fadeIn {
@@ -1406,8 +1406,9 @@
 /* ── Sheet de opciones (Categoría / Sección / Importar) ── */
 /* El overlay reutiliza .modalOverlay — se centra igual */
 .sheet {
-  background: var(--admin-bg-elevated);
-  border: 0.5px solid var(--admin-border-warm);
+  composes: md-glass-surface from global;
+  --md-glass-border: var(--admin-border-warm);
+  --md-glass-shadow: var(--admin-shadow-modal);
   border-radius: var(--admin-radius-2xl);
   padding: 1.25rem;
   width: 100%;
@@ -1416,7 +1417,6 @@
   flex-direction: column;
   gap: 0.45rem;
   animation: scaleIn 0.18s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
 }
 
 .sheetTitle {
@@ -1845,7 +1845,11 @@
 /* ── Barra de acciones masivas (selección múltiple) ── */
 /* Portal a document.body (ver MenuEditor.tsx) — fixed a la ventana, no al
    contenedor scrolleable de .content. */
+/* Barra fija sobre el contenido: el vidrio deja ver qué queda debajo
+   mientras se recorre la lista con productos seleccionados. */
 .bulkBar {
+  composes: md-glass-surface from global;
+  --md-glass-border: transparent;
   position: fixed;
   left: 0;
   right: 0;
@@ -1858,9 +1862,7 @@
   flex-wrap: wrap;
   padding: 0.75rem 1rem;
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
-  background: var(--admin-bg-elevated);
   border-top: 0.5px solid var(--admin-border-warm);
-  box-shadow: var(--admin-shadow-dock);
   animation: slideUp 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -1918,3 +1920,118 @@
   background: var(--admin-bg-raised);
   border-color: var(--admin-red-dark-border);
 }
+
+/* ══ Escritorio: espacio de trabajo ══
+   El editor deja de ser una columna centrada y pasa a ocupar el ancho
+   disponible; la estructura, el tablero y el panel de edición conviven.
+   Estas reglas van al final para ganarle al bloque @media de arriba. */
+@media (min-width: 600px) {
+  .meWide {
+    max-width: none;
+    border-left: 0;
+    border-right: 0;
+  }
+}
+
+/* ── Formularios dentro del panel lateral ── */
+.panelForm {
+  padding-bottom: 0.5rem;
+}
+
+.panelError {
+  padding: 0.9rem 0.9rem 0;
+}
+
+.panelError .errorBanner {
+  margin-bottom: 0;
+}
+
+.panelFields {
+  padding: 1.1rem 1.1rem 0.25rem;
+}
+
+.panelForm .productSummary {
+  min-height: 0;
+  padding: 1rem 1.15rem;
+}
+
+.panelForm .formSection {
+  margin: 0.6rem 0.9rem;
+}
+
+.panelForm .formSectionBody {
+  padding: 1.1rem 1.15rem 1.25rem;
+}
+
+.panelForm .formSectionSummary {
+  max-width: 120px;
+}
+
+.panelForm .dangerZone {
+  margin: 0 0.9rem 1rem;
+}
+
+/* Guardar y cancelar quedan siempre a mano mientras se recorre el
+   formulario: el panel es la superficie que scrollea. */
+.panelForm .itemForm .formBtns,
+.panelFields .formBtns {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  margin: 0.75rem 0 0;
+  padding: 0.85rem 0.9rem;
+  border-top: 1px solid var(--admin-editor-border);
+  background: var(--admin-bg-elevated);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .panelForm .itemForm .formBtns,
+  .panelFields .formBtns {
+    background: color-mix(in srgb, var(--admin-bg-elevated) 82%, transparent);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+  }
+}
+
+.panelFields .formBtns {
+  margin: 0.75rem -1.1rem 0;
+}
+
+/* Misma especificidad que .itemForm .formBtns, que fija dos columnas. */
+.itemForm .formBtnsTriple {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.1fr) minmax(0, 1.25fr);
+  gap: 0.45rem;
+}
+
+.saveNextBtn {
+  composes: md-glass-button from global;
+  min-height: 48px;
+  border: 1px solid var(--admin-border-gold-mid);
+  border-radius: var(--control-glass-radius);
+  background: var(--admin-gold-glow);
+  padding: 0.875rem 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--admin-gold);
+  cursor: pointer;
+  transition: background var(--admin-transition), color var(--admin-transition);
+}
+
+.saveNextBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--admin-gold) 18%, transparent);
+}
+
+.saveNextBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.formBtnsTriple .saveBtn,
+.formBtnsTriple .cancelBtn {
+  font-size: 0.86rem;
+  padding-inline: 0.5rem;
+}
+
+/* Acabado compartido de los controles (ver .md-glass-button en globals.css). */
+.backToResults { composes: md-glass-button from global; }

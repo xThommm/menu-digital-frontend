@@ -10,15 +10,14 @@
 }
 
 .modal {
+  composes: md-glass-surface from global;
+  --md-glass-shadow: var(--admin-shadow-modal);
   width: min(100%, 520px);
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
   padding: var(--space-6);
-  border: 1px solid var(--admin-border-default);
   border-radius: var(--admin-radius-lg);
   color: var(--admin-text-primary);
-  background: var(--admin-bg-elevated);
-  box-shadow: var(--admin-shadow-modal);
   animation: scaleIn 0.26s var(--admin-transition-spring) both;
 }
 

@@ -880,15 +880,15 @@
 }
 
 .modal {
-  background: var(--admin-bg-elevated);
-  border: 0.5px solid var(--admin-border-warm);
+  composes: md-glass-surface from global;
+  --md-glass-border: var(--admin-border-warm);
+  --md-glass-shadow: var(--admin-shadow-modal);
   border-radius: var(--admin-radius-2xl);
   padding: 1.5rem;
   width: 100%;
   max-width: 360px;
   text-align: center;
   animation: scaleIn 0.18s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: var(--admin-shadow-modal);
 }
 
 @keyframes fadeIn {

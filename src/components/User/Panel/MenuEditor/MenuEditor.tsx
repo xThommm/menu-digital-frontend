@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback, useRef, memo, useMemo } from "react";
+import { Fragment, useState, useEffect, useCallback, useRef, memo, useMemo, useLayoutEffect, useEffectEvent } from "react";
 import { createPortal } from "react-dom";
+import { CheckSquare, FolderPlus, Layers, Search, SlidersHorizontal } from "lucide-react";
 import { useAuth } from "../../../../context/useAuth";
+import { useMediaQuery } from "../../../../hooks/useMediaQuery";
 import { useNotifications } from "../../../../context/useNotifications";
 import { isSubscriptionExpired } from "../../../../lib/plans";
 import { formatDateAR } from "../../../../lib/dates";
@@ -23,7 +25,18 @@ import { EMPTY_DATE_RANGE, WEEK_DAYS, emptyWeekRanges } from "../../../Common/We
 import type { DateRangeValue, WeekRanges } from "../../../Common/WeeklySchedule/weekSchedule";
 import Spinner from "../../../Common/Spinner";
 import UpgradeModal from "../../../Common/UpgradeModal";
+import {
+  WorkspaceCategory,
+  WorkspaceFilters,
+  WorkspaceJumpBar,
+  WorkspaceNav,
+  WorkspaceOverview,
+  WorkspacePanel,
+  WorkspaceSection,
+} from "./Workspace/MenuWorkspace";
+import { countWorkspaceItems, matchesWorkspaceFilter, type WorkspaceFilter } from "./Workspace/workspaceFilters";
 import styles from "./MenuEditor.module.css";
+import ws from "./Workspace/MenuWorkspace.module.css";
 
 // ── Estado vacío para formulario de item ───────────────────────────────────────
 
@@ -145,6 +158,25 @@ const normalizeSearchValue = (value: string | null | undefined) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("es-AR")
     .trim();
+
+// Aplica un cambio a un producto dentro del \u00e1rbol del men\u00fa (actualizaciones
+// optimistas de disponibilidad y visibilidad).
+const patchMenuItem = (menu: MenuData, itemId: string, patch: Partial<Item>): MenuData => {
+  const updateItems = (items: Item[]) => items.map(item => item._id === itemId ? { ...item, ...patch } : item);
+  return {
+    secciones: menu.secciones.map(seccion => ({
+      ...seccion,
+      categorias: seccion.categorias.map(categoria => ({ ...categoria, items: updateItems(categoria.items) })),
+    })),
+    sinSeccion: menu.sinSeccion.map(categoria => ({ ...categoria, items: updateItems(categoria.items) })),
+  };
+};
+
+// Desde este ancho el editor pasa a espacio de trabajo: estructura, tablero y
+// panel de edici\u00f3n a la vista a la vez. Por debajo sigue el flujo m\u00f3vil.
+const DESKTOP_QUERY = "(min-width: 1024px)";
+
+const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // ── Íconos ─────────────────────────────────────────────────────────────────────
 
@@ -610,6 +642,18 @@ export default function MenuEditorPage() {
 
   const [view,            setView]            = useState<View>("menu");
   const [menuSheetOpen,   setMenuSheetOpen]   = useState(false);
+  // ── Espacio de trabajo de escritorio ──────────────────────────────────
+  const isDesktop = useMediaQuery(DESKTOP_QUERY);
+  const [statusFilter,  setStatusFilter]  = useState<WorkspaceFilter>("all");
+  const [focusedCatId,  setFocusedCatId]  = useState<string | null>(null);
+  const [flashItemId,   setFlashItemId]   = useState<string | null>(null);
+  // Cambia con cada apertura del panel: reinicia el formulario (scroll,
+  // autofocus) aunque la vista siga siendo la misma.
+  const [formSeq,       setFormSeq]       = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const boardRef       = useRef<HTMLDivElement>(null);
+  const pendingLeaveRef = useRef<(() => void) | null>(null);
+  const jumpLockRef = useRef(0);
   const [activeCategoria, setActiveCategoria] = useState<Categoria | null>(null);
   const [activeItem,      setActiveItem]      = useState<Item | null>(null);
   const [expandedCats,    setExpandedCats]    = useState<Set<string>>(new Set());
@@ -737,6 +781,7 @@ export default function MenuEditorPage() {
     setItemFieldErrors({});
     setOpenItemSections(new Set(["basics"]));
     setError("");
+    setFormSeq(seq => seq + 1);
     setView("item-form");
   }, [limits, setError]);
 
@@ -775,6 +820,7 @@ export default function MenuEditorPage() {
     if (nextForm.hidden || nextForm.recommended || !nextForm.available) initialSections.add("availability");
     setOpenItemSections(initialSections);
     setError("");
+    setFormSeq(seq => seq + 1);
     setView("item-form");
   }, [setError]);
 
@@ -827,7 +873,9 @@ export default function MenuEditorPage() {
     setItemForm(f => ({ ...f, image: "" }));
   }, []);
 
-  const saveItem = async () => {
+  // `andNew`: en escritorio, guardar y dejar listo otro producto en la misma
+  // categoría — cargar una carta entera es el caso más pesado del editor.
+  const saveItem = async ({ andNew = false }: { andNew?: boolean } = {}) => {
     const preservesLockedOffer = !canScheduleOffers && Boolean(activeItem) && itemForm.offerScheduled;
     const showSectionError = (section: ItemFormSection, message: string) => {
       setOpenItemSections(previous => new Set(previous).add(section));
@@ -962,10 +1010,14 @@ export default function MenuEditorPage() {
         return;
       }
       if (!res.ok) throw new Error(data.message || "No se pudo guardar el producto.");
+      const savedCategoria = activeCategoria;
       await refetch();
       notifySuccess(activeItem ? "Producto actualizado." : "Producto creado.");
       setInitialItemForm(cloneItemForm(itemForm));
-      setView("menu");
+      const savedId = activeItem?._id ?? (typeof data._id === "string" ? data._id : null);
+      if (isDesktop && savedId) setFlashItemId(savedId);
+      if (andNew && savedCategoria) openNewItem(savedCategoria);
+      else setView("menu");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar el producto.");
     } finally {
@@ -1005,24 +1057,24 @@ export default function MenuEditorPage() {
   }
 };
 
+  // El formulario abierto en el panel lateral (escritorio) puede ser el mismo
+  // producto que se está cambiando desde la fila: se sincroniza el valor para
+  // que guardar después no revierta el cambio ni lo marque como pendiente.
+  const syncOpenItemFlags = useCallback((itemId: string, patch: Partial<ItemFormState>) => {
+    if (view !== "item-form" || activeItem?._id !== itemId) return;
+    setItemForm(form => ({ ...form, ...patch }));
+    setInitialItemForm(form => ({ ...form, ...patch }));
+  }, [view, activeItem]);
+
   const toggleItemAvailable = useCallback(async (item: Item) => {
+    const available = !item.available;
     // Actualización optimista en el estado local
-    setMenuData(prev => {
-      if (!prev) return prev;
-      const updateItems = (items: Item[]) =>
-        items.map(i => i._id === item._id ? { ...i, available: !i.available } : i);
-      return {
-        secciones: prev.secciones.map(s => ({
-          ...s,
-          categorias: s.categorias.map(c => ({ ...c, items: updateItems(c.items) })),
-        })),
-        sinSeccion: prev.sinSeccion.map(c => ({ ...c, items: updateItems(c.items) })),
-      };
-    });
+    setMenuData(prev => prev && patchMenuItem(prev, item._id, { available }));
+    syncOpenItemFlags(item._id, { available });
     try {
       const res = await fetch(`/api/items/${item._id}/available`, {
         method: "PATCH", headers: authHeaders,
-        body: JSON.stringify({ available: !item.available }),
+        body: JSON.stringify({ available }),
       });
       if (res.status === 401) {
         logout();
@@ -1033,12 +1085,38 @@ export default function MenuEditorPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message || "No se pudo cambiar la disponibilidad.");
       }
-      notifySuccess(item.available ? "Producto pausado." : "Producto activado.");
+      notifySuccess(available ? "Producto activado." : "Producto pausado.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo cambiar la disponibilidad.");
       await refetch(); // Revertir
     }
-  }, [authHeaders, refetch, notifySuccess, setError, logout]);
+  }, [authHeaders, refetch, notifySuccess, setError, logout, syncOpenItemFlags]);
+
+  // Mostrar/ocultar un producto en la carta pública sin abrir el formulario.
+  const toggleItemHidden = useCallback(async (item: Item) => {
+    const hidden = !item.hidden;
+    setMenuData(prev => prev && patchMenuItem(prev, item._id, { hidden }));
+    syncOpenItemFlags(item._id, { hidden });
+    try {
+      const res = await fetch(`/api/items/${item._id}/hidden`, {
+        method: "PATCH", headers: authHeaders,
+        body: JSON.stringify({ hidden }),
+      });
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "No se pudo cambiar la visibilidad.");
+      }
+      notifySuccess(hidden ? "Producto oculto de la carta." : "Producto visible en la carta.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cambiar la visibilidad.");
+      await refetch(); // Revertir
+    }
+  }, [authHeaders, refetch, notifySuccess, setError, logout, syncOpenItemFlags]);
 
   // ── Selección múltiple de productos ─────────────────────────────────────
 
@@ -1177,12 +1255,14 @@ export default function MenuEditorPage() {
   const openNewCategoria = useCallback(() => {
     setCategoriaForm({ title: "", description: "", code: "", seccionID: "", editingId: "" });
     setError("");
+    setFormSeq(seq => seq + 1);
     setView("categoria-form");
   }, [setError]);
 
   const openEditCategoria = useCallback((cat: Categoria) => {
     setCategoriaForm({ title: cat.title, description: cat.description || "", code: cat.code || "", seccionID: "", editingId: cat._id });
     setError("");
+    setFormSeq(seq => seq + 1);
     setView("categoria-form");
   }, [setError]);
 
@@ -1226,12 +1306,14 @@ export default function MenuEditorPage() {
   const openNewSeccion = useCallback(() => {
     setSeccionForm({ title: "", code: "", editingId: "" });
     setError("");
+    setFormSeq(seq => seq + 1);
     setView("seccion-form");
   }, [setError]);
 
   const openEditSeccion = useCallback((sec: Seccion) => {
     setSeccionForm({ title: sec.title, code: sec.code || "", editingId: sec._id });
     setError("");
+    setFormSeq(seq => seq + 1);
     setView("seccion-form");
   }, [setError]);
 
@@ -1389,17 +1471,160 @@ export default function MenuEditorPage() {
     : itemForm.availabilityScheduled ? "Disponibilidad programada" : "Sin programación";
   const availabilitySummary = `${itemForm.available ? "Disponible" : "Pausado"} · ${itemForm.hidden ? "Oculto" : "Visible"}`;
 
-  const requestCloseItemForm = () => {
-    if (imageUploading) {
+  // Cerrar el panel, abrir otro producto o crear algo nuevo pasa por acá: con
+  // cambios sin guardar se pide confirmación y la acción queda en espera.
+  const runGuarded = (action: () => void) => {
+    if (view === "item-form" && imageUploading) {
       setError("Esperá a que termine de subir la imagen antes de salir.");
       return;
     }
     if (itemFormDirty) {
+      pendingLeaveRef.current = action;
       setDiscardModalOpen(true);
       return;
     }
-    setView("menu");
+    action();
   };
+
+  const requestCloseItemForm = () => runGuarded(() => setView("menu"));
+
+  const cancelDiscard = () => {
+    pendingLeaveRef.current = null;
+    setDiscardModalOpen(false);
+  };
+
+  const confirmDiscard = () => {
+    const pending = pendingLeaveRef.current;
+    pendingLeaveRef.current = null;
+    setDiscardModalOpen(false);
+    if (pending) pending(); else setView("menu");
+  };
+
+  // Versión estable de runGuarded: las filas del tablero están memorizadas y
+  // no deberían volver a renderizarse con cada tecla del formulario abierto.
+  const runGuardedRef = useRef(runGuarded);
+  useLayoutEffect(() => { runGuardedRef.current = runGuarded; });
+  const guarded = useCallback((action: () => void) => runGuardedRef.current(action), []);
+
+  const editItemFromBoard = useCallback(
+    (item: Item, cat: Categoria) => guarded(() => openEditItem(item, cat)), [guarded, openEditItem]);
+  const newItemFromBoard = useCallback(
+    (cat: Categoria) => guarded(() => openNewItem(cat)), [guarded, openNewItem]);
+  const editCategoriaFromBoard = useCallback(
+    (cat: Categoria) => guarded(() => openEditCategoria(cat)), [guarded, openEditCategoria]);
+  const deleteCategoriaFromBoard = useCallback(
+    (cat: Categoria) => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title }), []);
+  const editSeccionFromBoard = useCallback(
+    (sec: Seccion) => guarded(() => openEditSeccion(sec)), [guarded, openEditSeccion]);
+
+  const workspaceCounts = useMemo(() => countWorkspaceItems(menuData), [menuData]);
+
+  // Un solo cálculo por menú y filtro: con "Todos" cada categoría conserva la
+  // misma referencia de items, así las tarjetas memorizadas no se recalculan.
+  const filteredItems = useMemo(() => {
+    const byCategoria = new Map<string, Item[]>();
+    if (!menuData) return byCategoria;
+    const categorias = [...menuData.secciones.flatMap(seccion => seccion.categorias), ...menuData.sinSeccion];
+    for (const categoria of categorias) {
+      byCategoria.set(categoria._id, statusFilter === "all"
+        ? categoria.items
+        : (categoria.items ?? []).filter(item => matchesWorkspaceFilter(item, statusFilter)));
+    }
+    return byCategoria;
+  }, [menuData, statusFilter]);
+
+  const categoryCount = menuData
+    ? menuData.sinSeccion.length + menuData.secciones.reduce((total, seccion) => total + seccion.categorias.length, 0)
+    : 0;
+
+  const scrollToCategory = useCallback((catId: string) => {
+    setFocusedCatId(catId);
+    setSearchQuery("");
+    // Mientras dura el desplazamiento, el observador no pisa la categoría
+    // elegida (al final de la página la de arriba nunca es la buscada).
+    jumpLockRef.current = Date.now() + 900;
+    // Si el filtro dejó la categoría fuera del tablero, se vuelve a "Todos"
+    // para poder mostrarla.
+    if (!document.getElementById(`ws-cat-${catId}`)) setStatusFilter("all");
+    window.requestAnimationFrame(() => {
+      document.getElementById(`ws-cat-${catId}`)?.scrollIntoView({
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+  }, []);
+
+  // Categoría "actual" del tablero: la primera visible bajo el encabezado.
+  useEffect(() => {
+    if (!isDesktop || searchActive) return;
+    const board = boardRef.current;
+    if (!board) return;
+    const cards = Array.from(board.querySelectorAll<HTMLElement>("[data-cat-id]"));
+    if (cards.length === 0) return;
+
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        const id = (entry.target as HTMLElement).dataset.catId;
+        if (!id) continue;
+        if (entry.isIntersecting) visible.add(id); else visible.delete(id);
+      }
+      if (Date.now() < jumpLockRef.current) return;
+      const first = cards.find(card => visible.has(card.dataset.catId ?? ""));
+      if (first?.dataset.catId) setFocusedCatId(first.dataset.catId);
+    }, { rootMargin: "-160px 0px -55% 0px" });
+
+    cards.forEach(card => observer.observe(card));
+    return () => observer.disconnect();
+  }, [isDesktop, searchActive, menuData, statusFilter, view]);
+
+  // Producto recién guardado: se resalta un momento y se trae a la vista.
+  useEffect(() => {
+    if (!flashItemId) return;
+    boardRef.current
+      ?.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(flashItemId)}"]`)
+      ?.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    const timer = window.setTimeout(() => setFlashItemId(null), 1800);
+    return () => window.clearTimeout(timer);
+  }, [flashItemId]);
+
+  // Atajos del espacio de trabajo: guardar, cerrar el panel y buscar.
+  const handleShortcut = useEffectEvent((event: KeyboardEvent) => {
+    if (!isDesktop || event.defaultPrevented) return;
+    if (menuSheetOpen || discardModalOpen || deleteModal || bulkDeleteConfirmOpen || upgradeReason) return;
+
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const typing = !!target && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+    const panelOpen = view === "item-form" || view === "categoria-form" || view === "seccion-form";
+
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "s") {
+      if (!panelOpen) return;
+      event.preventDefault();
+      if (saving || imageUploading) return;
+      if (view === "item-form") void saveItem();
+      else if (view === "categoria-form") void saveCategoria();
+      else void saveSeccion();
+      return;
+    }
+
+    if (event.key === "Escape" && panelOpen && target !== searchInputRef.current) {
+      event.preventDefault();
+      if (view === "item-form") requestCloseItemForm();
+      else setView("menu");
+      return;
+    }
+
+    if (event.key === "/" && !typing && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      searchInputRef.current?.focus();
+    }
+  });
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => handleShortcut(event);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     if (!itemFormDirty) return;
@@ -1444,6 +1669,1208 @@ export default function MenuEditorPage() {
   if (!loading && limits?.canEditMenu === false) {
     return <main className={styles.me}><p>El editor de menú no está incluido en tu plan actual.</p></main>;
   }
+
+  const panelOpen = view === "item-form" || view === "categoria-form" || view === "seccion-form";
+  const errorBanner = error ? <div className={styles.errorBanner} role="alert">{error}</div> : null;
+  const publicMenuUrl = user?.slug ? `/${user.slug}/menu` : null;
+
+  // ── Bloques compartidos por el flujo móvil y el de escritorio ─────────────
+
+  const searchResultsSection = (
+    <section className={styles.searchResults} aria-labelledby="search-results-title">
+      <div className={styles.searchResultsHeader}>
+        <p id="search-results-title">
+          {searchResults.length} resultado{searchResults.length !== 1 ? "s" : ""}
+        </p>
+        <span aria-live="polite">para “{searchQuery.trim()}”</span>
+      </div>
+
+      {searchResults.length > 0 ? (
+        <div className={styles.searchResultsList} role="list">
+          {searchResults.map(({ item, categoria, sectionTitle }) => (
+            <div key={item._id} role="listitem">
+              <button
+                className={styles.searchResultRow}
+                type="button"
+                onClick={() => guarded(() => openEditItem(item, categoria))}
+              >
+                {item.image && (
+                  <img className={styles.searchResultImage} src={item.image} alt="" />
+                )}
+                <span className={styles.searchResultInfo}>
+                  <span className={styles.searchResultName}>{item.title}</span>
+                  <span className={styles.searchResultPath}>{sectionTitle} / {categoria.title}</span>
+                  <span className={styles.searchResultPrice}>
+                    {item.offerPrice != null
+                      ? `Oferta $${item.offerPrice.toLocaleString("es-AR")}`
+                      : item.price != null
+                        ? `$${item.price.toLocaleString("es-AR")}`
+                        : "Sin precio"}
+                  </span>
+                </span>
+                <span className={`${styles.searchResultStatus} ${item.available ? styles.searchResultStatusOn : styles.searchResultStatusOff}`}>
+                  {item.hidden ? "Oculto" : item.available ? "Disponible" : "Pausado"}
+                </span>
+                <span className={styles.searchResultAction}>Editar</span>
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className={styles.searchEmpty}>
+          <p>No encontramos productos con ese término.</p>
+          <span>Probá con el nombre, código, categoría o sección.</span>
+        </div>
+      )}
+    </section>
+  );
+
+  const emptyMenuState = menuData?.secciones.length === 0 && menuData?.sinSeccion.length === 0 && (
+    <div className={styles.emptyState}>
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#272420" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+        <rect x="9" y="3" width="6" height="4" rx="1" />
+        <line x1="9" y1="12" x2="15" y2="12" />
+        <line x1="9" y1="16" x2="12" y2="16" />
+      </svg>
+      <p>Tu menú está vacío.</p>
+      <p className={styles.emptySub}>Creá una categoría para empezar a agregar productos.</p>
+      <button
+        type="button"
+        className={`${styles.sheetOption} ${!limits?.canUseTemplates ? styles.sheetOptionLocked : ""}`}
+        onClick={() => {
+          if (!limits?.canUseTemplates) { setUpgradeReason("templates"); return; }
+          setView("template-picker");
+        }}
+      >
+        <span className={styles.sheetOptionIcon}>
+          {limits?.canUseTemplates ? icons.sparkles : icons.lock}
+        </span>
+        <span className={styles.sheetOptionText}>
+          <span className={styles.sheetOptionTitle}>
+            Elegir desde plantilla
+            {!limits?.canUseTemplates && <span className={styles.sheetOptionPro}>VER PLANES</span>}
+          </span>
+          <span className={styles.sheetOptionDesc}>Cargá productos ya armados y editalos después</span>
+        </span>
+      </button>
+    </div>
+  );
+
+  const menuSheet = menuSheetOpen && (
+    <div
+      className={styles.modalOverlay}
+      onClick={() => setMenuSheetOpen(false)}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="menu-sheet-title"
+    >
+      <div className={styles.sheet} onClick={e => e.stopPropagation()}>
+        <p id="menu-sheet-title" className={styles.sheetTitle}>Agregar al menú</p>
+
+        <button
+          className={styles.sheetOption}
+          type="button"
+          onClick={() => { setMenuSheetOpen(false); openNewCategoria(); }}
+        >
+          <span className={styles.sheetOptionIcon}>{icons.folder}</span>
+          <span className={styles.sheetOptionText}>
+            <span className={styles.sheetOptionTitle}>Nueva categoría</span>
+            <span className={styles.sheetOptionDesc}>Agrupa productos, ej: Pizzas</span>
+          </span>
+        </button>
+
+        <button
+          className={styles.sheetOption}
+          type="button"
+          onClick={() => { setMenuSheetOpen(false); openNewSeccion(); }}
+        >
+          <span className={styles.sheetOptionIcon}>{icons.layers}</span>
+          <span className={styles.sheetOptionText}>
+            <span className={styles.sheetOptionTitle}>Nueva sección</span>
+            <span className={styles.sheetOptionDesc}>Agrupa categorías, ej: Comidas</span>
+          </span>
+        </button>
+
+        <button
+          className={`${styles.sheetOption} ${!limits?.canUseTemplates ? styles.sheetOptionLocked : ""}`}
+          type="button"
+          onClick={() => {
+            setMenuSheetOpen(false);
+            if (!limits?.canUseTemplates) { setUpgradeReason("templates"); return; }
+            setView("template-picker");
+          }}
+        >
+          <span className={styles.sheetOptionIcon}>
+            {limits?.canUseTemplates ? icons.sparkles : icons.lock}
+          </span>
+          <span className={styles.sheetOptionText}>
+            <span className={styles.sheetOptionTitle}>
+              Elegir desde plantilla
+              {!limits?.canUseTemplates && <span className={styles.sheetOptionPro}>VER PLANES</span>}
+            </span>
+            <span className={styles.sheetOptionDesc}>Cargá productos ya armados y editalos después</span>
+          </span>
+        </button>
+
+        <button
+          className={`${styles.sheetOption} ${!limits?.canUseImageManager ? styles.sheetOptionLocked : ""}`}
+          type="button"
+          onClick={() => {
+            setMenuSheetOpen(false);
+            if (!limits?.canUseImageManager) { setUpgradeReason("images"); return; }
+            setView("image-manager");
+          }}
+        >
+          <span className={styles.sheetOptionIcon}>
+            {limits?.canUseImageManager ? icons.images : icons.lock}
+          </span>
+          <span className={styles.sheetOptionText}>
+            <span className={styles.sheetOptionTitle}>
+              Gestor de imágenes
+              {!limits?.canUseImageManager && <span className={styles.sheetOptionPro}>VER PLANES</span>}
+            </span>
+            <span className={styles.sheetOptionDesc}>Subí varias fotos y asignalas a tus productos</span>
+          </span>
+        </button>
+
+        <button
+          className={`${styles.sheetOption} ${!limits?.canImportExcel ? styles.sheetOptionLocked : ""}`}
+          type="button"
+          onClick={() => {
+            setMenuSheetOpen(false);
+            if (!limits?.canImportExcel) { setUpgradeReason("excel"); return; }
+            setView("massive-import");
+          }}
+        >
+          <span className={styles.sheetOptionIcon}>
+            {limits?.canImportExcel ? icons.upload : icons.lock}
+          </span>
+          <span className={styles.sheetOptionText}>
+            <span className={styles.sheetOptionTitle}>
+              Importar desde Excel
+              {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>VER PLANES</span>}
+            </span>
+            <span className={styles.sheetOptionDesc}>Carga o actualiza en lote</span>
+          </span>
+        </button>
+
+        <button
+          className={`${styles.sheetOption} ${!limits?.canImportExcel ? styles.sheetOptionLocked : ""}`}
+          type="button"
+          disabled={exporting}
+          onClick={() => {
+            setMenuSheetOpen(false);
+            exportMenu();
+          }}
+        >
+          <span className={styles.sheetOptionIcon}>
+            {!limits?.canImportExcel ? icons.lock : exporting ? <Spinner size={16} /> : icons.download}
+          </span>
+          <span className={styles.sheetOptionText}>
+            <span className={styles.sheetOptionTitle}>
+              Exportar a Excel
+              {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>VER PLANES</span>}
+            </span>
+            <span className={styles.sheetOptionDesc}>Descargá tus categorías y productos actuales</span>
+          </span>
+        </button>
+
+        <button
+          className={`${styles.sheetOption} ${!canExportPdf ? styles.sheetOptionLocked : ""}`}
+          type="button"
+          disabled={exportingPdf}
+          onClick={() => {
+            setMenuSheetOpen(false);
+            exportMenuPdf();
+          }}
+        >
+          <span className={styles.sheetOptionIcon}>
+            {!canExportPdf ? icons.lock : exportingPdf ? <Spinner size={16} /> : icons.download}
+          </span>
+          <span className={styles.sheetOptionText}>
+            <span className={styles.sheetOptionTitle}>
+              Exportar menú a PDF
+              {!canExportPdf && <span className={styles.sheetOptionPro}>VER PLANES</span>}
+            </span>
+            <span className={styles.sheetOptionDesc}>Descargá una versión lista para imprimir</span>
+          </span>
+        </button>
+
+        <button className={styles.sheetCancel} type="button" onClick={() => setMenuSheetOpen(false)}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+
+  /* Portal a document.body: mismo motivo que UpgradeModal — sin esto el dock
+     de navegación mobile (position:fixed a nivel raíz del layout) tapa esta
+     barra pese al z-index. */
+  const bulkBar = selectionMode && createPortal(
+    <div className={styles.bulkBar} role="toolbar" aria-label="Acciones sobre productos seleccionados">
+      <span className={styles.bulkBarCount}>
+        {selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}
+      </span>
+      <div className={styles.bulkBarActions}>
+        <button
+          type="button"
+          className={styles.bulkBarBtn}
+          disabled={selectedIds.size === 0 || bulkBusy}
+          onClick={() => bulkSetAvailable(true)}
+        >
+          Activar
+        </button>
+        <button
+          type="button"
+          className={styles.bulkBarBtn}
+          disabled={selectedIds.size === 0 || bulkBusy}
+          onClick={() => bulkSetAvailable(false)}
+        >
+          Pausar
+        </button>
+        <button
+          type="button"
+          className={styles.bulkBarBtn}
+          disabled={selectedIds.size === 0 || bulkBusy}
+          onClick={() => bulkSetHidden(false)}
+        >
+          Mostrar
+        </button>
+        <button
+          type="button"
+          className={styles.bulkBarBtn}
+          disabled={selectedIds.size === 0 || bulkBusy}
+          onClick={() => bulkSetHidden(true)}
+        >
+          Ocultar
+        </button>
+        <button
+          type="button"
+          className={`${styles.bulkBarBtn} ${styles.bulkBarBtnDanger}`}
+          disabled={selectedIds.size === 0 || bulkBusy || limits?.disableMenuDelete === true}
+          title={limits?.disableMenuDelete ? "Eliminar deshabilitado desde Configuración" : undefined}
+          onClick={() => setBulkDeleteConfirmOpen(true)}
+        >
+          Eliminar
+        </button>
+      </div>
+    </div>,
+    document.body,
+  );
+
+  const dialogs = (
+    <>
+      {/* ══ MODAL: DESCARTAR CAMBIOS DEL PRODUCTO ══ */}
+      {discardModalOpen && (
+        <div
+          className={styles.modalOverlay}
+          onClick={cancelDiscard}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="discard-modal-title"
+        >
+          <div className={styles.modal} onClick={event => event.stopPropagation()}>
+            <p id="discard-modal-title" className={styles.modalTitle}>¿Descartar los cambios?</p>
+            <p className={styles.modalDesc}>
+              Los datos que modificaste en este producto no se guardarán.
+            </p>
+            <div className={styles.modalBtns}>
+              <button className={styles.modalCancel} onClick={cancelDiscard} type="button" autoFocus>
+                Seguir editando
+              </button>
+              <button
+                className={styles.modalConfirm}
+                onClick={confirmDiscard}
+                type="button"
+              >
+                Descartar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODAL DE CONFIRMACIÓN ══ */}
+      {deleteModal && (
+        <div
+          className={styles.modalOverlay}
+          onClick={() => setDeleteModal(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-modal-title"
+        >
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <p id="delete-modal-title" className={styles.modalTitle}>
+              ¿Eliminar "{deleteModal.name}"?
+            </p>
+            <p className={styles.modalDesc}>
+              {deleteModal.type === "item"
+                ? "El producto se eliminará de forma permanente. Esta acción no se puede deshacer."
+                : deleteModal.type === "categoria"
+                  ? "La categoría se eliminará permanentemente. Debe estar vacía antes de eliminarla."
+                  : "La sección se eliminará. Solo podés hacerlo si no tiene categorías asignadas."}
+            </p>
+            <div className={styles.modalBtns}>
+              <button className={styles.modalCancel} onClick={() => setDeleteModal(null)} type="button">
+                Cancelar
+              </button>
+              <button className={styles.modalConfirm} onClick={confirmDelete} type="button" autoFocus>
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODAL: ELIMINAR PRODUCTOS SELECCIONADOS ══ */}
+      {bulkDeleteConfirmOpen && (
+        <div
+          className={styles.modalOverlay}
+          onClick={() => !bulkBusy && setBulkDeleteConfirmOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bulk-delete-modal-title"
+        >
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <p id="bulk-delete-modal-title" className={styles.modalTitle}>
+              ¿Eliminar {selectedIds.size} producto{selectedIds.size !== 1 ? "s" : ""}?
+            </p>
+            <p className={styles.modalDesc}>
+              Los productos seleccionados se eliminarán de forma permanente. Esta acción no se puede deshacer.
+            </p>
+            <div className={styles.modalBtns}>
+              <button
+                className={styles.modalCancel}
+                onClick={() => setBulkDeleteConfirmOpen(false)}
+                type="button"
+                disabled={bulkBusy}
+              >
+                Cancelar
+              </button>
+              <button className={styles.modalConfirm} onClick={bulkDelete} type="button" disabled={bulkBusy} autoFocus>
+                {bulkBusy ? <><Spinner /> Eliminando...</> : "Eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODAL DE UPGRADE (límite de productos / importador Excel / gestor de imágenes) ══ */}
+      {upgradeReason && (
+        <UpgradeModal
+          currentPlan={effectiveSubscription}
+          minPlan={upgradeReason === "images" ? "pro" : "basic"}
+          requiredFeature={
+            upgradeReason === "excel" ? "carga_masiva_excel"
+            : upgradeReason === "pdf" ? "menu_pdf"
+            : upgradeReason === "images" ? "image_manager"
+            : upgradeReason === "templates" ? "menu_templates"
+            : upgradeReason === "items" ? undefined
+            : "programacion_productos"
+          }
+          minimumItems={upgradeReason === "items" ? (limits?.itemCount ?? totalItems) + 1 : undefined}
+          title={upgradeReason === "items" ? `Llegaste al límite de ${limits?.itemLimit ?? "tu plan"} productos` : "Esta función no está incluida en tu plan"}
+          description="Consultá los planes disponibles con esta capacidad. Los precios y beneficios corresponden al catálogo vigente."
+          onClose={() => setUpgradeReason(null)}
+        />
+      )}
+    </>
+  );
+
+  const itemFormBody = view === "item-form" && (
+    <>
+      {/* En el panel de escritorio, el encabezado ya dice "Nuevo producto":
+          el resumen solo aporta al editar uno existente. */}
+      {(!isDesktop || activeItem) && (
+        <div className={styles.productSummary}>
+          {itemForm.image && (
+            <img className={styles.productSummaryImage} src={itemForm.image} alt="" />
+          )}
+          <div className={styles.productSummaryText}>
+            <strong>{itemForm.title.trim() || (activeItem ? activeItem.title : "Nuevo producto")}</strong>
+            <span>
+              {itemForm.price && Number(itemForm.price) > 0
+                ? `$${Number(itemForm.price).toLocaleString("es-AR")}`
+                : "Completá la información principal"}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <form
+        className={styles.itemForm}
+        onSubmit={event => { event.preventDefault(); void saveItem(); }}
+        noValidate
+      >
+      <FormSection
+        number={1}
+        title="Información y precio"
+        summary="Datos principales"
+        expanded={openItemSections.has("basics")}
+        onToggle={() => toggleItemSection("basics")}
+      >
+      <div className={styles.field}>
+        <label htmlFor="item-title">Nombre <span className={styles.requiredMark} aria-hidden="true">*</span></label>
+        <input
+          id="item-title"
+          type="text"
+          placeholder="Ej: Pizza napolitana"
+          value={itemForm.title}
+          onChange={e => {
+            setItemForm(f => ({ ...f, title: e.target.value }));
+            setItemFieldErrors(previous => ({ ...previous, title: undefined }));
+          }}
+          autoFocus
+          maxLength={80}
+          required
+          aria-invalid={Boolean(itemFieldErrors.title)}
+          aria-describedby={itemFieldErrors.title ? "item-title-error" : undefined}
+        />
+        {itemFieldErrors.title && <span id="item-title-error" className={styles.fieldError}>{itemFieldErrors.title}</span>}
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="item-desc">Descripción</label>
+        <textarea
+          id="item-desc"
+          placeholder="Ingredientes, alérgenos, preparación..."
+          value={itemForm.description}
+          onChange={e => setItemForm(f => ({ ...f, description: e.target.value }))}
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="item-image">Imagen</label>
+        <div className={styles.imageUploader}>
+          <input
+            ref={itemImageInputRef}
+            id="item-image"
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className={styles.hiddenInput}
+          />
+
+          {itemForm.image ? (
+            <div className={styles.imagePreviewWrapper}>
+              <div className={styles.imagePreviewFrame}>
+                <img src={itemForm.image} alt="Vista previa del producto" className={styles.imagePreview} />
+                {imageUploading && (
+                  <div className={styles.imageUploadingOverlay}>
+                    <Spinner size={18} /> Subiendo...
+                  </div>
+                )}
+              </div>
+              <div className={styles.imagePreviewActions}>
+                <button
+                  type="button"
+                  className={styles.changeImageButton}
+                  onClick={() => itemImageInputRef.current?.click()}
+                  disabled={imageUploading}
+                >
+                  {imageUploading ? "Subiendo..." : "Cambiar imagen"}
+                </button>
+                <button
+                  type="button"
+                  className={styles.removeImageButton}
+                  onClick={removeItemImage}
+                  disabled={imageUploading}
+                >
+                  Quitar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className={styles.uploadButton}
+              onClick={() => itemImageInputRef.current?.click()}
+              disabled={imageUploading}
+            >
+              {imageUploading ? <Spinner size={16} /> : icons.upload}
+              {imageUploading ? "Subiendo..." : "Subir imagen"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="item-price">Precio <span className={styles.requiredMark} aria-hidden="true">*</span></label>
+        <input
+          id="item-price"
+          type="number"
+          placeholder="0"
+          min="0.01"
+          step="0.01"
+          value={itemForm.price}
+          onChange={e => {
+            setItemForm(f => ({ ...f, price: e.target.value }));
+            setItemFieldErrors(previous => ({ ...previous, price: undefined }));
+          }}
+          required
+          aria-invalid={Boolean(itemFieldErrors.price)}
+          aria-describedby={itemFieldErrors.price ? "item-price-error" : undefined}
+        />
+        {itemFieldErrors.price && <span id="item-price-error" className={styles.fieldError}>{itemFieldErrors.price}</span>}
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="item-code">
+          Código interno {!limits?.autoGenerateCodes && <span className={styles.requiredMark} aria-hidden="true">*</span>}
+        </label>
+        <input
+          id="item-code"
+          type="text"
+          placeholder={limits?.autoGenerateCodes ? "Se genera solo si lo dejás vacío" : "Ej: pizza-napo"}
+          value={itemForm.code}
+          onChange={e => {
+            setItemForm(f => ({ ...f, code: e.target.value }));
+            setItemFieldErrors(previous => ({ ...previous, code: undefined }));
+          }}
+          required={!limits?.autoGenerateCodes}
+          aria-invalid={Boolean(itemFieldErrors.code)}
+          aria-describedby={itemFieldErrors.code ? "item-code-error" : "item-code-hint"}
+        />
+        {itemFieldErrors.code
+          ? <span id="item-code-error" className={styles.fieldError}>{itemFieldErrors.code}</span>
+          : <span id="item-code-hint" className={styles.fieldHint}>
+              {limits?.autoGenerateCodes
+                ? "Dejalo vacío para que se genere uno automáticamente, o escribí el tuyo."
+                : "Usalo para identificar el producto dentro del editor."}
+            </span>}
+      </div>
+      </FormSection>
+
+      <FormSection
+        number={2}
+        title="Variantes y promociones"
+        summary={promotionsSummary}
+        expanded={openItemSections.has("promotions")}
+        onToggle={() => toggleItemSection("promotions")}
+      >
+      <div className={styles.field}>
+        <label htmlFor="item-offer">Precio oferta</label>
+        <input
+          id="item-offer"
+          type="number"
+          placeholder="0"
+          min="0.01"
+          step="0.01"
+          value={itemForm.offerPrice}
+          disabled={!canScheduleOffers && itemForm.offerScheduled}
+          onChange={e => setItemForm(f => ({ ...f, offerPrice: e.target.value }))}
+        />
+      </div>
+
+      {/* Variantes */}
+      <div className={styles.field}>
+        <div className={styles.fieldLabelRow}>
+          <label>Variantes</label>
+          <button
+            className={styles.textBtn}
+            type="button"
+            onClick={() => setItemForm(f => ({ ...f, options: [...f.options, { key: "", value: "" }] }))}
+          >
+            + Agregar variante
+          </button>
+        </div>
+        {itemForm.options.length === 0 && (
+          <p className={styles.emptyHint}>Sin variantes. Útil para tamaños o presentaciones con precio distinto.</p>
+        )}
+        {itemForm.options.map((opt, i) => (
+          <div key={i} className={styles.optionRow}>
+            <input
+              type="text"
+              placeholder="Nombre (ej: Grande)"
+              value={opt.key}
+              aria-label={`Nombre variante ${i + 1}`}
+              onChange={e => setItemForm(f => {
+                const opts = [...f.options];
+                opts[i] = { ...opts[i], key: e.target.value };
+                return { ...f, options: opts };
+              })}
+            />
+            <input
+              type="number"
+              placeholder="Precio"
+              value={opt.value}
+              min="0"
+              aria-label={`Precio variante ${i + 1}`}
+              onChange={e => setItemForm(f => {
+                const opts = [...f.options];
+                opts[i] = { ...opts[i], value: e.target.value };
+                return { ...f, options: opts };
+              })}
+            />
+            <button
+              className={styles.removeBtn}
+              type="button"
+              aria-label={`Eliminar variante ${i + 1}`}
+              onClick={() => setItemForm(f => ({ ...f, options: f.options.filter((_, j) => j !== i) }))}
+            >
+              {icons.close}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      </FormSection>
+
+      <FormSection
+        number={3}
+        title="Programación del producto"
+        summary={schedulingSummary}
+        expanded={openItemSections.has("scheduling")}
+        onToggle={() => toggleItemSection("scheduling")}
+      >
+      <p className={styles.emptyHint}>
+        Cargá el horario una sola vez y prendé los días en los que se aplica.
+        Si además querés acotarlo a una temporada, agregá un rango de fechas.
+      </p>
+
+      {/* Oferta programada */}
+      <section className={styles.scheduleCard} aria-labelledby="offer-schedule-title">
+        <div className={styles.scheduleHeader}>
+          <div>
+            <div className={styles.scheduleTitleRow}>
+              <p id="offer-schedule-title" className={styles.toggleLabel}>Programar oferta</p>
+              {!canScheduleOffers && <span className={styles.schedulePlan}>VER PLANES</span>}
+            </div>
+            <p className={styles.toggleDesc}>El precio de oferta se activa y se desactiva solo, en los días y horarios que elijas.</p>
+          </div>
+          <Toggle
+            checked={itemForm.offerScheduled}
+            onChange={() => {
+              if (!canScheduleOffers && !itemForm.offerScheduled) {
+                setUpgradeReason("offer");
+                return;
+              }
+              setItemForm(f => ({
+                ...f,
+                offerScheduled: !f.offerScheduled,
+                offerWeek: !f.offerScheduled && !hasAnyRange(f.offerWeek) ? defaultWeekRanges() : f.offerWeek,
+              }));
+            }}
+            label="Programar oferta"
+          />
+        </div>
+
+        {itemForm.offerScheduled && !canScheduleOffers && (
+          <p className={styles.scheduleInactive}>
+            La programación guardada está inactiva con el plan Free. Podés desactivarla o mejorar el plan para recuperarla.
+          </p>
+        )}
+
+        {itemForm.offerScheduled && canScheduleOffers && (
+          <>
+            {!itemForm.offerPrice && (
+              <p className={styles.scheduleInactive}>
+                Falta el precio de oferta: cargalo en «Variantes y promociones» para que la programación tenga efecto.
+              </p>
+            )}
+            <WeeklySchedule
+              key={"offer-week-" + (activeItem?._id ?? "nuevo")}
+              value={itemForm.offerWeek}
+              onChange={next => setItemForm(f => ({ ...f, offerWeek: next }))}
+              idPrefix="offer-week"
+              timeLabel="Horario de la oferta"
+              emptyLabel="Elegí al menos un día para la oferta."
+            />
+            <ScheduleDateRange
+              value={itemForm.offerRange}
+              onChange={next => setItemForm(f => ({ ...f, offerRange: next }))}
+              idPrefix="offer"
+              hint="Opcional. Sin fechas, la oferta se repite todas las semanas en esos días y horarios."
+            />
+            <p className={styles.scheduleHint}>
+              Horario de Argentina. Fuera de la programación se muestra el precio original.
+            </p>
+          </>
+        )}
+      </section>
+
+      {/* Disponibilidad programada */}
+      <section className={styles.scheduleCard} aria-labelledby="item-schedule-title">
+        <div className={styles.scheduleHeader}>
+          <div>
+            <div className={styles.scheduleTitleRow}>
+              <p id="item-schedule-title" className={styles.toggleLabel}>Programar disponibilidad</p>
+              {!canScheduleItems && <span className={styles.schedulePlan}>VER PLANES</span>}
+            </div>
+            <p className={styles.toggleDesc}>Mostrá el producto solo en los días y horarios que elijas.</p>
+          </div>
+          <Toggle
+            checked={itemForm.availabilityScheduled}
+            onChange={() => {
+              if (!canScheduleItems && !itemForm.availabilityScheduled) {
+                setUpgradeReason("schedule");
+                return;
+              }
+              setItemForm(f => ({
+                ...f,
+                availabilityScheduled: !f.availabilityScheduled,
+                availabilityWeek: !f.availabilityScheduled && !hasAnyRange(f.availabilityWeek)
+                  ? defaultWeekRanges()
+                  : f.availabilityWeek,
+              }));
+            }}
+            label="Programar disponibilidad"
+          />
+        </div>
+
+        {itemForm.availabilityScheduled && !canScheduleItems && (
+          <p className={styles.scheduleInactive}>
+            El horario guardado está inactivo con el plan Free. Podés desactivarlo o mejorar el plan para volver a usarlo.
+          </p>
+        )}
+
+        {itemForm.availabilityScheduled && canScheduleItems && (
+          <>
+            <WeeklySchedule
+              key={"availability-week-" + (activeItem?._id ?? "nuevo")}
+              value={itemForm.availabilityWeek}
+              onChange={next => setItemForm(f => ({ ...f, availabilityWeek: next }))}
+              idPrefix="availability-week"
+              timeLabel="Horario disponible"
+              emptyLabel="Elegí al menos un día para la disponibilidad."
+            />
+            <ScheduleDateRange
+              value={itemForm.availabilityRange}
+              onChange={next => setItemForm(f => ({ ...f, availabilityRange: next }))}
+              idPrefix="availability"
+              hint="Opcional. Sin fechas, la disponibilidad se repite todas las semanas."
+            />
+            <p className={styles.scheduleHint}>
+              Horario de Argentina. Fuera de la programación el producto aparece como no disponible.
+            </p>
+          </>
+        )}
+      </section>
+      </FormSection>
+
+      <FormSection
+        number={4}
+        title="Disponibilidad y visibilidad"
+        summary={availabilitySummary}
+        expanded={openItemSections.has("availability")}
+        onToggle={() => toggleItemSection("availability")}
+      >
+      {/* Toggles */}
+      <div className={styles.toggleGroup}>
+        {[
+          { label: "Disponible",   desc: "Se puede pedir ahora",          key: "available" },
+          { label: "Ocultar",      desc: "No aparece en la carta pública", key: "hidden" },
+          { label: "Recomendado",  desc: "Se destaca en la carta pública", key: "recommended" },
+        ].map(({ label, desc, key }) => (
+          <div key={key} className={styles.toggleRow}>
+            <div>
+              <p className={styles.toggleLabel}>{label}</p>
+              <p className={styles.toggleDesc}>{desc}</p>
+            </div>
+            <Toggle
+              checked={itemForm[key as keyof typeof itemForm] as boolean}
+              onChange={() => setItemForm(f => ({ ...f, [key]: !f[key as keyof typeof f] }))}
+              label={label}
+            />
+          </div>
+        ))}
+      </div>
+      </FormSection>
+
+      {/* En escritorio los resultados siguen a la vista en el tablero. */}
+      {searchActive && !isDesktop && (
+        <button className={styles.backToResults} type="button" onClick={requestCloseItemForm}>
+          Volver a resultados
+        </button>
+      )}
+
+      <div className={`${styles.formBtns} ${isDesktop && !activeItem ? styles.formBtnsTriple : ""}`}>
+        <button
+          className={styles.cancelBtn}
+          type="button"
+          onClick={requestCloseItemForm}
+          disabled={saving || imageUploading}
+        >
+          Cancelar
+        </button>
+        {/* Cargar una carta entera es el caso más pesado del editor: en
+            escritorio, crear y seguir con el siguiente producto de la misma
+            categoría evita volver al tablero en cada alta. */}
+        {isDesktop && !activeItem && (
+          <button
+            className={styles.saveNextBtn}
+            type="button"
+            disabled={saving || imageUploading}
+            onClick={() => void saveItem({ andNew: true })}
+          >
+            Crear y seguir
+          </button>
+        )}
+        <button
+          className={styles.saveBtn}
+          disabled={saving || imageUploading}
+          aria-busy={saving}
+          type="submit"
+        >
+          {saving
+            ? <><Spinner /> Guardando...</>
+            : imageUploading
+              ? "Subiendo imagen..."
+              : activeItem ? "Guardar cambios" : "Crear producto"}
+        </button>
+      </div>
+      {activeItem && (
+        <div className={styles.dangerZone}>
+          <button
+            className={styles.deleteBtn}
+            type="button"
+            disabled={limits?.disableMenuDelete === true}
+            title={limits?.disableMenuDelete ? "Eliminar deshabilitado desde Configuración" : undefined}
+            onClick={() => setDeleteModal({ type: "item", id: activeItem._id, name: activeItem.title })}
+          >
+            {limits?.disableMenuDelete ? "Eliminar deshabilitado desde Configuración" : "Eliminar producto"}
+          </button>
+        </div>
+      )}
+      </form>
+    </>
+  );
+
+  const categoriaFormFields = view === "categoria-form" && (
+    <>
+      <div className={styles.field}>
+        <label htmlFor="cat-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
+        <input
+          id="cat-title"
+          type="text"
+          placeholder="Ej: Pizzas"
+          value={categoriaForm.title}
+          onChange={e => setCategoriaForm(f => ({ ...f, title: e.target.value }))}
+          autoFocus
+          maxLength={60}
+        />
+      </div>
+      <div className={styles.field}>
+        <label htmlFor="cat-desc">Descripción</label>
+        <input
+          id="cat-desc"
+          type="text"
+          placeholder="Opcional"
+          value={categoriaForm.description}
+          onChange={e => setCategoriaForm(f => ({ ...f, description: e.target.value }))}
+        />
+      </div>
+      <div className={styles.field}>
+        <label htmlFor="cat-code">Código interno</label>
+        <input
+          id="cat-code"
+          type="text"
+          placeholder={limits?.autoGenerateCodes ? "Se genera solo si lo dejás vacío" : "Ej: pizzas"}
+          value={categoriaForm.code}
+          onChange={e => setCategoriaForm(f => ({ ...f, code: e.target.value }))}
+        />
+      </div>
+      {!categoriaForm.editingId && (
+        <div className={styles.field}>
+          <label htmlFor="cat-seccion">Sección</label>
+          <select
+            id="cat-seccion"
+            value={categoriaForm.seccionID}
+            onChange={e => setCategoriaForm(f => ({ ...f, seccionID: e.target.value }))}
+          >
+            <option value="">Sin sección</option>
+            {menuData?.secciones.map(s => (
+              <option key={s._id} value={s._id}>{s.title}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      <div className={styles.formBtns}>
+        <button
+          className={styles.saveBtn}
+          onClick={saveCategoria}
+          disabled={saving}
+          aria-busy={saving}
+          type="button"
+        >
+          {saving ? <><Spinner /> Guardando...</> : categoriaForm.editingId ? "Guardar cambios" : "Crear categoría"}
+        </button>
+      </div>
+    </>
+  );
+
+  const seccionFormFields = view === "seccion-form" && (
+    <>
+      <div className={styles.field}>
+        <label htmlFor="sec-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
+        <input
+          id="sec-title"
+          type="text"
+          placeholder="Ej: Comidas"
+          value={seccionForm.title}
+          onChange={e => setSeccionForm(f => ({ ...f, title: e.target.value }))}
+          autoFocus
+          maxLength={60}
+        />
+      </div>
+      <div className={styles.field}>
+        <label htmlFor="sec-code">Código interno</label>
+        <input
+          id="sec-code"
+          type="text"
+          placeholder={limits?.autoGenerateCodes ? "Se genera solo si lo dejás vacío" : "Ej: comidas"}
+          value={seccionForm.code}
+          onChange={e => setSeccionForm(f => ({ ...f, code: e.target.value }))}
+        />
+      </div>
+      <div className={styles.formBtns}>
+        <button
+          className={styles.saveBtn}
+          onClick={saveSeccion}
+          disabled={saving}
+          aria-busy={saving}
+          type="button"
+        >
+          {saving ? <><Spinner /> Guardando...</> : seccionForm.editingId ? "Guardar cambios" : "Crear sección"}
+        </button>
+      </div>
+    </>
+  );
+
+  // ── Escritorio: estructura, tablero y panel de edición a la vez ───────────
+
+  if (isDesktop) {
+    const panelTitle = view === "item-form"
+      ? (activeItem ? "Editar producto" : "Nuevo producto")
+      : view === "categoria-form"
+        ? (categoriaForm.editingId ? "Editar categoría" : "Nueva categoría")
+        : view === "seccion-form"
+          ? (seccionForm.editingId ? "Editar sección" : "Nueva sección")
+          : "Resumen del menú";
+
+    const visibleCategorias = (categorias: Categoria[]) => categorias.filter(
+      cat => statusFilter === "all" || (filteredItems.get(cat._id)?.length ?? 0) > 0);
+
+    const renderCategoria = (cat: Categoria) => (
+      <WorkspaceCategory
+        key={cat._id}
+        cat={cat}
+        items={filteredItems.get(cat._id) ?? cat.items}
+        activeItemId={view === "item-form" ? activeItem?._id ?? null : null}
+        flashItemId={flashItemId}
+        editing={view === "categoria-form" && categoriaForm.editingId === cat._id}
+        atItemLimit={atItemLimit}
+        deleteDisabled={limits?.disableMenuDelete === true}
+        selectionMode={selectionMode}
+        selectedIds={selectedIds}
+        dragOver={dragOverCat === cat._id}
+        draggedItem={draggedItem}
+        onEditCat={editCategoriaFromBoard}
+        onDeleteCat={deleteCategoriaFromBoard}
+        onNewItem={newItemFromBoard}
+        onEditItem={editItemFromBoard}
+        onToggleAvailable={toggleItemAvailable}
+        onToggleHidden={toggleItemHidden}
+        onToggleSelectItem={toggleSelectItem}
+        onToggleSelectAllInCat={toggleSelectAllInCat}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onDragEnd={handleDragEnd}
+      />
+    );
+
+    const looseCategorias = menuData ? visibleCategorias(menuData.sinSeccion) : [];
+    const nothingMatchesFilter = statusFilter !== "all" && totalItems > 0 && workspaceCounts[statusFilter] === 0;
+
+    return (
+      <div className={`${styles.me} ${styles.meWide} ${ws.shell}`}>
+        <header className={ws.header}>
+          <div className={ws.headerTitle}>
+            <h1>Menú</h1>
+            <span>
+              {totalItems} producto{totalItems !== 1 ? "s" : ""}
+              {limits?.itemLimit != null ? ` de ${limits.itemLimit}` : ""}
+              {" · "}{categoryCount} categoría{categoryCount !== 1 ? "s" : ""}
+            </span>
+          </div>
+
+          <div className={ws.search} role="search">
+            <Search size={17} strokeWidth={1.8} className={ws.searchIcon} aria-hidden="true" />
+            <label className="sr-only" htmlFor="menu-search-desktop">Buscar en el menú</label>
+            <input
+              ref={searchInputRef}
+              id="menu-search-desktop"
+              className={ws.searchInput}
+              type="search"
+              placeholder="Buscar producto, categoría o código"
+              value={searchQuery}
+              onChange={event => setSearchQuery(event.target.value)}
+              autoComplete="off"
+            />
+            {searchQuery
+              ? (
+                <button
+                  type="button"
+                  className={ws.searchClear}
+                  onClick={() => { setSearchQuery(""); searchInputRef.current?.focus(); }}
+                >
+                  Limpiar
+                </button>
+              )
+              : <kbd className={ws.searchKbd} aria-hidden="true">/</kbd>}
+          </div>
+
+          <div className={ws.headerActions}>
+            {totalItems > 0 && (
+              <button
+                type="button"
+                className={ws.headerButton}
+                aria-pressed={selectionMode}
+                onClick={() => guarded(() => { setView("menu"); toggleSelectionMode(); })}
+                title={selectionMode ? "Cancelar selección" : "Seleccionar varios productos"}
+              >
+                <CheckSquare size={17} strokeWidth={1.8} aria-hidden="true" />
+                <span className={ws.buttonLabel}>{selectionMode ? "Cancelar selección" : "Seleccionar"}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              className={ws.headerButton}
+              onClick={() => guarded(openNewSeccion)}
+              title="Nueva sección"
+            >
+              <Layers size={17} strokeWidth={1.8} aria-hidden="true" />
+              <span className={ws.buttonLabel}>Sección</span>
+            </button>
+            <button
+              type="button"
+              className={`${ws.headerButton} ${ws.headerButtonPrimary}`}
+              onClick={() => guarded(openNewCategoria)}
+              title="Nueva categoría"
+            >
+              <FolderPlus size={17} strokeWidth={1.8} aria-hidden="true" />
+              <span className={ws.buttonLabel}>Categoría</span>
+            </button>
+            <button
+              type="button"
+              className={ws.headerButton}
+              onClick={() => setMenuSheetOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={menuSheetOpen}
+              title="Plantillas, imágenes, Excel y PDF"
+            >
+              <SlidersHorizontal size={17} strokeWidth={1.8} aria-hidden="true" />
+              <span className={ws.buttonLabel}>Herramientas</span>
+            </button>
+          </div>
+        </header>
+
+        <div className={`${ws.workspace} ${selectionMode ? ws.workspaceBulkPad : ""}`}>
+          {menuData && (
+            <WorkspaceNav
+              menu={menuData}
+              activeCatId={focusedCatId}
+              editingCatId={view === "categoria-form" ? categoriaForm.editingId || null : null}
+              dragOverCat={dragOverCat}
+              dragging={draggedItem !== null}
+              onSelectCat={scrollToCategory}
+              onEditSeccion={editSeccionFromBoard}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            />
+          )}
+
+          <div className={ws.board} ref={boardRef}>
+            {!panelOpen && errorBanner}
+
+            {searchActive ? searchResultsSection : (
+              <>
+                {totalItems > 0 && (
+                  <div className={ws.boardTools}>
+                    <WorkspaceFilters counts={workspaceCounts} value={statusFilter} onChange={setStatusFilter} />
+                    {menuData && (
+                      <WorkspaceJumpBar menu={menuData} activeCatId={focusedCatId} onSelectCat={scrollToCategory} />
+                    )}
+                  </div>
+                )}
+
+                {menuData?.secciones.map(sec => (
+                  <Fragment key={sec._id}>
+                    <WorkspaceSection
+                      title={sec.title}
+                      categoryCount={sec.categorias.length}
+                      onEdit={() => editSeccionFromBoard(sec)}
+                      onDelete={() => setDeleteModal({ type: "seccion", id: sec._id, name: sec.title })}
+                      deleteDisabled={limits?.disableMenuDelete === true}
+                    />
+                    {sec.categorias.length === 0
+                      ? <p className={ws.boardEmpty}>Sin categorías en esta sección.</p>
+                      : visibleCategorias(sec.categorias).map(renderCategoria)}
+                  </Fragment>
+                ))}
+
+                {looseCategorias.length > 0 && (
+                  <>
+                    {(menuData?.secciones.length ?? 0) > 0 && (
+                      <WorkspaceSection title="Sin sección" categoryCount={menuData?.sinSeccion.length ?? 0} />
+                    )}
+                    {looseCategorias.map(renderCategoria)}
+                  </>
+                )}
+
+                {nothingMatchesFilter && (
+                  <div className={ws.boardEmpty}>
+                    Ningún producto coincide con este filtro.
+                    <button type="button" className={ws.boardEmptyButton} onClick={() => setStatusFilter("all")}>
+                      Ver todos
+                    </button>
+                  </div>
+                )}
+
+                {emptyMenuState}
+              </>
+            )}
+          </div>
+
+          <WorkspacePanel
+            title={panelTitle}
+            subtitle={view === "item-form" ? itemFormBreadcrumb || undefined : undefined}
+            status={view === "item-form" && itemFormDirty ? "Sin guardar" : undefined}
+            onClose={panelOpen ? (view === "item-form" ? requestCloseItemForm : () => setView("menu")) : undefined}
+            bodyKey={`${view}-${formSeq}`}
+          >
+            {panelOpen ? (
+              <div className={styles.panelForm}>
+                {errorBanner && <div className={styles.panelError}>{errorBanner}</div>}
+                {itemFormBody}
+                {categoriaFormFields && <div className={styles.panelFields}>{categoriaFormFields}</div>}
+                {seccionFormFields && <div className={styles.panelFields}>{seccionFormFields}</div>}
+              </div>
+            ) : (
+              <WorkspaceOverview
+                counts={workspaceCounts}
+                categoryCount={categoryCount}
+                itemLimit={limits?.itemLimit ?? null}
+                filter={statusFilter}
+                onFilter={setStatusFilter}
+                publicMenuUrl={publicMenuUrl}
+              />
+            )}
+          </WorkspacePanel>
+        </div>
+
+        {menuSheet}
+        {bulkBar}
+        {dialogs}
+      </div>
+    );
+  }
+
+  // ── Móvil: una vista por vez ──────────────────────────────────────────────
 
   return (
       <div className={styles.me}>
@@ -1513,56 +2940,8 @@ export default function MenuEditorPage() {
                 )}
               </div>
 
-              {searchActive ? (
-                <section className={styles.searchResults} aria-labelledby="search-results-title">
-                  <div className={styles.searchResultsHeader}>
-                    <p id="search-results-title">
-                      {searchResults.length} resultado{searchResults.length !== 1 ? "s" : ""}
-                    </p>
-                    <span aria-live="polite">para “{searchQuery.trim()}”</span>
-                  </div>
-
-                  {searchResults.length > 0 ? (
-                    <div className={styles.searchResultsList} role="list">
-                      {searchResults.map(({ item, categoria, sectionTitle }) => (
-                        <div key={item._id} role="listitem">
-                          <button
-                            className={styles.searchResultRow}
-                            type="button"
-                            onClick={() => openEditItem(item, categoria)}
-                          >
-                            {item.image && (
-                              <img className={styles.searchResultImage} src={item.image} alt="" />
-                            )}
-                            <span className={styles.searchResultInfo}>
-                              <span className={styles.searchResultName}>{item.title}</span>
-                              <span className={styles.searchResultPath}>{sectionTitle} / {categoria.title}</span>
-                              <span className={styles.searchResultPrice}>
-                                {item.offerPrice != null
-                                  ? `Oferta $${item.offerPrice.toLocaleString("es-AR")}`
-                                  : item.price != null
-                                    ? `$${item.price.toLocaleString("es-AR")}`
-                                    : "Sin precio"}
-                              </span>
-                            </span>
-                            <span className={`${styles.searchResultStatus} ${item.available ? styles.searchResultStatusOn : styles.searchResultStatusOff}`}>
-                              {item.hidden ? "Oculto" : item.available ? "Disponible" : "Pausado"}
-                            </span>
-                            <span className={styles.searchResultAction}>Editar</span>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className={styles.searchEmpty}>
-                      <p>No encontramos productos con ese término.</p>
-                      <span>Probá con el nombre, código, categoría o sección.</span>
-                    </div>
-                  )}
-                </section>
-              ) : (
+              {searchActive ? searchResultsSection : (
                 <>
-
               {/* Secciones */}
               {menuData?.secciones.map(sec => (
                 <div key={sec._id} className={styles.seccionBlock}>
@@ -1664,244 +3043,13 @@ export default function MenuEditorPage() {
               )}
 
               {/* Estado vacío */}
-              {menuData?.secciones.length === 0 && menuData?.sinSeccion.length === 0 && (
-                <div className={styles.emptyState}>
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#272420" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
-                    <rect x="9" y="3" width="6" height="4" rx="1" />
-                    <line x1="9" y1="12" x2="15" y2="12" />
-                    <line x1="9" y1="16" x2="12" y2="16" />
-                  </svg>
-                  <p>Tu menú está vacío.</p>
-                  <p className={styles.emptySub}>Creá una categoría para empezar a agregar productos.</p>
-                  <button
-                    type="button"
-                    className={`${styles.sheetOption} ${!limits?.canUseTemplates ? styles.sheetOptionLocked : ""}`}
-                    onClick={() => {
-                      if (!limits?.canUseTemplates) { setUpgradeReason("templates"); return; }
-                      setView("template-picker");
-                    }}
-                  >
-                    <span className={styles.sheetOptionIcon}>
-                      {limits?.canUseTemplates ? icons.sparkles : icons.lock}
-                    </span>
-                    <span className={styles.sheetOptionText}>
-                      <span className={styles.sheetOptionTitle}>
-                        Elegir desde plantilla
-                        {!limits?.canUseTemplates && <span className={styles.sheetOptionPro}>VER PLANES</span>}
-                      </span>
-                      <span className={styles.sheetOptionDesc}>Cargá productos ya armados y editalos después</span>
-                    </span>
-                  </button>
-                </div>
-              )}
+              {emptyMenuState}
                 </>
               )}
             </div>
 
-            {/* ── Bottom sheet: Categoría / Sección / Importar ── */}
-            {menuSheetOpen && (
-              <div
-                className={styles.modalOverlay}
-                onClick={() => setMenuSheetOpen(false)}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="menu-sheet-title"
-              >
-                <div className={styles.sheet} onClick={e => e.stopPropagation()}>
-                  <p id="menu-sheet-title" className={styles.sheetTitle}>Agregar al menú</p>
-
-                  <button
-                    className={styles.sheetOption}
-                    type="button"
-                    onClick={() => { setMenuSheetOpen(false); openNewCategoria(); }}
-                  >
-                    <span className={styles.sheetOptionIcon}>{icons.folder}</span>
-                    <span className={styles.sheetOptionText}>
-                      <span className={styles.sheetOptionTitle}>Nueva categoría</span>
-                      <span className={styles.sheetOptionDesc}>Agrupa productos, ej: Pizzas</span>
-                    </span>
-                  </button>
-
-                  <button
-                    className={styles.sheetOption}
-                    type="button"
-                    onClick={() => { setMenuSheetOpen(false); openNewSeccion(); }}
-                  >
-                    <span className={styles.sheetOptionIcon}>{icons.layers}</span>
-                    <span className={styles.sheetOptionText}>
-                      <span className={styles.sheetOptionTitle}>Nueva sección</span>
-                      <span className={styles.sheetOptionDesc}>Agrupa categorías, ej: Comidas</span>
-                    </span>
-                  </button>
-
-                  <button
-                    className={`${styles.sheetOption} ${!limits?.canUseTemplates ? styles.sheetOptionLocked : ""}`}
-                    type="button"
-                    onClick={() => {
-                      setMenuSheetOpen(false);
-                      if (!limits?.canUseTemplates) { setUpgradeReason("templates"); return; }
-                      setView("template-picker");
-                    }}
-                  >
-                    <span className={styles.sheetOptionIcon}>
-                      {limits?.canUseTemplates ? icons.sparkles : icons.lock}
-                    </span>
-                    <span className={styles.sheetOptionText}>
-                      <span className={styles.sheetOptionTitle}>
-                        Elegir desde plantilla
-                        {!limits?.canUseTemplates && <span className={styles.sheetOptionPro}>VER PLANES</span>}
-                      </span>
-                      <span className={styles.sheetOptionDesc}>Cargá productos ya armados y editalos después</span>
-                    </span>
-                  </button>
-
-                  <button
-                    className={`${styles.sheetOption} ${!limits?.canUseImageManager ? styles.sheetOptionLocked : ""}`}
-                    type="button"
-                    onClick={() => {
-                      setMenuSheetOpen(false);
-                      if (!limits?.canUseImageManager) { setUpgradeReason("images"); return; }
-                      setView("image-manager");
-                    }}
-                  >
-                    <span className={styles.sheetOptionIcon}>
-                      {limits?.canUseImageManager ? icons.images : icons.lock}
-                    </span>
-                    <span className={styles.sheetOptionText}>
-                      <span className={styles.sheetOptionTitle}>
-                        Gestor de imágenes
-                        {!limits?.canUseImageManager && <span className={styles.sheetOptionPro}>VER PLANES</span>}
-                      </span>
-                      <span className={styles.sheetOptionDesc}>Subí varias fotos y asignalas a tus productos</span>
-                    </span>
-                  </button>
-
-                  <button
-                    className={`${styles.sheetOption} ${!limits?.canImportExcel ? styles.sheetOptionLocked : ""}`}
-                    type="button"
-                    onClick={() => {
-                      setMenuSheetOpen(false);
-                      if (!limits?.canImportExcel) { setUpgradeReason("excel"); return; }
-                      setView("massive-import");
-                    }}
-                  >
-                    <span className={styles.sheetOptionIcon}>
-                      {limits?.canImportExcel ? icons.upload : icons.lock}
-                    </span>
-                    <span className={styles.sheetOptionText}>
-                      <span className={styles.sheetOptionTitle}>
-                        Importar desde Excel
-                        {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>VER PLANES</span>}
-                      </span>
-                      <span className={styles.sheetOptionDesc}>Carga o actualiza en lote</span>
-                    </span>
-                  </button>
-
-                  <button
-                    className={`${styles.sheetOption} ${!limits?.canImportExcel ? styles.sheetOptionLocked : ""}`}
-                    type="button"
-                    disabled={exporting}
-                    onClick={() => {
-                      setMenuSheetOpen(false);
-                      exportMenu();
-                    }}
-                  >
-                    <span className={styles.sheetOptionIcon}>
-                      {!limits?.canImportExcel ? icons.lock : exporting ? <Spinner size={16} /> : icons.download}
-                    </span>
-                    <span className={styles.sheetOptionText}>
-                      <span className={styles.sheetOptionTitle}>
-                        Exportar a Excel
-                        {!limits?.canImportExcel && <span className={styles.sheetOptionPro}>VER PLANES</span>}
-                      </span>
-                      <span className={styles.sheetOptionDesc}>Descargá tus categorías y productos actuales</span>
-                    </span>
-                  </button>
-
-                  <button
-                    className={`${styles.sheetOption} ${!canExportPdf ? styles.sheetOptionLocked : ""}`}
-                    type="button"
-                    disabled={exportingPdf}
-                    onClick={() => {
-                      setMenuSheetOpen(false);
-                      exportMenuPdf();
-                    }}
-                  >
-                    <span className={styles.sheetOptionIcon}>
-                      {!canExportPdf ? icons.lock : exportingPdf ? <Spinner size={16} /> : icons.download}
-                    </span>
-                    <span className={styles.sheetOptionText}>
-                      <span className={styles.sheetOptionTitle}>
-                        Exportar menú a PDF
-                        {!canExportPdf && <span className={styles.sheetOptionPro}>VER PLANES</span>}
-                      </span>
-                      <span className={styles.sheetOptionDesc}>Descargá una versión lista para imprimir</span>
-                    </span>
-                  </button>
-
-                  <button className={styles.sheetCancel} type="button" onClick={() => setMenuSheetOpen(false)}>
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── Barra de acciones masivas ── */}
-            {/* Portal a document.body: mismo motivo que UpgradeModal — sin esto
-                el dock de navegación mobile (position:fixed a nivel raíz del
-                layout) tapa esta barra pese al z-index. */}
-            {selectionMode && createPortal(
-              <div className={styles.bulkBar} role="toolbar" aria-label="Acciones sobre productos seleccionados">
-                <span className={styles.bulkBarCount}>
-                  {selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}
-                </span>
-                <div className={styles.bulkBarActions}>
-                  <button
-                    type="button"
-                    className={styles.bulkBarBtn}
-                    disabled={selectedIds.size === 0 || bulkBusy}
-                    onClick={() => bulkSetAvailable(true)}
-                  >
-                    Activar
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.bulkBarBtn}
-                    disabled={selectedIds.size === 0 || bulkBusy}
-                    onClick={() => bulkSetAvailable(false)}
-                  >
-                    Pausar
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.bulkBarBtn}
-                    disabled={selectedIds.size === 0 || bulkBusy}
-                    onClick={() => bulkSetHidden(false)}
-                  >
-                    Mostrar
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.bulkBarBtn}
-                    disabled={selectedIds.size === 0 || bulkBusy}
-                    onClick={() => bulkSetHidden(true)}
-                  >
-                    Ocultar
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.bulkBarBtn} ${styles.bulkBarBtnDanger}`}
-                    disabled={selectedIds.size === 0 || bulkBusy || limits?.disableMenuDelete === true}
-                    title={limits?.disableMenuDelete ? "Eliminar deshabilitado desde Configuración" : undefined}
-                    onClick={() => setBulkDeleteConfirmOpen(true)}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </div>,
-              document.body,
-            )}
+            {menuSheet}
+            {bulkBar}
           </>
         )}
 
@@ -1915,444 +3063,8 @@ export default function MenuEditorPage() {
               onBack={requestCloseItemForm}
             />
             <div className={`${styles.content} ${styles.formContent}`}>
-              {error && <div className={styles.errorBanner} role="alert">{error}</div>}
-
-              <div className={styles.productSummary}>
-                {itemForm.image && (
-                  <img className={styles.productSummaryImage} src={itemForm.image} alt="" />
-                )}
-                <div className={styles.productSummaryText}>
-                  <strong>{itemForm.title.trim() || (activeItem ? activeItem.title : "Nuevo producto")}</strong>
-                  <span>
-                    {itemForm.price && Number(itemForm.price) > 0
-                      ? `$${Number(itemForm.price).toLocaleString("es-AR")}`
-                      : "Completá la información principal"}
-                  </span>
-                </div>
-              </div>
-
-              <form
-                className={styles.itemForm}
-                onSubmit={event => { event.preventDefault(); void saveItem(); }}
-                noValidate
-              >
-              <FormSection
-                number={1}
-                title="Información y precio"
-                summary="Datos principales"
-                expanded={openItemSections.has("basics")}
-                onToggle={() => toggleItemSection("basics")}
-              >
-              <div className={styles.field}>
-                <label htmlFor="item-title">Nombre <span className={styles.requiredMark} aria-hidden="true">*</span></label>
-                <input
-                  id="item-title"
-                  type="text"
-                  placeholder="Ej: Pizza napolitana"
-                  value={itemForm.title}
-                  onChange={e => {
-                    setItemForm(f => ({ ...f, title: e.target.value }));
-                    setItemFieldErrors(previous => ({ ...previous, title: undefined }));
-                  }}
-                  autoFocus
-                  maxLength={80}
-                  required
-                  aria-invalid={Boolean(itemFieldErrors.title)}
-                  aria-describedby={itemFieldErrors.title ? "item-title-error" : undefined}
-                />
-                {itemFieldErrors.title && <span id="item-title-error" className={styles.fieldError}>{itemFieldErrors.title}</span>}
-              </div>
-
-              <div className={styles.field}>
-                <label htmlFor="item-desc">Descripción</label>
-                <textarea
-                  id="item-desc"
-                  placeholder="Ingredientes, alérgenos, preparación..."
-                  value={itemForm.description}
-                  onChange={e => setItemForm(f => ({ ...f, description: e.target.value }))}
-                />
-              </div>
-
-              <div className={styles.field}>
-                <label htmlFor="item-image">Imagen</label>
-                <div className={styles.imageUploader}>
-                  <input
-                    ref={itemImageInputRef}
-                    id="item-image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className={styles.hiddenInput}
-                  />
-
-                  {itemForm.image ? (
-                    <div className={styles.imagePreviewWrapper}>
-                      <div className={styles.imagePreviewFrame}>
-                        <img src={itemForm.image} alt="Vista previa del producto" className={styles.imagePreview} />
-                        {imageUploading && (
-                          <div className={styles.imageUploadingOverlay}>
-                            <Spinner size={18} /> Subiendo...
-                          </div>
-                        )}
-                      </div>
-                      <div className={styles.imagePreviewActions}>
-                        <button
-                          type="button"
-                          className={styles.changeImageButton}
-                          onClick={() => itemImageInputRef.current?.click()}
-                          disabled={imageUploading}
-                        >
-                          {imageUploading ? "Subiendo..." : "Cambiar imagen"}
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.removeImageButton}
-                          onClick={removeItemImage}
-                          disabled={imageUploading}
-                        >
-                          Quitar
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      className={styles.uploadButton}
-                      onClick={() => itemImageInputRef.current?.click()}
-                      disabled={imageUploading}
-                    >
-                      {imageUploading ? <Spinner size={16} /> : icons.upload}
-                      {imageUploading ? "Subiendo..." : "Subir imagen"}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className={styles.field}>
-                <label htmlFor="item-price">Precio <span className={styles.requiredMark} aria-hidden="true">*</span></label>
-                <input
-                  id="item-price"
-                  type="number"
-                  placeholder="0"
-                  min="0.01"
-                  step="0.01"
-                  value={itemForm.price}
-                  onChange={e => {
-                    setItemForm(f => ({ ...f, price: e.target.value }));
-                    setItemFieldErrors(previous => ({ ...previous, price: undefined }));
-                  }}
-                  required
-                  aria-invalid={Boolean(itemFieldErrors.price)}
-                  aria-describedby={itemFieldErrors.price ? "item-price-error" : undefined}
-                />
-                {itemFieldErrors.price && <span id="item-price-error" className={styles.fieldError}>{itemFieldErrors.price}</span>}
-              </div>
-
-              <div className={styles.field}>
-                <label htmlFor="item-code">
-                  Código interno {!limits?.autoGenerateCodes && <span className={styles.requiredMark} aria-hidden="true">*</span>}
-                </label>
-                <input
-                  id="item-code"
-                  type="text"
-                  placeholder={limits?.autoGenerateCodes ? "Se genera solo si lo dejás vacío" : "Ej: pizza-napo"}
-                  value={itemForm.code}
-                  onChange={e => {
-                    setItemForm(f => ({ ...f, code: e.target.value }));
-                    setItemFieldErrors(previous => ({ ...previous, code: undefined }));
-                  }}
-                  required={!limits?.autoGenerateCodes}
-                  aria-invalid={Boolean(itemFieldErrors.code)}
-                  aria-describedby={itemFieldErrors.code ? "item-code-error" : "item-code-hint"}
-                />
-                {itemFieldErrors.code
-                  ? <span id="item-code-error" className={styles.fieldError}>{itemFieldErrors.code}</span>
-                  : <span id="item-code-hint" className={styles.fieldHint}>
-                      {limits?.autoGenerateCodes
-                        ? "Dejalo vacío para que se genere uno automáticamente, o escribí el tuyo."
-                        : "Usalo para identificar el producto dentro del editor."}
-                    </span>}
-              </div>
-              </FormSection>
-
-              <FormSection
-                number={2}
-                title="Variantes y promociones"
-                summary={promotionsSummary}
-                expanded={openItemSections.has("promotions")}
-                onToggle={() => toggleItemSection("promotions")}
-              >
-              <div className={styles.field}>
-                <label htmlFor="item-offer">Precio oferta</label>
-                <input
-                  id="item-offer"
-                  type="number"
-                  placeholder="0"
-                  min="0.01"
-                  step="0.01"
-                  value={itemForm.offerPrice}
-                  disabled={!canScheduleOffers && itemForm.offerScheduled}
-                  onChange={e => setItemForm(f => ({ ...f, offerPrice: e.target.value }))}
-                />
-              </div>
-
-              {/* Variantes */}
-              <div className={styles.field}>
-                <div className={styles.fieldLabelRow}>
-                  <label>Variantes</label>
-                  <button
-                    className={styles.textBtn}
-                    type="button"
-                    onClick={() => setItemForm(f => ({ ...f, options: [...f.options, { key: "", value: "" }] }))}
-                  >
-                    + Agregar variante
-                  </button>
-                </div>
-                {itemForm.options.length === 0 && (
-                  <p className={styles.emptyHint}>Sin variantes. Útil para tamaños o presentaciones con precio distinto.</p>
-                )}
-                {itemForm.options.map((opt, i) => (
-                  <div key={i} className={styles.optionRow}>
-                    <input
-                      type="text"
-                      placeholder="Nombre (ej: Grande)"
-                      value={opt.key}
-                      aria-label={`Nombre variante ${i + 1}`}
-                      onChange={e => setItemForm(f => {
-                        const opts = [...f.options];
-                        opts[i] = { ...opts[i], key: e.target.value };
-                        return { ...f, options: opts };
-                      })}
-                    />
-                    <input
-                      type="number"
-                      placeholder="Precio"
-                      value={opt.value}
-                      min="0"
-                      aria-label={`Precio variante ${i + 1}`}
-                      onChange={e => setItemForm(f => {
-                        const opts = [...f.options];
-                        opts[i] = { ...opts[i], value: e.target.value };
-                        return { ...f, options: opts };
-                      })}
-                    />
-                    <button
-                      className={styles.removeBtn}
-                      type="button"
-                      aria-label={`Eliminar variante ${i + 1}`}
-                      onClick={() => setItemForm(f => ({ ...f, options: f.options.filter((_, j) => j !== i) }))}
-                    >
-                      {icons.close}
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              </FormSection>
-
-              <FormSection
-                number={3}
-                title="Programación del producto"
-                summary={schedulingSummary}
-                expanded={openItemSections.has("scheduling")}
-                onToggle={() => toggleItemSection("scheduling")}
-              >
-              <p className={styles.emptyHint}>
-                Cargá el horario una sola vez y prendé los días en los que se aplica.
-                Si además querés acotarlo a una temporada, agregá un rango de fechas.
-              </p>
-
-              {/* Oferta programada */}
-              <section className={styles.scheduleCard} aria-labelledby="offer-schedule-title">
-                <div className={styles.scheduleHeader}>
-                  <div>
-                    <div className={styles.scheduleTitleRow}>
-                      <p id="offer-schedule-title" className={styles.toggleLabel}>Programar oferta</p>
-                      {!canScheduleOffers && <span className={styles.schedulePlan}>VER PLANES</span>}
-                    </div>
-                    <p className={styles.toggleDesc}>El precio de oferta se activa y se desactiva solo, en los días y horarios que elijas.</p>
-                  </div>
-                  <Toggle
-                    checked={itemForm.offerScheduled}
-                    onChange={() => {
-                      if (!canScheduleOffers && !itemForm.offerScheduled) {
-                        setUpgradeReason("offer");
-                        return;
-                      }
-                      setItemForm(f => ({
-                        ...f,
-                        offerScheduled: !f.offerScheduled,
-                        offerWeek: !f.offerScheduled && !hasAnyRange(f.offerWeek) ? defaultWeekRanges() : f.offerWeek,
-                      }));
-                    }}
-                    label="Programar oferta"
-                  />
-                </div>
-
-                {itemForm.offerScheduled && !canScheduleOffers && (
-                  <p className={styles.scheduleInactive}>
-                    La programación guardada está inactiva con el plan Free. Podés desactivarla o mejorar el plan para recuperarla.
-                  </p>
-                )}
-
-                {itemForm.offerScheduled && canScheduleOffers && (
-                  <>
-                    {!itemForm.offerPrice && (
-                      <p className={styles.scheduleInactive}>
-                        Falta el precio de oferta: cargalo en «Variantes y promociones» para que la programación tenga efecto.
-                      </p>
-                    )}
-                    <WeeklySchedule
-                      key={"offer-week-" + (activeItem?._id ?? "nuevo")}
-                      value={itemForm.offerWeek}
-                      onChange={next => setItemForm(f => ({ ...f, offerWeek: next }))}
-                      idPrefix="offer-week"
-                      timeLabel="Horario de la oferta"
-                      emptyLabel="Elegí al menos un día para la oferta."
-                    />
-                    <ScheduleDateRange
-                      value={itemForm.offerRange}
-                      onChange={next => setItemForm(f => ({ ...f, offerRange: next }))}
-                      idPrefix="offer"
-                      hint="Opcional. Sin fechas, la oferta se repite todas las semanas en esos días y horarios."
-                    />
-                    <p className={styles.scheduleHint}>
-                      Horario de Argentina. Fuera de la programación se muestra el precio original.
-                    </p>
-                  </>
-                )}
-              </section>
-
-              {/* Disponibilidad programada */}
-              <section className={styles.scheduleCard} aria-labelledby="item-schedule-title">
-                <div className={styles.scheduleHeader}>
-                  <div>
-                    <div className={styles.scheduleTitleRow}>
-                      <p id="item-schedule-title" className={styles.toggleLabel}>Programar disponibilidad</p>
-                      {!canScheduleItems && <span className={styles.schedulePlan}>VER PLANES</span>}
-                    </div>
-                    <p className={styles.toggleDesc}>Mostrá el producto solo en los días y horarios que elijas.</p>
-                  </div>
-                  <Toggle
-                    checked={itemForm.availabilityScheduled}
-                    onChange={() => {
-                      if (!canScheduleItems && !itemForm.availabilityScheduled) {
-                        setUpgradeReason("schedule");
-                        return;
-                      }
-                      setItemForm(f => ({
-                        ...f,
-                        availabilityScheduled: !f.availabilityScheduled,
-                        availabilityWeek: !f.availabilityScheduled && !hasAnyRange(f.availabilityWeek)
-                          ? defaultWeekRanges()
-                          : f.availabilityWeek,
-                      }));
-                    }}
-                    label="Programar disponibilidad"
-                  />
-                </div>
-
-                {itemForm.availabilityScheduled && !canScheduleItems && (
-                  <p className={styles.scheduleInactive}>
-                    El horario guardado está inactivo con el plan Free. Podés desactivarlo o mejorar el plan para volver a usarlo.
-                  </p>
-                )}
-
-                {itemForm.availabilityScheduled && canScheduleItems && (
-                  <>
-                    <WeeklySchedule
-                      key={"availability-week-" + (activeItem?._id ?? "nuevo")}
-                      value={itemForm.availabilityWeek}
-                      onChange={next => setItemForm(f => ({ ...f, availabilityWeek: next }))}
-                      idPrefix="availability-week"
-                      timeLabel="Horario disponible"
-                      emptyLabel="Elegí al menos un día para la disponibilidad."
-                    />
-                    <ScheduleDateRange
-                      value={itemForm.availabilityRange}
-                      onChange={next => setItemForm(f => ({ ...f, availabilityRange: next }))}
-                      idPrefix="availability"
-                      hint="Opcional. Sin fechas, la disponibilidad se repite todas las semanas."
-                    />
-                    <p className={styles.scheduleHint}>
-                      Horario de Argentina. Fuera de la programación el producto aparece como no disponible.
-                    </p>
-                  </>
-                )}
-              </section>
-              </FormSection>
-
-              <FormSection
-                number={4}
-                title="Disponibilidad y visibilidad"
-                summary={availabilitySummary}
-                expanded={openItemSections.has("availability")}
-                onToggle={() => toggleItemSection("availability")}
-              >
-              {/* Toggles */}
-              <div className={styles.toggleGroup}>
-                {[
-                  { label: "Disponible",   desc: "Se puede pedir ahora",          key: "available" },
-                  { label: "Ocultar",      desc: "No aparece en la carta pública", key: "hidden" },
-                  { label: "Recomendado",  desc: "Se destaca en la carta pública", key: "recommended" },
-                ].map(({ label, desc, key }) => (
-                  <div key={key} className={styles.toggleRow}>
-                    <div>
-                      <p className={styles.toggleLabel}>{label}</p>
-                      <p className={styles.toggleDesc}>{desc}</p>
-                    </div>
-                    <Toggle
-                      checked={itemForm[key as keyof typeof itemForm] as boolean}
-                      onChange={() => setItemForm(f => ({ ...f, [key]: !f[key as keyof typeof f] }))}
-                      label={label}
-                    />
-                  </div>
-                ))}
-              </div>
-              </FormSection>
-
-              {searchActive && (
-                <button className={styles.backToResults} type="button" onClick={requestCloseItemForm}>
-                  Volver a resultados
-                </button>
-              )}
-
-              <div className={styles.formBtns}>
-                <button
-                  className={styles.cancelBtn}
-                  type="button"
-                  onClick={requestCloseItemForm}
-                  disabled={saving || imageUploading}
-                >
-                  Cancelar
-                </button>
-                <button
-                  className={styles.saveBtn}
-                  disabled={saving || imageUploading}
-                  aria-busy={saving}
-                  type="submit"
-                >
-                  {saving
-                    ? <><Spinner /> Guardando...</>
-                    : imageUploading
-                      ? "Subiendo imagen..."
-                      : activeItem ? "Guardar cambios" : "Crear producto"}
-                </button>
-              </div>
-              {activeItem && (
-                <div className={styles.dangerZone}>
-                  <button
-                    className={styles.deleteBtn}
-                    type="button"
-                    disabled={limits?.disableMenuDelete === true}
-                    title={limits?.disableMenuDelete ? "Eliminar deshabilitado desde Configuración" : undefined}
-                    onClick={() => setDeleteModal({ type: "item", id: activeItem._id, name: activeItem.title })}
-                  >
-                    {limits?.disableMenuDelete ? "Eliminar deshabilitado desde Configuración" : "Eliminar producto"}
-                  </button>
-                </div>
-              )}
-              </form>
+              {errorBanner}
+              {itemFormBody}
             </div>
           </>
         )}
@@ -2365,66 +3077,8 @@ export default function MenuEditorPage() {
               onBack={() => setView("menu")}
             />
             <div className={`${styles.content} ${styles.formContent}`}>
-              {error && <div className={styles.errorBanner} role="alert">{error}</div>}
-
-              <div className={styles.field}>
-                <label htmlFor="cat-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
-                <input
-                  id="cat-title"
-                  type="text"
-                  placeholder="Ej: Pizzas"
-                  value={categoriaForm.title}
-                  onChange={e => setCategoriaForm(f => ({ ...f, title: e.target.value }))}
-                  autoFocus
-                  maxLength={60}
-                />
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="cat-desc">Descripción</label>
-                <input
-                  id="cat-desc"
-                  type="text"
-                  placeholder="Opcional"
-                  value={categoriaForm.description}
-                  onChange={e => setCategoriaForm(f => ({ ...f, description: e.target.value }))}
-                />
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="cat-code">Código interno</label>
-                <input
-                  id="cat-code"
-                  type="text"
-                  placeholder={limits?.autoGenerateCodes ? "Se genera solo si lo dejás vacío" : "Ej: pizzas"}
-                  value={categoriaForm.code}
-                  onChange={e => setCategoriaForm(f => ({ ...f, code: e.target.value }))}
-                />
-              </div>
-              {!categoriaForm.editingId && (
-                <div className={styles.field}>
-                  <label htmlFor="cat-seccion">Sección</label>
-                  <select
-                    id="cat-seccion"
-                    value={categoriaForm.seccionID}
-                    onChange={e => setCategoriaForm(f => ({ ...f, seccionID: e.target.value }))}
-                  >
-                    <option value="">Sin sección</option>
-                    {menuData?.secciones.map(s => (
-                      <option key={s._id} value={s._id}>{s.title}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <div className={styles.formBtns}>
-                <button
-                  className={styles.saveBtn}
-                  onClick={saveCategoria}
-                  disabled={saving}
-                  aria-busy={saving}
-                  type="button"
-                >
-                  {saving ? <><Spinner /> Guardando...</> : categoriaForm.editingId ? "Guardar cambios" : "Crear categoría"}
-                </button>
-              </div>
+              {errorBanner}
+              {categoriaFormFields}
             </div>
           </>
         )}
@@ -2437,159 +3091,13 @@ export default function MenuEditorPage() {
               onBack={() => setView("menu")}
             />
             <div className={`${styles.content} ${styles.formContent}`}>
-              {error && <div className={styles.errorBanner} role="alert">{error}</div>}
-
-              <div className={styles.field}>
-                <label htmlFor="sec-title">Nombre <span style={{ color: "#c9a84c" }}>*</span></label>
-                <input
-                  id="sec-title"
-                  type="text"
-                  placeholder="Ej: Comidas"
-                  value={seccionForm.title}
-                  onChange={e => setSeccionForm(f => ({ ...f, title: e.target.value }))}
-                  autoFocus
-                  maxLength={60}
-                />
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="sec-code">Código interno</label>
-                <input
-                  id="sec-code"
-                  type="text"
-                  placeholder={limits?.autoGenerateCodes ? "Se genera solo si lo dejás vacío" : "Ej: comidas"}
-                  value={seccionForm.code}
-                  onChange={e => setSeccionForm(f => ({ ...f, code: e.target.value }))}
-                />
-              </div>
-              <div className={styles.formBtns}>
-                <button
-                  className={styles.saveBtn}
-                  onClick={saveSeccion}
-                  disabled={saving}
-                  aria-busy={saving}
-                  type="button"
-                >
-                  {saving ? <><Spinner /> Guardando...</> : seccionForm.editingId ? "Guardar cambios" : "Crear sección"}
-                </button>
-              </div>
+              {errorBanner}
+              {seccionFormFields}
             </div>
           </>
         )}
 
-        {/* ══ MODAL: DESCARTAR CAMBIOS DEL PRODUCTO ══ */}
-        {discardModalOpen && (
-          <div
-            className={styles.modalOverlay}
-            onClick={() => setDiscardModalOpen(false)}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="discard-modal-title"
-          >
-            <div className={styles.modal} onClick={event => event.stopPropagation()}>
-              <p id="discard-modal-title" className={styles.modalTitle}>¿Descartar los cambios?</p>
-              <p className={styles.modalDesc}>
-                Los datos que modificaste en este producto no se guardarán.
-              </p>
-              <div className={styles.modalBtns}>
-                <button className={styles.modalCancel} onClick={() => setDiscardModalOpen(false)} type="button" autoFocus>
-                  Seguir editando
-                </button>
-                <button
-                  className={styles.modalConfirm}
-                  onClick={() => { setDiscardModalOpen(false); setView("menu"); }}
-                  type="button"
-                >
-                  Descartar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══ MODAL DE CONFIRMACIÓN ══ */}
-        {deleteModal && (
-          <div
-            className={styles.modalOverlay}
-            onClick={() => setDeleteModal(null)}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-modal-title"
-          >
-            <div className={styles.modal} onClick={e => e.stopPropagation()}>
-              <p id="delete-modal-title" className={styles.modalTitle}>
-                ¿Eliminar "{deleteModal.name}"?
-              </p>
-              <p className={styles.modalDesc}>
-                {deleteModal.type === "item"
-                  ? "El producto se eliminará de forma permanente. Esta acción no se puede deshacer."
-                  : deleteModal.type === "categoria"
-                    ? "La categoría se eliminará permanentemente. Debe estar vacía antes de eliminarla."
-                    : "La sección se eliminará. Solo podés hacerlo si no tiene categorías asignadas."}
-              </p>
-              <div className={styles.modalBtns}>
-                <button className={styles.modalCancel} onClick={() => setDeleteModal(null)} type="button">
-                  Cancelar
-                </button>
-                <button className={styles.modalConfirm} onClick={confirmDelete} type="button" autoFocus>
-                  Eliminar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══ MODAL: ELIMINAR PRODUCTOS SELECCIONADOS ══ */}
-        {bulkDeleteConfirmOpen && (
-          <div
-            className={styles.modalOverlay}
-            onClick={() => !bulkBusy && setBulkDeleteConfirmOpen(false)}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="bulk-delete-modal-title"
-          >
-            <div className={styles.modal} onClick={e => e.stopPropagation()}>
-              <p id="bulk-delete-modal-title" className={styles.modalTitle}>
-                ¿Eliminar {selectedIds.size} producto{selectedIds.size !== 1 ? "s" : ""}?
-              </p>
-              <p className={styles.modalDesc}>
-                Los productos seleccionados se eliminarán de forma permanente. Esta acción no se puede deshacer.
-              </p>
-              <div className={styles.modalBtns}>
-                <button
-                  className={styles.modalCancel}
-                  onClick={() => setBulkDeleteConfirmOpen(false)}
-                  type="button"
-                  disabled={bulkBusy}
-                >
-                  Cancelar
-                </button>
-                <button className={styles.modalConfirm} onClick={bulkDelete} type="button" disabled={bulkBusy} autoFocus>
-                  {bulkBusy ? <><Spinner /> Eliminando...</> : "Eliminar"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══ MODAL DE UPGRADE (límite de productos / importador Excel / gestor de imágenes) ══ */}
-        {upgradeReason && (
-          <UpgradeModal
-            currentPlan={effectiveSubscription}
-            minPlan={upgradeReason === "images" ? "pro" : "basic"}
-            requiredFeature={
-              upgradeReason === "excel" ? "carga_masiva_excel"
-              : upgradeReason === "pdf" ? "menu_pdf"
-              : upgradeReason === "images" ? "image_manager"
-              : upgradeReason === "templates" ? "menu_templates"
-              : upgradeReason === "items" ? undefined
-              : "programacion_productos"
-            }
-            minimumItems={upgradeReason === "items" ? (limits?.itemCount ?? totalItems) + 1 : undefined}
-            title={upgradeReason === "items" ? `Llegaste al límite de ${limits?.itemLimit ?? "tu plan"} productos` : "Esta función no está incluida en tu plan"}
-            description="Consultá los planes disponibles con esta capacidad. Los precios y beneficios corresponden al catálogo vigente."
-            onClose={() => setUpgradeReason(null)}
-          />
-        )}
+        {dialogs}
 
       </div>
   );

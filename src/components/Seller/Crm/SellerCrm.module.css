@@ -615,18 +615,18 @@
   animation: crm-fade 0.2s ease both;
 }
 .drawer {
+  composes: md-glass-surface from global;
+  --md-glass-tint: var(--admin-bg-surface);
+  --md-glass-shadow: var(--admin-shadow-popover);
   width: min(1040px, 100%);
   max-width: 100%;
   height: min(860px, calc(100dvh - 2 * var(--space-5)));
   min-height: 0;
   overflow: hidden;
-  background: var(--admin-bg-surface);
-  border: 1px solid var(--admin-border-default);
   border-radius: var(--admin-radius-lg);
   display: flex;
   flex-direction: column;
   animation: crm-slide 0.28s var(--ease-out) both;
-  box-shadow: var(--admin-shadow-popover);
   font-family: var(--font-sans);
   color: var(--admin-text-primary);
 }
@@ -905,6 +905,7 @@
 }
 .dateInput:focus { outline: none; border-color: var(--admin-gold); box-shadow: 0 0 0 3px var(--admin-gold-glow); }
 .clearBtn {
+  composes: md-glass-button from global;
   min-height: var(--control-min-size);
   font-size: var(--text-xs);
   color: var(--admin-text-muted);
@@ -1019,6 +1020,7 @@
 .noteFooter { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .noteMeta { font-size: var(--text-xs); color: var(--admin-text-muted); }
 .noteDelete {
+  composes: md-glass-button from global;
   min-height: var(--control-min-size);
   font-size: var(--text-xs);
   color: var(--admin-text-muted);

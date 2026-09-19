@@ -152,6 +152,7 @@
 .submitBtn:disabled { opacity: 0.55; cursor: not-allowed; filter: grayscale(.3); }
 
 .resendBtn {
+  composes: md-glass-button from global;
   display: block;
   margin: var(--space-5) auto 0;
   background: none;

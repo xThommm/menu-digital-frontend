@@ -10,7 +10,12 @@
   pointer-events: none;
 }
 
+/* El borde izquierdo de color indica el tipo de aviso, así que el vidrio no
+   dibuja su anillo: quedarían dos contornos encimados. */
 .notice {
+  composes: md-glass-surface from global;
+  --md-glass-border: transparent;
+  --md-glass-shadow: var(--admin-shadow-modal);
   min-height: 52px;
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) 32px;
@@ -20,9 +25,7 @@
   border: 1px solid var(--admin-border-default);
   border-left-width: 3px;
   border-radius: var(--admin-radius-md);
-  background: var(--admin-bg-elevated);
   color: var(--admin-text-primary);
-  box-shadow: var(--admin-shadow-modal);
   animation: notificationIn var(--transition-md) both;
   pointer-events: auto;
 }
@@ -52,6 +55,7 @@
 }
 
 .close {
+  composes: md-glass-button from global;
   width: 32px;
   height: 32px;
   border: 0;

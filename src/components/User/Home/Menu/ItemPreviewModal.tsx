@@ -424,9 +424,9 @@ function AddControl({
   }
   return (
     <div className={styles.qtyStepper}>
-      <button type="button" onClick={() => onChange(qty - 1)} aria-label="Quitar uno">−</button>
+      <button className="md-glass-button" type="button" onClick={() => onChange(qty - 1)} aria-label="Quitar uno">−</button>
       <span>{qty}</span>
-      <button type="button" onClick={() => onChange(qty + 1)} aria-label="Agregar uno">+</button>
+      <button className="md-glass-button" type="button" onClick={() => onChange(qty + 1)} aria-label="Agregar uno">+</button>
     </div>
   );
 }

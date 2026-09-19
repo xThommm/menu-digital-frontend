@@ -111,6 +111,7 @@
 }
 
 .productSearchClear {
+  composes: md-glass-button from global;
   position: absolute;
   top: 50%;
   right: 1.6rem;
@@ -416,6 +417,7 @@
 }
 
 .pickerRowRemove {
+  composes: md-glass-button from global;
   position: absolute;
   top: 50%;
   right: 6px;
@@ -544,6 +546,7 @@
 }
 
 .addRowBtn {
+  composes: md-glass-button from global;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -606,13 +609,12 @@
 }
 
 .confirmModal {
+  composes: md-glass-surface from global;
+  --md-glass-shadow: var(--admin-shadow-modal);
   width: min(100%, 420px);
   padding: var(--space-5);
-  border: 1px solid var(--admin-border-default);
   border-radius: var(--admin-radius-lg);
   color: var(--admin-text-primary);
-  background: var(--admin-bg-elevated);
-  box-shadow: var(--admin-shadow-modal);
   animation: confirmScaleIn 0.2s var(--admin-transition-spring) both;
 }
 
