@@ -274,7 +274,7 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
 
           <div className={styles.content} ref={contentRef}>
             <div className={styles.top}>
-              <h2 className={styles.name}>{item.title}</h2>
+              <h2 className={`${styles.name} t-family-heading`}>{item.title}</h2>
               {item.recommended && (
                 <span className={`${styles.badge} ${styles.badgeReco}`}>
                   <StarIcon /> Recomendado

@@ -15,7 +15,7 @@ import { isOfferActive } from "../../../../lib/offers";
 import { buildOrderMessage, buildWaLink } from "../../../../lib/whatsapp";
 import { resolveMenuDisplay } from "../../../../lib/menuDisplay";
 import { cartUnitPrice, repriceCartLines } from "../../../../lib/cartPricing";
-import { resolveMenuStyle } from "../../../../lib/menuStyles";
+import { getVisualFamily, resolveMenuStyle } from "../../../../lib/menuStyles";
 
 // ── Helpers de formato ────────────────────────────────────────────────────────
 
@@ -145,6 +145,7 @@ export default function MenuPage() {
   const display = resolveMenuDisplay(user?.menuDisplay);
   const menuStyle = resolveMenuStyle(user?.menuStyle);
   const isBistro = menuStyle === "bistro";
+  const family = getVisualFamily(menuStyle);
   const collapsible = display.collapsibleCategories;
 
   // Ítems del tab activo, en el mismo orden en que se ven en pantalla
@@ -307,7 +308,8 @@ export default function MenuPage() {
         index={idx}
         hasDelivery={canOrder}
         hidePrices={display.hidePrices}
-        isBistro={isBistro}
+          isBistro={isBistro}
+          isFamily={!!family}
         onOpenPreview={() =>
           openPreview(
             visibleTabItems,
@@ -336,7 +338,9 @@ export default function MenuPage() {
           className={styles.mp}
           data-template={user.template ?? 1}
           data-menu-style={menuStyle}
+          data-menu-family={family?.id}
         >
+          {family && <MenuFamilyCover src={user.media?.backgroundPicture} />}
           {/* ── Cabecera + tabs ── */}
           <div className={styles.mpSticky}>
             <header className={styles.mpHeader}>
@@ -351,8 +355,8 @@ export default function MenuPage() {
               )}
 
               <div className={styles.mpHeaderInfo}>
-                {isBistro && <p className={styles.mpEyebrow}>Nuestra carta</p>}
-                <h1 className={styles.mpName}>
+                {(isBistro || family) && <p className={styles.mpEyebrow}>Nuestra carta</p>}
+                <h1 className={`${styles.mpName} t-family-heading`}>
                   {info.businessName || "Menú"}
                 </h1>
 
@@ -370,7 +374,7 @@ export default function MenuPage() {
                   )}
                 </div>
               </div>
-              {isBistro && ordersEnabled && <MenuCartShortcut onClick={() => setCartOpen(true)} />}
+              {(isBistro || family) && ordersEnabled && <MenuCartShortcut onClick={() => setCartOpen(true)} />}
             </header>
 
             {/* Tabs */}
@@ -446,7 +450,7 @@ export default function MenuPage() {
                         key={cat._id}
                         className={styles.mpCat}
                       >
-                        <h2 className={styles.mpCatTitle}>
+                        <h2 className={`${styles.mpCatTitle} t-family-heading`}>
                           {cat.title}
                         </h2>
 
@@ -468,7 +472,7 @@ export default function MenuPage() {
                       key={cat._id}
                       className={styles.mpCatCollapsible}
                     >
-                      <h2 className={styles.mpCatTitle}>
+                      <h2 className={`${styles.mpCatTitle} t-family-heading`}>
                         <button
                           type="button"
                           className={styles.mpCatToggle}
@@ -555,6 +559,12 @@ export default function MenuPage() {
 // interno entre renders) ────────────────────────────────────────────────
 
 // ── Botón flotante del carrito ────────────────────────────────────────────────
+function MenuFamilyCover({ src }: { src?: string }) {
+  const [failedSrc, setFailedSrc] = useState<string>();
+  if (!src || src === failedSrc) return null;
+  return <img src={src} alt="" className={styles.familyCover} onError={() => setFailedSrc(src)} />;
+}
+
 function MenuCartShortcut({ onClick }: { onClick: () => void }) {
   const { totalItems } = useCart();
   return (
@@ -660,6 +670,7 @@ function ItemCard({
   hasDelivery,
   hidePrices,
   isBistro,
+  isFamily,
   onOpenPreview,
 }: {
   item: Item;
@@ -667,6 +678,7 @@ function ItemCard({
   hasDelivery: boolean;
   hidePrices: boolean;
   isBistro: boolean;
+  isFamily: boolean;
   onOpenPreview: () => void;
 }) {
 
@@ -739,8 +751,8 @@ function ItemCard({
 
       <div className={styles.itemBody}>
         <div className={styles.itemTop}>
-          {isBistro ? (
-            <button type="button" className={styles.itemName} aria-haspopup="dialog" disabled={!item.available}
+          {isBistro || isFamily ? (
+            <button type="button" className={`${styles.itemName} t-family-heading`} aria-haspopup="dialog" disabled={!item.available}
               onClick={(event) => { event.stopPropagation(); onOpenPreview(); }}>
               {item.title}
             </button>
@@ -942,7 +954,7 @@ function AddControl({
         onClick={(e) => { e.stopPropagation(); onAdd(); }}
         aria-label="Agregar al pedido"
       >
-        +
+        <span className={styles.addLabel}>Agregar</span> +
       </button>
     );
   }
@@ -1106,7 +1118,7 @@ function EmptyMenu({
   onBack?: () => void;
 }) {
   return (
-    <div className={styles.emptyMenu} data-template={template} data-menu-style={menuStyle}>
+    <div className={styles.emptyMenu} data-template={template} data-menu-style={menuStyle} data-menu-family={getVisualFamily(menuStyle)?.id}>
       <p className={styles.emptyMenuTitle}>{name}</p>
       <p className={styles.emptyMenuSub}>El menú todavía no tiene productos cargados.</p>
       {onBack && <button onClick={onBack} className={styles.emptyMenuBtn}>Volver</button>}

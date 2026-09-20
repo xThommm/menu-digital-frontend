@@ -12,3 +12,21 @@
 .copy > span { font-size: 0.78rem; line-height: 1.5; }
 .check { position: absolute; top: 0.6rem; right: 0.6rem; color: var(--admin-gold); }
 @media (max-width: 480px) { .options { grid-template-columns: 1fr; } }
+
+.hint { margin: 0 0 1rem; color: var(--admin-text-secondary); font-size: 0.8rem; line-height: 1.6; }
+.families { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+.family { position: relative; display: flex; flex-direction: column; overflow: hidden; padding: 0; border: 1px solid var(--admin-border-default); border-radius: var(--admin-radius-xl); background: var(--admin-bg-raised); color: var(--admin-text-primary); text-align: left; cursor: pointer; }
+.family[aria-pressed="true"] { border-color: var(--admin-gold); box-shadow: 0 0 0 1px var(--admin-gold); }
+.family:hover { border-color: var(--admin-gold); }
+.family:focus-visible, .previous summary:focus-visible { outline: 2px solid var(--admin-gold); outline-offset: 4px; }
+.picker:disabled .family { opacity: 0.6; cursor: wait; }
+.sample { display: grid; align-content: center; gap: 0.7rem; min-height: 172px; width: 100%; padding: 1.75rem 1.25rem; background: var(--t-bg); color: var(--t-title); }
+.sample > svg { color: var(--t-accent); }
+.sampleTitle { font-family: var(--font-serif); font-size: 1.65rem; font-weight: var(--t-family-title-weight); letter-spacing: var(--t-family-title-spacing); text-transform: var(--t-family-title-case); line-height: 1.12; overflow-wrap: anywhere; }
+.sampleCaption { font: 500 0.66rem var(--font-template-sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--t-family-muted); }
+.familyCopy { display: grid; gap: 0.6rem; padding: 1rem 1.25rem; font-size: 0.8rem; line-height: 1.55; }
+.suggestion { color: var(--admin-text-secondary); font-size: 0.72rem; }
+.familyCheck { position: absolute; top: 0.6rem; right: 0.6rem; display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.55rem; border-radius: var(--radius-full); background: var(--admin-gold); color: var(--admin-gold-ink); font-size: 0.68rem; font-weight: 600; }
+.previous { border-top: 1px solid var(--admin-border-default); padding-top: 0.875rem; }
+.previous summary { width: fit-content; color: var(--admin-text-secondary); cursor: pointer; min-height: 44px; padding-block: 0.5rem; font-size: 0.8rem; }
+@media (max-width: 480px) { .families { grid-template-columns: 1fr; } .sample { min-height: 148px; } }

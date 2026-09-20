@@ -1245,6 +1245,90 @@
 /* Bistró solo modifica distribución, tamaños, tipografía y formas.
    Los colores y estados heredan las reglas comunes de arriba: cambiar
    de diseño conserva la misma paleta en tarjetas, precios y controles. */
+/* Cinco familias. El carrito y las variantes conservan su lógica común. */
+.familyCover { display: block; width: 100%; height: clamp(170px, 30vw, 320px); object-fit: cover; }
+.mp[data-menu-family] .mpHeader { padding: 1.25rem; }
+.mp[data-menu-family] .mpName { font-size: clamp(1.4rem, 3.5vw, 2rem); white-space: normal; overflow-wrap: anywhere; }
+.mp[data-menu-family] :is(.mpMeta, .itemDesc, .mpTab, .mpBack) { color: var(--t-family-muted); }
+.mp[data-menu-family] .mpTab.active { color: var(--t-btn-text); }
+.mp[data-menu-family] .mpTabs { border-bottom: 1px solid var(--t-border); padding-bottom: 1rem; }
+.mp[data-menu-family] :is(.mpTab, .mpCartShortcut, .orderSummary, .badgeVariant) { border-radius: var(--t-family-radius); }
+.mp[data-menu-family] .mpCatTitle { font-size: 1.7rem; line-height: 1.2; color: var(--t-title); border-bottom: 1px solid var(--t-border-md); padding-bottom: 1rem; margin-bottom: 1.25rem; }
+.mp[data-menu-family] .mpCatCollapsible .mpCatTitle { margin: 0; padding: 0; }
+.mp[data-menu-family] .mpCatToggle { font: inherit; color: inherit; }
+.mp[data-menu-family] .mpCatItems { padding-top: 1.25rem; }
+.mp[data-menu-family] .itemName { display: block; width: fit-content; border: 0; background: none; padding: 0; color: var(--t-title); text-align: left; font-size: 1.25rem; line-height: 1.25; cursor: pointer; overflow-wrap: anywhere; }
+.mp[data-menu-family] .itemName:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 4px; }
+.mp[data-menu-family] .itemCard { border-radius: var(--t-family-radius); }
+.mp[data-menu-family] .itemTop { flex-wrap: wrap; }
+.mp[data-menu-family] .itemDesc { font-size: 0.82rem; line-height: 1.6; }
+.mp[data-menu-family] .itemImg,
+.mp[data-menu-family] .itemImgPlaceholder { border-radius: var(--t-family-photo-radius); }
+.mp[data-menu-family] .qtyStepper button { width: 40px; height: 40px; }
+.mp[data-menu-family] .orderSummary { box-shadow: var(--t-family-shadow); }
+.mp[data-menu-family] .cartBar { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+
+/* Cafetería: lista editorial, fotos a la izquierda y separadores suaves. */
+.mp[data-menu-family="coffee"] .familyCover { height: clamp(180px, 25vw, 280px); }
+.mp[data-menu-family="coffee"] .itemCard { grid-template-columns: 96px minmax(0, 1fr); padding: 1.25rem 0; gap: 1rem; border-width: 0 0 1px; border-radius: 0; background: none; }
+.mp[data-menu-family="coffee"] .itemImg,
+.mp[data-menu-family="coffee"] .itemImgPlaceholder { grid-column: 1; grid-row: 1; width: 96px; height: 112px; }
+.mp[data-menu-family="coffee"] .itemBody { grid-column: 2; grid-row: 1; }
+.mp[data-menu-family="coffee"] .itemCard:hover { transform: none; box-shadow: none; }
+.mp[data-menu-family="coffee"] .featuredCard { border-radius: 50% 50% 12px 12px; }
+
+/* Comida rápida, parrilla y pastelería: foto completa sobre el contenido. */
+.mp:is([data-menu-family="fast-food"], [data-menu-family="grill"], [data-menu-family="bakery"]) .itemCard { display: flex; flex-direction: column; padding: 0; gap: 0; min-height: 0; overflow: hidden; }
+.mp:is([data-menu-family="fast-food"], [data-menu-family="grill"], [data-menu-family="bakery"]) .itemImg,
+.mp:is([data-menu-family="fast-food"], [data-menu-family="grill"], [data-menu-family="bakery"]) .itemImgPlaceholder { width: 100%; height: auto; aspect-ratio: var(--t-family-image-ratio); border-radius: 0; }
+.mp:is([data-menu-family="fast-food"], [data-menu-family="grill"], [data-menu-family="bakery"]) .itemBody { flex: 1; padding: 1.25rem; gap: 0.75rem; }
+.mp:is([data-menu-family="fast-food"], [data-menu-family="grill"], [data-menu-family="bakery"]) .itemBottom { margin-top: auto; padding-top: 0.5rem; }
+.mp:is([data-menu-family="fast-food"], [data-menu-family="bakery"]) .addBtn { width: auto; min-width: 44px; padding-inline: 0.875rem; border-radius: var(--t-family-radius); }
+.addLabel { display: none; }
+.mp:is([data-menu-family="fast-food"], [data-menu-family="bakery"]) .addBtn .addLabel { display: inline; font: 600 0.78rem var(--font-sans); margin-right: 0.4rem; }
+.mp[data-menu-family="fast-food"] .mpCatTitle { font-size: 1.75rem; }
+.mp[data-menu-family="fast-food"] .itemName { font-size: 1.2rem; }
+.mp[data-menu-family="fast-food"] .itemPrice { font-size: 1.2rem; font-weight: 800; }
+.mp[data-menu-family="fast-food"] .cartBar { background: var(--t-accent); color: var(--t-btn-text); }
+.mp[data-menu-family="fast-food"] .cartBarTotal { color: inherit; }
+.mp[data-menu-family="grill"] .familyCover { height: clamp(230px, 34vw, 400px); }
+.mp[data-menu-family="grill"] .mpCatTitle { padding-top: 0.75rem; border-top: 1px solid var(--t-border-md); }
+.mp[data-menu-family="bakery"] .itemCard { box-shadow: var(--t-family-shadow); margin-bottom: 1.25rem; }
+.mp[data-menu-family="bakery"] .mpTab { border-radius: 999px; }
+
+/* Premium: imágenes verticales y espacio editorial, sin cajas pesadas. */
+.mp[data-menu-family="premium"] .familyCover { height: clamp(160px, 24vw, 280px); }
+.mp[data-menu-family="premium"] .mpHeader { padding-block: 1.5rem; }
+.mp[data-menu-family="premium"] .itemCard { grid-template-columns: minmax(0, 1fr) 104px; gap: 1.25rem; background: none; border-width: 0 0 1px; padding: 1.5rem 0; margin: 0; }
+.mp[data-menu-family="premium"] .itemImg,
+.mp[data-menu-family="premium"] .itemImgPlaceholder { width: 104px; height: 138px; }
+.mp[data-menu-family="premium"] .itemCard:hover { transform: none; box-shadow: none; }
+.mp[data-menu-family="premium"] .mpTab { background: none; border-color: transparent; border-bottom: 1px solid var(--t-border-md); }
+.mp[data-menu-family="premium"] .mpTab.active { color: var(--t-title); border-bottom-color: var(--t-accent); }
+.mp[data-menu-family="premium"] .itemName { font-size: 1.5rem; }
+
+@media (min-width: 600px) {
+  .mp[data-menu-family] .mpCat,
+  .mp[data-menu-family] .mpCatItems:not([hidden]) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; align-items: stretch; }
+  .mp[data-menu-family] .mpCatTitle { grid-column: 1 / -1; margin-bottom: 0; }
+  .mp[data-menu-family] .itemCard { margin-bottom: 0; }
+  .mp[data-menu-family="premium"] .mpCat,
+  .mp[data-menu-family="premium"] .mpCatItems:not([hidden]) { grid-template-columns: minmax(0, 1fr); }
+  .mp[data-menu-family="premium"] .itemCard { grid-template-columns: minmax(0, 1fr) 180px; gap: 2.5rem; padding-block: 2rem; }
+  .mp[data-menu-family="premium"] .itemImg,
+  .mp[data-menu-family="premium"] .itemImgPlaceholder { width: 180px; height: 220px; }
+  .mp[data-menu-family="premium"] .itemName { font-size: 1.85rem; }
+}
+@media (min-width: 1024px) {
+  .mp[data-menu-family] .mpShell { grid-template-columns: minmax(0, 1fr); }
+  .mp[data-menu-family] .mpShell:has(.orderSummary) { grid-template-columns: minmax(0, 1fr) 300px; }
+  .mp[data-menu-family] .mpContent { padding: 2rem 0; }
+  .mp[data-menu-family] .mpHeader { padding-inline: 2rem; }
+  .mp[data-menu-family] .mpTabs { padding-inline: 2rem; }
+  .mp[data-menu-family="coffee"] .mpShell:has(.orderSummary) .mpCat,
+  .mp[data-menu-family="coffee"] .mpShell:has(.orderSummary) .mpCatItems:not([hidden]) { grid-template-columns: minmax(0, 1fr); }
+}
+
 .mp[data-menu-style="bistro"] .mpHeader {
   padding: 1.5rem 1.25rem 1rem;
   border: 0;

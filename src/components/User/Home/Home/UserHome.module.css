@@ -144,6 +144,61 @@
   .galleryButton:hover img { transform: none; }
 }
 
+/* Familias visuales. Esta capa solo compone datos reales del comercio. */
+.familyEyebrow { margin: 0 0 0.75rem; font: 600 0.68rem var(--font-template-sans); letter-spacing: 0.18em; text-transform: uppercase; color: var(--t-family-muted); }
+.landing[data-menu-family] .layout { max-width: 1240px; }
+.landing[data-menu-family] .title { font-size: clamp(2.5rem, 6vw, 4.5rem); line-height: 1.08; margin-bottom: 1.25rem; }
+.landing[data-menu-family] .intro { gap: 1.5rem; }
+.landing[data-menu-family] .cover { border-radius: var(--t-family-photo-radius); width: 100%; margin-inline: 0; height: clamp(240px, 52vw, 420px); }
+.landing[data-menu-family] .header { padding-top: 1.25rem; gap: 2rem; }
+.landing[data-menu-family] :is(.contactCard, .scheduleCard, .mapBadge, .reserveBtn) { border-radius: var(--t-family-radius); }
+.landing[data-menu-family] .actions :global(.t-btn) { border-radius: var(--t-family-radius); min-height: 56px; font-size: 1rem; }
+.landing[data-menu-family] .galleryTitle { font-family: var(--font-serif); font-size: 1.75rem; }
+.landing[data-menu-family] .mapLabel { color: var(--t-family-muted); }
+
+.landing[data-menu-family="coffee"] .header { padding-block: 2rem; }
+.landing[data-menu-family="coffee"] .cover { max-width: 520px; justify-self: center; height: clamp(300px, 65vw, 500px); }
+.landing[data-menu-family="coffee"] .gallery { gap: 1rem; }
+.landing[data-menu-family="coffee"] .galleryItem { aspect-ratio: 4 / 5; }
+
+.landing[data-menu-family="fast-food"] .header { padding: 1.25rem; border: 2px solid var(--t-accent); border-radius: var(--t-family-radius); margin-top: 1.25rem; background: var(--t-accent-soft); }
+.landing[data-menu-family="fast-food"] .title { font-size: clamp(2.5rem, 6vw, 5rem); }
+.landing[data-menu-family="fast-food"] .actions :global(.t-btn) { font-family: var(--font-serif); font-weight: 900; text-transform: uppercase; min-height: 64px; }
+
+.landing[data-menu-family="grill"] .headerWithCover { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0; }
+.landing[data-menu-family="grill"] .headerWithCover .cover { grid-area: 1 / 1; height: clamp(520px, 65vw, 660px); }
+.landing[data-menu-family="grill"] .headerWithCover .intro { grid-area: 1 / 1; align-self: end; z-index: 1; margin: 1rem; padding: 1.5rem; max-width: 570px; background: var(--t-bg); border: 1px solid var(--t-border-md); }
+.landing[data-menu-family="grill"] .galleryItem { aspect-ratio: 3 / 2; }
+
+.landing[data-menu-family="premium"] .header { grid-template-columns: minmax(0, 1fr); padding-block: 2rem; border-top: 1px solid var(--t-border-md); }
+.landing[data-menu-family="premium"] .intro { order: -1; text-align: center; width: min(100%, 680px); margin-inline: auto; padding: 1rem 0; }
+.landing[data-menu-family="premium"] .identity { justify-content: center; }
+.landing[data-menu-family="premium"] .badgeRow { justify-content: center; }
+.landing[data-menu-family="premium"] .actions { width: min(100%, 390px); margin-inline: auto; }
+.landing[data-menu-family="premium"] .cover { height: clamp(220px, 42vw, 460px); }
+.landing[data-menu-family="premium"] .galleryItem { aspect-ratio: 4 / 5; }
+.landing[data-menu-family="premium"] :is(.contactCard, .scheduleCard) { background: none; border-width: 1px 0; padding-inline: 0; }
+
+.landing[data-menu-family="bakery"] .cover { height: clamp(280px, 55vw, 480px); }
+.landing[data-menu-family="bakery"] .header { padding: 1.25rem; background: var(--t-surface); border-radius: var(--t-family-radius); margin-top: 1.25rem; }
+.landing[data-menu-family="bakery"] .gallery { gap: 1rem; }
+.landing[data-menu-family="bakery"] .actions :global(.t-btn) { border-radius: 999px; }
+
+@media (min-width: 1024px) {
+  .landing[data-menu-family] .header { gap: 3.5rem; margin-bottom: 4rem; }
+  .landing[data-menu-family="coffee"] .intro,
+  .landing[data-menu-family="fast-food"] .intro,
+  .landing[data-menu-family="bakery"] .intro { grid-column: 1; grid-row: 1; }
+  .landing[data-menu-family="coffee"] .cover,
+  .landing[data-menu-family="fast-food"] .cover,
+  .landing[data-menu-family="bakery"] .cover { grid-column: 2; grid-row: 1; }
+  .landing[data-menu-family="fast-food"] .header,
+  .landing[data-menu-family="bakery"] .header { padding: 2.5rem; }
+  .landing[data-menu-family="grill"] .headerWithCover { gap: 0; }
+  .landing[data-menu-family="grill"] .headerWithCover .intro { margin: 2.5rem; padding: 2rem; }
+  .landing[data-menu-family="premium"] .header { gap: 2.5rem; }
+}
+
 /* ── Loader ── */
 /* Reproduce la silueta real (hero + bloque de info + botón) en vez de un
    spinner centrado: comunica que algo concreto está cargando y evita el

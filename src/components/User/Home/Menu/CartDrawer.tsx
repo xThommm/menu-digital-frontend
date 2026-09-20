@@ -39,7 +39,7 @@ export default function CartDrawer({
     <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true" aria-label="Tu pedido">
       <div className={styles.drawer} onClick={(e) => e.stopPropagation()}>
         <header className={styles.header}>
-          <h2 className={styles.title}>Tu pedido</h2>
+          <h2 className={`${styles.title} t-family-heading`}>Tu pedido</h2>
           <button className={styles.close} onClick={onClose} aria-label="Cerrar" type="button">
             <CloseIcon />
           </button>

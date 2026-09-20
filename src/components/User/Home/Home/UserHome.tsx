@@ -7,6 +7,7 @@ import BusinessSEO from "../../../Common/BusinessSEO";
 import FreePlanAd from "../../../Common/FreePlanAd";
 import { getOpenStatus, getBusinessDayIndex, JS_DAY_TO_KEY } from "../../../../Utils/businessSchedule";
 import { resolveLandingVisibility } from "../../../../lib/landingVisibility";
+import { getVisualFamily, resolveMenuStyle } from "../../../../lib/menuStyles";
 
 // ── Tokens por template ───────────────────────────────────────────────────────
 
@@ -237,6 +238,9 @@ interface TemplateProps {
 
 function Template({ user, tokens, goMenu }: TemplateProps) {
   const { contactInfo: info, media, hasDelivery, template, schedule } = user;
+  const menuStyle = resolveMenuStyle(user.menuStyle);
+  const family = getVisualFamily(menuStyle);
+  const useAvatar = !family && tokens.useAvatar;
   const bg = media?.backgroundPicture;
 
   // Guardamos qué URL específica falló, no solo un booleano. Así, cuando `bg`
@@ -278,11 +282,11 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
   const showHeroBadges = hasDelivery || scheduleActive;
 
   return (
-    <div className={`t-wrap ${styles.landing}`} data-template={template}>
+    <div className={`t-wrap ${styles.landing}`} data-template={template ?? 1} data-menu-style={menuStyle} data-menu-family={family?.id}>
       {user.features?.sin_publicidad !== true && <FreePlanAd />}
       <main className={styles.layout}>
-        <header className={`${styles.header} ${showBg && !tokens.useAvatar ? styles.headerWithCover : ""}`}>
-          {showBg && !tokens.useAvatar && (
+        <header className={`${styles.header} ${showBg && !useAvatar ? styles.headerWithCover : ""}`}>
+          {showBg && !useAvatar && (
             <button
               type="button"
               className={styles.cover}
@@ -293,7 +297,7 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
           )}
           <div className={styles.intro}>
             <div className={styles.identity}>
-              {tokens.useAvatar && showBg && (
+              {useAvatar && showBg && (
                 <button
                   type="button"
                   className={`t-avatar ${styles.avatar}`}
@@ -303,6 +307,7 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
                 />
               )}
               <div className={styles.identityText}>
+                {family && <p className={styles.familyEyebrow}>Bienvenidos a</p>}
                 <h1 className={`${tokens.titleClass} ${styles.title}`}>{businessName}</h1>
                 {showHeroBadges && (
                   <div className={styles.badgeRow}>
@@ -326,7 +331,7 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
         <div className={styles.content}>
           <Gallery
             pictures={media?.pictures}
-            radius={tokens.galleryRadius}
+            radius={family ? "var(--t-family-photo-radius)" : tokens.galleryRadius}
             businessName={businessName}
             onImageClick={(index) => { setViewerIndex(index); setViewerOpen(true); }}
           />

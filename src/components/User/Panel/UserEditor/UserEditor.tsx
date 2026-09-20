@@ -1279,7 +1279,7 @@ export default function UserEditorPage() {
         {tab === "template" && (
           <>
             <p className={styles.templateDesc}>
-              Combiná un diseño de carta con los colores de tu negocio. Los cambios se guardan al elegir.
+              Elegí la familia visual de tu negocio y combinala con tu paleta. Los cambios se guardan al elegir.
             </p>
             <MenuStylePicker
               value={menuStyle}

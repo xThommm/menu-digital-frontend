@@ -384,6 +384,14 @@
 }
 
 /* Ficha Bistró: misma información y controles, foto circular protagonista. */
+:global([data-menu-family]) .name { font-size: 1.5rem; min-width: 0; overflow-wrap: anywhere; }
+:global([data-menu-family]) .sheet { box-shadow: var(--t-family-shadow); }
+:global([data-menu-family]) .img,
+:global([data-menu-family]) .imgPlaceholder { max-height: 34dvh; aspect-ratio: var(--t-family-image-ratio); object-fit: cover; }
+:global([data-menu-family="coffee"]) .imageZone,
+:global([data-menu-family="bakery"]) .imageZone { padding: 1rem 1rem 0; }
+:global([data-menu-family="coffee"]) .img,
+:global([data-menu-family="bakery"]) .img { border-radius: var(--t-family-photo-radius); }
 :global([data-menu-style="bistro"]) .sheet { box-shadow: var(--t-bistro-shadow); }
 :global([data-menu-style="bistro"]) .imageZone { padding: 3.75rem 1.75rem 0.5rem; }
 :global([data-menu-style="bistro"]) .img,

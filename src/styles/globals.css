@@ -1194,6 +1194,62 @@ a:hover { opacity: 0.75; }
   --t-bistro-shadow: 0 12px 30px color-mix(in srgb, var(--t-title) 10%, transparent);
 }
 
+/* Familias nuevas: forma y tipografía compartidas por portada, carta,
+   ficha, carrito y muestras del selector. Los colores vienen de la paleta. */
+[data-menu-family] {
+  --font-serif: var(--font-template-serif);
+  --t-family-title-weight: 500;
+  --t-family-title-spacing: -0.035em;
+  --t-family-title-case: none;
+  --t-family-radius: 14px;
+  --t-family-photo-radius: 10px;
+  --t-family-image-ratio: 4 / 3;
+  --t-family-muted: color-mix(in srgb, var(--t-title) 72%, var(--t-bg));
+  --t-family-shadow: 0 8px 24px color-mix(in srgb, var(--t-title) 7%, transparent);
+  --t-radius-modal: var(--t-family-radius);
+  --t-radius-sheet: var(--t-family-radius);
+  --t-radius-control: var(--t-family-radius);
+}
+[data-menu-family="coffee"] {
+  --t-family-radius: 14px;
+  --t-family-photo-radius: 40% 40% 10px 10px;
+  --t-family-image-ratio: 1;
+}
+[data-menu-family="fast-food"] {
+  --font-serif: var(--font-brand);
+  --t-family-title-weight: 900;
+  --t-family-title-spacing: -0.025em;
+  --t-family-title-case: uppercase;
+  --t-family-radius: 12px;
+  --t-family-photo-radius: 8px;
+  --t-family-image-ratio: 4 / 3;
+}
+[data-menu-family="grill"] {
+  --t-family-title-weight: 600;
+  --t-family-radius: 4px;
+  --t-family-photo-radius: 2px;
+  --t-family-image-ratio: 3 / 2;
+}
+[data-menu-family="premium"] {
+  --t-family-title-weight: 400;
+  --t-family-title-spacing: -0.025em;
+  --t-family-radius: 3px;
+  --t-family-photo-radius: 2px;
+  --t-family-image-ratio: 4 / 5;
+}
+[data-menu-family="bakery"] {
+  --t-family-title-weight: 600;
+  --t-family-radius: 28px;
+  --t-family-photo-radius: 22px;
+  --t-family-image-ratio: 1;
+}
+[data-menu-family] :is(.t-title, .t-title-sans, .t-family-heading) {
+  font-family: var(--font-serif);
+  font-weight: var(--t-family-title-weight);
+  letter-spacing: var(--t-family-title-spacing);
+  text-transform: var(--t-family-title-case);
+}
+
 /* Template 1 — Bourbon & Gold (oscuro cálido) */
 [data-template="1"] {
   --t-bg:          #0b0a08;
