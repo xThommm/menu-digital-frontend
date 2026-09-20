@@ -10,7 +10,8 @@ import type { WeekRanges } from "../../../Common/WeeklySchedule/weekSchedule";
 import Spinner from "../../../Common/Spinner";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import MenuStylePicker from "./MenuStylePicker";
-import { resolveMenuStyle, type MenuStyle } from "../../../../lib/menuStyles";
+import { resolveMenuStyle, getVisualFamily, type MenuStyle } from "../../../../lib/menuStyles";
+import { TEMPLATES, type TemplateOption } from "../../../../lib/templates";
 import styles from "./UserEditor.module.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -106,31 +107,6 @@ function weekToSchedule(week: WeekRanges, previous: Schedule): Schedule {
   }, {} as Schedule);
 }
 
-// Apariencia de los diseños implementados; sus permisos vienen del catálogo.
-interface TemplateOption {
-  id: number;
-  name: string;
-  color: string;
-  accent: string;
-}
-
-const TEMPLATES: TemplateOption[] = [
-  { id: 1,  name: "Clásico",    color: "#0b0a08", accent: "#c9a84c" },
-  { id: 2,  name: "Moderno",    color: "#0d1117", accent: "#58a6ff" },
-  { id: 3,  name: "Natural",    color: "#f2f6ef", accent: "#2e7d32" },
-  { id: 4,  name: "Rojo",       color: "#110606", accent: "#e05555" },
-  { id: 5,  name: "Minimal",    color: "#ffffff", accent: "#111111" },
-  { id: 6,  name: "Aurora",     color: "#efddc9", accent: "#a8703f" },
-  { id: 7,  name: "Noir Gold",  color: "#08070a", accent: "#d4af37" },
-  { id: 8,  name: "Coastal",    color: "#f4f8fb", accent: "#2a91c4" },
-  { id: 9,  name: "Charcoal",   color: "#1a1a1c", accent: "#ff6b5c" },
-  { id: 10, name: "Terracotta", color: "#f7ede3", accent: "#c2571f" },
-  { id: 11, name: "Lavender",   color: "#f6f3fa", accent: "#8256c4" },
-  { id: 12, name: "Forest",     color: "#0c1410", accent: "#86c397" },
-  { id: 13, name: "Platinum",   color: "#0a0b0d", accent: "#b8c2cf" },
-  { id: 14, name: "Ocean",      color: "#071b26", accent: "#36c2b4" },
-  { id: 15, name: "Rosé",       color: "#fff6f3", accent: "#b64f68" },
-];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -195,6 +171,7 @@ export default function UserEditorPage() {
   const appearanceSavingRef = useRef(false);
   const [subscription,      setSubscription] = useState<Subscription>("free");
   const [lockedTemplate,    setLockedTemplate] = useState<typeof TEMPLATES[number] | null>(null);
+  const [stylesLocked,      setStylesLocked] = useState(false);
   const [nameChangeConfirmOpen, setNameChangeConfirmOpen] = useState(false);
 
   const currentPlan = catalog.isError ? undefined : catalog.data?.find(plan => plan.name === subscription);
@@ -204,6 +181,10 @@ export default function UserEditorPage() {
   // como en los diseños bloqueados. Mientras carga el catálogo no se avisa.
   const orderMessageLocked = currentPlan?.features.pedido_whatsapp === false;
   const orderMessagePlan = catalog.data?.find(plan => plan.features.pedido_whatsapp);
+  // Las familias visuales son una feature aparte de las paletas: el permiso y
+  // la etiqueta del plan que las incluye salen del catálogo, no del nombre.
+  const familiesLocked = currentPlan?.features.menu_styles === false;
+  const familiesPlan = catalog.data?.find(plan => plan.features.menu_styles);
 
   const [isDirty, setIsDirty]   = useState(false);
   const initialFormRef = useRef<FormState>(EMPTY_FORM);
@@ -522,7 +503,11 @@ export default function UserEditorPage() {
       }
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        const fallback = res.status === 403 ? "Ese template requiere un plan pago." : "No se pudo guardar la apariencia.";
+        const fallback = res.status !== 403
+          ? "No se pudo guardar la apariencia."
+          : getVisualFamily(nextStyle)
+            ? "Las familias visuales requieren un plan superior."
+            : "Ese template requiere un plan pago.";
         throw new Error(data?.message || fallback);
       }
       const data = await res.json();
@@ -1285,6 +1270,10 @@ export default function UserEditorPage() {
               value={menuStyle}
               disabled={savingAppearance || !currentPlan || catalog.isFetching}
               onChange={(value) => void saveTemplate(template, value)}
+              templateIds={currentPlan?.features.templateIds}
+              familiesLocked={familiesLocked}
+              lockedPlanLabel={familiesPlan?.label}
+              onLockedFamily={() => setStylesLocked(true)}
             />
             <h2 className={styles.appearanceHeading}>Paleta de colores</h2>
             <p className={styles.templateDesc}>Se aplica al diseño elegido y a la página de tu local. Las paletas disponibles dependen de tu plan.</p>
@@ -1374,6 +1363,17 @@ export default function UserEditorPage() {
       )}
 
       {/* ── Modal: template bloqueado por plan ── */}
+      {stylesLocked && (
+        <UpgradeModal
+          currentPlan={subscription}
+          minPlan="basic"
+          requiredFeature="menu_styles"
+          title="Desbloqueá las familias visuales"
+          description="Una identidad completa para la portada y la carta. Tu paleta de colores actual se conserva."
+          onClose={() => setStylesLocked(false)}
+        />
+      )}
+
       {lockedTemplate && (
         <UpgradeModal
           currentPlan={subscription}

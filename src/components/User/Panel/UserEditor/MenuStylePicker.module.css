@@ -20,7 +20,7 @@
 .family:hover { border-color: var(--admin-gold); }
 .family:focus-visible, .previous summary:focus-visible { outline: 2px solid var(--admin-gold); outline-offset: 4px; }
 .picker:disabled .family { opacity: 0.6; cursor: wait; }
-.sample { display: grid; align-content: center; gap: 0.7rem; min-height: 172px; width: 100%; padding: 1.75rem 1.25rem; background: var(--t-bg); color: var(--t-title); }
+.sample { position: relative; display: grid; align-content: center; gap: 0.7rem; min-height: 172px; width: 100%; padding: 1.75rem 1.25rem; background: var(--t-bg); color: var(--t-title); }
 .sample > svg { color: var(--t-accent); }
 .sampleTitle { font-family: var(--font-serif); font-size: 1.65rem; font-weight: var(--t-family-title-weight); letter-spacing: var(--t-family-title-spacing); text-transform: var(--t-family-title-case); line-height: 1.12; overflow-wrap: anywhere; }
 .sampleCaption { font: 500 0.66rem var(--font-template-sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--t-family-muted); }
@@ -30,3 +30,9 @@
 .previous { border-top: 1px solid var(--admin-border-default); padding-top: 0.875rem; }
 .previous summary { width: fit-content; color: var(--admin-text-secondary); cursor: pointer; min-height: 44px; padding-block: 0.5rem; font-size: 0.8rem; }
 @media (max-width: 480px) { .families { grid-template-columns: 1fr; } .sample { min-height: 148px; } }
+
+/* Familia fuera del plan: la tarjeta sigue siendo clickeable —abre el modal
+   de upsell—, igual que una paleta bloqueada. */
+.family.locked .sample { opacity: 0.55; }
+.lockOverlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.35); color: var(--admin-gold); backdrop-filter: blur(1.5px); -webkit-backdrop-filter: blur(1.5px); }
+.familyPlan { position: absolute; top: 0.6rem; right: 0.6rem; padding: 2px 7px; border: 0.5px solid var(--admin-border-gold-mid); border-radius: 4px; background: var(--admin-gold-glow); color: var(--admin-gold); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }

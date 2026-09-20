@@ -23,6 +23,7 @@ export interface PlanFeatures {
   estadisticas: boolean
   image_manager: boolean
   menu_templates: boolean
+  menu_styles: boolean
   item_limit: number | null
   templateIds: number[]
 }

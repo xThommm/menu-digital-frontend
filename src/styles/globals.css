@@ -39,7 +39,6 @@
   --t-status-open: #3fbf5f;
   --t-radius-sheet: 16px;
   --t-radius-modal: 18px;
-  --t-radius-control: 10px;
 
   /* — Paleta base — */
   --espresso:    #000000;
@@ -1190,7 +1189,6 @@ a:hover { opacity: 0.75; }
 [data-menu-style="bistro"] {
   --font-serif: var(--font-template-sans);
   --t-radius-modal: 30px;
-  --t-radius-control: 16px;
   --t-bistro-shadow: 0 12px 30px color-mix(in srgb, var(--t-title) 10%, transparent);
 }
 
@@ -1208,7 +1206,6 @@ a:hover { opacity: 0.75; }
   --t-family-shadow: 0 8px 24px color-mix(in srgb, var(--t-title) 7%, transparent);
   --t-radius-modal: var(--t-family-radius);
   --t-radius-sheet: var(--t-family-radius);
-  --t-radius-control: var(--t-family-radius);
 }
 [data-menu-family="coffee"] {
   --t-family-radius: 14px;

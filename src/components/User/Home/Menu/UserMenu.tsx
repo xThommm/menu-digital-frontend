@@ -542,7 +542,7 @@ export default function MenuPage() {
               onClose={() => setPreview(null)}
               hasDelivery={canOrder}
               hidePrices={display.hidePrices}
-              showOptionsInitially={isBistro}
+              showOptionsInitially={isBistro || !!family}
               onNavigate={(index) =>
                 setPreview((prev) => (prev ? { ...prev, index } : prev))
               }
