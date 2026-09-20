@@ -10,7 +10,7 @@ import type { WeekRanges } from "../../../Common/WeeklySchedule/weekSchedule";
 import Spinner from "../../../Common/Spinner";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import MenuStylePicker from "./MenuStylePicker";
-import { resolveMenuStyle, getVisualFamily, type MenuStyle } from "../../../../lib/menuStyles";
+import { resolveMenuStyle, getVisualFamily, buildAppearanceBody, type MenuStyle } from "../../../../lib/menuStyles";
 import { TEMPLATES, type TemplateOption } from "../../../../lib/templates";
 import styles from "./UserEditor.module.css";
 
@@ -481,20 +481,24 @@ export default function UserEditorPage() {
   };
 
   // Save template
-  const saveTemplate = async (t: number, nextStyle = menuStyle) => {
+  //
+  // `nextStyle` es opcional a propósito: sin él, esto es un cambio de paleta y
+  // el diseño guardado no se toca. Ver buildAppearanceBody — reenviar el
+  // estado actual pisaría la familia de una cuenta con el plan vencido.
+  const saveTemplate = async (t: number, nextStyle?: MenuStyle) => {
     if (appearanceSavingRef.current) return;
     appearanceSavingRef.current = true;
     setSavingAppearance(true);
     const previous = template;
     const previousStyle = menuStyle;
     setTemplate(t);
-    setMenuStyle(nextStyle);
+    if (nextStyle !== undefined) setMenuStyle(nextStyle);
     setError(""); setSuccess("");
     try {
       const res = await fetch("/api/users/template", {
         method: "PATCH",
         headers: authHeaders,
-        body: JSON.stringify({ template: t, menuStyle: nextStyle }),
+        body: JSON.stringify(buildAppearanceBody(t, nextStyle)),
       });
       if (res.status === 401) {
         logout();
@@ -514,7 +518,7 @@ export default function UserEditorPage() {
       // Un backend anterior ignora menuStyle: no confirmar un diseño que no guardó.
       setTemplate(data.template);
       setMenuStyle(resolveMenuStyle(data.menuStyle));
-      if (nextStyle !== "classic" && data.menuStyle !== nextStyle) {
+      if (nextStyle !== undefined && nextStyle !== "classic" && data.menuStyle !== nextStyle) {
         setError("Este diseño todavía no está disponible. Tu paleta se guardó y la carta conserva el diseño Clásico.");
       } else {
         setSuccess("Apariencia actualizada.");
@@ -1264,10 +1268,11 @@ export default function UserEditorPage() {
         {tab === "template" && (
           <>
             <p className={styles.templateDesc}>
-              Elegí la familia visual de tu negocio y combinala con tu paleta. Los cambios se guardan al elegir.
+              Elegí el diseño de tu carta y combinalo con tu paleta. Los cambios se guardan al elegir.
             </p>
             <MenuStylePicker
               value={menuStyle}
+              template={template}
               disabled={savingAppearance || !currentPlan || catalog.isFetching}
               onChange={(value) => void saveTemplate(template, value)}
               templateIds={currentPlan?.features.templateIds}
