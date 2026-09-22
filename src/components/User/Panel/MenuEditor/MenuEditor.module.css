@@ -130,6 +130,13 @@
   padding: 0 0 2rem;
 }
 
+/* Formularios de categoría y sección: sus campos no van dentro de bloques
+   con padding propio (como los del producto), así que el margen lo da el
+   contenedor. */
+.formContent.formContentPadded {
+  padding: 1.25rem clamp(1rem, 3vw, 1.75rem) 2rem;
+}
+
 .contentBulkPad {
   padding-bottom: 5.5rem;
 }
@@ -586,6 +593,28 @@
   background: var(--admin-bg-raised);
 }
 
+/* "+ producto" / "+ categoría" junto a las acciones: en dorado, como el
+   botón de agregar. */
+.iconBtn.addIconBtn {
+  color: var(--admin-gold);
+  border-color: var(--admin-border-gold-mid);
+  background: var(--admin-gold-glow);
+}
+
+.iconBtn.addIconBtn:hover {
+  color: var(--admin-gold-hover);
+  border-color: var(--admin-gold);
+  background: var(--admin-gold-glow);
+}
+
+/* Categoría o sección vacía: el botón de agregar ocupa el lugar del
+   contenido. */
+.emptyAdd {
+  display: flex;
+  justify-content: center;
+  padding: 1.1rem 0.9rem;
+}
+
 .iconBtn:focus-visible {
   outline: 2px solid var(--admin-gold);
   outline-offset: 2px;
@@ -695,6 +724,29 @@
   font-size: 0.7rem;
   color: var(--admin-text-muted);
   margin-top: 2px;
+}
+
+/* Categoría oculta (o dentro de una sección oculta): el nombre y los
+   productos se atenúan; las acciones quedan con su contraste normal. */
+.catHidden .catHeaderName,
+.catHidden .itemInfoAc {
+  opacity: 0.55;
+}
+
+.seccionTitleHidden {
+  opacity: 0.55;
+}
+
+.hiddenBadge {
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--admin-pill-off-text);
+  background: var(--admin-pill-off-bg);
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 /* ── Cuerpo del acordeón ── */
@@ -829,13 +881,6 @@
   outline-offset: 2px;
 }
 
-/* ── Footer del acordeón ── */
-.catFooter {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0.55rem 0.9rem;
-  border-top: 0.5px solid var(--admin-border-subtle);
-}
 
 .addItemBtn {
   composes: md-glass-button from global;
@@ -1191,6 +1236,42 @@
 .saveBtn:focus-visible {
   outline: 2px solid var(--admin-gold);
   outline-offset: 3px;
+}
+
+.duplicateBtn {
+  composes: md-glass-button from global;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  width: 100%;
+  margin-bottom: 0.75rem;
+  background: none;
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--control-glass-radius);
+  padding: 0.875rem;
+  font-family: var(--font-sans);
+  font-size: 0.93rem;
+  font-weight: 500;
+  color: var(--admin-text-secondary);
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+}
+
+.duplicateBtn:hover:not(:disabled) {
+  background: var(--admin-bg-elevated);
+  border-color: var(--admin-border-warm);
+}
+
+.duplicateBtn:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
+}
+
+.duplicateBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .deleteBtn {
@@ -1559,6 +1640,22 @@
   font-size: 0.88rem;
 }
 
+/* Botones del menú vacío (nueva categoría, nueva sección, plantilla): una
+   columna del mismo ancho, así quedan todos iguales. */
+.emptyActions {
+  display: flex;
+  width: min(100%, 380px);
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 0.25rem;
+  text-align: left;
+}
+
+.emptyActions > .sheetOption {
+  width: 100%;
+  margin: 0;
+}
+
 .emptySub {
   font-size: 0.78rem;
   color: var(--admin-text-faint);
@@ -1852,6 +1949,14 @@
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   border-top: 0.5px solid var(--admin-border-warm);
   animation: slideUp 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Contador + "Seleccionar todo", a la izquierda de las acciones. */
+.bulkBarLead {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
 }
 
 .bulkBarCount {

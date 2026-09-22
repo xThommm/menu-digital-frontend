@@ -315,9 +315,9 @@ export interface PublicMenuItem {
   options?: Record<string, number>
   recommended?: boolean
   apt?: Record<string, unknown>
-  // Solo legacy. v2 excluye del JSON los productos no disponibles (interruptor
-  // manual o fuera de su programación), así que nunca manda available: usar
-  // isItemUnavailable() (lib/publicMenu.ts), no `!item.available`.
+  // v2 lo manda solo en false (pausado o fuera de su programación); los
+  // disponibles no llevan la clave. Usar isItemUnavailable()
+  // (lib/publicMenu.ts), no `!item.available`.
   available?: boolean
   // Solo legacy. Rangos/horarios de la oferta: v2 ya los resolvió en el
   // servidor y manda offerPrice solo si rige (isOfferActive los tolera

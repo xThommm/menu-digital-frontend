@@ -31,15 +31,20 @@ import {
   SortableWorkspaceCategory,
   WorkspaceCategory,
   WorkspaceFilters,
+  WorkspaceFoldControls,
   WorkspaceJumpBar,
   WorkspaceNav,
   WorkspaceOverview,
   WorkspacePanel,
+  type CategorySelectionState,
+  type GroupSelection,
 } from "./Workspace/MenuWorkspace";
 import { countWorkspaceItems, matchesWorkspaceFilter, type WorkspaceFilter } from "./Workspace/workspaceFilters";
 import DragHandle from "./Reorder/DragHandle";
 import MenuReorderProvider from "./Reorder/MenuReorderProvider";
-import { LOOSE_SECTION, allCategories, categoryDndId, itemDndId, sectionDndId } from "./Reorder/menuReorder";
+import {
+  LOOSE_SECTION, allCategories, categoryDndId, findCategory, itemDndId, sectionDndId,
+} from "./Reorder/menuReorder";
 import { useReorderState } from "./Reorder/reorderContext";
 import { useMenuReorder } from "./Reorder/useMenuReorder";
 import { useReorderList, useReorderSortable } from "./Reorder/useReorderSortable";
@@ -181,6 +186,72 @@ const patchMenuItem = (menu: MenuData, itemId: string, patch: Partial<Item>): Me
   };
 };
 
+// Aplica un cambio a una sección o categoría (actualización optimista de
+// visibilidad).
+const patchMenuNode = (menu: MenuData, nodeId: string, patch: { hidden: boolean }): MenuData => {
+  const updateCats = (categorias: Categoria[]) =>
+    categorias.map(categoria => categoria._id === nodeId ? { ...categoria, ...patch } : categoria);
+  return {
+    secciones: menu.secciones.map(seccion => ({
+      ...(seccion._id === nodeId ? { ...seccion, ...patch } : seccion),
+      categorias: updateCats(seccion.categorias),
+    })),
+    sinSeccion: updateCats(menu.sinSeccion),
+  };
+};
+
+// Tope de productos por pedido de las acciones en lote (MAX_BULK_ITEMS en
+// backend/src/controllers/itemController.js).
+const BULK_CHUNK_SIZE = 200;
+
+// Selección múltiple: productos y secciones/categorías marcadas enteras.
+interface Selection {
+  items: Set<string>;
+  menus: Set<string>;
+}
+const EMPTY_SELECTION: Selection = { items: new Set(), menus: new Set() };
+
+// Estado de la casilla de un grupo (categoría, sección, "Sin sección" o
+// todo el menú): marcado si están marcadas todas sus secciones/categorías
+// (o, sin ninguna, todos sus productos); a medias si hay algo marcado adentro.
+const groupCheckState = (selection: Selection, menuIds: string[], itemIds: string[]) => {
+  const checked = menuIds.length > 0
+    ? menuIds.every(id => selection.menus.has(id))
+    : itemIds.length > 0 && itemIds.every(id => selection.items.has(id));
+  const indeterminate = !checked
+    && (menuIds.some(id => selection.menus.has(id)) || itemIds.some(id => selection.items.has(id)));
+  return { checked, indeterminate };
+};
+
+// "2 categorías · 15 productos", para la barra y la confirmación de borrado.
+const countLabel = (count: number, singular: string, plural: string) =>
+  `${count} ${count === 1 ? singular : plural}`;
+
+// Aviso de una acción en lote sobre productos (con los que fallaron).
+const itemsOutcome = (updated: number, failed: number, label: string) => {
+  const message = `${countLabel(updated, "producto", "productos")} ${label}.`;
+  if (failed === 0) return { message };
+  return {
+    message,
+    error: updated === 0
+      ? "No se pudo aplicar la acción a ningún producto seleccionado."
+      : `${message} ${countLabel(failed, "producto", "productos")} no se ${failed !== 1 ? "pudieron" : "pudo"} actualizar.`,
+  };
+};
+
+// Conjuntos de ids plegados (secciones y categorías del tablero).
+const toggleInSet = (prev: Set<string>, id: string) => {
+  const next = new Set(prev);
+  if (next.has(id)) next.delete(id); else next.add(id);
+  return next;
+};
+const withoutId = (prev: Set<string>, id: string) => {
+  if (!prev.has(id)) return prev;
+  const next = new Set(prev);
+  next.delete(id);
+  return next;
+};
+
 // Desde este ancho el editor pasa a espacio de trabajo: estructura, tablero y
 // panel de edici\u00f3n a la vista a la vez. Por debajo sigue el flujo m\u00f3vil.
 const DESKTOP_QUERY = "(min-width: 1024px)";
@@ -252,6 +323,12 @@ const icons = {
       <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
       <path d="M10 11v6" /><path d="M14 11v6" />
       <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  ),
+  plus: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
     </svg>
   ),
   chevron: (
@@ -395,10 +472,33 @@ function FormSection({
 // Cada uno se arrastra desde su manija. Un producto soltado sobre una
 // categoría cerrada va al final de esa categoría (ver Reorder/useMenuReorder).
 
+// Casilla que marca una sección entera (todos sus productos) en la
+// selección múltiple.
+function GroupCheckbox({ selection, title }: { selection: GroupSelection; title: string }) {
+  return (
+    <label className={styles.itemCheckboxWrap}>
+      <input
+        type="checkbox"
+        checked={selection.checked}
+        ref={el => { if (el) el.indeterminate = selection.indeterminate; }}
+        onChange={selection.onToggle}
+        aria-label={selection.checked
+          ? `Deseleccionar todos los productos de ${title}`
+          : `Seleccionar todos los productos de ${title}`}
+      />
+    </label>
+  );
+}
+
 // Una sección con sus categorías: se mueve entera.
-function MobileSeccionBlock({ seccion, deleteDisabled, onEdit, onDelete, children }: {
+function MobileSeccionBlock({ seccion, deleteDisabled, selection, onAddCategory, onEdit, onDelete, children }: {
   seccion: Seccion;
   deleteDisabled: boolean;
+  // Con categorías, "+ categoría" va con las acciones de la sección; vacía,
+  // en su lugar (ver MobileCategoryList).
+  onAddCategory: () => void;
+  // En selección múltiple: la casilla de la sección entera (reemplaza a la manija).
+  selection?: GroupSelection;
   onEdit: () => void;
   onDelete: () => void;
   children: ReactNode;
@@ -410,11 +510,24 @@ function MobileSeccionBlock({ seccion, deleteDisabled, onEdit, onDelete, childre
     <div ref={setNode} style={style} className={`${styles.seccionBlock} ${isDragging ? rs.placeholder : ""}`}>
       <div className={styles.seccionRow}>
         <div className={styles.seccionLeft}>
-          <DragHandle sortable={sortable} label={`Mover la sección ${seccion.title}`} />
+          {selection
+            ? <GroupCheckbox selection={selection} title={`la sección ${seccion.title}`} />
+            : <DragHandle sortable={sortable} label={`Mover la sección ${seccion.title}`} />}
           <span className={styles.seccionBadge}>Sección</span>
-          <span className={styles.seccionTitle}>{seccion.title}</span>
+          <span className={`${styles.seccionTitle} ${seccion.hidden ? styles.seccionTitleHidden : ""}`}>{seccion.title}</span>
+          {seccion.hidden && <span className={styles.hiddenBadge}>Oculta</span>}
         </div>
         <div className={styles.rowActions}>
+          {seccion.categorias.length > 0 && (
+            <button
+              className={`${styles.iconBtn} ${styles.addIconBtn}`}
+              onClick={onAddCategory}
+              title="Agregar una categoría a esta sección"
+              aria-label={`Agregar una categoría a ${seccion.title}`}
+            >
+              {icons.plus}
+            </button>
+          )}
           <button className={styles.iconBtn} onClick={onEdit} title="Editar sección" aria-label={`Editar ${seccion.title}`}>
             {icons.edit}
           </button>
@@ -440,7 +553,8 @@ function MobileCategoryList({ sectionKey, title, categorias, emptyText, renderCa
   sectionKey: string;
   title: string;
   categorias: Categoria[];
-  emptyText: string | null;
+  // Lo que se muestra sin categorías (un texto o un botón), o nada.
+  emptyText: ReactNode;
   renderCategoria: (cat: Categoria, sectionKey: string) => ReactNode;
 }) {
   const { activeKind } = useReorderState();
@@ -453,7 +567,7 @@ function MobileCategoryList({ sectionKey, title, categorias, emptyText, renderCa
       </SortableContext>
       {categorias.length === 0 && (activeKind === "category"
         ? <p className={`${rs.dropZone} ${isOver ? rs.dropZoneOver : ""}`}>Soltá la categoría acá</p>
-        : emptyText && <p className={styles.emptyHint} style={{ paddingLeft: "0.25rem" }}>{emptyText}</p>)}
+        : emptyText)}
     </div>
   );
 }
@@ -462,6 +576,8 @@ interface CategoriaAcordeonProps {
   cat: Categoria;
   // Sección donde está (o LOOSE_SECTION): la necesita la categoría arrastrable.
   sectionKey: string;
+  // Su sección está oculta: la categoría tampoco se ve en la carta.
+  sectionHidden: boolean;
   expanded: boolean;
   atItemLimit: boolean;
   deleteDisabled: boolean;
@@ -473,21 +589,19 @@ interface CategoriaAcordeonProps {
   onToggleAvailable: (item: Item) => void;
   selectionMode: boolean;
   selectedIds: Set<string>;
+  catSelection: CategorySelectionState;
   onToggleSelectItem: (id: string) => void;
   onToggleSelectAllInCat: (cat: Categoria) => void;
 }
 
 const CategoriaAcordeon = memo(function CategoriaAcordeon({
-  cat, sectionKey, expanded, atItemLimit, deleteDisabled, onToggle, onEditCat, onDeleteCat, onNewItem,
-  onEditItem, onToggleAvailable, selectionMode, selectedIds, onToggleSelectItem, onToggleSelectAllInCat,
+  cat, sectionKey, sectionHidden, expanded, atItemLimit, deleteDisabled, onToggle, onEditCat, onDeleteCat, onNewItem,
+  onEditItem, onToggleAvailable, selectionMode, selectedIds, catSelection, onToggleSelectItem, onToggleSelectAllInCat,
 }: CategoriaAcordeonProps) {
   const { activeKind } = useReorderState();
   const sortable = useReorderSortable({ kind: "category", id: cat._id, sectionKey, title: cat.title });
   const { setNode, style, isDragging, isOver } = sortable;
   const itemCount  = cat.items?.length ?? 0;
-  const catItemIds = useMemo(() => (cat.items ?? []).map(i => i._id), [cat.items]);
-  const allInCatSelected  = itemCount > 0 && catItemIds.every(id => selectedIds.has(id));
-  const someInCatSelected = catItemIds.some(id => selectedIds.has(id));
   // Cerrada, recibe productos: van al final.
   const itemDropTarget = !expanded && isOver && activeKind === "item";
 
@@ -495,19 +609,19 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
     <div
       ref={setNode}
       style={style}
-      className={`${styles.catAcordeon} ${isDragging ? rs.placeholder : ""} ${itemDropTarget ? styles.catDropTarget : ""}`}
+      className={`${styles.catAcordeon} ${isDragging ? rs.placeholder : ""} ${itemDropTarget ? styles.catDropTarget : ""} ${cat.hidden || sectionHidden ? styles.catHidden : ""}`}
     >
       {/* Header */}
       <div className={`${styles.catHeader} ${expanded ? styles.open : ""}`}>
         {!selectionMode && <DragHandle sortable={sortable} label={`Mover la categoría ${cat.title}`} />}
-        {selectionMode && itemCount > 0 && (
+        {catSelection !== "hidden" && (
           <label className={styles.itemCheckboxWrap} onClick={e => e.stopPropagation()}>
             <input
               type="checkbox"
-              checked={allInCatSelected}
-              ref={el => { if (el) el.indeterminate = someInCatSelected && !allInCatSelected; }}
+              checked={catSelection === "on"}
+              ref={el => { if (el) el.indeterminate = catSelection === "partial"; }}
               onChange={() => onToggleSelectAllInCat(cat)}
-              aria-label={allInCatSelected ? `Deseleccionar todos los productos de ${cat.title}` : `Seleccionar todos los productos de ${cat.title}`}
+              aria-label={catSelection === "on" ? `Deseleccionar la categoría ${cat.title}` : `Seleccionar la categoría ${cat.title}`}
             />
           </label>
         )}
@@ -526,11 +640,23 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
           <span className={styles.catHeaderName}>{cat.title}</span>
           <span className={styles.catHeaderMeta}>
             {itemCount === 0 ? "Sin productos" : `${itemCount} producto${itemCount !== 1 ? "s" : ""}`}
-            {cat.hidden ? " · oculta" : ""}
+            {cat.hidden ? " · oculta" : sectionHidden ? " · oculta por su sección" : ""}
           </span>
         </button>
 
         <div className={styles.rowActions}>
+          {/* Con productos (o cerrada), "+ producto" va acá; abierta y vacía,
+              en su lugar dentro de la lista. */}
+          {(itemCount > 0 || !expanded) && (
+            <button
+              className={`${styles.iconBtn} ${styles.addIconBtn}`}
+              onClick={onNewItem}
+              title={atItemLimit ? "Llegaste al límite de productos de tu plan" : "Agregar un producto a esta categoría"}
+              aria-label={`Agregar un producto a ${cat.title}`}
+            >
+              {icons.plus}
+            </button>
+          )}
           <button
             className={styles.iconBtn}
             onClick={onEditCat}
@@ -593,9 +719,15 @@ function AcordeonItems({
       aria-label={`Productos de ${cat.title}`}
     >
       {items.length === 0 && (
-        <p className={styles.emptyHint} style={{ padding: "1.25rem", textAlign: "center" }}>
-          Arrastrá productos aquí o usá el botón de abajo.
-        </p>
+        <div className={styles.emptyAdd}>
+          <button
+            className={`${styles.addItemBtn} ${atItemLimit ? styles.addItemBtnLimit : ""}`}
+            onClick={onNewItem}
+            type="button"
+          >
+            {atItemLimit ? "Límite alcanzado — Mejorar plan" : "+ Agregar producto"}
+          </button>
+        </div>
       )}
 
       <SortableContext items={items.map(item => itemDndId(item._id))} strategy={verticalListSortingStrategy}>
@@ -612,16 +744,6 @@ function AcordeonItems({
           />
         ))}
       </SortableContext>
-
-      <div className={styles.catFooter}>
-        <button
-          className={`${styles.addItemBtn} ${atItemLimit ? styles.addItemBtnLimit : ""}`}
-          onClick={onNewItem}
-          type="button"
-        >
-          {atItemLimit ? "Límite alcanzado — Mejorar plan" : "+ Agregar producto"}
-        </button>
-      </div>
     </div>
   );
 }
@@ -746,6 +868,11 @@ export default function MenuEditorPage() {
     canReorder?: boolean;
     autoGenerateCodes?: boolean;
     disableMenuDelete?: boolean;
+    // Configuración: eliminar secciones y categorías con todo su contenido.
+    deleteMenusWithContent?: boolean;
+    // Lo manda un backend con /menus/bulk/*: sin la clave la selección
+    // múltiple marca solo productos.
+    canBulkMenus?: boolean;
   } | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState(false);
@@ -766,9 +893,16 @@ export default function MenuEditorPage() {
   const canScheduleItems = limits?.canScheduleItems === true;
   const canScheduleOffers = limits?.canScheduleOffers === true;
 
-  // ── Selección múltiple de productos ─────────────────────────────────────
+  // ── Selección múltiple ──────────────────────────────────────────────────
+  // Productos (items) y secciones/categorías enteras (menus), ver
+  // toggleSelectGroup.
   const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selection, setSelection] = useState<Selection>(EMPTY_SELECTION);
+  const selectedIds = selection.items;
+  const selectedMenuIds = selection.menus;
+  // Este backend acepta acciones en lote sobre secciones y categorías
+  // (/menus/bulk/*). Sin la clave, se seleccionan solo productos.
+  const canSelectMenus = limits?.canBulkMenus === true;
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
 
@@ -779,6 +913,17 @@ export default function MenuEditorPage() {
   const [statusFilter,  setStatusFilter]  = useState<WorkspaceFilter>("all");
   const [focusedCatId,  setFocusedCatId]  = useState<string | null>(null);
   const [flashItemId,   setFlashItemId]   = useState<string | null>(null);
+  // Escritorio: secciones y categorías plegadas en el tablero (por id). Todo
+  // arranca desplegado; es solo vista, no se guarda.
+  const [collapsedSecs, setCollapsedSecs] = useState<Set<string>>(() => new Set());
+  const [collapsedCats, setCollapsedCats] = useState<Set<string>>(() => new Set());
+  // Despliega una categoría (y su sección) para mostrar algo que queda adentro.
+  const unfoldCategory = useCallback((catId: string, sectionKey?: string) => {
+    setCollapsedCats(prev => withoutId(prev, catId));
+    if (sectionKey && sectionKey !== LOOSE_SECTION) setCollapsedSecs(prev => withoutId(prev, sectionKey));
+  }, []);
+  // Producto que se está duplicando: su botón queda deshabilitado mientras.
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   // Cambia con cada apertura del panel: reinicia el formulario (scroll,
   // autofocus) aunque la vista siga siendo la misma.
   const [formSeq,       setFormSeq]       = useState(0);
@@ -802,8 +947,8 @@ export default function MenuEditorPage() {
   const [itemForm,      setItemForm]      = useState(() => cloneItemForm(EMPTY_ITEM));
   const [initialItemForm, setInitialItemForm] = useState(() => cloneItemForm(EMPTY_ITEM));
   const [itemFieldErrors, setItemFieldErrors] = useState<ItemFieldErrors>({});
-  const [categoriaForm, setCategoriaForm] = useState({ title: "", description: "", code: "", seccionID: "", editingId: "" });
-  const [seccionForm,   setSeccionForm]   = useState({ title: "", code: "", editingId: "" });
+  const [categoriaForm, setCategoriaForm] = useState({ title: "", description: "", code: "", seccionID: "", editingId: "", hidden: false });
+  const [seccionForm,   setSeccionForm]   = useState({ title: "", code: "", editingId: "", hidden: false });
 
   const authHeaders = useMemo(() => ({
     "Content-Type": "application/json",
@@ -857,7 +1002,10 @@ export default function MenuEditorPage() {
     onItemAppended: (itemId, catId) => {
       const title = menuData ? allCategories(menuData).find(cat => cat._id === catId)?.title : undefined;
       notifySuccess(title ? `Producto movido a «${title}».` : "Producto movido.");
-      if (isDesktop) setFlashItemId(itemId);
+      if (isDesktop) {
+        unfoldCategory(catId, menuData ? findCategory(menuData, catId)?.sectionKey : undefined);
+        setFlashItemId(itemId);
+      }
       else setExpandedCats(prev => new Set(prev).add(catId));
     },
   });
@@ -1182,7 +1330,13 @@ export default function MenuEditorPage() {
       notifySuccess(activeItem ? "Producto actualizado." : "Producto creado.");
       setInitialItemForm(cloneItemForm(itemForm));
       const savedId = activeItem?._id ?? (typeof data._id === "string" ? data._id : null);
-      if (isDesktop && savedId) setFlashItemId(savedId);
+      if (isDesktop && savedId) {
+        // Creado desde una categoría plegada: se despliega para verlo.
+        if (savedCategoria) {
+          unfoldCategory(savedCategoria._id, menuData ? findCategory(menuData, savedCategoria._id)?.sectionKey : undefined);
+        }
+        setFlashItemId(savedId);
+      }
       if (andNew && savedCategoria) openNewItem(savedCategoria);
       else setView("menu");
     } catch (err) {
@@ -1285,62 +1439,193 @@ export default function MenuEditorPage() {
     }
   }, [authHeaders, refetch, notifySuccess, setError, logout, syncOpenItemFlags]);
 
-  // ── Selección múltiple de productos ─────────────────────────────────────
+  // Duplica un producto (POST /items/:id/duplicate): la copia queda en la
+  // misma categoría, debajo del original, como "Copia de ..." y con el código
+  // del original + "-COPIA". Con `openCopy` (formulario del celular) se sigue
+  // editando la copia.
+  const duplicateItem = useCallback(async (item: Item, cat: Categoria | null, { openCopy = false } = {}) => {
+    // Mismo tope del plan que al crear un producto (el backend lo vuelve a
+    // chequear: esto evita el pedido y ofrece mejorar el plan).
+    if (limits && limits.itemLimit != null && limits.itemCount >= limits.itemLimit) {
+      setUpgradeReason("items");
+      return;
+    }
+    setDuplicatingId(item._id);
+    try {
+      const res = await fetch(`/api/items/${item._id}/duplicate`, { method: "POST", headers: authHeaders });
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // El tope se alcanzó desde otra pestaña/dispositivo: mismo modal.
+        if (res.status === 403 && /límite/i.test(data.message ?? "")) {
+          await refetch();
+          setUpgradeReason("items");
+          return;
+        }
+        throw new Error(data.message || "No se pudo duplicar el producto.");
+      }
+      const copy = data as Item;
+      await refetch();
+      notifySuccess(openCopy ? "Producto duplicado. Estás editando la copia." : "Producto duplicado.");
+      if (openCopy && cat) openEditItem(copy, cat);
+      else if (isDesktop) setFlashItemId(copy._id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo duplicar el producto.");
+    } finally {
+      setDuplicatingId(null);
+    }
+  }, [limits, authHeaders, logout, refetch, notifySuccess, openEditItem, isDesktop, setError]);
+
+  // ── Selección múltiple ──────────────────────────────────────────────────
+  // Se marcan productos y, desde sus casillas, secciones y categorías enteras.
+  // Marcar una categoría marca también sus productos; una sección, sus
+  // categorías y todos sus productos. Desmarcar algo de adentro desmarca a
+  // quien lo contiene: un contenedor marcado está siempre marcado entero, así
+  // que las acciones sobre él (ocultar, eliminar) valen para todo lo que tiene.
+
+  // Dónde está cada cosa, para desmarcar contenedores (ver toggleSelectItem).
+  const menuParents = useMemo(() => {
+    const sectionOfCat = new Map<string, string>();
+    const catOfItem = new Map<string, string>();
+    menuData?.secciones.forEach(sec => sec.categorias.forEach(cat => sectionOfCat.set(cat._id, sec._id)));
+    if (menuData) {
+      allCategories(menuData).forEach(cat => (cat.items ?? []).forEach(item => catOfItem.set(item._id, cat._id)));
+    }
+    return { sectionOfCat, catOfItem };
+  }, [menuData]);
 
   const toggleSelectionMode = useCallback(() => {
     setSelectionMode(prev => !prev);
-    setSelectedIds(new Set());
+    setSelection(EMPTY_SELECTION);
   }, []);
 
   const toggleSelectItem = useCallback((id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
+    setSelection(prev => {
+      const items = new Set(prev.items);
+      let menus = prev.menus;
+      if (items.has(id)) {
+        items.delete(id);
+        const catId = menuParents.catOfItem.get(id);
+        const sectionId = catId ? menuParents.sectionOfCat.get(catId) : undefined;
+        if ((catId && menus.has(catId)) || (sectionId && menus.has(sectionId))) {
+          menus = new Set(menus);
+          if (catId) menus.delete(catId);
+          if (sectionId) menus.delete(sectionId);
+        }
+      } else {
+        items.add(id);
+      }
+      return { items, menus };
+    });
+  }, [menuParents]);
+
+  // Marca un grupo entero (sus secciones/categorías y sus productos) o, si ya
+  // estaba marcado, lo desmarca junto con los contenedores de más arriba
+  // (`parentIds`), que dejan de estar enteros.
+  const toggleSelectGroup = useCallback((menuIds: string[], itemIds: string[], parentIds: string[] = []) => {
+    setSelection(prev => {
+      const { checked } = groupCheckState(prev, menuIds, itemIds);
+      const items = new Set(prev.items);
+      const menus = new Set(prev.menus);
+      if (checked) {
+        itemIds.forEach(id => items.delete(id));
+        [...menuIds, ...parentIds].forEach(id => menus.delete(id));
+      } else {
+        itemIds.forEach(id => items.add(id));
+        menuIds.forEach(id => menus.add(id));
+      }
+      return { items, menus };
     });
   }, []);
+
+  // Lo que marca la casilla de una categoría, de una sección o de un grupo de
+  // categorías ("Sin sección", todo el menú). Sin canSelectMenus (backend
+  // anterior) solo se marcan productos.
+  const categoryGroup = useCallback((cat: Categoria) => ({
+    menuIds: canSelectMenus ? [cat._id] : [],
+    itemIds: (cat.items ?? []).map(item => item._id),
+  }), [canSelectMenus]);
+
+  const categoriesGroup = (categorias: Categoria[], sectionId?: string) => ({
+    menuIds: canSelectMenus ? [...(sectionId ? [sectionId] : []), ...categorias.map(cat => cat._id)] : [],
+    itemIds: categorias.flatMap(cat => (cat.items ?? []).map(item => item._id)),
+  });
 
   const toggleSelectAllInCat = useCallback((cat: Categoria) => {
-    const ids = (cat.items ?? []).map(i => i._id);
-    setSelectedIds(prev => {
-      const allSelected = ids.length > 0 && ids.every(id => prev.has(id));
-      const next = new Set(prev);
-      ids.forEach(id => allSelected ? next.delete(id) : next.add(id));
-      return next;
-    });
-  }, []);
+    const { menuIds, itemIds } = categoryGroup(cat);
+    const sectionId = menuParents.sectionOfCat.get(cat._id);
+    toggleSelectGroup(menuIds, itemIds, sectionId ? [sectionId] : []);
+  }, [categoryGroup, menuParents, toggleSelectGroup]);
 
-  // Pega una vez a los endpoints /bulk/* del backend (un solo request para
-  // todo el lote) en vez de hacer N pedidos, uno por producto seleccionado.
-  const runBulkAction = useCallback(async (
+  // Casilla de una categoría: no se muestra (fuera del modo selección o sin
+  // nada que marcar), vacía, a medias o marcada.
+  const categorySelectionState = (cat: Categoria): CategorySelectionState => {
+    const { menuIds, itemIds } = categoryGroup(cat);
+    if (!selectionMode || (menuIds.length === 0 && itemIds.length === 0)) return "hidden";
+    const { checked, indeterminate } = groupCheckState(selection, menuIds, itemIds);
+    return checked ? "on" : indeterminate ? "partial" : "off";
+  };
+
+  // Casilla de una sección (o de "Sin sección"): la sección, todas sus
+  // categorías y todos sus productos.
+  const groupSelection = (categorias: Categoria[], sectionId?: string): GroupSelection | undefined => {
+    const { menuIds, itemIds } = categoriesGroup(categorias, sectionId);
+    if (!selectionMode || (menuIds.length === 0 && itemIds.length === 0)) return undefined;
+    return {
+      ...groupCheckState(selection, menuIds, itemIds),
+      onToggle: () => toggleSelectGroup(menuIds, itemIds),
+    };
+  };
+
+  // ── Acciones en lote ────────────────────────────────────────────────────
+  // El backend acepta hasta BULK_CHUNK_SIZE ids por pedido: una selección más
+  // grande ("Seleccionar todo" en una carta grande) se manda en tandas y se
+  // suman los resultados.
+  const sendInChunks = useCallback(async (
     url: string,
     method: "PATCH" | "POST",
+    key: "itemIds" | "menuIds",
+    ids: string[],
     body: Record<string, unknown> | undefined,
-    successLabel: (count: number) => string,
     failureFallback: string,
   ) => {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
-    setBulkBusy(true);
-    try {
+    let updated = 0;
+    let failed = 0;
+    for (let start = 0; start < ids.length; start += BULK_CHUNK_SIZE) {
       const res = await fetch(url, {
         method, headers: authHeaders,
-        body: JSON.stringify({ ...body, itemIds: ids }),
+        body: JSON.stringify({ ...body, [key]: ids.slice(start, start + BULK_CHUNK_SIZE) }),
       });
       const data = await parseApiResponse(res, failureFallback);
-      await refetch();
+      updated += Number(data.updatedCount ?? data.deletedCount ?? data.deletedMenus ?? 0);
+      failed += Array.isArray(data.failedIds) ? data.failedIds.length : 0;
+    }
+    return { updated, failed };
+  }, [authHeaders, parseApiResponse]);
 
-      const updatedCount = Number(data.updatedCount ?? data.deletedCount ?? 0);
-      const failedCount = Array.isArray(data.failedIds) ? data.failedIds.length : 0;
-
-      if (failedCount === 0) {
-        notifySuccess(successLabel(updatedCount));
-      } else if (updatedCount === 0) {
-        setError("No se pudo aplicar la acción a ningún producto seleccionado.");
-      } else {
-        setError(`${successLabel(updatedCount)} ${failedCount} producto${failedCount !== 1 ? "s" : ""} no se ${failedCount !== 1 ? "pudieron" : "pudo"} actualizar.`);
+  // Corre una acción sobre la selección: recarga el menú aunque falle a mitad
+  // de camino (lo anterior ya se aplicó), avisa y sale del modo selección.
+  // `task` devuelve el aviso de éxito, o un error si algo no se aplicó.
+  const runBulk = useCallback(async (
+    task: () => Promise<{ message: string; error?: string }>,
+    failureFallback: string,
+  ) => {
+    if (selectedIds.size === 0 && selectedMenuIds.size === 0) return;
+    setBulkBusy(true);
+    try {
+      let result: { message: string; error?: string };
+      try {
+        result = await task();
+      } finally {
+        await refetch();
       }
-      setSelectedIds(new Set());
+      if (result.error) setError(result.error);
+      else notifySuccess(result.message);
+      setSelection(EMPTY_SELECTION);
       setSelectionMode(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : failureFallback);
@@ -1348,37 +1633,167 @@ export default function MenuEditorPage() {
       setBulkBusy(false);
       setBulkDeleteConfirmOpen(false);
     }
-  }, [selectedIds, authHeaders, refetch, notifySuccess, setError, parseApiResponse]);
+  }, [selectedIds, selectedMenuIds, refetch, notifySuccess, setError]);
 
-  const bulkSetAvailable = useCallback((available: boolean) => runBulkAction(
-    "/api/items/bulk/available", "PATCH", { available },
-    count => `${count} producto${count !== 1 ? "s" : ""} ${available ? "activado" : "pausado"}${count !== 1 ? "s" : ""}.`,
-    "No se pudo cambiar la disponibilidad.",
-  ), [runBulkAction]);
+  // Activar/pausar: solo productos (las secciones y categorías no tienen
+  // disponibilidad).
+  const bulkSetAvailable = useCallback((available: boolean) => runBulk(async () => {
+    const { updated, failed } = await sendInChunks(
+      "/api/items/bulk/available", "PATCH", "itemIds", Array.from(selectedIds), { available },
+      "No se pudo cambiar la disponibilidad.",
+    );
+    const label = available ? (updated === 1 ? "activado" : "activados") : (updated === 1 ? "pausado" : "pausados");
+    return itemsOutcome(updated, failed, label);
+  }, "No se pudo cambiar la disponibilidad."), [runBulk, sendInChunks, selectedIds]);
 
-  const bulkSetHidden = useCallback((hidden: boolean) => runBulkAction(
-    "/api/items/bulk/hidden", "PATCH", { hidden },
-    count => `${count} producto${count !== 1 ? "s" : ""} ${hidden ? "ocultado" : "mostrado"}${count !== 1 ? "s" : ""}.`,
-    "No se pudo cambiar la visibilidad.",
-  ), [runBulkAction]);
+  // Mostrar/ocultar: las secciones y categorías marcadas y los productos.
+  const bulkSetHidden = useCallback((hidden: boolean) => runBulk(async () => {
+    const fallback = "No se pudo cambiar la visibilidad.";
+    const menuIds = Array.from(selectedMenuIds);
+    const menusResult = menuIds.length > 0
+      ? await sendInChunks("/api/menus/bulk/hidden", "PATCH", "menuIds", menuIds, { hidden }, fallback)
+      : { updated: 0, failed: 0 };
+    const itemIds = Array.from(selectedIds);
+    const itemsResult = itemIds.length > 0
+      ? await sendInChunks("/api/items/bulk/hidden", "PATCH", "itemIds", itemIds, { hidden }, fallback)
+      : { updated: 0, failed: 0 };
 
-  const bulkDelete = useCallback(() => runBulkAction(
-    "/api/items/bulk/delete", "POST", undefined,
-    count => `${count} producto${count !== 1 ? "s" : ""} eliminado${count !== 1 ? "s" : ""}.`,
-    "No se pudo eliminar.",
-  ), [runBulkAction]);
+    const verb = hidden ? "Se ocultaron" : "Se mostraron";
+    const parts = [
+      menusResult.updated > 0 && countLabel(menusResult.updated, "sección o categoría", "secciones y categorías"),
+      itemsResult.updated > 0 && countLabel(itemsResult.updated, "producto", "productos"),
+    ].filter(Boolean);
+    const message = parts.length > 0 ? `${verb} ${parts.join(" y ")}.` : "No había nada para cambiar.";
+    if (itemsResult.failed === 0) return { message };
+    return { message, error: `${message} ${countLabel(itemsResult.failed, "producto", "productos")} no se pudo actualizar.` };
+  }, "No se pudo cambiar la visibilidad."), [runBulk, sendInChunks, selectedIds, selectedMenuIds]);
+
+  // Qué se elimina: secciones, categorías y productos marcados, y si la
+  // opción de Configuración no deja eliminar contenedores con contenido, por
+  // qué no se puede.
+  const bulkDeletePlan = useMemo(() => {
+    const sectionIds = (menuData?.secciones ?? []).filter(sec => selectedMenuIds.has(sec._id)).map(sec => sec._id);
+    const categories = menuData ? allCategories(menuData).filter(cat => selectedMenuIds.has(cat._id)) : [];
+    let blocked = false;
+    if (!limits?.deleteMenusWithContent && menuData) {
+      // Sin la opción, solo se eliminan vacías: una categoría sin productos y
+      // una sección cuyas categorías también se eliminan.
+      blocked = categories.some(cat => (cat.items ?? []).length > 0)
+        || menuData.secciones.some(sec => selectedMenuIds.has(sec._id)
+          && sec.categorias.some(cat => !selectedMenuIds.has(cat._id)));
+    }
+    // Productos que no caen con su categoría o sección (se eliminan aparte).
+    const looseItemIds = Array.from(selectedIds).filter(id => {
+      const catId = menuParents.catOfItem.get(id);
+      const sectionId = catId ? menuParents.sectionOfCat.get(catId) : undefined;
+      return !(catId && selectedMenuIds.has(catId)) && !(sectionId && selectedMenuIds.has(sectionId));
+    });
+    return {
+      sectionIds,
+      categoryIds: categories.map(cat => cat._id),
+      itemCount: selectedIds.size,
+      looseItemIds,
+      blocked,
+    };
+  }, [menuData, selectedIds, selectedMenuIds, menuParents, limits?.deleteMenusWithContent]);
+
+  // Eliminar: primero las categorías y después las secciones (así una sección
+  // cuyas categorías también se eliminan ya está vacía cuando le toca, aun
+  // repartida en tandas), y al final los productos que no cayeron con ellas.
+  const bulkDelete = useCallback(() => runBulk(async () => {
+    const fallback = "No se pudo eliminar.";
+    const { sectionIds, categoryIds, looseItemIds } = bulkDeletePlan;
+    let menus = 0;
+    let items = 0;
+    for (const ids of [categoryIds, sectionIds]) {
+      if (ids.length === 0) continue;
+      for (let start = 0; start < ids.length; start += BULK_CHUNK_SIZE) {
+        const res = await fetch("/api/menus/bulk/delete", {
+          method: "POST", headers: authHeaders,
+          body: JSON.stringify({ menuIds: ids.slice(start, start + BULK_CHUNK_SIZE) }),
+        });
+        const data = await parseApiResponse(res, fallback);
+        menus += Number(data.deletedMenus ?? 0);
+        items += Number(data.deletedItems ?? 0);
+      }
+    }
+    const itemsResult = looseItemIds.length > 0
+      ? await sendInChunks("/api/items/bulk/delete", "POST", "itemIds", looseItemIds, undefined, fallback)
+      : { updated: 0, failed: 0 };
+    items += itemsResult.updated;
+
+    const parts = [
+      menus > 0 && countLabel(menus, "sección o categoría", "secciones y categorías"),
+      items > 0 && countLabel(items, "producto", "productos"),
+    ].filter(Boolean);
+    const message = parts.length > 0 ? `Se eliminaron ${parts.join(" y ")}.` : "No había nada para eliminar.";
+    if (itemsResult.failed === 0) return { message };
+    return { message, error: `${message} ${countLabel(itemsResult.failed, "producto", "productos")} no se pudo eliminar.` };
+  }, "No se pudo eliminar."), [runBulk, bulkDeletePlan, authHeaders, parseApiResponse, sendInChunks]);
+
+  // ── Ocultar/mostrar secciones y categorías ─────────────────────────────
+  // Una sección o categoría oculta sale de la carta pública con todo su
+  // contenido (el backend no sirve lo que cuelga de ella). Los productos
+  // conservan su propio `hidden`: al volver a mostrarla reaparecen como
+  // estaban.
+
+  const patchMenuHidden = useCallback(async (menuId: string, hidden: boolean) => {
+    const res = await fetch(`/api/menus/${menuId}/hidden`, {
+      method: "PATCH", headers: authHeaders,
+      body: JSON.stringify({ hidden }),
+    });
+    if (res.status === 401) {
+      logout();
+      window.location.href = "/login";
+      throw new Error("Tu sesión expiró.");
+    }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.message || "No se pudo cambiar la visibilidad.");
+    }
+  }, [authHeaders, logout]);
+
+  // Desde el formulario: solo pega si lo elegido difiere de lo guardado.
+  const syncMenuHidden = async (menuId: string | undefined, current: boolean, wanted: boolean) => {
+    if (!menuId || current === wanted) return;
+    await patchMenuHidden(menuId, wanted);
+  };
+
+  const toggleMenuHidden = useCallback(async (kind: "seccion" | "categoria", node: Seccion | Categoria) => {
+    const hidden = !node.hidden;
+    setMenuData(prev => prev && patchMenuNode(prev, node._id, { hidden }));
+    // Si ese mismo nodo está abierto en el formulario, sigue el cambio para
+    // que guardar después no lo revierta.
+    if (kind === "categoria") {
+      setCategoriaForm(form => form.editingId === node._id ? { ...form, hidden } : form);
+    } else {
+      setSeccionForm(form => form.editingId === node._id ? { ...form, hidden } : form);
+    }
+    const label = kind === "seccion" ? "Sección" : "Categoría";
+    try {
+      await patchMenuHidden(node._id, hidden);
+      notifySuccess(hidden ? `${label} oculta de la carta, con todo su contenido.` : `${label} visible en la carta.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cambiar la visibilidad.");
+      await refetch(); // Revertir
+    }
+  }, [patchMenuHidden, notifySuccess, setError, refetch]);
+
+  const toggleSeccionHidden = useCallback((sec: Seccion) => toggleMenuHidden("seccion", sec), [toggleMenuHidden]);
+  const toggleCategoriaHidden = useCallback((cat: Categoria) => toggleMenuHidden("categoria", cat), [toggleMenuHidden]);
 
   // ── Handlers CATEGORÍAS ───────────────────────────────────────────────────
 
-  const openNewCategoria = useCallback(() => {
-    setCategoriaForm({ title: "", description: "", code: "", seccionID: "", editingId: "" });
+  // `seccionID`: desde el "+ categoría" de una sección, ya elegida en el form.
+  const openNewCategoria = useCallback((seccionID = "") => {
+    setCategoriaForm({ title: "", description: "", code: "", seccionID, editingId: "", hidden: false });
     setError("");
     setFormSeq(seq => seq + 1);
     setView("categoria-form");
   }, [setError]);
 
   const openEditCategoria = useCallback((cat: Categoria) => {
-    setCategoriaForm({ title: cat.title, description: cat.description || "", code: cat.code || "", seccionID: "", editingId: cat._id });
+    setCategoriaForm({ title: cat.title, description: cat.description || "", code: cat.code || "", seccionID: "", editingId: cat._id, hidden: cat.hidden === true });
     setError("");
     setFormSeq(seq => seq + 1);
     setView("categoria-form");
@@ -1409,6 +1824,8 @@ export default function MenuEditorPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message || "No se pudo guardar la categoría.");
       }
+      const saved = await res.json().catch(() => ({})) as { _id?: string; hidden?: boolean };
+      await syncMenuHidden(categoriaForm.editingId || saved._id, saved.hidden === true, categoriaForm.hidden);
       await refetch();
       notifySuccess(categoriaForm.editingId ? "Categoría actualizada." : "Categoría creada.");
       setView("menu");
@@ -1422,14 +1839,14 @@ export default function MenuEditorPage() {
   // ── Handlers SECCIONES ────────────────────────────────────────────────────
 
   const openNewSeccion = useCallback(() => {
-    setSeccionForm({ title: "", code: "", editingId: "" });
+    setSeccionForm({ title: "", code: "", editingId: "", hidden: false });
     setError("");
     setFormSeq(seq => seq + 1);
     setView("seccion-form");
   }, [setError]);
 
   const openEditSeccion = useCallback((sec: Seccion) => {
-    setSeccionForm({ title: sec.title, code: sec.code || "", editingId: sec._id });
+    setSeccionForm({ title: sec.title, code: sec.code || "", editingId: sec._id, hidden: sec.hidden === true });
     setError("");
     setFormSeq(seq => seq + 1);
     setView("seccion-form");
@@ -1460,6 +1877,8 @@ export default function MenuEditorPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message || "No se pudo guardar la sección.");
       }
+      const saved = await res.json().catch(() => ({})) as { _id?: string; hidden?: boolean };
+      await syncMenuHidden(seccionForm.editingId || saved._id, saved.hidden === true, seccionForm.hidden);
       await refetch();
       notifySuccess(seccionForm.editingId ? "Sección actualizada." : "Sección creada.");
       setView("menu");
@@ -1632,10 +2051,23 @@ export default function MenuEditorPage() {
     (cat: Categoria) => guarded(() => openEditCategoria(cat)), [guarded, openEditCategoria]);
   const deleteCategoriaFromBoard = useCallback(
     (cat: Categoria) => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title }), []);
+  const duplicateItemFromBoard = useCallback(
+    (item: Item, cat: Categoria) => void duplicateItem(item, cat), [duplicateItem]);
   const editSeccionFromBoard = useCallback(
     (sec: Seccion) => guarded(() => openEditSeccion(sec)), [guarded, openEditSeccion]);
+  // "+ categoría" de una sección: la nueva categoría ya va a esa sección.
+  const newCategoriaInSection = useCallback(
+    (secId: string) => guarded(() => openNewCategoria(secId)), [guarded, openNewCategoria]);
+  // Menú sin secciones ni categorías: crear está en el tablero, junto a
+  // "Elegir desde plantilla" (emptyMenuState), y no en el encabezado ni en el
+  // menú de acciones.
+  const menuIsEmpty = !!menuData && menuData.secciones.length === 0 && menuData.sinSeccion.length === 0;
 
   const workspaceCounts = useMemo(() => countWorkspaceItems(menuData), [menuData]);
+  // Secciones ocultas: sus categorías tampoco se ven en la carta.
+  const hiddenSectionIds = useMemo(
+    () => new Set((menuData?.secciones ?? []).filter(sec => sec.hidden).map(sec => sec._id)),
+    [menuData]);
 
   // Un solo cálculo por menú y filtro: con "Todos" cada categoría conserva la
   // misma referencia de items, así las tarjetas memorizadas no se recalculan.
@@ -1655,22 +2087,49 @@ export default function MenuEditorPage() {
     ? menuData.sinSeccion.length + menuData.secciones.reduce((total, seccion) => total + seccion.categorias.length, 0)
     : 0;
 
+  // ── Plegar secciones y categorías (escritorio) ─────────────────────────
+
+  const toggleSeccionCollapsed = useCallback((secId: string) => setCollapsedSecs(prev => toggleInSet(prev, secId)), []);
+  const toggleCategoriaCollapsed = useCallback((cat: Categoria) => setCollapsedCats(prev => toggleInSet(prev, cat._id)), []);
+
+  const collapseAll = useCallback(() => {
+    if (!menuData) return;
+    setCollapsedSecs(new Set(menuData.secciones.map(sec => sec._id)));
+    setCollapsedCats(new Set(allCategories(menuData).map(cat => cat._id)));
+  }, [menuData]);
+
+  const expandAll = useCallback(() => {
+    setCollapsedSecs(new Set());
+    setCollapsedCats(new Set());
+  }, []);
+
+  // Despliega una categoría y su sección (para mostrar algo que está adentro).
+  // Devuelve si había algo plegado.
+  const revealCategory = useCallback((catId: string) => {
+    const sectionKey = menuData ? findCategory(menuData, catId)?.sectionKey : undefined;
+    const wasHidden = collapsedCats.has(catId) || (sectionKey != null && collapsedSecs.has(sectionKey));
+    unfoldCategory(catId, sectionKey);
+    return wasHidden;
+  }, [menuData, collapsedCats, collapsedSecs, unfoldCategory]);
+
   const scrollToCategory = useCallback((catId: string) => {
     setFocusedCatId(catId);
     setSearchQuery("");
     // Mientras dura el desplazamiento, el observador no pisa la categoría
     // elegida (al final de la página la de arriba nunca es la buscada).
     jumpLockRef.current = Date.now() + 900;
-    // Si el filtro dejó la categoría fuera del tablero, se vuelve a "Todos"
-    // para poder mostrarla.
-    if (!document.getElementById(`ws-cat-${catId}`)) setStatusFilter("all");
-    window.requestAnimationFrame(() => {
+    // Plegada (ella o su sección): se despliega. Si no, y el filtro la dejó
+    // fuera del tablero, se vuelve a "Todos" para poder mostrarla.
+    const wasFolded = revealCategory(catId);
+    if (!wasFolded && !document.getElementById(`ws-cat-${catId}`)) setStatusFilter("all");
+    // Dos cuadros: el primero deja que se dibuje lo recién desplegado.
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
       document.getElementById(`ws-cat-${catId}`)?.scrollIntoView({
         behavior: prefersReducedMotion() ? "auto" : "smooth",
         block: "start",
       });
-    });
-  }, []);
+    }));
+  }, [revealCategory]);
 
   // Categoría "actual" del tablero: la primera visible bajo el encabezado.
   useEffect(() => {
@@ -1697,6 +2156,8 @@ export default function MenuEditorPage() {
   }, [isDesktop, searchActive, menuData, statusFilter, view]);
 
   // Producto recién guardado: se resalta un momento y se trae a la vista.
+  // Quien lo marca despliega antes su categoría si estaba plegada (ver
+  // unfoldCategory).
   useEffect(() => {
     if (!flashItemId) return;
     boardRef.current
@@ -1850,7 +2311,7 @@ export default function MenuEditorPage() {
     </section>
   );
 
-  const emptyMenuState = menuData?.secciones.length === 0 && menuData?.sinSeccion.length === 0 && (
+  const emptyMenuState = menuIsEmpty && (
     <div className={styles.emptyState}>
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#272420" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
@@ -1859,7 +2320,33 @@ export default function MenuEditorPage() {
         <line x1="9" y1="16" x2="12" y2="16" />
       </svg>
       <p>Tu menú está vacío.</p>
-      <p className={styles.emptySub}>Creá una categoría para empezar a agregar productos.</p>
+      <p className={styles.emptySub}>Creá una sección o categoría para empezar a agregar productos.</p>
+      {/* Mientras el menú está vacío, crear categoría/sección vive acá (no en
+          el encabezado ni en el menú de acciones). */}
+      <div className={styles.emptyActions}>
+      
+      <button
+        type="button"
+        className={styles.sheetOption}
+        onClick={() => guarded(openNewSeccion)}
+      >
+        <span className={styles.sheetOptionIcon}>{icons.layers}</span>
+        <span className={styles.sheetOptionText}>
+          <span className={styles.sheetOptionTitle}>Nueva sección</span>
+          <span className={styles.sheetOptionDesc}>Agrupa categorías, ej: Comidas</span>
+        </span>
+      </button>
+      <button
+        type="button"
+        className={styles.sheetOption}
+        onClick={() => guarded(() => openNewCategoria())}
+      >
+        <span className={styles.sheetOptionIcon}>{icons.folder}</span>
+        <span className={styles.sheetOptionText}>
+          <span className={styles.sheetOptionTitle}>Nueva categoría</span>
+          <span className={styles.sheetOptionDesc}>Agrupa productos, ej: Pizzas</span>
+        </span>
+      </button>
       <button
         type="button"
         className={`${styles.sheetOption} ${!limits?.canUseTemplates ? styles.sheetOptionLocked : ""}`}
@@ -1879,6 +2366,7 @@ export default function MenuEditorPage() {
           <span className={styles.sheetOptionDesc}>Cargá productos ya armados y editalos después</span>
         </span>
       </button>
+      </div>
     </div>
   );
 
@@ -1893,6 +2381,7 @@ export default function MenuEditorPage() {
       <div className={styles.sheet} onClick={e => e.stopPropagation()}>
         <p id="menu-sheet-title" className={styles.sheetTitle}>Agregar al menú</p>
 
+        {!menuIsEmpty && <>
         <button
           className={styles.sheetOption}
           type="button"
@@ -1916,6 +2405,7 @@ export default function MenuEditorPage() {
             <span className={styles.sheetOptionDesc}>Agrupa categorías, ej: Comidas</span>
           </span>
         </button>
+        </>}
 
         <button
           className={`${styles.sheetOption} ${!limits?.canUseTemplates ? styles.sheetOptionLocked : ""}`}
@@ -2029,14 +2519,51 @@ export default function MenuEditorPage() {
     </div>
   );
 
-  /* Portal a document.body: mismo motivo que UpgradeModal — sin esto el dock
-     de navegación mobile (position:fixed a nivel raíz del layout) tapa esta
-     barra pese al z-index. */
-  const bulkBar = selectionMode && createPortal(
-    <div className={styles.bulkBar} role="toolbar" aria-label="Acciones sobre productos seleccionados">
-      <span className={styles.bulkBarCount}>
-        {selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}
-      </span>
+  /* Móvil: portal a document.body, mismo motivo que UpgradeModal — sin esto
+     el dock de navegación mobile (position:fixed a nivel raíz del layout)
+     tapa esta barra pese al z-index.
+     Escritorio: va dentro del editor, pegada debajo de su encabezado (ver
+     .bulkBarDocked); así ocupa solo el ancho del editor y no pisa la barra
+     lateral del panel. */
+  // "Seleccionar todo": todo el menú (secciones, categorías y productos), sin
+  // importar filtros ni qué esté plegado (mismo criterio que la casilla de
+  // sección).
+  const allGroup = menuData
+    ? categoriesGroup(allCategories(menuData))
+    : { menuIds: [] as string[], itemIds: [] as string[] };
+  if (menuData && canSelectMenus) allGroup.menuIds.unshift(...menuData.secciones.map(sec => sec._id));
+  const allSelected = groupCheckState(selection, allGroup.menuIds, allGroup.itemIds).checked;
+  const hasSelection = selectedIds.size > 0 || selectedMenuIds.size > 0;
+  // Hay algo para seleccionar: productos o, con canSelectMenus, secciones o
+  // categorías aunque todavía no tengan productos.
+  const canStartSelection = totalItems > 0
+    || (canSelectMenus && (categoryCount > 0 || (menuData?.secciones.length ?? 0) > 0));
+  const selectionParts = [
+    bulkDeletePlan.sectionIds.length > 0 && countLabel(bulkDeletePlan.sectionIds.length, "sección", "secciones"),
+    bulkDeletePlan.categoryIds.length > 0 && countLabel(bulkDeletePlan.categoryIds.length, "categoría", "categorías"),
+    selectedIds.size > 0 && countLabel(selectedIds.size, "producto", "productos"),
+  ].filter(Boolean);
+  const selectionSummary = selectionParts.join(" · ") || "Nada seleccionado";
+
+  const bulkBarToolbar = selectionMode && (
+    <div
+      className={`${styles.bulkBar} ${isDesktop ? ws.bulkBarDocked : ""}`}
+      role="toolbar"
+      aria-label="Acciones sobre lo seleccionado"
+    >
+      <div className={styles.bulkBarLead}>
+        <span className={styles.bulkBarCount}>{selectionSummary}</span>
+        {(allGroup.menuIds.length > 0 || allGroup.itemIds.length > 0) && (
+          <button
+            type="button"
+            className={styles.bulkBarBtn}
+            disabled={bulkBusy}
+            onClick={() => toggleSelectGroup(allGroup.menuIds, allGroup.itemIds)}
+          >
+            {allSelected ? "Deseleccionar todo" : "Seleccionar todo"}
+          </button>
+        )}
+      </div>
       <div className={styles.bulkBarActions}>
         <button
           type="button"
@@ -2057,7 +2584,7 @@ export default function MenuEditorPage() {
         <button
           type="button"
           className={styles.bulkBarBtn}
-          disabled={selectedIds.size === 0 || bulkBusy}
+          disabled={!hasSelection || bulkBusy}
           onClick={() => bulkSetHidden(false)}
         >
           Mostrar
@@ -2065,7 +2592,7 @@ export default function MenuEditorPage() {
         <button
           type="button"
           className={styles.bulkBarBtn}
-          disabled={selectedIds.size === 0 || bulkBusy}
+          disabled={!hasSelection || bulkBusy}
           onClick={() => bulkSetHidden(true)}
         >
           Ocultar
@@ -2073,16 +2600,16 @@ export default function MenuEditorPage() {
         <button
           type="button"
           className={`${styles.bulkBarBtn} ${styles.bulkBarBtnDanger}`}
-          disabled={selectedIds.size === 0 || bulkBusy || limits?.disableMenuDelete === true}
+          disabled={!hasSelection || bulkBusy || limits?.disableMenuDelete === true}
           title={limits?.disableMenuDelete ? "Eliminar deshabilitado desde Configuración" : undefined}
           onClick={() => setBulkDeleteConfirmOpen(true)}
         >
           Eliminar
         </button>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
+  const bulkBar = bulkBarToolbar && (isDesktop ? bulkBarToolbar : createPortal(bulkBarToolbar, document.body));
 
   const dialogs = (
     <>
@@ -2132,9 +2659,13 @@ export default function MenuEditorPage() {
             <p className={styles.modalDesc}>
               {deleteModal.type === "item"
                 ? "El producto se eliminará de forma permanente. Esta acción no se puede deshacer."
-                : deleteModal.type === "categoria"
-                  ? "La categoría se eliminará permanentemente. Debe estar vacía antes de eliminarla."
-                  : "La sección se eliminará. Solo podés hacerlo si no tiene categorías asignadas."}
+                : limits?.deleteMenusWithContent
+                  ? deleteModal.type === "categoria"
+                    ? "La categoría se eliminará de forma permanente, con todos sus productos. Esta acción no se puede deshacer."
+                    : "La sección se eliminará de forma permanente, con todas sus categorías y productos. Esta acción no se puede deshacer."
+                  : deleteModal.type === "categoria"
+                    ? "La categoría se eliminará permanentemente. Debe estar vacía antes de eliminarla."
+                    : "La sección se eliminará. Solo podés hacerlo si no tiene categorías asignadas."}
             </p>
             <div className={styles.modalBtns}>
               <button className={styles.modalCancel} onClick={() => setDeleteModal(null)} type="button">
@@ -2159,10 +2690,12 @@ export default function MenuEditorPage() {
         >
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <p id="bulk-delete-modal-title" className={styles.modalTitle}>
-              ¿Eliminar {selectedIds.size} producto{selectedIds.size !== 1 ? "s" : ""}?
+              {bulkDeletePlan.blocked ? "No se puede eliminar" : "¿Eliminar lo seleccionado?"}
             </p>
             <p className={styles.modalDesc}>
-              Los productos seleccionados se eliminarán de forma permanente. Esta acción no se puede deshacer.
+              {bulkDeletePlan.blocked
+                ? "Algunas de las secciones o categorías seleccionadas tienen contenido, y solo se pueden eliminar vacías. Para eliminarlas con todo lo que tienen adentro, activá \"Eliminar secciones y categorías con contenido\" en Configuración."
+                : `Se va a eliminar de forma permanente: ${selectionParts.join(", ")}. Esta acción no se puede deshacer.`}
             </p>
             <div className={styles.modalBtns}>
               <button
@@ -2170,12 +2703,15 @@ export default function MenuEditorPage() {
                 onClick={() => setBulkDeleteConfirmOpen(false)}
                 type="button"
                 disabled={bulkBusy}
+                autoFocus={bulkDeletePlan.blocked}
               >
-                Cancelar
+                {bulkDeletePlan.blocked ? "Entendido" : "Cancelar"}
               </button>
-              <button className={styles.modalConfirm} onClick={bulkDelete} type="button" disabled={bulkBusy} autoFocus>
-                {bulkBusy ? <><Spinner /> Eliminando...</> : "Eliminar"}
-              </button>
+              {!bulkDeletePlan.blocked && (
+                <button className={styles.modalConfirm} onClick={bulkDelete} type="button" disabled={bulkBusy} autoFocus>
+                  {bulkBusy ? <><Spinner /> Eliminando...</> : "Eliminar"}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -2647,6 +3183,19 @@ export default function MenuEditorPage() {
       </div>
       {activeItem && (
         <div className={styles.dangerZone}>
+          {/* En escritorio se duplica desde la fila del tablero. La copia sale
+              de lo guardado: con cambios pendientes se pide confirmar antes. */}
+          {!isDesktop && (
+            <button
+              className={styles.duplicateBtn}
+              type="button"
+              disabled={saving || imageUploading || duplicatingId === activeItem._id}
+              aria-busy={duplicatingId === activeItem._id}
+              onClick={() => runGuarded(() => void duplicateItem(activeItem, activeCategoria, { openCopy: true }))}
+            >
+              {duplicatingId === activeItem._id ? <><Spinner /> Duplicando...</> : "Duplicar producto"}
+            </button>
+          )}
           <button
             className={styles.deleteBtn}
             type="button"
@@ -2711,6 +3260,19 @@ export default function MenuEditorPage() {
           </select>
         </div>
       )}
+      <div className={styles.toggleGroup}>
+        <div className={styles.toggleRow}>
+          <div>
+            <p className={styles.toggleLabel}>Ocultar</p>
+            <p className={styles.toggleDesc}>La categoría y sus productos no aparecen en la carta pública</p>
+          </div>
+          <Toggle
+            checked={categoriaForm.hidden}
+            onChange={() => setCategoriaForm(f => ({ ...f, hidden: !f.hidden }))}
+            label="Ocultar categoría"
+          />
+        </div>
+      </div>
       <div className={styles.formBtns}>
         <button
           className={styles.saveBtn}
@@ -2749,6 +3311,19 @@ export default function MenuEditorPage() {
           onChange={e => setSeccionForm(f => ({ ...f, code: e.target.value }))}
         />
       </div>
+      <div className={styles.toggleGroup}>
+        <div className={styles.toggleRow}>
+          <div>
+            <p className={styles.toggleLabel}>Ocultar</p>
+            <p className={styles.toggleDesc}>La sección, sus categorías y productos no aparecen en la carta pública</p>
+          </div>
+          <Toggle
+            checked={seccionForm.hidden}
+            onChange={() => setSeccionForm(f => ({ ...f, hidden: !f.hidden }))}
+            label="Ocultar sección"
+          />
+        </div>
+      </div>
       <div className={styles.formBtns}>
         <button
           className={styles.saveBtn}
@@ -2777,14 +3352,21 @@ export default function MenuEditorPage() {
     const visibleCategorias = (categorias: Categoria[]) => categorias.filter(
       cat => statusFilter === "all" || (filteredItems.get(cat._id)?.length ?? 0) > 0);
 
+    // Menú vacío (sin secciones, categorías ni productos): no hay columna de
+    // estructura ni resumen del menú, solo el tablero, y el panel cuando se
+    // abre un formulario (crear una sección o una categoría). Aparecen con la
+    // primera sección o categoría.
+    const menuEmpty = !menuData || (menuData.secciones.length === 0 && menuData.sinSeccion.length === 0);
+
     // Sin la columna de estructura, las secciones y categorías se ordenan en
     // el tablero.
-    const structureOnBoard = !isWideDesktop;
+    const structureOnBoard = !isWideDesktop || menuEmpty;
 
     const renderCategoria = (cat: Categoria, sectionKey: string) => {
       const props = {
         cat,
         sectionKey,
+        sectionHidden: hiddenSectionIds.has(sectionKey),
         items: filteredItems.get(cat._id) ?? cat.items,
         activeItemId: view === "item-form" ? activeItem?._id ?? null : null,
         flashItemId,
@@ -2793,14 +3375,20 @@ export default function MenuEditorPage() {
         deleteDisabled: limits?.disableMenuDelete === true,
         selectionMode,
         selectedIds,
+        catSelection: categorySelectionState(cat),
         onEditCat: editCategoriaFromBoard,
         onDeleteCat: deleteCategoriaFromBoard,
+        onToggleCatHidden: toggleCategoriaHidden,
         onNewItem: newItemFromBoard,
         onEditItem: editItemFromBoard,
         onToggleAvailable: toggleItemAvailable,
         onToggleHidden: toggleItemHidden,
+        onDuplicateItem: duplicateItemFromBoard,
+        duplicatingId,
         onToggleSelectItem: toggleSelectItem,
         onToggleSelectAllInCat: toggleSelectAllInCat,
+        collapsed: collapsedCats.has(cat._id),
+        onToggleCollapsed: toggleCategoriaCollapsed,
       };
       return structureOnBoard
         ? <SortableWorkspaceCategory key={cat._id} {...props} />
@@ -2813,8 +3401,15 @@ export default function MenuEditorPage() {
     const showLooseGroup = looseCategorias.length > 0 || (structureOnBoard && draggingKind === "category");
     const nothingMatchesFilter = statusFilter !== "all" && totalItems > 0 && workspaceCounts[statusFilter] === 0;
 
+    // Categoría que se está arrastrando en el tablero: si entra a una sección
+    // plegada se sigue dibujando (sola), porque dnd-kit necesita su nodo
+    // hasta que se suelta.
+    const draggingCatId = structureOnBoard && reorder.active?.kind === "category" ? reorder.active.id : null;
+
     const boardSections = menuData?.secciones.map(sec => {
-      const visibles = visibleCategorias(sec.categorias);
+      const collapsed = collapsedSecs.has(sec._id);
+      const visibles = visibleCategorias(sec.categorias)
+        .filter(cat => !collapsed || cat._id === draggingCatId);
       return (
         <BoardSection
           key={sec._id}
@@ -2824,7 +3419,16 @@ export default function MenuEditorPage() {
           categoryIds={visibles.map(cat => cat._id)}
           structure={structureOnBoard}
           showHeader
-          emptyText={sec.categorias.length === 0 ? "Sin categorías en esta sección." : null}
+          emptyText={!collapsed && sec.categorias.length === 0 ? (
+            <button type="button" className={ws.addButton} onClick={() => newCategoriaInSection(sec._id)}>
+              <FolderPlus size={15} strokeWidth={1.8} aria-hidden="true" /> Categoría
+            </button>
+          ) : null}
+          onAddCategory={() => newCategoriaInSection(sec._id)}
+          collapsed={collapsed}
+          onToggleCollapsed={() => toggleSeccionCollapsed(sec._id)}
+          selection={groupSelection(sec.categorias, sec._id)}
+          onToggleHidden={() => toggleSeccionHidden(sec)}
           onEdit={() => editSeccionFromBoard(sec)}
           onDelete={() => setDeleteModal({ type: "seccion", id: sec._id, name: sec.title })}
           deleteDisabled={limits?.disableMenuDelete === true}
@@ -2836,7 +3440,7 @@ export default function MenuEditorPage() {
 
     return (
       <MenuReorderProvider reorder={reorder} available={reorderAvailable} disabledReason={reorderDisabledReason}>
-      <div className={`${styles.me} ${styles.meWide} ${ws.shell}`}>
+      <div className={`${styles.me} ${styles.meWide} ${ws.shell} ${selectionMode ? ws.shellBulk : ""}`}>
         <header className={ws.header}>
           <div className={ws.headerTitle}>
             <h1>Menú</h1>
@@ -2874,18 +3478,20 @@ export default function MenuEditorPage() {
           </div>
 
           <div className={ws.headerActions}>
-            {totalItems > 0 && (
+            {canStartSelection && (
               <button
                 type="button"
                 className={ws.headerButton}
                 aria-pressed={selectionMode}
                 onClick={() => guarded(() => { setView("menu"); toggleSelectionMode(); })}
-                title={selectionMode ? "Cancelar selección" : "Seleccionar varios productos"}
+                title={selectionMode ? "Cancelar selección" : "Seleccionar varios"}
               >
                 <CheckSquare size={17} strokeWidth={1.8} aria-hidden="true" />
                 <span className={ws.buttonLabel}>{selectionMode ? "Cancelar selección" : "Seleccionar"}</span>
               </button>
             )}
+            {/* Con el menú vacío, crear está en el tablero (emptyMenuState). */}
+            {!menuIsEmpty && <>
             <button
               type="button"
               className={ws.headerButton}
@@ -2898,12 +3504,13 @@ export default function MenuEditorPage() {
             <button
               type="button"
               className={`${ws.headerButton} ${ws.headerButtonPrimary}`}
-              onClick={() => guarded(openNewCategoria)}
+              onClick={() => guarded(() => openNewCategoria())}
               title="Nueva categoría"
             >
               <FolderPlus size={17} strokeWidth={1.8} aria-hidden="true" />
               <span className={ws.buttonLabel}>Categoría</span>
             </button>
+            </>}
             <button
               type="button"
               className={ws.headerButton}
@@ -2918,10 +3525,13 @@ export default function MenuEditorPage() {
           </div>
         </header>
 
-        <div className={`${ws.workspace} ${selectionMode ? ws.workspaceBulkPad : ""}`}>
+        {bulkBar}
+
+        <div className={`${ws.workspace} ${menuEmpty ? (panelOpen ? ws.workspaceBarePanel : ws.workspaceBare) : ""}`}>
           {/* Solo desde 1280px: más angosto el CSS la ocultaba igual, y sus
-              secciones y categorías arrastrables chocarían con las del tablero. */}
-          {menuData && isWideDesktop && (
+              secciones y categorías arrastrables chocarían con las del tablero.
+              Sin productos no se muestra (ni el resumen): no hay nada que ver. */}
+          {menuData && isWideDesktop && !menuEmpty && (
             <WorkspaceNav
               menu={menuData}
               activeCatId={focusedCatId}
@@ -2936,9 +3546,23 @@ export default function MenuEditorPage() {
 
             {searchActive ? searchResultsSection : (
               <>
-                {totalItems > 0 && (
+                {(totalItems > 0 || categoryCount > 0) && (
                   <div className={ws.boardTools}>
-                    <WorkspaceFilters counts={workspaceCounts} value={statusFilter} onChange={setStatusFilter} />
+                    <div className={ws.boardToolsRow}>
+                      {totalItems > 0 && (
+                        <WorkspaceFilters counts={workspaceCounts} value={statusFilter} onChange={setStatusFilter} />
+                      )}
+                      <WorkspaceFoldControls
+                        canCollapse={menuData != null && (
+                          menuData.secciones.some(sec => !collapsedSecs.has(sec._id))
+                          || allCategories(menuData).some(cat => !collapsedCats.has(cat._id)))}
+                        canExpand={menuData != null && (
+                          menuData.secciones.some(sec => collapsedSecs.has(sec._id))
+                          || allCategories(menuData).some(cat => collapsedCats.has(cat._id)))}
+                        onCollapseAll={collapseAll}
+                        onExpandAll={expandAll}
+                      />
+                    </div>
                     {menuData && (
                       <WorkspaceJumpBar menu={menuData} activeCatId={focusedCatId} onSelectCat={scrollToCategory} />
                     )}
@@ -2963,6 +3587,7 @@ export default function MenuEditorPage() {
                     structure={structureOnBoard}
                     showHeader={(menuData?.secciones.length ?? 0) > 0}
                     emptyText={null}
+                    selection={groupSelection(menuData?.sinSeccion ?? [])}
                   >
                     {looseCategorias.map(cat => renderCategoria(cat, LOOSE_SECTION))}
                   </BoardSection>
@@ -2982,7 +3607,7 @@ export default function MenuEditorPage() {
             )}
           </div>
 
-          <WorkspacePanel
+          {(panelOpen || !menuEmpty) && <WorkspacePanel
             title={panelTitle}
             subtitle={view === "item-form" ? itemFormBreadcrumb || undefined : undefined}
             status={view === "item-form" && itemFormDirty ? "Sin guardar" : undefined}
@@ -3006,11 +3631,10 @@ export default function MenuEditorPage() {
                 publicMenuUrl={publicMenuUrl}
               />
             )}
-          </WorkspacePanel>
+          </WorkspacePanel>}
         </div>
 
         {menuSheet}
-        {bulkBar}
         {dialogs}
       </div>
       </MenuReorderProvider>
@@ -3024,6 +3648,7 @@ export default function MenuEditorPage() {
       key={cat._id}
       cat={cat}
       sectionKey={sectionKey}
+      sectionHidden={hiddenSectionIds.has(sectionKey)}
       expanded={expandedCats.has(cat._id)}
       atItemLimit={atItemLimit}
       deleteDisabled={limits?.disableMenuDelete === true}
@@ -3035,6 +3660,7 @@ export default function MenuEditorPage() {
       onToggleAvailable={toggleItemAvailable}
       selectionMode={selectionMode}
       selectedIds={selectedIds}
+      catSelection={categorySelectionState(cat)}
       onToggleSelectItem={toggleSelectItem}
       onToggleSelectAllInCat={toggleSelectAllInCat}
     />
@@ -3057,12 +3683,12 @@ export default function MenuEditorPage() {
                   </span>
                 )}
               </div>
-              {totalItems > 0 && (
+              {canStartSelection && (
                 <button
                   className={styles.backBtn}
                   onClick={toggleSelectionMode}
-                  title={selectionMode ? "Cancelar selección" : "Seleccionar productos"}
-                  aria-label={selectionMode ? "Cancelar selección" : "Seleccionar productos"}
+                  title={selectionMode ? "Cancelar selección" : "Seleccionar varios"}
+                  aria-label={selectionMode ? "Cancelar selección" : "Seleccionar varios"}
                   aria-pressed={selectionMode}
                 >
                   {selectionMode ? icons.close : icons.checkSquare}
@@ -3121,6 +3747,8 @@ export default function MenuEditorPage() {
                     key={sec._id}
                     seccion={sec}
                     deleteDisabled={limits?.disableMenuDelete === true}
+                    selection={groupSelection(sec.categorias, sec._id)}
+                    onAddCategory={() => openNewCategoria(sec._id)}
                     onEdit={() => openEditSeccion(sec)}
                     onDelete={() => setDeleteModal({ type: "seccion", id: sec._id, name: sec.title })}
                   >
@@ -3128,7 +3756,13 @@ export default function MenuEditorPage() {
                       sectionKey={sec._id}
                       title={sec.title}
                       categorias={sec.categorias}
-                      emptyText="Sin categorías en esta sección."
+                      emptyText={
+                        <div className={styles.emptyAdd}>
+                          <button className={styles.addItemBtn} type="button" onClick={() => openNewCategoria(sec._id)}>
+                            + Agregar categoría
+                          </button>
+                        </div>
+                      }
                       renderCategoria={renderAcordeon}
                     />
                   </MobileSeccionBlock>
@@ -3141,6 +3775,10 @@ export default function MenuEditorPage() {
                 <div className={styles.seccionBlock}>
                   <div className={styles.seccionRow}>
                     <div className={styles.seccionLeft}>
+                      {(() => {
+                        const selection = groupSelection(menuData?.sinSeccion ?? []);
+                        return selection && <GroupCheckbox selection={selection} title="las categorías sin sección" />;
+                      })()}
                       <span className={`${styles.seccionBadge} ${styles.seccionBadgeDark}`}>
                         Sin sección
                       </span>
@@ -3190,7 +3828,7 @@ export default function MenuEditorPage() {
               title={categoriaForm.editingId ? "Editar categoría" : "Nueva categoría"}
               onBack={() => setView("menu")}
             />
-            <div className={`${styles.content} ${styles.formContent}`}>
+            <div className={`${styles.content} ${styles.formContent} ${styles.formContentPadded}`}>
               {errorBanner}
               {categoriaFormFields}
             </div>
@@ -3204,7 +3842,7 @@ export default function MenuEditorPage() {
               title={seccionForm.editingId ? "Editar sección" : "Nueva sección"}
               onBack={() => setView("menu")}
             />
-            <div className={`${styles.content} ${styles.formContent}`}>
+            <div className={`${styles.content} ${styles.formContent} ${styles.formContentPadded}`}>
               {errorBanner}
               {seccionFormFields}
             </div>

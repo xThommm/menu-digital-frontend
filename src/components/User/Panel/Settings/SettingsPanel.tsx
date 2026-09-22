@@ -17,6 +17,7 @@ import styles from "./SettingsPanel.module.css";
 interface SettingsValues {
   autoGenerateCodes: boolean;
   disableMenuDelete: boolean;
+  deleteMenusWithContent: boolean;
   landingVisibility: LandingVisibility;
   menuDisplay: MenuDisplay;
 }
@@ -30,6 +31,7 @@ type GateStatus = "loading" | "create" | "enter" | "unlocked";
 const EMPTY_SETTINGS: SettingsValues = {
   autoGenerateCodes: false,
   disableMenuDelete: false,
+  deleteMenusWithContent: false,
   landingVisibility: resolveLandingVisibility(),
   menuDisplay: resolveMenuDisplay(),
 };
@@ -88,6 +90,7 @@ function toSettings(data: Partial<SettingsValues>): SettingsValues {
   return {
     autoGenerateCodes: !!data.autoGenerateCodes,
     disableMenuDelete: !!data.disableMenuDelete,
+    deleteMenusWithContent: !!data.deleteMenusWithContent,
     landingVisibility: resolveLandingVisibility(data.landingVisibility),
     menuDisplay: resolveMenuDisplay(data.menuDisplay),
   };
@@ -322,7 +325,7 @@ export default function SettingsPanel() {
     }
   }, [settings, authHeaders, handleExpiredSession, setToggleError]);
 
-  const toggleSetting = (key: "autoGenerateCodes" | "disableMenuDelete") => {
+  const toggleSetting = (key: "autoGenerateCodes" | "disableMenuDelete" | "deleteMenusWithContent") => {
     const value = !settings[key];
     saveToggle(key, { ...settings, [key]: value }, { [key]: value });
   };
@@ -507,6 +510,13 @@ export default function SettingsPanel() {
                   checked={settings.disableMenuDelete}
                   onChange={() => toggleSetting("disableMenuDelete")}
                   disabled={savingToggle !== null}
+                />
+                <ToggleRow
+                  label="Eliminar secciones y categorías con contenido"
+                  desc="Al eliminar una sección o categoría se elimina también todo lo que tiene adentro (categorías y productos). Apagado, solo se pueden eliminar vacías."
+                  checked={settings.deleteMenusWithContent}
+                  onChange={() => toggleSetting("deleteMenusWithContent")}
+                  disabled={savingToggle !== null || settings.disableMenuDelete}
                 />
               </div>
             </SettingsSection>

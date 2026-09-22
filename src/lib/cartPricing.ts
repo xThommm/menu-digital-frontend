@@ -48,9 +48,8 @@ export function cartUnitPrice(
 // mostrar los precios, y un carrito viejo arrastraba precios de otro día.
 // Se descartan las líneas cuyo producto ya no está en la carta, cuya variante
 // ya no existe o que se quedaron sin precio; el resto conserva cantidad y
-// variante con precio y nombre al día. Con el contrato v2 los productos
-// ocultos, agotados o fuera de horario ya no viajan, así que "ya no está en
-// la carta" los cubre; con la respuesta legacy los agotados sí llegan, con
+// variante con precio y nombre al día. Los ocultos no viajan, así que "ya no
+// está en la carta" los cubre; los agotados o fuera de horario llegan con
 // available en false, y también se descartan.
 export function repriceCartLines(
   lines: CartLine[],

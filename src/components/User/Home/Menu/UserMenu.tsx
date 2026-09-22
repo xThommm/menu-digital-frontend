@@ -169,8 +169,7 @@ export default function MenuPage() {
   // Carrusel "Destacados": los recomendados de TODAS las pestañas, en el
   // orden en que aparecen en la carta. Solo los disponibles — el carrusel
   // es una vidriera, no tiene sentido abrir la carta destacando algo que
-  // hoy no hay (con v2 los no disponibles ni viajan; el legacy los manda
-  // con available en false).
+  // hoy no hay (llegan con available en false).
   const featuredItems = useMemo(() => {
     const seen = new Set<string>();
     return tabs
@@ -700,8 +699,8 @@ function ItemCard({
 
   const { options, hasOptions, minPrice, isOnOffer, activePrice, pct } = priceInfo(item, hidePrices);
 
-  // v2 no manda available (excluye los no disponibles); el legacy sí, y ahí
-  // un producto agotado se ve con "No disponible" y sin controles de pedido.
+  // Un producto no disponible (available: false) se ve con "No disponible" y
+  // sin controles de pedido.
   const unavailable = isItemUnavailable(item);
 
   // Click en la tarjeta = abrir la previsualización (MenuPage registra la

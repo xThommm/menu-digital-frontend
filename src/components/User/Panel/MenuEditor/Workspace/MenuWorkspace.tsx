@@ -1,7 +1,7 @@
 import { memo, type CSSProperties, type ReactNode } from "react";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import {
-  ArrowUpRight, Clock, EyeOff, Eye, MousePointerClick, Pencil, Plus, Star, Trash2, X,
+  ArrowUpRight, ChevronRight, ChevronsDownUp, ChevronsUpDown, Clock, Copy, EyeOff, Eye, MousePointerClick, Pencil, Plus, Star, Trash2, X,
 } from "lucide-react";
 import type {
   AdminItem as Item,
@@ -98,7 +98,13 @@ function NavSection({ seccion, onEditSeccion, ...listProps }: NavListProps & {
     <div ref={setNode} style={style} className={cx(ws.navGroup, isDragging && rs.placeholder)}>
       <div className={ws.navGroupHeader}>
         <DragHandle sortable={sortable} label={`Mover la sección ${seccion.title}`} className={ws.navHandle} iconSize={14} />
-        <span className={ws.navGroupTitle}>{seccion.title}</span>
+        <span className={cx(ws.navGroupTitle, seccion.hidden && ws.navGroupTitleHidden)}>{seccion.title}</span>
+        {seccion.hidden && (
+          <>
+            <EyeOff {...ICON} size={13} className={ws.navItemHidden} />
+            <span className="sr-only">Oculta en la carta</span>
+          </>
+        )}
         <button
           type="button"
           className={ws.navGroupEdit}
@@ -109,15 +115,22 @@ function NavSection({ seccion, onEditSeccion, ...listProps }: NavListProps & {
           <Pencil {...ICON} size={13} />
         </button>
       </div>
-      <NavCategoryList sectionKey={seccion._id} title={seccion.title} categorias={seccion.categorias} {...listProps} />
+      <NavCategoryList
+        sectionKey={seccion._id}
+        title={seccion.title}
+        categorias={seccion.categorias}
+        sectionHidden={seccion.hidden === true}
+        {...listProps}
+      />
     </div>
   );
 }
 
-function NavCategoryList({ sectionKey, title, categorias, ...listProps }: NavListProps & {
+function NavCategoryList({ sectionKey, title, categorias, sectionHidden = false, ...listProps }: NavListProps & {
   sectionKey: string;
   title: string;
   categorias: Categoria[];
+  sectionHidden?: boolean;
 }) {
   const { activeKind } = useReorderState();
   const { setNode, isOver } = useReorderList({ kind: "category-list", sectionKey, title, pinned: true });
@@ -126,7 +139,7 @@ function NavCategoryList({ sectionKey, title, categorias, ...listProps }: NavLis
     <div ref={setNode} className={ws.navList}>
       <SortableContext items={categorias.map(cat => categoryDndId(cat._id))} strategy={verticalListSortingStrategy}>
         {categorias.map(cat => (
-          <NavCategory key={cat._id} cat={cat} sectionKey={sectionKey} {...listProps} />
+          <NavCategory key={cat._id} cat={cat} sectionKey={sectionKey} sectionHidden={sectionHidden} {...listProps} />
         ))}
       </SortableContext>
       {categorias.length === 0 && (activeKind === "category"
@@ -136,9 +149,10 @@ function NavCategoryList({ sectionKey, title, categorias, ...listProps }: NavLis
   );
 }
 
-function NavCategory({ cat, sectionKey, activeCatId, editingCatId, onSelectCat }: NavListProps & {
+function NavCategory({ cat, sectionKey, sectionHidden, activeCatId, editingCatId, onSelectCat }: NavListProps & {
   cat: Categoria;
   sectionKey: string;
+  sectionHidden: boolean;
 }) {
   const { activeKind } = useReorderState();
   const sortable = useReorderSortable({ kind: "category", id: cat._id, sectionKey, title: cat.title, pinned: true });
@@ -159,7 +173,7 @@ function NavCategory({ cat, sectionKey, activeCatId, editingCatId, onSelectCat }
         onClick={() => onSelectCat(cat._id)}
         aria-current={active ? "location" : undefined}
       >
-        <span className={ws.navItemName}>{cat.title}</span>
+        <span className={cx(ws.navItemName, (cat.hidden || sectionHidden) && ws.navItemNameHidden)}>{cat.title}</span>
         {cat.hidden && <EyeOff {...ICON} size={13} className={ws.navItemHidden} />}
         <span className={ws.navItemCount}>{cat.items?.length ?? 0}</span>
       </button>
@@ -218,11 +232,78 @@ export function WorkspaceFilters({ counts, value, onChange }: {
   );
 }
 
+// ── Plegar ──────────────────────────────────────────────────────────────────
+
+// Flecha para plegar/desplegar una sección o una categoría del tablero.
+function FoldButton({ collapsed, label, onToggle, className }: {
+  collapsed: boolean;
+  label: string;
+  onToggle: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      className={cx(ws.foldButton, !collapsed && ws.foldButtonOpen, className)}
+      onClick={onToggle}
+      aria-expanded={!collapsed}
+      aria-label={collapsed ? `Desplegar ${label}` : `Plegar ${label}`}
+      title={collapsed ? "Desplegar" : "Plegar"}
+    >
+      <ChevronRight {...ICON} />
+    </button>
+  );
+}
+
+export function WorkspaceFoldControls({ canCollapse, canExpand, onCollapseAll, onExpandAll }: {
+  canCollapse: boolean;
+  canExpand: boolean;
+  onCollapseAll: () => void;
+  onExpandAll: () => void;
+}) {
+  return (
+    <div className={ws.foldControls} role="group" aria-label="Plegar o desplegar el menú">
+      <button type="button" className={ws.foldControl} onClick={onCollapseAll} disabled={!canCollapse}>
+        <ChevronsDownUp {...ICON} size={15} />
+        Contraer todo
+      </button>
+      <button type="button" className={ws.foldControl} onClick={onExpandAll} disabled={!canExpand}>
+        <ChevronsUpDown {...ICON} size={15} />
+        Expandir todo
+      </button>
+    </div>
+  );
+}
+
+// Casilla de una categoría en la selección múltiple: no se muestra (fuera del
+// modo selección, o sin nada que marcar), vacía, a medias o marcada. Un solo
+// valor primitivo para no romper la memorización de las tarjetas.
+export type CategorySelectionState = "hidden" | "off" | "partial" | "on";
+
+// Casilla de una sección entera en la selección múltiple (la sección, sus
+// categorías y todos sus productos).
+export interface GroupSelection {
+  checked: boolean;
+  indeterminate: boolean;
+  onToggle: () => void;
+}
+
 // ── Título de sección dentro del tablero ────────────────────────────────────
 
-export function WorkspaceSection({ title, categoryCount, onEdit, onDelete, deleteDisabled, handle }: {
+export function WorkspaceSection({
+  title, categoryCount, hidden = false, collapsed = false, onToggleCollapsed, onAddCategory, onToggleHidden, onEdit, onDelete,
+  deleteDisabled, handle, selection,
+}: {
   title: string;
   categoryCount: number;
+  // Con categorías (o plegada), "+ Categoría" va con las acciones; vacía y
+  // desplegada, en su lugar en el tablero (ver emptyText de BoardSection).
+  onAddCategory?: () => void;
+  selection?: GroupSelection;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
+  hidden?: boolean;
+  onToggleHidden?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   deleteDisabled?: boolean;
@@ -230,13 +311,53 @@ export function WorkspaceSection({ title, categoryCount, onEdit, onDelete, delet
 }) {
   return (
     <div className={ws.section}>
-      {handle}
-      <h2 className={ws.sectionTitle}>{title}</h2>
+      {selection ? (
+        <label className={cx(ws.check, ws.sectionCheck)}>
+          <input
+            type="checkbox"
+            checked={selection.checked}
+            ref={el => { if (el) el.indeterminate = selection.indeterminate; }}
+            onChange={selection.onToggle}
+            aria-label={selection.checked
+              ? `Deseleccionar todos los productos de ${title}`
+              : `Seleccionar todos los productos de ${title}`}
+          />
+        </label>
+      ) : handle}
+      {onToggleCollapsed && (
+        <FoldButton collapsed={collapsed} label={`la sección ${title}`} onToggle={onToggleCollapsed} className={ws.sectionFold} />
+      )}
+      <h2 className={cx(ws.sectionTitle, hidden && ws.sectionTitleHidden)}>{title}</h2>
       <span className={ws.sectionMeta}>
         {categoryCount === 0 ? "Sin categorías" : `${categoryCount} categoría${categoryCount !== 1 ? "s" : ""}`}
+        {hidden && <span className={ws.sectionHiddenTag}><EyeOff {...ICON} size={12} /> Oculta en la carta</span>}
       </span>
-      {(onEdit || onDelete) && (
+      {(onAddCategory || onToggleHidden || onEdit || onDelete) && (
         <div className={ws.sectionActions}>
+          {onAddCategory && (categoryCount > 0 || collapsed) && (
+            <button
+              type="button"
+              className={ws.addButton}
+              onClick={onAddCategory}
+              title="Agregar una categoría a esta sección"
+              aria-label={`Agregar una categoría a ${title}`}
+            >
+              <Plus {...ICON} />
+              Categoría
+            </button>
+          )}
+          {onToggleHidden && (
+            <button
+              type="button"
+              className={cx(ws.iconButton, hidden && ws.iconButtonPressed)}
+              onClick={onToggleHidden}
+              aria-pressed={hidden}
+              aria-label={hidden ? `Mostrar la sección ${title} en la carta` : `Ocultar la sección ${title} de la carta`}
+              title={hidden ? "Mostrar sección en la carta" : "Ocultar sección (y todo su contenido) de la carta"}
+            >
+              {hidden ? <EyeOff {...ICON} size={15} /> : <Eye {...ICON} size={15} />}
+            </button>
+          )}
           {onEdit && (
             <button type="button" className={ws.iconButton} onClick={onEdit} aria-label={`Editar la sección ${title}`} title="Editar sección">
               <Pencil {...ICON} size={15} />
@@ -272,7 +393,16 @@ interface BoardSectionProps {
   categoryIds: string[];
   structure: boolean;
   showHeader: boolean;
-  emptyText: string | null;
+  // Lo que se muestra sin categorías (un texto o un botón), o nada.
+  emptyText: ReactNode;
+  onAddCategory?: () => void;
+  // Plegada: no se dibujan sus categorías (ver MenuEditor, que igual deja la
+  // que se esté arrastrando).
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
+  // En selección múltiple: la casilla que marca la sección entera.
+  selection?: GroupSelection;
+  onToggleHidden?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   deleteDisabled?: boolean;
@@ -292,7 +422,7 @@ function SortableBoardSection(props: BoardSectionProps & { seccion: Seccion }) {
 
 function BoardSectionBody({
   seccion, title, categoryCount, categoryIds, structure, showHeader, emptyText,
-  onEdit, onDelete, deleteDisabled, children, sortable,
+  collapsed, onToggleCollapsed, onAddCategory, selection, onToggleHidden, onEdit, onDelete, deleteDisabled, children, sortable,
 }: BoardSectionProps & { sortable: ReorderSortable | null }) {
   const { setNode, style, isDragging } = sortable ?? NOT_SORTABLE;
   const sectionKey = seccion?._id ?? LOOSE_SECTION;
@@ -303,6 +433,12 @@ function BoardSectionBody({
         <WorkspaceSection
           title={title}
           categoryCount={categoryCount}
+          hidden={seccion?.hidden === true}
+          collapsed={collapsed}
+          onToggleCollapsed={onToggleCollapsed}
+          onAddCategory={onAddCategory}
+          selection={selection}
+          onToggleHidden={onToggleHidden}
           onEdit={onEdit}
           onDelete={onDelete}
           deleteDisabled={deleteDisabled}
@@ -318,7 +454,7 @@ function BoardSectionBody({
       ) : (
         <>
           {children}
-          {categoryIds.length === 0 && emptyText && <p className={ws.boardEmpty}>{emptyText}</p>}
+          {categoryIds.length === 0 && emptyText && <div className={ws.boardEmpty}>{emptyText}</div>}
         </>
       )}
     </div>
@@ -329,7 +465,7 @@ function BoardCategoryList({ sectionKey, title, categoryIds, emptyText, children
   sectionKey: string;
   title: string;
   categoryIds: string[];
-  emptyText: string | null;
+  emptyText: ReactNode;
   children: ReactNode;
 }) {
   const { activeKind } = useReorderState();
@@ -342,7 +478,7 @@ function BoardCategoryList({ sectionKey, title, categoryIds, emptyText, children
       </SortableContext>
       {categoryIds.length === 0 && (activeKind === "category"
         ? <p className={cx(rs.dropZone, isOver && rs.dropZoneOver)}>Soltá la categoría acá</p>
-        : emptyText && <p className={ws.boardEmpty}>{emptyText}</p>)}
+        : emptyText && <div className={ws.boardEmpty}>{emptyText}</div>)}
     </div>
   );
 }
@@ -353,6 +489,8 @@ interface WorkspaceCategoryProps {
   cat: Categoria;
   // Sección donde está (o LOOSE_SECTION): la necesita la categoría arrastrable.
   sectionKey: string;
+  // Su sección está oculta: la categoría tampoco se ve en la carta.
+  sectionHidden: boolean;
   items: Item[];
   activeItemId: string | null;
   flashItemId: string | null;
@@ -361,14 +499,23 @@ interface WorkspaceCategoryProps {
   deleteDisabled: boolean;
   selectionMode: boolean;
   selectedIds: Set<string>;
+  catSelection: CategorySelectionState;
   onEditCat: (cat: Categoria) => void;
   onDeleteCat: (cat: Categoria) => void;
+  onToggleCatHidden: (cat: Categoria) => void;
   onNewItem: (cat: Categoria) => void;
   onEditItem: (item: Item, cat: Categoria) => void;
   onToggleAvailable: (item: Item) => void;
   onToggleHidden: (item: Item) => void;
+  onDuplicateItem: (item: Item, cat: Categoria) => void;
+  // Producto que se está duplicando (su botón queda deshabilitado).
+  duplicatingId: string | null;
   onToggleSelectItem: (id: string) => void;
   onToggleSelectAllInCat: (cat: Categoria) => void;
+  // Plegada: solo el encabezado (se sigue pudiendo arrastrar, y un producto
+  // soltado encima va al final).
+  collapsed: boolean;
+  onToggleCollapsed: (cat: Categoria) => void;
 }
 
 const itemTags = (item: Item) => {
@@ -415,22 +562,20 @@ export const SortableWorkspaceCategory = memo(function SortableWorkspaceCategory
 // va en componentes memorizados que en ese momento no cambian.
 
 function WorkspaceCategoryCard({
-  cat, items, activeItemId, flashItemId, editing, atItemLimit, deleteDisabled,
-  selectionMode, selectedIds, sortable,
-  onEditCat, onDeleteCat, onNewItem, onEditItem, onToggleAvailable, onToggleHidden,
-  onToggleSelectItem, onToggleSelectAllInCat,
+  cat, sectionHidden, items, activeItemId, flashItemId, editing, atItemLimit, deleteDisabled,
+  selectionMode, selectedIds, catSelection, sortable,
+  onEditCat, onDeleteCat, onToggleCatHidden, onNewItem, onEditItem, onToggleAvailable, onToggleHidden,
+  onDuplicateItem, duplicatingId, onToggleSelectItem, onToggleSelectAllInCat, collapsed, onToggleCollapsed,
 }: WorkspaceCategoryProps & { sortable: ReorderSortable | null }) {
   const { activeKind } = useReorderState();
   const { setNode, style, isDragging, isOver } = sortable ?? NOT_SORTABLE;
 
   const total = cat.items?.length ?? 0;
-  const allSelected = total > 0 && cat.items.every(item => selectedIds.has(item._id));
-  const someSelected = cat.items.some(item => selectedIds.has(item._id));
   const titleId = `ws-cat-title-${cat._id}`;
   const meta = [
     total === 0 ? "Sin productos" : `${total} producto${total !== 1 ? "s" : ""}`,
     items.length !== total ? `${items.length} con el filtro` : "",
-    cat.hidden ? "Oculta en la carta" : "",
+    cat.hidden ? "Oculta en la carta" : sectionHidden ? "Oculta por su sección" : "",
   ].filter(Boolean).join(" · ");
 
   return (
@@ -445,6 +590,8 @@ function WorkspaceCategoryCard({
         isOver && activeKind === "item" && ws.categoryDrop,
         editing && ws.categoryEditing,
         isDragging && rs.placeholder,
+        (cat.hidden || sectionHidden) && ws.categoryHidden,
+        collapsed && ws.categoryCollapsed,
       )}
       aria-labelledby={titleId}
     >
@@ -452,17 +599,22 @@ function WorkspaceCategoryCard({
         {sortable && !selectionMode && (
           <DragHandle sortable={sortable} label={`Mover la categoría ${cat.title}`} className={ws.categoryHandle} />
         )}
-        {selectionMode && total > 0 && (
+        {catSelection !== "hidden" && (
           <label className={ws.check}>
             <input
               type="checkbox"
-              checked={allSelected}
-              ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
+              checked={catSelection === "on"}
+              ref={el => { if (el) el.indeterminate = catSelection === "partial"; }}
               onChange={() => onToggleSelectAllInCat(cat)}
-              aria-label={allSelected ? `Deseleccionar los productos de ${cat.title}` : `Seleccionar los productos de ${cat.title}`}
+              aria-label={catSelection === "on" ? `Deseleccionar la categoría ${cat.title}` : `Seleccionar la categoría ${cat.title}`}
             />
           </label>
         )}
+        <FoldButton
+          collapsed={collapsed}
+          label={`la categoría ${cat.title}`}
+          onToggle={() => onToggleCollapsed(cat)}
+        />
         <CategoryHeaderMain
           cat={cat}
           titleId={titleId}
@@ -471,13 +623,15 @@ function WorkspaceCategoryCard({
           deleteDisabled={deleteDisabled}
           onEditCat={onEditCat}
           onDeleteCat={onDeleteCat}
+          onToggleCatHidden={onToggleCatHidden}
           onNewItem={onNewItem}
+          showAddItem={total > 0 || collapsed}
         />
       </header>
 
-      {cat.description && <p className={ws.categoryDescription}>{cat.description}</p>}
+      {!collapsed && cat.description && <p className={ws.categoryDescription}>{cat.description}</p>}
 
-      <CategoryItems
+      {!collapsed && <CategoryItems
         cat={cat}
         items={items}
         total={total}
@@ -488,22 +642,30 @@ function WorkspaceCategoryCard({
         onEditItem={onEditItem}
         onToggleAvailable={onToggleAvailable}
         onToggleHidden={onToggleHidden}
+        onDuplicateItem={onDuplicateItem}
+        duplicatingId={duplicatingId}
         onToggleSelectItem={onToggleSelectItem}
-      />
+        atItemLimit={atItemLimit}
+        onNewItem={onNewItem}
+      />}
     </section>
   );
 }
 
 const CategoryHeaderMain = memo(function CategoryHeaderMain({
-  cat, titleId, meta, atItemLimit, deleteDisabled, onEditCat, onDeleteCat, onNewItem,
+  cat, titleId, meta, atItemLimit, deleteDisabled, onEditCat, onDeleteCat, onToggleCatHidden, onNewItem, showAddItem,
 }: {
   cat: Categoria;
   titleId: string;
   meta: string;
   atItemLimit: boolean;
+  // Con productos (o plegada), "+ Producto" va acá; vacía y desplegada, en
+  // su lugar dentro de la lista (ver CategoryItems).
+  showAddItem: boolean;
   deleteDisabled: boolean;
   onEditCat: (cat: Categoria) => void;
   onDeleteCat: (cat: Categoria) => void;
+  onToggleCatHidden: (cat: Categoria) => void;
   onNewItem: (cat: Categoria) => void;
 }) {
   return (
@@ -513,14 +675,16 @@ const CategoryHeaderMain = memo(function CategoryHeaderMain({
         <span className={ws.categoryMeta}>{meta}</span>
       </div>
       <div className={ws.categoryActions}>
+        {showAddItem && <AddItemButton atItemLimit={atItemLimit} onClick={() => onNewItem(cat)} />}
         <button
           type="button"
-          className={cx(ws.addButton, atItemLimit && ws.addButtonLimit)}
-          onClick={() => onNewItem(cat)}
-          title={atItemLimit ? "Llegaste al límite de productos de tu plan" : "Agregar un producto a esta categoría"}
+          className={cx(ws.iconButton, cat.hidden && ws.iconButtonPressed)}
+          onClick={() => onToggleCatHidden(cat)}
+          aria-pressed={cat.hidden}
+          aria-label={cat.hidden ? `Mostrar ${cat.title} en la carta` : `Ocultar ${cat.title} de la carta`}
+          title={cat.hidden ? "Mostrar categoría en la carta" : "Ocultar categoría (y sus productos) de la carta"}
         >
-          <Plus {...ICON} />
-          {atItemLimit ? "Mejorar plan" : "Producto"}
+          {cat.hidden ? <EyeOff {...ICON} size={15} /> : <Eye {...ICON} size={15} />}
         </button>
         <button
           type="button"
@@ -546,14 +710,35 @@ const CategoryHeaderMain = memo(function CategoryHeaderMain({
   );
 });
 
+// "+ Producto" de una categoría (en el encabezado o, vacía, en la lista).
+function AddItemButton({ atItemLimit, onClick }: {
+  atItemLimit: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={cx(ws.addButton, atItemLimit && ws.addButtonLimit)}
+      onClick={onClick}
+      title={atItemLimit ? "Llegaste al límite de productos de tu plan" : "Agregar un producto a esta categoría"}
+    >
+      <Plus {...ICON} />
+      {atItemLimit ? "Mejorar plan" : "Producto"}
+    </button>
+  );
+}
+
 // Los productos de la tarjeta: la lista que recibe lo que se suelta en su
 // margen o, vacía, en su lugar. Con un producto encima, la tarjeta se resalta
 // (ver .category:has(> .itemsDropTarget) en el CSS).
 function CategoryItems({
   cat, items, total, activeItemId, flashItemId, selectionMode, selectedIds,
-  onEditItem, onToggleAvailable, onToggleHidden, onToggleSelectItem,
+  onEditItem, onToggleAvailable, onToggleHidden, onDuplicateItem, duplicatingId, onToggleSelectItem,
+  atItemLimit, onNewItem,
 }: {
   cat: Categoria;
+  atItemLimit: boolean;
+  onNewItem: (cat: Categoria) => void;
   items: Item[];
   total: number;
   activeItemId: string | null;
@@ -563,6 +748,8 @@ function CategoryItems({
   onEditItem: (item: Item, cat: Categoria) => void;
   onToggleAvailable: (item: Item) => void;
   onToggleHidden: (item: Item) => void;
+  onDuplicateItem: (item: Item, cat: Categoria) => void;
+  duplicatingId: string | null;
   onToggleSelectItem: (id: string) => void;
 }) {
   const { activeKind } = useReorderState();
@@ -585,17 +772,21 @@ function CategoryItems({
                 onEditItem={onEditItem}
                 onToggleAvailable={onToggleAvailable}
                 onToggleHidden={onToggleHidden}
+                onDuplicateItem={onDuplicateItem}
+                duplicating={duplicatingId === item._id}
                 onToggleSelectItem={onToggleSelectItem}
               />
             ))}
           </SortableContext>
         </div>
       ) : (
-        <p className={ws.categoryEmpty}>
-          {total === 0
-            ? "Todavía no hay productos. Creá el primero o arrastrá uno desde otra categoría."
-            : "Ningún producto de esta categoría coincide con el filtro."}
-        </p>
+        total === 0 ? (
+          <div className={ws.categoryEmpty}>
+            <AddItemButton atItemLimit={atItemLimit} onClick={() => onNewItem(cat)} />
+          </div>
+        ) : (
+          <p className={ws.categoryEmpty}>Ningún producto de esta categoría coincide con el filtro.</p>
+        )
       )}
     </div>
   );
@@ -611,13 +802,15 @@ interface ItemRowProps {
   onEditItem: (item: Item, cat: Categoria) => void;
   onToggleAvailable: (item: Item) => void;
   onToggleHidden: (item: Item) => void;
+  onDuplicateItem: (item: Item, cat: Categoria) => void;
+  duplicating: boolean;
   onToggleSelectItem: (id: string) => void;
 }
 
 // La envoltura arrastrable de la fila (ver la nota de rendimiento de arriba).
 const WorkspaceItemRow = memo(function WorkspaceItemRow({
   item, cat, active, flash, selected, selectionMode,
-  onEditItem, onToggleAvailable, onToggleHidden, onToggleSelectItem,
+  onEditItem, onToggleAvailable, onToggleHidden, onDuplicateItem, duplicating, onToggleSelectItem,
 }: ItemRowProps) {
   const sortable = useReorderSortable({ kind: "item", id: item._id, catId: cat._id, title: item.title });
   const { setNode, style, isDragging } = sortable;
@@ -657,6 +850,8 @@ const WorkspaceItemRow = memo(function WorkspaceItemRow({
         onEditItem={onEditItem}
         onToggleAvailable={onToggleAvailable}
         onToggleHidden={onToggleHidden}
+        onDuplicateItem={onDuplicateItem}
+        duplicating={duplicating}
         onToggleSelectItem={onToggleSelectItem}
       />
     </div>
@@ -664,7 +859,8 @@ const WorkspaceItemRow = memo(function WorkspaceItemRow({
 });
 
 const WorkspaceItemBody = memo(function WorkspaceItemBody({
-  item, cat, active, selectionMode, onEditItem, onToggleAvailable, onToggleHidden, onToggleSelectItem,
+  item, cat, active, selectionMode, onEditItem, onToggleAvailable, onToggleHidden, onDuplicateItem, duplicating,
+  onToggleSelectItem,
 }: Omit<ItemRowProps, "flash" | "selected">) {
   const tags = itemTags(item);
 
@@ -710,6 +906,17 @@ const WorkspaceItemBody = memo(function WorkspaceItemBody({
 
       {!selectionMode && (
         <div className={ws.rowActions}>
+          <button
+            type="button"
+            className={cx(ws.iconButton, ws.duplicateButton)}
+            onClick={() => onDuplicateItem(item, cat)}
+            disabled={duplicating}
+            aria-busy={duplicating}
+            aria-label={`Duplicar ${item.title}`}
+            title="Duplicar producto"
+          >
+            <Copy {...ICON} size={15} />
+          </button>
           <button
             type="button"
             className={cx(ws.iconButton, ws.visibilityButton)}

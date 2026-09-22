@@ -7,8 +7,48 @@
 
 .shell {
   --ws-gap: 1.25rem;
-  --ws-sticky-top: calc(var(--admin-editor-header-height) + env(safe-area-inset-top) + var(--ws-gap));
-  --ws-sticky-height: calc(100dvh - var(--admin-editor-header-height) - env(safe-area-inset-top) - (var(--ws-gap) * 2));
+  /* Alto de la barra de selección múltiple cuando está a la vista (ver
+     .shellBulk): lo sticky se corre para quedar debajo de ella. */
+  --ws-bulk-offset: 0px;
+  --ws-top: calc(var(--admin-editor-header-height) + env(safe-area-inset-top) + var(--ws-bulk-offset));
+  --ws-sticky-top: calc(var(--ws-top) + var(--ws-gap));
+  --ws-sticky-height: calc(100dvh - var(--ws-top) - (var(--ws-gap) * 2));
+}
+
+.shellBulk {
+  --ws-bulk-offset: 60px;
+}
+
+/* ── Barra de selección múltiple ──
+   En escritorio no flota abajo: queda pegada debajo del encabezado del
+   editor, dentro de su columna (no pisa la barra lateral del panel). Doble
+   clase para ganarle a .bulkBar (MenuEditor.module.css) sin depender del
+   orden de las hojas de estilo. */
+.shell .bulkBarDocked {
+  position: sticky;
+  top: calc(var(--admin-editor-header-height) + env(safe-area-inset-top));
+  right: auto;
+  bottom: auto;
+  left: auto;
+  z-index: 9;
+  box-sizing: border-box;
+  height: var(--ws-bulk-offset);
+  flex-wrap: nowrap;
+  padding: 0 clamp(1rem, 2vw, 1.75rem);
+  border-top: 0;
+  border-bottom: 1px solid var(--admin-editor-border);
+  animation: bulkBarDrop 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes bulkBarDrop {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell .bulkBarDocked {
+    animation: none;
+  }
 }
 
 /* ── Encabezado ── */
@@ -208,15 +248,23 @@
   }
 }
 
-/* Con la barra de selección múltiple abajo, el final del tablero y del panel
-   tienen que seguir siendo alcanzables. */
-.workspaceBulkPad {
-  padding-bottom: 7rem;
+/* Menú vacío (sin secciones, categorías ni productos): sin columna de
+   estructura ni resumen. El tablero ocupa
+   todo el ancho y, con un formulario abierto (nueva sección o categoría),
+   comparte la fila solo con el panel de edición. Doble clase para ganarle a
+   la regla de 1280px de arriba. */
+.workspace.workspaceBare {
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.workspaceBulkPad .panel,
-.workspaceBulkPad .nav {
-  max-height: calc(var(--ws-sticky-height) - 4.5rem);
+.workspace.workspaceBarePanel {
+  grid-template-columns: minmax(0, 1fr) clamp(360px, 34vw, 440px);
+}
+
+@media (min-width: 1280px) {
+  .workspace.workspaceBarePanel {
+    grid-template-columns: minmax(0, 1fr) clamp(380px, 30vw, 460px);
+  }
 }
 
 /* ── Estructura ── */
@@ -397,6 +445,12 @@
   color: var(--admin-text-faint);
 }
 
+/* Sección o categoría oculta en la carta (o dentro de una sección oculta). */
+.navGroupTitleHidden,
+.navItemNameHidden {
+  opacity: 0.55;
+}
+
 .navItemCount {
   min-width: 24px;
   padding: 1px 6px;
@@ -430,12 +484,101 @@
 
 .boardTools {
   position: sticky;
-  top: calc(var(--admin-editor-header-height) + env(safe-area-inset-top) + 0.75rem);
+  top: calc(var(--ws-top) + 0.75rem);
   z-index: 6;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.5rem;
+}
+
+/* Filtros y "Contraer/Expandir todo" en una misma fila. */
+.boardToolsRow {
+  display: flex;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.foldControls {
+  composes: md-glass-surface from global;
+  display: flex;
+  gap: 0.2rem;
+  padding: 0.3rem;
+  border-radius: 18px;
+}
+
+.foldControl {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.6rem;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--admin-text-muted);
+  font: 600 0.75rem var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--admin-transition), background var(--admin-transition), opacity var(--admin-transition);
+}
+
+.foldControl:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--admin-text-primary) 6%, transparent);
+  color: var(--admin-text-primary);
+}
+
+.foldControl:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
+}
+
+.foldControl:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Flecha de plegar de secciones y categorías: apunta a la derecha plegada
+   y hacia abajo desplegada. */
+.foldButton {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  transition: color var(--admin-transition), background var(--admin-transition), border-color var(--admin-transition);
+}
+
+.foldButton svg {
+  transition: transform 0.18s ease;
+}
+
+.foldButtonOpen svg {
+  transform: rotate(90deg);
+}
+
+.foldButton:hover {
+  border-color: var(--admin-editor-border);
+  background: var(--admin-bg-elevated);
+  color: var(--admin-text-primary);
+}
+
+.foldButton:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .foldButton svg {
+    transition: none;
+  }
 }
 
 .filters {
@@ -593,6 +736,23 @@
   height: 34px;
 }
 
+.sectionTitleHidden {
+  opacity: 0.55;
+}
+
+.sectionHiddenTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 0.5rem;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--admin-pill-off-bg);
+  color: var(--admin-pill-off-text);
+  font-size: 0.66rem;
+  vertical-align: 1px;
+}
+
 /* Una sección del tablero con sus categorías: se mueve entera al ordenarla.
    Mismo espaciado que tenían sueltas dentro del tablero. */
 .sectionGroup,
@@ -611,7 +771,7 @@
 
 /* ── Categoría ── */
 .category {
-  scroll-margin-top: calc(var(--admin-editor-header-height) + 5.5rem);
+  scroll-margin-top: calc(var(--admin-editor-header-height) + var(--ws-bulk-offset) + 5.5rem);
   overflow: hidden;
   border: 1px solid var(--admin-editor-border);
   border-radius: var(--admin-editor-radius);
@@ -622,6 +782,14 @@
 
 .categoryEditing {
   border-color: var(--admin-border-gold-mid);
+}
+
+/* Oculta en la carta (ella o su sección): se atenúa el contenido, no las
+   acciones, que siguen usándose igual. */
+.categoryHidden .categoryHeading,
+.categoryHidden .categoryDescription,
+.categoryHidden .rows {
+  opacity: 0.55;
 }
 
 .categoryDrop,
@@ -643,6 +811,28 @@
    margen izquierdo para que el título no se corra de más. */
 .categoryHeader .categoryHandle {
   margin: 0 -0.45rem 0 -0.7rem;
+}
+
+/* La flecha de plegar va pegada al título, no a la distancia del resto. */
+.categoryHeader .foldButton {
+  margin: 0 -0.45rem 0 -0.5rem;
+}
+
+/* Plegada: queda solo el encabezado, sin la línea que lo separaba de la lista. */
+.categoryCollapsed .categoryHeader {
+  border-bottom: 0;
+}
+
+.section .sectionFold {
+  align-self: center;
+  margin-right: -0.35rem;
+}
+
+/* Casilla de la sección entera (selección múltiple), en lugar de la manija. */
+.section .sectionCheck {
+  align-self: center;
+  height: 28px;
+  margin-right: -0.35rem;
 }
 
 .categoryHeading {
@@ -736,6 +926,13 @@
   border-color: var(--admin-editor-border);
   background: var(--admin-bg-elevated);
   color: var(--admin-text-primary);
+}
+
+/* Ocultar sección/categoría activo: queda marcado para que se note. */
+.iconButtonPressed {
+  border-color: var(--admin-pill-off-bg);
+  background: var(--admin-pill-off-bg);
+  color: var(--admin-pill-off-text);
 }
 
 .iconButtonDanger:hover {
@@ -1017,6 +1214,7 @@
   .categoryHeader .categoryHandle,
   .section .sectionHandle,
   .visibilityButton:not([aria-pressed="true"]),
+  .duplicateButton,
   .navGroupEdit {
     opacity: 0;
   }
@@ -1031,6 +1229,8 @@
   .section:hover .sectionHandle,
   .sectionHandle:focus-visible,
   .row:hover .visibilityButton,
+  .row:hover .duplicateButton,
+  .duplicateButton:focus-visible,
   .visibilityButton:focus-visible,
   .navGroupHeader:hover .navGroupEdit,
   .navGroupEdit:focus-visible {
