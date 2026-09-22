@@ -274,12 +274,19 @@
 .navGroupHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.15rem;
   min-height: 30px;
   padding: 0 0.3rem 0.2rem 0.6rem;
 }
 
+/* Con manija, la manija ocupa el lugar del margen. */
+.navGroupHeader:has(.navHandle) {
+  padding-left: 0;
+}
+
 .navGroupTitle {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   color: var(--admin-gold);
   font-size: 0.72rem;
@@ -325,8 +332,28 @@
   transition: background var(--admin-transition), color var(--admin-transition), border-color var(--admin-transition);
 }
 
-.navItem + .navItem {
+/* Fila de una categoría: manija para ordenarla y botón para ir a ella. */
+.navItemRow {
+  display: flex;
+  align-items: center;
+}
+
+.navItemRow + .navItemRow {
   margin-top: 2px;
+}
+
+.navItemRow .navItem {
+  width: auto;
+  min-width: 0;
+  flex: 1;
+}
+
+/* Más chica que la del tablero: la columna es angosta. */
+.navGroupHeader .navHandle,
+.navItemRow .navHandle {
+  width: 22px;
+  height: 30px;
+  border-radius: 7px;
 }
 
 .navItem:hover {
@@ -566,6 +593,22 @@
   height: 34px;
 }
 
+/* Una sección del tablero con sus categorías: se mueve entera al ordenarla.
+   Mismo espaciado que tenían sueltas dentro del tablero. */
+.sectionGroup,
+.sectionCategories {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.section .sectionHandle {
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  margin-right: -0.35rem;
+}
+
 /* ── Categoría ── */
 .category {
   scroll-margin-top: calc(var(--admin-editor-header-height) + 5.5rem);
@@ -581,7 +624,8 @@
   border-color: var(--admin-border-gold-mid);
 }
 
-.categoryDrop {
+.categoryDrop,
+.category:has(> .itemsDropTarget) {
   border-color: var(--admin-gold);
   box-shadow: 0 0 0 3px var(--admin-gold-glow), var(--admin-editor-shadow);
 }
@@ -593,6 +637,12 @@
   padding: 1rem 1rem 0.9rem 1.25rem;
   border-bottom: 1px solid var(--admin-editor-border);
   background: var(--admin-editor-highlight);
+}
+
+/* Manija de la categoría (sin la columna de estructura): se mete en el
+   margen izquierdo para que el título no se corra de más. */
+.categoryHeader .categoryHandle {
+  margin: 0 -0.45rem 0 -0.7rem;
 }
 
 .categoryHeading {
@@ -752,26 +802,19 @@
   100% { background: transparent; }
 }
 
-.grip,
 .check {
   display: grid;
   width: 28px;
   height: 44px;
   place-items: center;
-}
-
-.grip {
-  color: var(--admin-text-faint);
-  cursor: grab;
-  transition: opacity var(--admin-transition), color var(--admin-transition);
-}
-
-.grip:active {
-  cursor: grabbing;
-}
-
-.check {
   cursor: pointer;
+}
+
+/* Manija del producto: ocupa la primera columna de la fila. */
+.row .rowHandle {
+  width: 28px;
+  height: 44px;
+  border-radius: 8px;
 }
 
 .check input {
@@ -969,14 +1012,24 @@
 /* Con mouse, los controles secundarios aparecen al pasar por la fila; en
    pantallas táctiles quedan siempre visibles. */
 @media (hover: hover) {
-  .grip,
+  .row .rowHandle,
+  .navHandle,
+  .categoryHeader .categoryHandle,
+  .section .sectionHandle,
   .visibilityButton:not([aria-pressed="true"]),
   .navGroupEdit {
     opacity: 0;
   }
 
-  .row:hover .grip,
-  .row:focus-within .grip,
+  .row:hover .rowHandle,
+  .row:focus-within .rowHandle,
+  .navItemRow:hover .navHandle,
+  .navGroupHeader:hover .navHandle,
+  .navHandle:focus-visible,
+  .categoryHeader:hover .categoryHandle,
+  .categoryHandle:focus-visible,
+  .section:hover .sectionHandle,
+  .sectionHandle:focus-visible,
   .row:hover .visibilityButton,
   .visibilityButton:focus-visible,
   .navGroupHeader:hover .navGroupEdit,

@@ -1,5 +1,6 @@
-import { Fragment, useState, useEffect, useCallback, useRef, memo, useMemo, useLayoutEffect, useEffectEvent } from "react";
+import { useState, useEffect, useCallback, useRef, memo, useMemo, useLayoutEffect, useEffectEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CheckSquare, FolderPlus, Layers, Search, SlidersHorizontal } from "lucide-react";
 import { useAuth } from "../../../../context/useAuth";
 import { useMediaQuery } from "../../../../hooks/useMediaQuery";
@@ -26,16 +27,24 @@ import type { DateRangeValue, WeekRanges } from "../../../Common/WeeklySchedule/
 import Spinner from "../../../Common/Spinner";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import {
+  BoardSection,
+  SortableWorkspaceCategory,
   WorkspaceCategory,
   WorkspaceFilters,
   WorkspaceJumpBar,
   WorkspaceNav,
   WorkspaceOverview,
   WorkspacePanel,
-  WorkspaceSection,
 } from "./Workspace/MenuWorkspace";
 import { countWorkspaceItems, matchesWorkspaceFilter, type WorkspaceFilter } from "./Workspace/workspaceFilters";
+import DragHandle from "./Reorder/DragHandle";
+import MenuReorderProvider from "./Reorder/MenuReorderProvider";
+import { LOOSE_SECTION, allCategories, categoryDndId, itemDndId, sectionDndId } from "./Reorder/menuReorder";
+import { useReorderState } from "./Reorder/reorderContext";
+import { useMenuReorder } from "./Reorder/useMenuReorder";
+import { useReorderList, useReorderSortable } from "./Reorder/useReorderSortable";
 import styles from "./MenuEditor.module.css";
+import rs from "./Reorder/Reorder.module.css";
 import ws from "./Workspace/MenuWorkspace.module.css";
 
 // ── Estado vacío para formulario de item ───────────────────────────────────────
@@ -175,6 +184,9 @@ const patchMenuItem = (menu: MenuData, itemId: string, patch: Partial<Item>): Me
 // Desde este ancho el editor pasa a espacio de trabajo: estructura, tablero y
 // panel de edici\u00f3n a la vista a la vez. Por debajo sigue el flujo m\u00f3vil.
 const DESKTOP_QUERY = "(min-width: 1024px)";
+// Desde este ancho se ve la columna de estructura (ver MenuWorkspace.module.css),
+// y las secciones y categorías se ordenan ahí en vez de en el tablero.
+const WIDE_DESKTOP_QUERY = "(min-width: 1280px)";
 
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -379,10 +391,77 @@ function FormSection({
   );
 }
 
-// ── CategoriaAcordeon (memoizado) ─────────────────────────────────────────────
+// ── Móvil: secciones, categorías y productos que se ordenan arrastrando ──────
+// Cada uno se arrastra desde su manija. Un producto soltado sobre una
+// categoría cerrada va al final de esa categoría (ver Reorder/useMenuReorder).
+
+// Una sección con sus categorías: se mueve entera.
+function MobileSeccionBlock({ seccion, deleteDisabled, onEdit, onDelete, children }: {
+  seccion: Seccion;
+  deleteDisabled: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  children: ReactNode;
+}) {
+  const sortable = useReorderSortable({ kind: "section", id: seccion._id, title: seccion.title });
+  const { setNode, style, isDragging } = sortable;
+
+  return (
+    <div ref={setNode} style={style} className={`${styles.seccionBlock} ${isDragging ? rs.placeholder : ""}`}>
+      <div className={styles.seccionRow}>
+        <div className={styles.seccionLeft}>
+          <DragHandle sortable={sortable} label={`Mover la sección ${seccion.title}`} />
+          <span className={styles.seccionBadge}>Sección</span>
+          <span className={styles.seccionTitle}>{seccion.title}</span>
+        </div>
+        <div className={styles.rowActions}>
+          <button className={styles.iconBtn} onClick={onEdit} title="Editar sección" aria-label={`Editar ${seccion.title}`}>
+            {icons.edit}
+          </button>
+          <button
+            className={`${styles.iconBtn} ${styles.danger}`}
+            onClick={onDelete}
+            disabled={deleteDisabled}
+            title={deleteDisabled ? "Eliminar deshabilitado desde Configuración" : "Eliminar sección"}
+            aria-label={`Eliminar ${seccion.title}`}
+          >
+            {icons.trash}
+          </button>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// Las categorías de una sección (o las sueltas). Recibe una categoría que se
+// suelta en su margen o, vacía, en su lugar.
+function MobileCategoryList({ sectionKey, title, categorias, emptyText, renderCategoria }: {
+  sectionKey: string;
+  title: string;
+  categorias: Categoria[];
+  emptyText: string | null;
+  renderCategoria: (cat: Categoria, sectionKey: string) => ReactNode;
+}) {
+  const { activeKind } = useReorderState();
+  const { setNode, isOver } = useReorderList({ kind: "category-list", sectionKey, title });
+
+  return (
+    <div ref={setNode}>
+      <SortableContext items={categorias.map(cat => categoryDndId(cat._id))} strategy={verticalListSortingStrategy}>
+        {categorias.map(cat => renderCategoria(cat, sectionKey))}
+      </SortableContext>
+      {categorias.length === 0 && (activeKind === "category"
+        ? <p className={`${rs.dropZone} ${isOver ? rs.dropZoneOver : ""}`}>Soltá la categoría acá</p>
+        : emptyText && <p className={styles.emptyHint} style={{ paddingLeft: "0.25rem" }}>{emptyText}</p>)}
+    </div>
+  );
+}
 
 interface CategoriaAcordeonProps {
   cat: Categoria;
+  // Sección donde está (o LOOSE_SECTION): la necesita la categoría arrastrable.
+  sectionKey: string;
   expanded: boolean;
   atItemLimit: boolean;
   deleteDisabled: boolean;
@@ -391,15 +470,7 @@ interface CategoriaAcordeonProps {
   onDeleteCat: () => void;
   onNewItem: () => void;
   onEditItem: (item: Item) => void;
-  onDeleteItem: (item: Item) => void;
   onToggleAvailable: (item: Item) => void;
-  onDragStart: (e: React.DragEvent, itemId: string) => void;
-  onDragOver: (e: React.DragEvent, catId: string) => void;
-  onDragLeave: () => void;
-  onDrop: (e: React.DragEvent, catId: string) => void;
-  onDragEnd: () => void;
-  dragOverCat: string | null;
-  draggedItem: string | null;
   selectionMode: boolean;
   selectedIds: Set<string>;
   onToggleSelectItem: (id: string) => void;
@@ -407,21 +478,28 @@ interface CategoriaAcordeonProps {
 }
 
 const CategoriaAcordeon = memo(function CategoriaAcordeon({
-  cat, expanded, atItemLimit, deleteDisabled, onToggle, onEditCat, onDeleteCat, onNewItem,
-  onEditItem, onToggleAvailable, onDragStart,
-  onDragOver, onDragLeave, onDrop, onDragEnd, dragOverCat, draggedItem,
-  selectionMode, selectedIds, onToggleSelectItem, onToggleSelectAllInCat,
+  cat, sectionKey, expanded, atItemLimit, deleteDisabled, onToggle, onEditCat, onDeleteCat, onNewItem,
+  onEditItem, onToggleAvailable, selectionMode, selectedIds, onToggleSelectItem, onToggleSelectAllInCat,
 }: CategoriaAcordeonProps) {
-  const isDragOver = dragOverCat === cat._id;
+  const { activeKind } = useReorderState();
+  const sortable = useReorderSortable({ kind: "category", id: cat._id, sectionKey, title: cat.title });
+  const { setNode, style, isDragging, isOver } = sortable;
   const itemCount  = cat.items?.length ?? 0;
   const catItemIds = useMemo(() => (cat.items ?? []).map(i => i._id), [cat.items]);
   const allInCatSelected  = itemCount > 0 && catItemIds.every(id => selectedIds.has(id));
   const someInCatSelected = catItemIds.some(id => selectedIds.has(id));
+  // Cerrada, recibe productos: van al final.
+  const itemDropTarget = !expanded && isOver && activeKind === "item";
 
   return (
-    <div className={styles.catAcordeon}>
+    <div
+      ref={setNode}
+      style={style}
+      className={`${styles.catAcordeon} ${isDragging ? rs.placeholder : ""} ${itemDropTarget ? styles.catDropTarget : ""}`}
+    >
       {/* Header */}
       <div className={`${styles.catHeader} ${expanded ? styles.open : ""}`}>
+        {!selectionMode && <DragHandle sortable={sortable} label={`Mover la categoría ${cat.title}`} />}
         {selectionMode && itemCount > 0 && (
           <label className={styles.itemCheckboxWrap} onClick={e => e.stopPropagation()}>
             <input
@@ -475,113 +553,167 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
 
       {/* Body */}
       {expanded && (
-        <div
-          className={`${styles.catBody} ${isDragOver ? styles.dragOver : ""}`}
-          onDragOver={e => onDragOver(e, cat._id)}
-          onDragLeave={onDragLeave}
-          onDrop={e => onDrop(e, cat._id)}
-          role="list"
-          aria-label={`Productos de ${cat.title}`}
-        >
-          {itemCount === 0 && (
-            <p className={styles.emptyHint} style={{ padding: "1.25rem", textAlign: "center" }}>
-              Arrastrá productos aquí o usá el botón de abajo.
-            </p>
-          )}
-
-          {cat.items?.map(item => {
-            const selected = selectedIds.has(item._id);
-            return (
-            <div
-              key={item._id}
-              role="listitem"
-              className={`${styles.itemRowAc} ${draggedItem === item._id ? styles.dragging : ""} ${selected ? styles.selected : ""}`}
-              draggable={!selectionMode}
-              onDragStart={e => onDragStart(e, item._id)}
-              onDragEnd={onDragEnd}
-            >
-              {selectionMode ? (
-                <label className={styles.itemCheckboxWrap}>
-                  <input
-                    type="checkbox"
-                    checked={selected}
-                    onChange={() => onToggleSelectItem(item._id)}
-                    aria-label={`Seleccionar ${item.title}`}
-                  />
-                </label>
-              ) : (
-                /* Handle drag */
-                <span className={styles.dragHandle} aria-hidden="true">
-                  <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
-                    <circle cx="4" cy="3"  r="1.5" fill="currentColor" />
-                    <circle cx="4" cy="8"  r="1.5" fill="currentColor" />
-                    <circle cx="4" cy="13" r="1.5" fill="currentColor" />
-                    <circle cx="8" cy="3"  r="1.5" fill="currentColor" />
-                    <circle cx="8" cy="8"  r="1.5" fill="currentColor" />
-                    <circle cx="8" cy="13" r="1.5" fill="currentColor" />
-                  </svg>
-                </span>
-              )}
-
-              <button
-                className={styles.itemInfoAc}
-                onClick={() => selectionMode ? onToggleSelectItem(item._id) : onEditItem(item)}
-                type="button"
-              >
-                <span className={styles.itemNameAc}>{item.title}</span>
-                <span className={styles.itemMetaAc}>
-                  {item.price != null
-                    ? `$${item.price.toLocaleString("es-AR")}`
-                    : Object.keys(item.options || {}).length > 0
-                      ? "Con variantes"
-                      : "Sin precio"}
-                  {item.offerPrice != null && (
-                    <span className={styles.itemOffer}>
-                      {` · Oferta $${item.offerPrice.toLocaleString("es-AR")}`}
-                    </span>
-                  )}
-                  {item.hidden     ? " · oculto" : ""}
-                  {item.recommended ? " · ⭐" : ""}
-                </span>
-              </button>
-
-              {!selectionMode && (
-                <div className={styles.itemActions}>
-                  <button
-                    className={`${styles.pillBtn} ${item.available ? styles.pillOn : styles.pillOff}`}
-                    onClick={() => onToggleAvailable(item)}
-                    aria-label={item.available ? `Pausar ${item.title}` : `Activar ${item.title}`}
-                    type="button"
-                  >
-                    {item.available ? "Activo" : "Pausado"}
-                  </button>
-                  {/* <button
-                    className={`${styles.iconBtn} ${styles.danger}`}
-                    onClick={() => onDeleteItem(item)}
-                    title="Eliminar"
-                    aria-label={`Eliminar ${item.title}`}
-                    type="button"
-                  >
-                    {icons.trash}
-                  </button> */}
-                </div>
-              )}
-            </div>
-            );
-          })}
-
-          <div className={styles.catFooter}>
-            <button
-              className={`${styles.addItemBtn} ${atItemLimit ? styles.addItemBtnLimit : ""}`}
-              onClick={onNewItem}
-              type="button"
-            >
-              {atItemLimit ? "Límite alcanzado — Mejorar plan" : "+ Agregar producto"}
-            </button>
-          </div>
-        </div>
+        <AcordeonItems
+          cat={cat}
+          atItemLimit={atItemLimit}
+          onNewItem={onNewItem}
+          onEditItem={onEditItem}
+          onToggleAvailable={onToggleAvailable}
+          selectionMode={selectionMode}
+          selectedIds={selectedIds}
+          onToggleSelectItem={onToggleSelectItem}
+        />
       )}
     </div>
+  );
+});
+
+// Productos de una categoría abierta.
+function AcordeonItems({
+  cat, atItemLimit, onNewItem, onEditItem, onToggleAvailable, selectionMode, selectedIds, onToggleSelectItem,
+}: {
+  cat: Categoria;
+  atItemLimit: boolean;
+  onNewItem: () => void;
+  onEditItem: (item: Item) => void;
+  onToggleAvailable: (item: Item) => void;
+  selectionMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelectItem: (id: string) => void;
+}) {
+  const { activeKind } = useReorderState();
+  const { setNode, isOver } = useReorderList({ kind: "item-list", catId: cat._id, title: cat.title });
+  const items = cat.items ?? [];
+
+  return (
+    <div
+      ref={setNode}
+      className={`${styles.catBody} ${isOver && activeKind === "item" ? styles.dragOver : ""}`}
+      role="list"
+      aria-label={`Productos de ${cat.title}`}
+    >
+      {items.length === 0 && (
+        <p className={styles.emptyHint} style={{ padding: "1.25rem", textAlign: "center" }}>
+          Arrastrá productos aquí o usá el botón de abajo.
+        </p>
+      )}
+
+      <SortableContext items={items.map(item => itemDndId(item._id))} strategy={verticalListSortingStrategy}>
+        {items.map(item => (
+          <AcordeonItemRow
+            key={item._id}
+            item={item}
+            catId={cat._id}
+            selected={selectedIds.has(item._id)}
+            selectionMode={selectionMode}
+            onEditItem={onEditItem}
+            onToggleAvailable={onToggleAvailable}
+            onToggleSelectItem={onToggleSelectItem}
+          />
+        ))}
+      </SortableContext>
+
+      <div className={styles.catFooter}>
+        <button
+          className={`${styles.addItemBtn} ${atItemLimit ? styles.addItemBtnLimit : ""}`}
+          onClick={onNewItem}
+          type="button"
+        >
+          {atItemLimit ? "Límite alcanzado — Mejorar plan" : "+ Agregar producto"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface AcordeonItemRowProps {
+  item: Item;
+  catId: string;
+  selected: boolean;
+  selectionMode: boolean;
+  onEditItem: (item: Item) => void;
+  onToggleAvailable: (item: Item) => void;
+  onToggleSelectItem: (id: string) => void;
+}
+
+// Envoltura arrastrable fina y cuerpo memorizado: mientras se arrastra,
+// dnd-kit vuelve a renderizar cada fila en cada cambio de destino.
+const AcordeonItemRow = memo(function AcordeonItemRow({
+  item, catId, selected, selectionMode, onEditItem, onToggleAvailable, onToggleSelectItem,
+}: AcordeonItemRowProps) {
+  const sortable = useReorderSortable({ kind: "item", id: item._id, catId, title: item.title });
+  const { setNode, style, isDragging } = sortable;
+
+  return (
+    <div
+      ref={setNode}
+      style={style}
+      role="listitem"
+      className={`${styles.itemRowAc} ${isDragging ? styles.dragging : ""} ${selected ? styles.selected : ""}`}
+    >
+      {selectionMode ? (
+        <label className={styles.itemCheckboxWrap}>
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelectItem(item._id)}
+            aria-label={`Seleccionar ${item.title}`}
+          />
+        </label>
+      ) : (
+        <DragHandle sortable={sortable} label={`Mover ${item.title}`} />
+      )}
+      <AcordeonItemBody
+        item={item}
+        selectionMode={selectionMode}
+        onEditItem={onEditItem}
+        onToggleAvailable={onToggleAvailable}
+        onToggleSelectItem={onToggleSelectItem}
+      />
+    </div>
+  );
+});
+
+const AcordeonItemBody = memo(function AcordeonItemBody({
+  item, selectionMode, onEditItem, onToggleAvailable, onToggleSelectItem,
+}: Omit<AcordeonItemRowProps, "catId" | "selected">) {
+  return (
+    <>
+      <button
+        className={styles.itemInfoAc}
+        onClick={() => selectionMode ? onToggleSelectItem(item._id) : onEditItem(item)}
+        type="button"
+      >
+        <span className={styles.itemNameAc}>{item.title}</span>
+        <span className={styles.itemMetaAc}>
+          {item.price != null
+            ? `$${item.price.toLocaleString("es-AR")}`
+            : Object.keys(item.options || {}).length > 0
+              ? "Con variantes"
+              : "Sin precio"}
+          {item.offerPrice != null && (
+            <span className={styles.itemOffer}>
+              {` · Oferta $${item.offerPrice.toLocaleString("es-AR")}`}
+            </span>
+          )}
+          {item.hidden     ? " · oculto" : ""}
+          {item.recommended ? " · ⭐" : ""}
+        </span>
+      </button>
+
+      {!selectionMode && (
+        <div className={styles.itemActions}>
+          <button
+            className={`${styles.pillBtn} ${item.available ? styles.pillOn : styles.pillOff}`}
+            onClick={() => onToggleAvailable(item)}
+            aria-label={item.available ? `Pausar ${item.title}` : `Activar ${item.title}`}
+            type="button"
+          >
+            {item.available ? "Activo" : "Pausado"}
+          </button>
+        </div>
+      )}
+    </>
   );
 });
 
@@ -609,6 +741,9 @@ export default function MenuEditorPage() {
     canScheduleOffers?: boolean;
     canUseImageManager?: boolean;
     canUseTemplates?: boolean;
+    // Lo manda un backend que sabe ordenar (PATCH /items/reorder y
+    // /menus/reorder): sin la clave no se muestran las manijas.
+    canReorder?: boolean;
     autoGenerateCodes?: boolean;
     disableMenuDelete?: boolean;
   } | null>(null);
@@ -630,9 +765,6 @@ export default function MenuEditorPage() {
   const canExportPdf = limits?.canExportPdf === true;
   const canScheduleItems = limits?.canScheduleItems === true;
   const canScheduleOffers = limits?.canScheduleOffers === true;
-
-  const [draggedItem, setDraggedItem] = useState<string | null>(null);
-  const [dragOverCat, setDragOverCat] = useState<string | null>(null);
 
   // ── Selección múltiple de productos ─────────────────────────────────────
   const [selectionMode, setSelectionMode] = useState(false);
@@ -700,6 +832,37 @@ export default function MenuEditorPage() {
     return data;
   }, [logout]);
 
+  // ── Ordenar arrastrando ───────────────────────────────────────────────────
+  // El orden cambia al soltar y se guarda en segundo plano (ver
+  // Reorder/useMenuReorder). Desde 1280px las secciones y categorías se
+  // ordenan en la columna de estructura; más angosto, en el tablero.
+
+  const isWideDesktop = useMediaQuery(WIDE_DESKTOP_QUERY);
+  // refetch se define más abajo y a su vez espera a la cola de este hook.
+  const refetchRef = useRef<() => Promise<void>>(async () => {});
+  const reorder = useMenuReorder({
+    menuData,
+    setMenuData,
+    authHeaders,
+    onUnauthorized: () => {
+      logout();
+      window.location.href = "/login";
+    },
+    onSaveError: message => {
+      setError(message);
+      void refetchRef.current();
+    },
+    // Soltado sobre una categoría cuya lista no se ve: se avisa adónde fue y
+    // se muestra (en el tablero se resalta; en el celular se abre la categoría).
+    onItemAppended: (itemId, catId) => {
+      const title = menuData ? allCategories(menuData).find(cat => cat._id === catId)?.title : undefined;
+      notifySuccess(title ? `Producto movido a «${title}».` : "Producto movido.");
+      if (isDesktop) setFlashItemId(itemId);
+      else setExpandedCats(prev => new Set(prev).add(catId));
+    },
+  });
+  const { waitForSaves } = reorder;
+
   // ── Auto-clear error banner ─────────────────────────────────────────────────
 
   useEffect(() => {
@@ -733,6 +896,9 @@ export default function MenuEditorPage() {
 
   const refetch = useCallback(async () => {
     try {
+      // Con un orden todavía sin guardar, el menú del servidor vendría con el
+      // orden anterior y lo pisaría: primero se espera a la cola.
+      await waitForSaves();
       const menuRes  = await fetch("/api/users/me/menu", { headers: { Authorization: `Bearer ${token}` } });
       const menuJson = await parseApiResponse(menuRes, "No se pudo actualizar el menú.");
       const menu = menuJson.menu as MenuData;
@@ -750,7 +916,8 @@ export default function MenuEditorPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo actualizar el menú.");
     }
-  }, [token, activeCategoria, setError, parseApiResponse]);
+  }, [token, activeCategoria, setError, parseApiResponse, waitForSaves]);
+  useLayoutEffect(() => { refetchRef.current = refetch; });
 
   // ── Acordeón ──────────────────────────────────────────────────────────────
 
@@ -1201,55 +1368,6 @@ export default function MenuEditorPage() {
     "No se pudo eliminar.",
   ), [runBulkAction]);
 
-  // ── Drag & Drop ────────────────────────────────────────────────────────────
-
-  const handleDragStart = useCallback((e: React.DragEvent, itemId: string) => {
-    setDraggedItem(itemId);
-    e.dataTransfer.setData("text/plain", itemId);
-    e.dataTransfer.effectAllowed = "move";
-  }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent, catId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverCat(catId);
-  }, []);
-
-  const handleDragLeave = useCallback(() => setDragOverCat(null), []);
-
-  const handleDrop = useCallback(async (e: React.DragEvent, targetMenuID: string) => {
-    e.preventDefault();
-    setDragOverCat(null);
-    const itemId = e.dataTransfer.getData("text/plain");
-    if (!itemId) return;
-    try {
-      const res = await fetch(`/api/items/${itemId}/move`, {
-        method: "PATCH", headers: authHeaders,
-        body: JSON.stringify({ menuID: targetMenuID }),
-      });
-      if (res.status === 401) {
-        logout();
-        window.location.href = "/login";
-        return;
-      }
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || "No se pudo mover el producto.");
-      }
-      await refetch();
-      notifySuccess("Producto movido.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo mover el producto.");
-    } finally {
-      setDraggedItem(null);
-    }
-  }, [authHeaders, refetch, notifySuccess, setError, logout]);
-
-  const handleDragEnd = useCallback(() => {
-    setDraggedItem(null);
-    setDragOverCat(null);
-  }, []);
-
   // ── Handlers CATEGORÍAS ───────────────────────────────────────────────────
 
   const openNewCategoria = useCallback(() => {
@@ -1673,6 +1791,13 @@ export default function MenuEditorPage() {
   const panelOpen = view === "item-form" || view === "categoria-form" || view === "seccion-form";
   const errorBanner = error ? <div className={styles.errorBanner} role="alert">{error}</div> : null;
   const publicMenuUrl = user?.slug ? `/${user.slug}/menu` : null;
+
+  // Manijas para ordenar: con un backend que sabe ordenar y fuera de la
+  // selección múltiple. Con un filtro se ven pero no arrastran: no hay forma
+  // de saber dónde quedarían los productos que el filtro esconde.
+  const reorderAvailable = limits?.canReorder === true && !selectionMode;
+  const reorderDisabledReason = statusFilter !== "all" ? "Quitá el filtro para cambiar el orden." : null;
+  const draggingKind = reorder.active?.kind ?? null;
 
   // ── Bloques compartidos por el flujo móvil y el de escritorio ─────────────
 
@@ -2652,40 +2777,65 @@ export default function MenuEditorPage() {
     const visibleCategorias = (categorias: Categoria[]) => categorias.filter(
       cat => statusFilter === "all" || (filteredItems.get(cat._id)?.length ?? 0) > 0);
 
-    const renderCategoria = (cat: Categoria) => (
-      <WorkspaceCategory
-        key={cat._id}
-        cat={cat}
-        items={filteredItems.get(cat._id) ?? cat.items}
-        activeItemId={view === "item-form" ? activeItem?._id ?? null : null}
-        flashItemId={flashItemId}
-        editing={view === "categoria-form" && categoriaForm.editingId === cat._id}
-        atItemLimit={atItemLimit}
-        deleteDisabled={limits?.disableMenuDelete === true}
-        selectionMode={selectionMode}
-        selectedIds={selectedIds}
-        dragOver={dragOverCat === cat._id}
-        draggedItem={draggedItem}
-        onEditCat={editCategoriaFromBoard}
-        onDeleteCat={deleteCategoriaFromBoard}
-        onNewItem={newItemFromBoard}
-        onEditItem={editItemFromBoard}
-        onToggleAvailable={toggleItemAvailable}
-        onToggleHidden={toggleItemHidden}
-        onToggleSelectItem={toggleSelectItem}
-        onToggleSelectAllInCat={toggleSelectAllInCat}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onDragEnd={handleDragEnd}
-      />
-    );
+    // Sin la columna de estructura, las secciones y categorías se ordenan en
+    // el tablero.
+    const structureOnBoard = !isWideDesktop;
+
+    const renderCategoria = (cat: Categoria, sectionKey: string) => {
+      const props = {
+        cat,
+        sectionKey,
+        items: filteredItems.get(cat._id) ?? cat.items,
+        activeItemId: view === "item-form" ? activeItem?._id ?? null : null,
+        flashItemId,
+        editing: view === "categoria-form" && categoriaForm.editingId === cat._id,
+        atItemLimit,
+        deleteDisabled: limits?.disableMenuDelete === true,
+        selectionMode,
+        selectedIds,
+        onEditCat: editCategoriaFromBoard,
+        onDeleteCat: deleteCategoriaFromBoard,
+        onNewItem: newItemFromBoard,
+        onEditItem: editItemFromBoard,
+        onToggleAvailable: toggleItemAvailable,
+        onToggleHidden: toggleItemHidden,
+        onToggleSelectItem: toggleSelectItem,
+        onToggleSelectAllInCat: toggleSelectAllInCat,
+      };
+      return structureOnBoard
+        ? <SortableWorkspaceCategory key={cat._id} {...props} />
+        : <WorkspaceCategory key={cat._id} {...props} />;
+    };
 
     const looseCategorias = menuData ? visibleCategorias(menuData.sinSeccion) : [];
+    // "Sin sección" aparece también vacía mientras se arrastra una categoría
+    // en el tablero, para poder sacarla de su sección.
+    const showLooseGroup = looseCategorias.length > 0 || (structureOnBoard && draggingKind === "category");
     const nothingMatchesFilter = statusFilter !== "all" && totalItems > 0 && workspaceCounts[statusFilter] === 0;
 
+    const boardSections = menuData?.secciones.map(sec => {
+      const visibles = visibleCategorias(sec.categorias);
+      return (
+        <BoardSection
+          key={sec._id}
+          seccion={sec}
+          title={sec.title}
+          categoryCount={sec.categorias.length}
+          categoryIds={visibles.map(cat => cat._id)}
+          structure={structureOnBoard}
+          showHeader
+          emptyText={sec.categorias.length === 0 ? "Sin categorías en esta sección." : null}
+          onEdit={() => editSeccionFromBoard(sec)}
+          onDelete={() => setDeleteModal({ type: "seccion", id: sec._id, name: sec.title })}
+          deleteDisabled={limits?.disableMenuDelete === true}
+        >
+          {visibles.map(cat => renderCategoria(cat, sec._id))}
+        </BoardSection>
+      );
+    });
+
     return (
+      <MenuReorderProvider reorder={reorder} available={reorderAvailable} disabledReason={reorderDisabledReason}>
       <div className={`${styles.me} ${styles.meWide} ${ws.shell}`}>
         <header className={ws.header}>
           <div className={ws.headerTitle}>
@@ -2769,18 +2919,15 @@ export default function MenuEditorPage() {
         </header>
 
         <div className={`${ws.workspace} ${selectionMode ? ws.workspaceBulkPad : ""}`}>
-          {menuData && (
+          {/* Solo desde 1280px: más angosto el CSS la ocultaba igual, y sus
+              secciones y categorías arrastrables chocarían con las del tablero. */}
+          {menuData && isWideDesktop && (
             <WorkspaceNav
               menu={menuData}
               activeCatId={focusedCatId}
               editingCatId={view === "categoria-form" ? categoriaForm.editingId || null : null}
-              dragOverCat={dragOverCat}
-              dragging={draggedItem !== null}
               onSelectCat={scrollToCategory}
               onEditSeccion={editSeccionFromBoard}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
             />
           )}
 
@@ -2798,28 +2945,27 @@ export default function MenuEditorPage() {
                   </div>
                 )}
 
-                {menuData?.secciones.map(sec => (
-                  <Fragment key={sec._id}>
-                    <WorkspaceSection
-                      title={sec.title}
-                      categoryCount={sec.categorias.length}
-                      onEdit={() => editSeccionFromBoard(sec)}
-                      onDelete={() => setDeleteModal({ type: "seccion", id: sec._id, name: sec.title })}
-                      deleteDisabled={limits?.disableMenuDelete === true}
-                    />
-                    {sec.categorias.length === 0
-                      ? <p className={ws.boardEmpty}>Sin categorías en esta sección.</p>
-                      : visibleCategorias(sec.categorias).map(renderCategoria)}
-                  </Fragment>
-                ))}
+                {structureOnBoard ? (
+                  <SortableContext
+                    items={(menuData?.secciones ?? []).map(sec => sectionDndId(sec._id))}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {boardSections}
+                  </SortableContext>
+                ) : boardSections}
 
-                {looseCategorias.length > 0 && (
-                  <>
-                    {(menuData?.secciones.length ?? 0) > 0 && (
-                      <WorkspaceSection title="Sin sección" categoryCount={menuData?.sinSeccion.length ?? 0} />
-                    )}
-                    {looseCategorias.map(renderCategoria)}
-                  </>
+                {showLooseGroup && (
+                  <BoardSection
+                    seccion={null}
+                    title="Sin sección"
+                    categoryCount={menuData?.sinSeccion.length ?? 0}
+                    categoryIds={looseCategorias.map(cat => cat._id)}
+                    structure={structureOnBoard}
+                    showHeader={(menuData?.secciones.length ?? 0) > 0}
+                    emptyText={null}
+                  >
+                    {looseCategorias.map(cat => renderCategoria(cat, LOOSE_SECTION))}
+                  </BoardSection>
                 )}
 
                 {nothingMatchesFilter && (
@@ -2867,12 +3013,35 @@ export default function MenuEditorPage() {
         {bulkBar}
         {dialogs}
       </div>
+      </MenuReorderProvider>
     );
   }
 
   // ── Móvil: una vista por vez ──────────────────────────────────────────────
 
+  const renderAcordeon = (cat: Categoria, sectionKey: string) => (
+    <CategoriaAcordeon
+      key={cat._id}
+      cat={cat}
+      sectionKey={sectionKey}
+      expanded={expandedCats.has(cat._id)}
+      atItemLimit={atItemLimit}
+      deleteDisabled={limits?.disableMenuDelete === true}
+      onToggle={() => toggleCat(cat._id)}
+      onEditCat={() => openEditCategoria(cat)}
+      onDeleteCat={() => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title })}
+      onNewItem={() => openNewItem(cat)}
+      onEditItem={item => openEditItem(item, cat)}
+      onToggleAvailable={toggleItemAvailable}
+      selectionMode={selectionMode}
+      selectedIds={selectedIds}
+      onToggleSelectItem={toggleSelectItem}
+      onToggleSelectAllInCat={toggleSelectAllInCat}
+    />
+  );
+
   return (
+    <MenuReorderProvider reorder={reorder} available={reorderAvailable} disabledReason={reorderDisabledReason}>
       <div className={styles.me}>
 
         {/* ══ VISTA PRINCIPAL: ACORDEÓN ══ */}
@@ -2943,67 +3112,32 @@ export default function MenuEditorPage() {
               {searchActive ? searchResultsSection : (
                 <>
               {/* Secciones */}
-              {menuData?.secciones.map(sec => (
-                <div key={sec._id} className={styles.seccionBlock}>
-                  <div className={styles.seccionRow}>
-                    <div className={styles.seccionLeft}>
-                      <span className={styles.seccionBadge}>Sección</span>
-                      <span className={styles.seccionTitle}>{sec.title}</span>
-                    </div>
-                    <div className={styles.rowActions}>
-                      <button className={styles.iconBtn} onClick={() => openEditSeccion(sec)} title="Editar sección" aria-label={`Editar ${sec.title}`}>
-                        {icons.edit}
-                      </button>
-                      <button
-                        className={`${styles.iconBtn} ${styles.danger}`}
-                        onClick={() => setDeleteModal({ type: "seccion", id: sec._id, name: sec.title })}
-                        disabled={limits?.disableMenuDelete === true}
-                        title={limits?.disableMenuDelete ? "Eliminar deshabilitado desde Configuración" : "Eliminar sección"}
-                        aria-label={`Eliminar ${sec.title}`}
-                      >
-                        {icons.trash}
-                      </button>
-                    </div>
-                  </div>
-
-                  {sec.categorias.map(cat => (
-                    <CategoriaAcordeon
-                      key={cat._id}
-                      cat={cat}
-                      expanded={expandedCats.has(cat._id)}
-                      atItemLimit={atItemLimit}
-                      deleteDisabled={limits?.disableMenuDelete === true}
-                      onToggle={() => toggleCat(cat._id)}
-                      onEditCat={() => openEditCategoria(cat)}
-                      onDeleteCat={() => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title })}
-                      onNewItem={() => openNewItem(cat)}
-                      onEditItem={item => openEditItem(item, cat)}
-                      onDeleteItem={item => setDeleteModal({ type: "item", id: item._id, name: item.title })}
-                      onToggleAvailable={toggleItemAvailable}
-                      onDragStart={handleDragStart}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                      onDragEnd={handleDragEnd}
-                      dragOverCat={dragOverCat}
-                      draggedItem={draggedItem}
-                      selectionMode={selectionMode}
-                      selectedIds={selectedIds}
-                      onToggleSelectItem={toggleSelectItem}
-                      onToggleSelectAllInCat={toggleSelectAllInCat}
+              <SortableContext
+                items={(menuData?.secciones ?? []).map(sec => sectionDndId(sec._id))}
+                strategy={verticalListSortingStrategy}
+              >
+                {menuData?.secciones.map(sec => (
+                  <MobileSeccionBlock
+                    key={sec._id}
+                    seccion={sec}
+                    deleteDisabled={limits?.disableMenuDelete === true}
+                    onEdit={() => openEditSeccion(sec)}
+                    onDelete={() => setDeleteModal({ type: "seccion", id: sec._id, name: sec.title })}
+                  >
+                    <MobileCategoryList
+                      sectionKey={sec._id}
+                      title={sec.title}
+                      categorias={sec.categorias}
+                      emptyText="Sin categorías en esta sección."
+                      renderCategoria={renderAcordeon}
                     />
-                  ))}
+                  </MobileSeccionBlock>
+                ))}
+              </SortableContext>
 
-                  {sec.categorias.length === 0 && (
-                    <p className={styles.emptyHint} style={{ paddingLeft: "0.25rem" }}>
-                      Sin categorías en esta sección.
-                    </p>
-                  )}
-                </div>
-              ))}
-
-              {/* Categorías sin sección */}
-              {(menuData?.sinSeccion?.length ?? 0) > 0 && (
+              {/* Categorías sin sección: también vacía mientras se arrastra una
+                  categoría, para poder sacarla de su sección. */}
+              {((menuData?.sinSeccion?.length ?? 0) > 0 || draggingKind === "category") && (
                 <div className={styles.seccionBlock}>
                   <div className={styles.seccionRow}>
                     <div className={styles.seccionLeft}>
@@ -3012,33 +3146,13 @@ export default function MenuEditorPage() {
                       </span>
                     </div>
                   </div>
-                  {menuData!.sinSeccion.map(cat => (
-                    <CategoriaAcordeon
-                      key={cat._id}
-                      cat={cat}
-                      expanded={expandedCats.has(cat._id)}
-                      atItemLimit={atItemLimit}
-                      deleteDisabled={limits?.disableMenuDelete === true}
-                      onToggle={() => toggleCat(cat._id)}
-                      onEditCat={() => openEditCategoria(cat)}
-                      onDeleteCat={() => setDeleteModal({ type: "categoria", id: cat._id, name: cat.title })}
-                      onNewItem={() => openNewItem(cat)}
-                      onEditItem={item => openEditItem(item, cat)}
-                      onDeleteItem={item => setDeleteModal({ type: "item", id: item._id, name: item.title })}
-                      onToggleAvailable={toggleItemAvailable}
-                      onDragStart={handleDragStart}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                      onDragEnd={handleDragEnd}
-                      dragOverCat={dragOverCat}
-                      draggedItem={draggedItem}
-                      selectionMode={selectionMode}
-                      selectedIds={selectedIds}
-                      onToggleSelectItem={toggleSelectItem}
-                      onToggleSelectAllInCat={toggleSelectAllInCat}
-                    />
-                  ))}
+                  <MobileCategoryList
+                    sectionKey={LOOSE_SECTION}
+                    title="Sin sección"
+                    categorias={menuData?.sinSeccion ?? []}
+                    emptyText={null}
+                    renderCategoria={renderAcordeon}
+                  />
                 </div>
               )}
 
@@ -3100,5 +3214,6 @@ export default function MenuEditorPage() {
         {dialogs}
 
       </div>
+    </MenuReorderProvider>
   );
 }

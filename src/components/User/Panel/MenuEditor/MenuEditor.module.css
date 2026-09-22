@@ -610,6 +610,13 @@
   background: var(--admin-editor-surface);
   overflow: hidden;
   box-shadow: var(--admin-editor-shadow);
+  transition: border-color var(--admin-transition), box-shadow var(--admin-transition);
+}
+
+/* Categoría cerrada con un producto encima: al soltarlo va al final. */
+.catAcordeon.catDropTarget {
+  border-color: var(--admin-gold);
+  box-shadow: 0 0 0 3px var(--admin-gold-glow), var(--admin-editor-shadow);
 }
 
 .catHeader {
@@ -753,25 +760,6 @@
 }
 
 /* Handle de arrastre */
-.dragHandle {
-  color: var(--admin-text-faint);
-  cursor: grab;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  padding: 2px;
-  border-radius: 4px;
-  transition: color var(--admin-transition);
-}
-
-.dragHandle:hover {
-  color: var(--admin-text-faint);
-}
-
-.dragHandle:active {
-  cursor: grabbing;
-}
-
 /* Info de item */
 .itemInfoAc {
   flex: 1;
