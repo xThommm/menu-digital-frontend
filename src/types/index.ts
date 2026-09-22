@@ -287,6 +287,106 @@ export interface UserMenuResponse {
   menu: MenuData
 }
 
+// ── Carta pública, contrato v2 (GET /api/users/:slug/menu?v=2) ──────────────
+// Lo que consume la carta pública (UserMenu, ItemPreviewModal, carrito).
+// Son tipos APARTE de Item/Categoria/Seccion/MenuData/User de arriba, que
+// siguen siendo los espejos completos del schema (los usan el editor y la
+// landing): la v2 manda solo lo que la carta muestra y OMITE lo vacío, así
+// que casi todo es opcional y el código lee con `?? ` en vez de asumirlo.
+//
+// El front también tolera la respuesta legacy (sin ?v=2, o un backend
+// anterior que ignora el parámetro): manda de más — available, hidden,
+// offerRange, offerSchedule, ids de categorías — y esos campos van marcados
+// abajo como "solo legacy". Ninguno se necesita en v2.
+
+export interface PublicMenuItem {
+  // Imprescindible: vistas por plato (POST .../items/:id/view) y carrito.
+  _id: string
+  title: string
+  // Ausentes con "Ocultar precios" (menuDisplay.hidePrices) o si el producto
+  // no tiene precio propio (solo variantes). v2 manda offerPrice únicamente
+  // si la oferta rige ahora y siempre junto con price.
+  price?: number | null
+  offerPrice?: number | null
+  description?: string
+  image?: string
+  // Con hidePrices conserva los NOMBRES de las variantes con valor 0: el
+  // pedido por variante depende de ellos.
+  options?: Record<string, number>
+  recommended?: boolean
+  apt?: Record<string, unknown>
+  // Solo legacy. v2 excluye del JSON los productos no disponibles (interruptor
+  // manual o fuera de su programación), así que nunca manda available: usar
+  // isItemUnavailable() (lib/publicMenu.ts), no `!item.available`.
+  available?: boolean
+  // Solo legacy. Rangos/horarios de la oferta: v2 ya los resolvió en el
+  // servidor y manda offerPrice solo si rige (isOfferActive los tolera
+  // ausentes).
+  offerRange?: { from?: string | null; to?: string | null }
+  offerSchedule?: ItemOfferSchedule
+  // Solo legacy: nunca llega en true (la query ya filtra ocultos); no se lee.
+  hidden?: boolean
+}
+
+// Sin _id, descripción ni imagen: la carta no los muestra, y el orden del
+// JSON ya es el de la carta. Por eso la clave de una categoría es posicional
+// (ver categoryKey en lib/publicMenu.ts).
+export interface PublicMenuCategory {
+  title: string
+  items: PublicMenuItem[]
+}
+
+export interface PublicMenuSection {
+  title: string
+  categorias: PublicMenuCategory[]
+}
+
+export interface PublicMenuData {
+  secciones: PublicMenuSection[]
+  sinSeccion: PublicMenuCategory[]
+}
+
+export interface PublicMenuTab {
+  label: string
+  categorias: PublicMenuCategory[]
+}
+
+// Whitelist del backend: sin mail/social/location/reservationMessage. Las
+// claves vacías se omiten (number puede venir en null).
+export interface PublicMenuContactInfo {
+  businessName?: string
+  number?: number | null
+  address?: string
+  orderMessage?: string
+}
+
+export interface PublicMenuMedia {
+  backgroundPicture?: string
+  // v2 manda solo la primera imagen (la que usa BusinessSEO para og:image).
+  pictures?: string[]
+}
+
+export interface PublicMenuUser {
+  contactInfo?: PublicMenuContactInfo
+  media?: PublicMenuMedia
+  hasDelivery: boolean
+  // Ya recortados por plan en el servidor (getTemplateForFeatures /
+  // getMenuStyleForFeatures).
+  template: number
+  menuStyle?: import("../lib/menuStyles").MenuStyle
+  // v2 manda estos tres como booleanos explícitos y la carta compara con
+  // `=== true`. Opcional (y parcial) para tolerar la respuesta legacy, que
+  // manda el catálogo entero de features.
+  features?: Partial<Pick<PlanFeatures, "sin_publicidad" | "landing_page" | "pedido_whatsapp">>
+  menuDisplay?: MenuDisplay
+}
+
+// Respuesta completa de GET /api/users/:slug/menu?v=2.
+export interface PublicMenuPayload {
+  user: PublicMenuUser
+  menu: PublicMenuData
+}
+
 // ── Menú del panel del dueño (GET /users/me/menu) ──────────────────────────
 // A diferencia de Item/Categoria/Seccion/MenuData de arriba (carta pública,
 // sin items ocultos), estos incluyen los campos que solo necesita el editor:

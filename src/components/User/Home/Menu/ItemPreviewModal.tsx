@@ -1,11 +1,12 @@
 /* eslint-disable react-hooks/refs */
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useRef, useState } from "react";
-import type { Item } from "../../../../types/index";
+import type { PublicMenuItem } from "../../../../types/index";
 import { useCart } from "../../../../context/useCart";
 import styles from "./ItemPreviewModal.module.css";
 import { isOfferActive } from "../../../../lib/offers";
 import { cartUnitPrice } from "../../../../lib/cartPricing";
+import { isItemUnavailable } from "../../../../lib/publicMenu";
 
 // ── Helpers de formato (mismos criterios que en UserMenu.tsx) ──────────────────
 
@@ -32,7 +33,7 @@ const SWIPE_THRESHOLD = 60;
 const STACK_GAP = 225;
 
 interface ItemPreviewModalProps {
-  items: Item[]; // lista de productos en el orden en que se ven en el menú (ya filtrados de ocultos)
+  items: PublicMenuItem[]; // lista de productos en el orden en que se ven en el menú (la carta pública ya no trae los ocultos)
   index: number; // índice activo dentro de `items`
   hasDelivery: boolean; // si el usuario tiene delivery activo (para mostrar o no el control de agregar al pedido)
   hidePrices: boolean; // carta sin precios (opción del dueño): no se muestra ninguno, pero se puede pedir igual
@@ -120,8 +121,10 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
 
   if (!item) return null;
 
-  const hasOptions  = Object.keys(item.options ?? {}).length > 0;
-  const minPrice    = hasOptions ? minOption(item.options) : null;
+  // La v2 omite options cuando el producto no tiene variantes.
+  const options     = item.options ?? {};
+  const hasOptions  = Object.keys(options).length > 0;
+  const minPrice    = hasOptions ? minOption(options) : null;
   const basePrice   = item.price ?? minPrice;
   // Sin precios no hay oferta (mismo criterio que priceInfo en UserMenu.tsx):
   // así "Opciones" sigue disponible para ver y pedir las variantes por nombre.
@@ -140,14 +143,18 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
   // producto no tenga precio. null = no se puede agregar.
   const simplePrice = cartUnitPrice(item, undefined, { hidePrices });
 
+  // v2 no manda available (excluye los no disponibles); el legacy sí, y ahí
+  // un producto agotado se ve con "No disponible" y sin controles de pedido.
+  const unavailable = isItemUnavailable(item);
+
   const handleAddSimple = () => {
-    if (!item.available || simplePrice == null) return;
+    if (unavailable || simplePrice == null) return;
     addItem({ itemId: item._id, title: item.title, unitPrice: simplePrice });
   };
 
   // Con los precios ocultos la variante se pide por nombre, sin precio.
   const handleAddVariant = (name: string, price: number) => {
-    if (!item.available) return;
+    if (unavailable) return;
     addItem({ itemId: item._id, title: item.title, unitPrice: hidePrices ? 0 : price, selectedOption: name });
   };
 
@@ -313,9 +320,9 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
             </div>
           )}
 
-          {!item.available && <span className={styles.unavail}>No disponible</span>}
+          {unavailable && <span className={styles.unavail}>No disponible</span>}
 
-          {(!hasOptions || isOnOffer) && item.available && simplePrice != null && hasDelivery && (
+          {(!hasOptions || isOnOffer) && !unavailable && simplePrice != null && hasDelivery && (
             <AddControl
               qty={qtyOf(undefined)}
               onAdd={handleAddSimple}
@@ -335,14 +342,14 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
               </button>
               {expanded && (
                 <div className={styles.optionsContainer}>
-                  {Object.entries(item.options).map(([name, price]) => (
+                  {Object.entries(options).map(([name, price]) => (
                     <div key={name} className={styles.optionRow}>
                       <span>{name}</span>
                       <div className={styles.optionRowRight}>
                         {/* Sin precios, el nombre y el control para pedirla
                             (el valor viene en 0). */}
                         {!hidePrices && <span className={styles.price}>{fmt(price)}</span>}
-                        {item.available && (
+                        {!unavailable && (
                           <AddControl
                             qty={qtyOf(name)}
                             onAdd={() => handleAddVariant(name, price)}
@@ -367,9 +374,10 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
 // Versión liviana (sin controles de carrito) del producto adyacente, para dar
 // la sensación de "ya viene lo siguiente" mientras se desliza — no es
 // interactiva, solo se ve hasta que el swipe se confirma o se cancela.
-function PeekCard({ item, edge, dragY, hidePrices }: { item: Item; edge: "top" | "bottom"; dragY: number; hidePrices: boolean }) {
-  const hasOptions = Object.keys(item.options ?? {}).length > 0;
-  const minPrice    = hasOptions ? minOption(item.options) : null;
+function PeekCard({ item, edge, dragY, hidePrices }: { item: PublicMenuItem; edge: "top" | "bottom"; dragY: number; hidePrices: boolean }) {
+  const options     = item.options ?? {};
+  const hasOptions  = Object.keys(options).length > 0;
+  const minPrice    = hasOptions ? minOption(options) : null;
   const basePrice   = item.price ?? minPrice;
   const isOnOffer   = isOfferActive(item);
   const activePrice = isOnOffer ? item.offerPrice! : basePrice;

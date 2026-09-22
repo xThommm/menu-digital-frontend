@@ -340,10 +340,45 @@ Endpoints:
 - **`getAuthUser`** `GET /api/users/me` — datos del user autenticado + `itemCount` y
   `categoryCount`, `features` efectivas y template permitido (para el dashboard).
 - **`fetchUserWithMenu`** `GET /api/users/:slug/menu` — carta **pública** por slug:
-  arma el menú agrupado (secciones→categorías→items), filtra ocultos, y dispara
-  `trackView`. Si `programacion_productos` está activo, combina el interruptor manual `available` con la programación
-  semanal del producto en horario de Buenos Aires; fuera de horario el item permanece
-  visible como no disponible. Es lo que renderiza la carta pública.
+  arma el menú agrupado (secciones→categorías→items) y dispara `trackView`. Es lo que
+  renderiza la carta pública. Tiene **dos contratos**, elegidos por el query `v`:
+  - **v2 (`?v=2`)** — el que pide el front actual: la carta liviana, solo lo que se
+    muestra. `user` trae `contactInfo` recortado por whitelist (`businessName`, `number`,
+    `address`, `orderMessage`, sin las claves vacías; sin mail, redes, ubicación ni
+    mensaje de reserva), `media` con `backgroundPicture` y **solo la primera** imagen
+    de `pictures`, `hasDelivery`, `template` y `menuStyle` ya recortados por plan,
+    `features` con tres booleanos explícitos (`sin_publicidad`, `landing_page`,
+    `pedido_whatsapp`) y `menuDisplay`; sin `_id`, `subscription` ni `schedule`.
+    `menu` es `{ secciones: [{ title, categorias: [{ title, items }] }], sinSeccion:
+    [{ title, items }] }`, sin `_id`, `description`, `image` ni `code` en secciones y
+    categorías (el orden del JSON ya es el de la carta). Cada item lleva `_id` (vistas
+    por plato y carrito) y `title`, más `price`, `offerPrice`, `description`, `image`,
+    `options`, `recommended` y `apt` **solo si tienen valor**; nunca `available`,
+    `hidden`, `menuID`, `code`, `isExtra`, `offerRange`, `offerSchedule` ni
+    `availabilitySchedule`.
+    - **Los productos no disponibles ya no viajan.** Se excluyen los ocultos, los que
+      tienen el interruptor manual `available` apagado y, con `programacion_productos`,
+      los que están fuera de su programación semanal en horario de Buenos Aires (el
+      `now` se calcula una vez por request). Antes el item fuera de horario o agotado
+      permanecía visible como "No disponible"; con v2 desaparece de la carta. Las
+      categorías que quedan sin productos y las secciones sin categorías se podan
+      (como ya hace el PDF).
+    - **Las ofertas vienen resueltas por el backend.** `offerPrice` se manda solo si la
+      oferta rige ahora (misma lógica que `getPublicItemForPlan`: sin
+      `programacion_productos` una oferta con rango u horario se ignora) y siempre junto
+      con `price`; el rango y el horario no viajan, así que el cliente muestra precio
+      normal + `offerPrice` sin recalcular nada.
+    - Con `menuDisplay.hidePrices` no viajan `price` ni `offerPrice`, y `options`
+      conserva los **nombres** de las variantes con valor `0` (el pedido por variante
+      depende de ellos).
+  - **Legacy (sin `?v=2`)** — sigue vigente **por compatibilidad** y responde exactamente
+    igual que antes (items completos con `available`, `offerRange`/`offerSchedule` y
+    `_id` de categorías; filtra ocultos y combina `available` con la programación, pero
+    el item fuera de horario o agotado permanece visible con `available: false`). Lo
+    usan los bundles viejos del frontend: back y front se despliegan por separado y en
+    cualquier orden, así que un front nuevo puede toparse con un back que ignora `?v=2`
+    (y responde legacy) y un front viejo con un back nuevo. Se retira recién cuando no
+    queden clientes sin `?v=2`.
 - **`fetchOwnMenu`** `GET /api/users/me/menu` — menú del dueño autenticado, **sin**
   filtrar ocultos (para gestionarlos en el editor) + objeto `limits`
   (`itemCount`, `itemLimit`, `canEditMenu`, `canImportExcel`, `canExportPdf`, `canScheduleItems`, `canScheduleOffers`) para
@@ -691,11 +726,12 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
 
 - **`AdminRoute`** — guard: muestra loader mientras carga auth; redirige a `/login` si no
   está logueado, o a `/dashboard` si no es admin; si es admin renderiza `<Outlet/>`.
+  Llama a `useSessionSync()`.
 
 ### `routes/UserRoutes.tsx`
 
 - **`UserRoute`** — guard inverso: redirige a `/login` si no está logueado, o a `/admin`
-  si es admin; si es dueño renderiza `<Outlet/>`.
+  si es admin; si es dueño renderiza `<Outlet/>`. Llama a `useSessionSync()`.
 
 ## context/
 
@@ -716,6 +752,9 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
     localStorage (expiry 7 días).
   - **`refreshUser()`** — relee `/users/me` y sincroniza plan/vencimiento en state y
     localStorage. Se usa al volver de MercadoPago para no conservar el plan anterior.
+    `AuthProvider` **no** dispara solo esa lectura: envuelve toda la app, incluida la
+    carta pública, y ahí un `GET /users/me` por carga no lo usaba nadie. La
+    sincronización automática vive en `useSessionSync` (ver abajo).
   - **`completeLogin(data)`** — acepta la sesión entregada por el backend, también
     desde `RegisterSuccess`, sin necesitar volver a enviar la contraseña temporal.
   - **`logout()`** — limpia state y localStorage.
@@ -724,6 +763,17 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
 
 - **`useAuth()`** — hook que devuelve el `AuthContext`; tira error si se usa fuera del
   `AuthProvider`.
+
+### `context/useSessionSync.ts`
+
+- **`useSessionSync()`** — mantiene la sesión del panel alineada con el servidor:
+  llama a `refreshUser()` al entrar, al volver a la pestaña (`focus` /
+  `visibilitychange`) y en el instante de vencimiento del plan (con chequeos diarios
+  para fechas muy lejanas; las cuentas legacy sin fecha no generan timers). Lo llaman
+  los guards **`UserRoute`** y **`AdminRoute`**, no `AuthProvider`: así **`/users/me`
+  ya no se dispara en la carta pública** (`/:slug/menu`) ni en la landing, que no
+  tienen panel que mantener. Los vendedores no pasan por acá: `SellerRoute` los
+  sincroniza contra `/sellers/me`.
 
 ### `context/NotificationContext.ts`, `NotificationProvider.tsx` y `useNotifications.ts`
 
@@ -836,7 +886,35 @@ Helpers puros del **pedido por WhatsApp**, sin backend de pedidos. El permiso
 ### `lib/offers.ts`
 
 `isOfferActive(item, now)` comprueba precio y rango temporal para mostrar ofertas
-en la carta y el modal. El backend resuelve el permiso y el dato público.
+en la carta y el modal. El backend resuelve el permiso y el dato público. Con la
+carta v2 el servidor ya resolvió la oferta (manda `offerPrice`, junto con `price`,
+solo si rige ahora, y no manda `offerRange` ni `offerSchedule`): sin ellos
+`isOfferActive` la da por vigente, y con precio o `offerPrice` ausentes devuelve
+`false`. Con la respuesta legacy sí llegan el rango y el horario, y el front vuelve a
+resolverlos por si la carta queda abierta cruzando un límite horario.
+
+### `lib/publicMenu.ts`
+
+Helpers puros de la carta pública (con tests en `test/publicMenu.test.ts`):
+- **`isItemUnavailable(item)`** — `true` solo si `available === false`. La v2 nunca
+  manda `available` (los no disponibles no viajan) y el legacy sí: por eso no se
+  puede usar `!item.available`, que dejaría todos los productos v2 como "No
+  disponible". Lo usan `UserMenu`, `ItemPreviewModal` y `cartPricing`.
+- **`categoryKey(tabIndex, categoryIndex)`** — clave **posicional** de una categoría
+  (`"<pestaña>:<categoría>"`): la v2 no manda `_id` de categorías, y esta clave es única
+  entre pestañas (el estado de categorías abiertas sobrevive al cambio de pestaña).
+  Sirve de `key` de React, de clave de `openCats` y de `aria-controls`.
+- **`buildMenuTabs(menu)`** / **`tabHasItems(tab)`** — pestañas de la carta (una por
+  sección, más "Otros" con lo que no tiene sección) y si una pestaña tiene al menos
+  un producto.
+
+### `lib/cartPricing.ts`
+
+**`cartUnitPrice`** (precio con el que entra un producto al carrito) y
+**`repriceCartLines`**, que pone al día el carrito guardado contra la carta cargada:
+descarta las líneas cuyo producto ya no está (con v2 los agotados, ocultos o fuera
+de horario ya no viajan) o quedó `available === false` (legacy), cuya variante ya no
+existe o que se quedaron sin precio, y actualiza precios (o 0 con precios ocultos).
 
 ### `lib/adminPayments.ts`
 
@@ -927,7 +1005,12 @@ Tipos espejo de los schemas del backend y de las respuestas de la API. Incluye:
 `Subscription`, `ApiErrorType`, `ContactInfo`, `Media`, `User`, `AuthUser` (forma
 normalizada del user logueado en el contexto), `Menu`, `Item`, respuestas
 (`PublicMenuResponse`, `AuthResponse`, `TemplateResponse`, ...), el menú público
-agrupado (`Categoria`, `Seccion`, `MenuData`, `Tab`, `UserMenuResponse`), el menú del
+agrupado (`Categoria`, `Seccion`, `MenuData`, `Tab`, `UserMenuResponse`), los tipos de la
+carta pública v2 (`PublicMenuItem`, `PublicMenuCategory`, `PublicMenuSection`,
+`PublicMenuData`, `PublicMenuTab`, `PublicMenuUser`, `PublicMenuPayload`: aparte de los
+espejos completos de arriba, con opcionales donde la v2 omite lo vacío y con
+`available`/`hidden`/`offerRange`/`offerSchedule` opcionales solo por compatibilidad
+con la respuesta legacy), el menú del
 panel (`AdminItem/AdminCategoria/AdminSeccion/AdminMenuData`, con campos que solo usa el
 editor), `DashData`, `DayCount`, `StatsData`, la analítica por plato (`TopItemStat`,
 `ItemStatsData`), tipos de import masivo (`MassiveRowResult`, `MassivePreviewResponse`,
@@ -1178,8 +1261,23 @@ Bloquea pagos ante catálogo inválido y exige reconfirmación tras un 409.
 ### `components/User/Home/Menu/UserMenu.tsx`
 **Carta pública** (`/:slug/menu`). Helpers: `minOption(options)` (precio mínimo entre
 variantes), `fmt(n)` (formato de precio AR), `offerPct(orig, offer)` (% de descuento).
-- **`MenuPage`** — trae `/users/:slug/menu`, arma tabs por sección, aplica el template,
-  scroll-reveal, `document.title`. La cabecera y las tabs viven en un **único wrapper
+- **`MenuPage`** — trae `/users/:slug/menu?v=2` (contrato v2, ver `fetchUserWithMenu`
+  arriba; con `AbortController`), arma tabs por sección (`buildMenuTabs`), aplica el template,
+  scroll-reveal, `document.title`. **Tolera también la respuesta legacy**, por si el front
+  nuevo se despliega antes que el back (un back viejo ignora `?v=2`): la disponibilidad se
+  lee con `isItemUnavailable` (`available === false`, nunca `!available`), así que un
+  producto legacy agotado sigue viéndose con "No disponible" y sin controles de pedido,
+  y una oferta legacy con rango/horario se sigue resolviendo en el cliente. Con v2 no hay
+  nada de eso: los productos no disponibles, ocultos o fuera de programación **no
+  viajan**, y las ofertas llegan resueltas (precio normal + `offerPrice` vigente). La
+  respuesta v2 no trae `_id` de secciones ni de categorías: cada categoría se identifica
+  por su posición (`categoryKey(pestaña, categoría)`, por ejemplo `"1:0"`), que hace de
+  `key`, de clave de categorías abiertas (`openCats`, que vive en `MenuPage` y sobrevive
+  al cambio de pestaña) y de `aria-controls`. Como el componente no se remonta al
+  navegar de una carta a otra, al cargar una carta nueva se reinician `openCats`, la
+  pestaña activa y el preview (las claves posicionales de la anterior abrirían
+  categorías al azar). Los productos siguen usando `_id` (vistas por plato y carrito).
+  Esta pantalla ya **no dispara `/users/me`** (ver `useSessionSync`). La cabecera y las tabs viven en un **único wrapper
   sticky** (`.mpSticky`): las tabs quedan pegadas exactamente debajo del header sin
   acoplar un `top:` fijo a una altura que cambia entre mobile y desktop; al cambiar de
   tab se vuelve al tope de la página (el inicio visible del contenido). Envuelve todo en

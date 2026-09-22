@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ShoppingBag, UtensilsCrossed } from "lucide-react";
-import type { User, Item, MenuData, Tab } from "../../../../types/index";
+import type { PublicMenuData, PublicMenuItem, PublicMenuPayload, PublicMenuUser } from "../../../../types/index";
 import { useReveal } from "../../../../hooks/useReveal";
 import { CartProvider } from "../../../../context/CartProvider";
 import { useCart } from "../../../../context/useCart";
@@ -16,6 +16,7 @@ import { buildOrderMessage, buildWaLink } from "../../../../lib/whatsapp";
 import { resolveMenuDisplay } from "../../../../lib/menuDisplay";
 import { cartUnitPrice, repriceCartLines } from "../../../../lib/cartPricing";
 import { getVisualFamily, resolveMenuStyle } from "../../../../lib/menuStyles";
+import { buildMenuTabs, categoryKey, isItemUnavailable, tabHasItems } from "../../../../lib/publicMenu";
 
 // ── Helpers de formato ────────────────────────────────────────────────────────
 
@@ -37,22 +38,25 @@ const offerPct = (original: number, offer: number) =>
 
 // Precio de un producto con el mismo criterio en la tarjeta de la lista y en
 // la del carrusel de destacados. Con los precios ocultos no hay oferta: el
-// backend ya la manda en null, esto es por las dudas — y así el botón
-// "Opciones" sigue apareciendo para ver y pedir las variantes por nombre.
-function priceInfo(item: Item, hidePrices: boolean) {
-  const hasOptions  = Object.keys(item.options ?? {}).length > 0;
-  const minPrice    = hasOptions ? minOption(item.options) : null;
+// backend no manda price ni offerPrice (el legacy los manda en null), esto es
+// por las dudas — y así el botón "Opciones" sigue apareciendo para ver y
+// pedir las variantes por nombre.
+function priceInfo(item: PublicMenuItem, hidePrices: boolean) {
+  // La v2 omite options cuando el producto no tiene variantes.
+  const options     = item.options ?? {};
+  const hasOptions  = Object.keys(options).length > 0;
+  const minPrice    = hasOptions ? minOption(options) : null;
   const basePrice   = item.price ?? minPrice;
   const isOnOffer   = !hidePrices && isOfferActive(item);
   const activePrice = isOnOffer ? item.offerPrice! : basePrice;
   const pct         = isOnOffer ? offerPct(item.price!, item.offerPrice!) : null;
-  return { hasOptions, minPrice, isOnOffer, activePrice, pct };
+  return { options, hasOptions, minPrice, isOnOffer, activePrice, pct };
 }
 
 // Lista sobre la que navega el swipe del preview: la de la pestaña activa o
 // la del carrusel de destacados, según desde dónde se abrió.
 interface PreviewState {
-  items: Item[];
+  items: PublicMenuItem[];
   index: number;
 }
 
@@ -62,8 +66,8 @@ export default function MenuPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
 
-  const [user, setUser]         = useState<User | null>(null);
-  const [menu, setMenu]         = useState<MenuData | null>(null);
+  const [user, setUser]         = useState<PublicMenuUser | null>(null);
+  const [menu, setMenu]         = useState<PublicMenuData | null>(null);
   // Slug al que corresponden `user` y `menu`. En una navegación SPA de una
   // carta a otra la URL cambia antes de que llegue la carta nueva, y el
   // carrito se normaliza contra los productos de la carta cargada (ver
@@ -76,9 +80,13 @@ export default function MenuPage() {
   const [activeTab, setActiveTab] = useState(0);
   const [cartOpen, setCartOpen] = useState(false);
   const [preview, setPreview]   = useState<PreviewState | null>(null);
-  // Categorías abiertas cuando son desplegables. Vive acá (no en cada
-  // sección) para que sobreviva al cambio de pestaña: <main> se remonta con
-  // key={activeTab} y perdería el estado.
+  // Categorías abiertas cuando son desplegables, por categoryKey (pestaña +
+  // posición: la carta pública no trae _id de categorías). Vive acá (no en
+  // cada sección) para que sobreviva al cambio de pestaña: <main> se remonta
+  // con key={activeTab} y perdería el estado. Se reinicia al cargar otra
+  // carta (ver fetchMenu): las claves son posicionales, y como el componente
+  // no se remonta al navegar de una carta a otra, las claves abiertas de la
+  // anterior abrirían categorías al azar en la nueva.
   const [openCats, setOpenCats] = useState<Set<string>>(() => new Set());
 
   // Analítica por plato (fase 3): abrir la previsualización de un producto
@@ -100,7 +108,10 @@ export default function MenuPage() {
     const controller = new AbortController();
     const fetchMenu = async () => {
       try {
-        const res = await fetch(`/api/users/${slug}/menu`, {
+        // ?v=2 pide la carta liviana (solo lo que se muestra, sin productos
+        // agotados/ocultos). Un backend anterior ignora el parámetro y
+        // responde el shape viejo, que esta pantalla también tolera.
+        const res = await fetch(`/api/users/${slug}/menu?v=2`, {
           signal: controller.signal,
         });
         if (!res.ok) {
@@ -108,9 +119,15 @@ export default function MenuPage() {
           else setLoadError(true);
           return;
         }
-        const data = await res.json();
+        const data: PublicMenuPayload = await res.json();
         setUser(data.user);
         setMenu(data.menu);
+        // Carta nueva = estado de navegación nuevo: las claves de openCats,
+        // el índice de pestaña y la lista del preview son posicionales y de
+        // la carta anterior.
+        setOpenCats(new Set());
+        setActiveTab(0);
+        setPreview(null);
         setMenuSlug(slug ?? "");
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
@@ -126,19 +143,7 @@ export default function MenuPage() {
 
   const goBack = useCallback(() => navigate(`/${slug}`), [slug, navigate]);
 
-  const tabs = useMemo<Tab[]>(() => {
-    if (!menu) return [];
-    return [
-      ...menu.secciones.map(s => ({ label: s.title, categorias: s.categorias })),
-      ...(menu.sinSeccion.length > 0 ? [{ label: "Otros", categorias: menu.sinSeccion }] : []),
-    ];
-  }, [menu]);
-
-  // Un tab "visible" tiene al menos un item no oculto. Se usa tanto para
-  // decidir qué botón de pestaña mostrar como para saltar automáticamente
-  // si la pestaña activa se queda sin productos (ej: se ocultó todo).
-  const hasVisibleItems = (tab: Tab) =>
-    tab.categorias.some(cat => cat.items.some(it => !it.hidden));
+  const tabs = useMemo(() => buildMenuTabs(menu), [menu]);
 
   // Opciones del dueño sobre cómo se ve la carta (panel de Configuración).
   // Ausentes = todo apagado: la carta se ve como siempre.
@@ -157,20 +162,21 @@ export default function MenuPage() {
     const tab = tabs[activeTab];
     if (!tab) return [];
     return tab.categorias
-      .filter(cat => !collapsible || openCats.has(cat._id))
-      .flatMap(cat => cat.items.filter(it => !it.hidden));
+      .filter((_, catIndex) => !collapsible || openCats.has(categoryKey(activeTab, catIndex)))
+      .flatMap(cat => cat.items);
   }, [tabs, activeTab, collapsible, openCats]);
 
   // Carrusel "Destacados": los recomendados de TODAS las pestañas, en el
   // orden en que aparecen en la carta. Solo los disponibles — el carrusel
   // es una vidriera, no tiene sentido abrir la carta destacando algo que
-  // hoy no hay.
+  // hoy no hay (con v2 los no disponibles ni viajan; el legacy los manda
+  // con available en false).
   const featuredItems = useMemo(() => {
     const seen = new Set<string>();
     return tabs
       .flatMap(tab => tab.categorias.flatMap(cat => cat.items))
       .filter(it => {
-        if (it.hidden || !it.available || !it.recommended || seen.has(it._id)) return false;
+        if (isItemUnavailable(it) || !it.recommended || seen.has(it._id)) return false;
         seen.add(it._id);
         return true;
       });
@@ -183,11 +189,11 @@ export default function MenuPage() {
     [tabs]
   );
 
-  const toggleCategory = useCallback((id: string) => {
+  const toggleCategory = useCallback((key: string) => {
     setOpenCats(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }, []);
@@ -242,7 +248,7 @@ export default function MenuPage() {
       />
 
       <EmptyMenu
-        name={user.contactInfo.businessName}
+        name={user.contactInfo?.businessName ?? ""}
         template={user.template}
         menuStyle={menuStyle}
         showAd={user.features?.sin_publicidad !== true}
@@ -256,22 +262,26 @@ export default function MenuPage() {
   );
 }
 
-  // Si la pestaña activa se quedó sin productos visibles (ej: se ocultó
-  // todo), saltamos a la primera que sí tenga — evita una pantalla en
-  // blanco sin ninguna pestaña resaltada. Ajuste de estado durante el
-  // render (no en un efecto) para no disparar un render en cascada.
-  const firstVisible = tabs.findIndex(hasVisibleItems);
-  if (!hasVisibleItems(tabs[activeTab])) {
+  // Una pestaña "visible" tiene al menos un producto (tabHasItems): decide
+  // qué botones de pestaña se muestran. Si la activa se quedó sin productos
+  // (ej: se ocultó todo), saltamos a la primera que sí tenga — evita una
+  // pantalla en blanco sin ninguna pestaña resaltada. La v2 ya poda las
+  // categorías y secciones vacías; esto cubre la respuesta legacy. Ajuste de
+  // estado durante el render (no en un efecto) para no disparar un render en
+  // cascada.
+  const firstVisible = tabs.findIndex(tabHasItems);
+  if (!tabHasItems(tabs[activeTab])) {
     if (firstVisible !== -1 && firstVisible !== activeTab) {
       setActiveTab(firstVisible);
     }
   }
 
-    const info = user.contactInfo;
+  // v2 recorta contactInfo por whitelist y omite las claves vacías.
+  const info = user.contactInfo ?? {};
   const currentTab = tabs[activeTab] ?? tabs[0];
 
   const totalItems = currentTab.categorias.reduce(
-    (acc, cat) => acc + cat.items.filter((it) => !it.hidden).length,
+    (acc, cat) => acc + cat.items.length,
     0
   );
 
@@ -295,12 +305,12 @@ export default function MenuPage() {
 
   // Abrir el preview (desde la lista o desde el carrusel) es lo que cuenta
   // como vista; navegar con swipe dentro del modal no suma.
-  const openPreview = (items: Item[], index: number) => {
+  const openPreview = (items: PublicMenuItem[], index: number) => {
     trackItemView(items[index]._id);
     setPreview({ items, index });
   };
 
-  const renderItemCards = (items: Item[]) =>
+  const renderItemCards = (items: PublicMenuItem[]) =>
     items.map((item, idx) => (
       <ItemCard
         key={item._id}
@@ -386,7 +396,7 @@ export default function MenuPage() {
               >
                 {tabs.map(
                   (tab, i) =>
-                    hasVisibleItems(tab) && (
+                    tabHasItems(tab) && (
                       <button
                         key={i}
                         ref={(el) => {
@@ -435,26 +445,27 @@ export default function MenuPage() {
                   Esta sección no tiene productos disponibles por ahora.
                 </p>
               ) : (
-                currentTab.categorias.map((cat) => {
-                  const visibleItems = cat.items.filter(
-                    (it) => !it.hidden
-                  );
-
-                  if (visibleItems.length === 0) {
+                currentTab.categorias.map((cat, catIndex) => {
+                  // v2 ya poda las categorías sin productos; el legacy no.
+                  if (cat.items.length === 0) {
                     return null;
                   }
+
+                  // Sin _id de categoría: clave posicional, única entre
+                  // pestañas (ver categoryKey).
+                  const catKey = categoryKey(activeTab, catIndex);
 
                   if (!collapsible) {
                     return (
                       <section
-                        key={cat._id}
+                        key={catKey}
                         className={styles.mpCat}
                       >
                         <h2 className={`${styles.mpCatTitle} t-family-heading`}>
                           {cat.title}
                         </h2>
 
-                        {renderItemCards(visibleItems)}
+                        {renderItemCards(cat.items)}
                       </section>
                     );
                   }
@@ -463,13 +474,13 @@ export default function MenuPage() {
                   // el reveal (useReveal) las anima al aparecer igual que al
                   // entrar en pantalla. El contenedor existe siempre para que
                   // aria-controls apunte a algo.
-                  const open = openCats.has(cat._id);
-                  const panelId = `mp-cat-${cat._id}`;
-                  const count = visibleItems.length;
+                  const open = openCats.has(catKey);
+                  const panelId = `mp-cat-${catKey}`;
+                  const count = cat.items.length;
 
                   return (
                     <section
-                      key={cat._id}
+                      key={catKey}
                       className={styles.mpCatCollapsible}
                     >
                       <h2 className={`${styles.mpCatTitle} t-family-heading`}>
@@ -478,7 +489,7 @@ export default function MenuPage() {
                           className={styles.mpCatToggle}
                           aria-expanded={open}
                           aria-controls={panelId}
-                          onClick={() => toggleCategory(cat._id)}
+                          onClick={() => toggleCategory(catKey)}
                         >
                           <span className={styles.mpCatToggleLabel}>
                             {cat.title}
@@ -498,7 +509,7 @@ export default function MenuPage() {
                         className={styles.mpCatItems}
                         hidden={!open}
                       >
-                        {open && renderItemCards(visibleItems)}
+                        {open && renderItemCards(cat.items)}
                       </div>
                     </section>
                   );
@@ -509,7 +520,7 @@ export default function MenuPage() {
             {ordersEnabled && (
               <OrderSummary
                 businessName={info.businessName || "el local"}
-                whatsappNumber={info.number}
+                whatsappNumber={info.number ?? null}
                 orderMessage={info.orderMessage}
                 hidePrices={display.hidePrices}
               />
@@ -529,7 +540,7 @@ export default function MenuPage() {
               open={cartOpen}
               onClose={() => setCartOpen(false)}
               businessName={info.businessName || "el local"}
-              whatsappNumber={info.number}
+              whatsappNumber={info.number ?? null}
               orderMessage={info.orderMessage}
               hidePrices={display.hidePrices}
             />
@@ -673,7 +684,7 @@ function ItemCard({
   isFamily,
   onOpenPreview,
 }: {
-  item: Item;
+  item: PublicMenuItem;
   index: number;
   hasDelivery: boolean;
   hidePrices: boolean;
@@ -687,7 +698,11 @@ function ItemCard({
   const { ref, revealed } = useReveal<HTMLElement>();
   const { items: cartItems, addItem, updateQuantity } = useCart();
 
-  const { hasOptions, minPrice, isOnOffer, activePrice, pct } = priceInfo(item, hidePrices);
+  const { options, hasOptions, minPrice, isOnOffer, activePrice, pct } = priceInfo(item, hidePrices);
+
+  // v2 no manda available (excluye los no disponibles); el legacy sí, y ahí
+  // un producto agotado se ve con "No disponible" y sin controles de pedido.
+  const unavailable = isItemUnavailable(item);
 
   // Click en la tarjeta = abrir la previsualización (MenuPage registra la
   // vista). Los controles internos (agregar, cantidad, variantes) ya cortan
@@ -709,13 +724,13 @@ function ItemCard({
   const simplePrice = cartUnitPrice(item, undefined, { hidePrices });
 
   const handleAddSimple = () => {
-    if (!item.available || simplePrice == null) return;
+    if (unavailable || simplePrice == null) return;
     addItem({ itemId: item._id, title: item.title, unitPrice: simplePrice });
   };
 
   // Con los precios ocultos la variante se pide por nombre, sin precio.
   const handleAddVariant = (name: string, price: number) => {
-    if (!item.available) return;
+    if (unavailable) return;
     addItem({ itemId: item._id, title: item.title, unitPrice: hidePrices ? 0 : price, selectedOption: name });
   };
 
@@ -723,7 +738,7 @@ function ItemCard({
 
   const cardClass = [
     styles.itemCard,
-    !item.available ? styles.unavailable : "",
+    unavailable ? styles.unavailable : "",
     item.recommended ? styles.recommended : "",
     revealed ? styles.itemRevealed : "",
   ].filter(Boolean).join(" ");
@@ -752,7 +767,7 @@ function ItemCard({
       <div className={styles.itemBody}>
         <div className={styles.itemTop}>
           {isBistro || isFamily ? (
-            <button type="button" className={`${styles.itemName} t-family-heading`} aria-haspopup="dialog" disabled={!item.available}
+            <button type="button" className={`${styles.itemName} t-family-heading`} aria-haspopup="dialog" disabled={unavailable}
               onClick={(event) => { event.stopPropagation(); onOpenPreview(); }}>
               {item.title}
             </button>
@@ -806,11 +821,11 @@ function ItemCard({
             </button>
           )}
 
-          {!item.available && (
+          {unavailable && (
             <span className={styles.itemUnavail}>No disponible</span>
           )}
 
-          {(!hasOptions || isOnOffer) && item.available && simplePrice != null && hasDelivery && (
+          {(!hasOptions || isOnOffer) && !unavailable && simplePrice != null && hasDelivery && (
             <AddControl
               qty={qtyOf(undefined)}
               onAdd={handleAddSimple}
@@ -820,14 +835,14 @@ function ItemCard({
 
           {canPickVariant && expanded && (
             <div className={styles.optionsContainer}>
-              {Object.entries(item.options).map(([name, price]) => (
+              {Object.entries(options).map(([name, price]) => (
                 <div key={name} className={styles.optionRow}>
                   <span>{name}</span>
                   <div className={styles.optionRowRight}>
                     {/* Sin precios, cada variante es su nombre y el control
                         para pedirla (el valor viene en 0). */}
                     {!hidePrices && <span className={styles.itemPrice}>{fmt(price)}</span>}
-                    {item.available && (
+                    {!unavailable && (
                       <AddControl
                         qty={qtyOf(name)}
                         onAdd={() => handleAddVariant(name, price)}
@@ -854,7 +869,7 @@ function FeaturedCarousel({
   hidePrices,
   onOpen,
 }: {
-  items: Item[];
+  items: PublicMenuItem[];
   hidePrices: boolean;
   onOpen: (index: number) => void;
 }) {
@@ -883,7 +898,7 @@ function FeaturedCard({
   hidePrices,
   onOpen,
 }: {
-  item: Item;
+  item: PublicMenuItem;
   hidePrices: boolean;
   onOpen: () => void;
 }) {

@@ -1,10 +1,17 @@
-import type { DayKey, Item, ItemOfferSchedule, TimeRange } from "../types";
+import type { DayKey, ItemOfferSchedule, PublicMenuItem, TimeRange } from "../types";
 import { formatDateAR } from "./dates.ts";
 
-// Espejo de utils/offers.js + utils/itemAvailability.js del backend. La API
-// pública ya devuelve offerPrice en null cuando la oferta no rige, pero la
-// carta puede quedar abierta cruzando el borde de un horario, así que el
-// front vuelve a resolverlo con los mismos datos.
+// Espejo de utils/offers.js + utils/itemAvailability.js del backend.
+// Con el contrato v2 de la carta el servidor ya resuelve la oferta: manda
+// offerPrice (junto con price) solo si rige ahora y NO manda offerRange ni
+// offerSchedule; sin ellos, este cálculo la da por vigente. Con la respuesta
+// legacy sí llegan y la carta puede quedar abierta cruzando el borde de un
+// horario, así que el front vuelve a resolverla con los mismos datos.
+
+// Lo único que mira isOfferActive: alcanza con un Item completo (editor) o
+// con un PublicMenuItem (carta pública, donde offerRange/offerSchedule
+// pueden faltar).
+type OfferFields = Pick<PublicMenuItem, "price" | "offerPrice" | "offerRange" | "offerSchedule">
 
 const DAY_KEYS: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -62,7 +69,7 @@ export function isScheduleActiveAt(
   return inside(today, false) || inside(previousDay, true);
 }
 
-export function isOfferActive(item: Item, now = Date.now()): boolean {
+export function isOfferActive(item: OfferFields, now = Date.now()): boolean {
   if (item.offerPrice == null || item.price == null) return false;
   if (!isWithinDateRange(item.offerRange, now)) return false;
   return isScheduleActiveAt(item.offerSchedule as ItemOfferSchedule | undefined, now);

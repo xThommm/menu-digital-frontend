@@ -1,6 +1,7 @@
 import type { CartLine } from "../context/CartContext";
-import type { Item } from "../types/index.ts";
+import type { PublicMenuItem } from "../types/index.ts";
 import { isOfferActive } from "./offers.ts";
+import { isItemUnavailable } from "./publicMenu.ts";
 
 interface PricingOptions {
   // Opción "Ocultar precios" de la carta: se puede pedir igual, pero el
@@ -22,10 +23,11 @@ const minOption = (options: Record<string, number>): number | null => {
 // - simple: el de oferta si rige, si no item.price o, sin precio propio, el
 //   mínimo de las variantes (el "Desde" de la tarjeta).
 // null = no se puede agregar. Con hidePrices vale 0 aunque el producto no
-// tenga precio: el backend los manda en null y las variantes en 0, y el
-// dueño igual quiere recibir pedidos.
+// tenga precio: el backend no manda price/offerPrice (el legacy los manda en
+// null) y deja las variantes con valor 0, y el dueño igual quiere recibir
+// pedidos.
 export function cartUnitPrice(
-  item: Item,
+  item: PublicMenuItem,
   selectedOption?: string,
   { hidePrices = false, now = Date.now() }: PricingOptions = {},
 ): number | null {
@@ -44,18 +46,21 @@ export function cartUnitPrice(
 // actuales (todas las pestañas). Sin esto, un pedido armado con los
 // precios ocultos (todo en 0) salía con "$0" si el dueño después volvía a
 // mostrar los precios, y un carrito viejo arrastraba precios de otro día.
-// Se descartan las líneas cuyo producto ya no está en la carta, quedó
-// oculto o no disponible, cuya variante ya no existe o que se quedaron sin
-// precio; el resto conserva cantidad y variante con precio y nombre al día.
+// Se descartan las líneas cuyo producto ya no está en la carta, cuya variante
+// ya no existe o que se quedaron sin precio; el resto conserva cantidad y
+// variante con precio y nombre al día. Con el contrato v2 los productos
+// ocultos, agotados o fuera de horario ya no viajan, así que "ya no está en
+// la carta" los cubre; con la respuesta legacy los agotados sí llegan, con
+// available en false, y también se descartan.
 export function repriceCartLines(
   lines: CartLine[],
-  items: Item[],
+  items: PublicMenuItem[],
   options: PricingOptions = {},
 ): CartLine[] {
   const byId = new Map(items.map(item => [item._id, item]));
   return lines.flatMap(line => {
     const item = byId.get(line.itemId);
-    if (!item || item.hidden || !item.available) return [];
+    if (!item || isItemUnavailable(item)) return [];
     const unitPrice = cartUnitPrice(item, line.selectedOption, options);
     if (unitPrice == null) return [];
     return [{ ...line, title: item.title, unitPrice }];

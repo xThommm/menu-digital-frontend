@@ -1,13 +1,23 @@
 import { useEffect } from "react";
-import type { User } from "../../types/index";
+import type { ContactInfo, LandingVisibility, Media } from "../../types/index";
 import { resolveLandingVisibility } from "../../lib/landingVisibility";
 
 const SITE_URL = "https://www.menudigitalapp.com.ar";
 const DEFAULT_IMAGE =
   "https://www.menudigitalapp.com.ar/brand/menu-digital-logo-512.png";
 
+// Solo lo que este componente lee del negocio. Es estructural a propósito: le
+// entra tanto el User de la landing (contacto y media completos, con
+// landingVisibility) como el PublicMenuUser de la carta, que llega recortado
+// (sin mail, con solo la primera imagen y sin landingVisibility).
+type BusinessSEOUser = {
+  contactInfo?: Partial<Pick<ContactInfo, "businessName" | "address" | "number" | "mail">>;
+  media?: Partial<Media>;
+  landingVisibility?: LandingVisibility;
+};
+
 type BusinessSEOProps = {
-  user: User;
+  user: BusinessSEOUser;
   slug: string;
   page: "landing" | "menu";
 };

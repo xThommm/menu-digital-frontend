@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { AuthContext } from "./AuthContext";
 import type { AuthResponse, AuthUser } from '../types';
 import type { SellerProfile } from "../api/sellers";
@@ -140,55 +140,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return refreshedUser;
   }, [token, user?.role, logout]);
 
-  // La expiración se resuelve en el servidor en cada request. Este refresco
-  // mantiene la sesión alineada sin exigir que el usuario cierre y vuelva a
-  // abrir el panel justo cuando vence el plan: sincroniza al entrar, al volver
-  // a la pestaña y en el instante de vencimiento (con chequeos diarios para
-  // fechas muy lejanas). Las cuentas legacy sin fecha no generan timers.
-  useEffect(() => {
-    // SellerRoute sincroniza las cuentas de vendedor contra /sellers/me
-    // antes de mostrar su panel; acá se sincronizan suscripciones de User.
-    if (!token || user?.role === "seller") return;
-
-    let cancelled = false;
-    let expiryTimer: number | undefined;
-    const maxTimerDelay = 24 * 60 * 60 * 1000;
-
-    const sync = () => {
-      if (!cancelled) void refreshUser().catch(() => {});
-    };
-
-    const expiresAt = user?.subscriptionExpiresAt
-      ? new Date(user.subscriptionExpiresAt).getTime()
-      : Number.NaN;
-    if (user?.subscription !== "free" && Number.isFinite(expiresAt)) {
-      const scheduleExpiryCheck = () => {
-        if (cancelled) return;
-        const remaining = expiresAt - Date.now();
-        if (remaining <= 0) {
-          sync();
-          return;
-        }
-        expiryTimer = window.setTimeout(scheduleExpiryCheck, Math.min(remaining + 100, maxTimerDelay));
-      };
-      scheduleExpiryCheck();
-    }
-
-    const onFocus = () => sync();
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") sync();
-    };
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    sync();
-
-    return () => {
-      cancelled = true;
-      if (expiryTimer !== undefined) window.clearTimeout(expiryTimer);
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
-  }, [refreshUser, token, user?.role, user?.subscription, user?.subscriptionExpiresAt, user?.subscriptionStatus]);
+  // La sincronización periódica de la sesión (plan/vencimiento) no vive acá
+  // sino en useSessionSync, que llaman solo los guards del panel: este
+  // provider envuelve también la carta pública y ahí no debe pegarle a /me.
 
   // ✅ Parámetro `username` no choca con ningún estado
   const login = async (username: string, password: string): Promise<AuthUser> => {

@@ -88,3 +88,15 @@ test("un horario semanal desactivado no restringe nada", () => {
 
   assert.equal(isOfferActive(guardadoInactivo, at("2026-08-19T10:00:00-03:00")), true);
 });
+
+test("carta v2: sin offerRange ni offerSchedule (ya resueltos por el servidor) rige si hay offerPrice y price", () => {
+  // La v2 manda offerPrice solo si la oferta rige ahora, siempre junto con
+  // price, y no manda ni el rango ni el horario: sin ellos no hay nada que
+  // restringir, en cualquier momento.
+  assert.equal(isOfferActive({ price: 1000, offerPrice: 800 }), true);
+  assert.equal(isOfferActive({ price: 1000, offerPrice: 800 }, at("2030-01-01T03:00:00-03:00")), true);
+  // Oferta vencida o fuera de horario: la v2 no manda offerPrice, y no hay oferta.
+  assert.equal(isOfferActive({ price: 1000 }), false);
+  // Nunca hay oferta sin el precio original.
+  assert.equal(isOfferActive({ offerPrice: 800 }), false);
+});
