@@ -43,7 +43,7 @@ function ReorderPreview({ data }: { data: SortableData }) {
 // Envuelve el editor: el contexto de dnd-kit, el estado que leen las piezas
 // del editor y la vista previa que sigue al puntero. La vista previa va a
 // document.body (position: fixed se rompe debajo de un ancestro con
-// backdrop-filter, y el editor usa vidrio) dentro de .admin-editor, que es
+// transform, filter o backdrop-filter) dentro de .admin-editor, que es
 // donde viven sus variables de color.
 export default function MenuReorderProvider({ reorder, available, disabledReason, children }: {
   reorder: MenuReorder;

@@ -61,7 +61,7 @@ export default function CartDrawer({
                   </div>
                   <div className={styles.lineQty}>
                     <button
-                      className="md-glass-button"
+                      className="md-button"
                       type="button"
                       onClick={() => updateQuantity(l.itemId, l.selectedOption, l.quantity - 1)}
                       aria-label={`Quitar una unidad de ${l.title}`}
@@ -70,7 +70,7 @@ export default function CartDrawer({
                     </button>
                     <span>{l.quantity}</span>
                     <button
-                      className="md-glass-button"
+                      className="md-button"
                       type="button"
                       onClick={() => updateQuantity(l.itemId, l.selectedOption, l.quantity + 1)}
                       aria-label={`Agregar una unidad de ${l.title}`}

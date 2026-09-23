@@ -261,9 +261,9 @@
    Se abre al tocar la foto de portada o una de la galería. Es theme-agnóstico
    (va por ENCIMA de cualquier template, sobre un backdrop oscuro propio), así
    que usa su propia paleta neutra en vez de los tokens --t-* del template.
-   Modernizado: backdrop con blur + fade, imagen con zoom de entrada, y botones
-   glassmorphic (antes prev/next no tenían fondo ni color y quedaban casi
-   invisibles sobre el overlay). Navegación por teclado y bloqueo de scroll los
+   Modernizado: backdrop casi opaco con fade, imagen con zoom de entrada, y
+   botones translúcidos (antes prev/next no tenían fondo ni color y quedaban
+   casi invisibles sobre el overlay). Navegación por teclado y bloqueo de scroll los
    maneja el componente (ver ImageViewer en UserHome.tsx). */
 .tViewer {
   position: fixed;
@@ -273,9 +273,7 @@
   justify-content: center;
   align-items: center;
   padding: clamp(1rem, 4vw, 3rem);
-  background: rgba(8, 7, 6, 0.86);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(8, 7, 6, 0.92);
   animation: t-fadeIn 0.2s ease both;
 }
 
@@ -294,7 +292,7 @@
   to   { opacity: 1; transform: scale(1); }
 }
 
-/* Lenguaje común glassmorphic para los 3 controles (cerrar / prev / next). */
+/* Lenguaje común para los 3 controles (cerrar / prev / next). */
 .tViewerClose,
 .tViewerPrev,
 .tViewerNext {
@@ -305,8 +303,6 @@
   border: 0.5px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.10);
   color: #fff;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   cursor: pointer;
   transition: background 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
 }
@@ -342,12 +338,12 @@
 }
 
 .tViewerPrev {
-  composes: md-glass-button from global; left: clamp(0.75rem, 3vw, 2rem); }
+  composes: md-button from global; left: clamp(0.75rem, 3vw, 2rem); }
 .tViewerNext {
-  composes: md-glass-button from global; right: clamp(0.75rem, 3vw, 2rem); }
+  composes: md-button from global; right: clamp(0.75rem, 3vw, 2rem); }
 
 .tViewerClose {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   top: clamp(0.75rem, 3vw, 1.5rem);
   right: clamp(0.75rem, 3vw, 1.5rem);
   width: var(--control-min-size);
@@ -368,8 +364,6 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.10);
   border: 0.5px solid rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   color: #fff;
   font-family: var(--font-sans);
   font-size: 0.8rem;
@@ -491,13 +485,11 @@
   left: 0;
   z-index: 20;
   min-width: 180px;
-  background: color-mix(in srgb, var(--t-surface) 94%, transparent);
-  border: 0.5px solid var(--t-border-md);
-  border-radius: var(--radius-lg);
+  background: var(--tone-float);
+  border: 0.5px solid transparent;
+  border-radius: 16px;
   padding: 6px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--tone-shadow);
   animation: t-fadeIn 0.15s ease both;
 }
 

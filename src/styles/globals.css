@@ -27,12 +27,10 @@
 
   /* Área mínima recomendada para controles táctiles. */
   --control-min-size: 44px;
-  --control-glass-radius: 14px;
-  --control-glass-blur: 12px;
-  --control-glass-sheen: rgba(255, 255, 255, 0.16);
-  --control-glass-rim: rgba(255, 255, 255, 0.22);
-  --control-glass-edge: rgba(0, 0, 0, 0.12);
-  --control-glass-shadow: rgba(0, 0, 0, 0.14);
+  /* Forma de los controles (.md-button, .t-btn): píldora. Al presionar,
+     la receta la achica a --control-radius-pressed (ver CONTROLES). */
+  --control-radius: 24px;
+  --control-radius-pressed: 12px;
 
   /* Estados semánticos compartidos por los templates públicos. */
   --t-offer:       #e2543d;
@@ -257,17 +255,12 @@
   --admin-shadow-dock: 0 12px 36px rgba(0,0,0,0.42), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
   --admin-shadow-popover: 0 16px 40px rgba(0,0,0,0.48), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
 
-  /* Sombras específicas del Dashboard — glow dorado en el logo
-     y en cards al hacer hover, y la sombra ambiental de la
-     storefront card (reposo + hover). */
+  /* Sombras específicas del Dashboard — glow dorado en el logo y la
+     sombra ambiental del marco de la vista previa. Las tarjetas ya no
+     llevan sombra: se separan por tono (ver ESCALA TONAL). */
   --admin-shadow-logo:          0 2px 10px color-mix(in srgb, var(--admin-gold) 28%, transparent);
   --admin-shadow-logo-hover:    0 4px 18px color-mix(in srgb, var(--admin-gold) 42%, transparent);
   --admin-shadow-card-rest:     0 0 0 0.5px color-mix(in srgb, var(--admin-gold) 10%, transparent) inset, 0 4px 32px rgba(0, 0, 0, 0.4);
-  --admin-shadow-card-hover:    0 0 0 0.5px color-mix(in srgb, var(--admin-gold) 15%, transparent) inset, 0 8px 40px rgba(0, 0, 0, 0.45);
-  --admin-shadow-navcard-hover:         0 4px 24px color-mix(in srgb, var(--admin-gold) 8%, transparent);
-  --admin-shadow-navcard-primary-hover: 0 4px 28px color-mix(in srgb, var(--admin-gold) 12%, transparent);
-  --admin-shadow-action-btn-hover:         0 2px 14px color-mix(in srgb, var(--admin-gold) 30%, transparent);
-  --admin-shadow-action-btn-success-hover: 0 2px 14px color-mix(in srgb, var(--admin-success-core) 60%, transparent);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -341,11 +334,6 @@
   --admin-shadow-logo:          0 2px 10px color-mix(in srgb, var(--admin-gold) 30%, transparent);
   --admin-shadow-logo-hover:    0 4px 18px color-mix(in srgb, var(--admin-gold) 44%, transparent);
   --admin-shadow-card-rest:     0 0 0 0.5px color-mix(in srgb, var(--admin-gold) 12%, transparent) inset, 0 4px 24px rgba(44, 24, 16, 0.08);
-  --admin-shadow-card-hover:    0 0 0 0.5px color-mix(in srgb, var(--admin-gold) 20%, transparent) inset, 0 8px 32px rgba(44, 24, 16, 0.12);
-  --admin-shadow-navcard-hover:         0 4px 20px color-mix(in srgb, var(--admin-gold) 10%, transparent);
-  --admin-shadow-navcard-primary-hover: 0 4px 24px color-mix(in srgb, var(--admin-gold) 16%, transparent);
-  --admin-shadow-action-btn-hover:         0 2px 14px color-mix(in srgb, var(--admin-gold) 32%, transparent);
-  --admin-shadow-action-btn-success-hover: 0 2px 14px color-mix(in srgb, var(--admin-success-core) 55%, transparent);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -432,10 +420,6 @@
   --admin-shadow-logo:       none;
   --admin-shadow-logo-hover: none;
   --admin-shadow-card-rest:  0 0 0 0.5px rgba(255, 255, 255, 0.04) inset;
-  --admin-shadow-card-hover: 0 0 0 0.5px rgba(255, 255, 255, 0.08) inset, 0 4px 16px rgba(0, 0, 0, 0.45);
-  --admin-shadow-navcard-hover:         0 2px 12px rgba(0, 0, 0, 0.4);
-  --admin-shadow-navcard-primary-hover: 0 2px 16px rgba(0, 0, 0, 0.45);
-  --admin-shadow-action-btn-hover:      0 2px 12px color-mix(in srgb, var(--admin-gold) 28%, transparent);
 }
 
 :root[data-theme="light"] .admin-panel-graphite {
@@ -482,10 +466,6 @@
   --admin-shadow-dock:    0 12px 28px rgba(20, 24, 35, 0.12);
   --admin-shadow-popover: 0 16px 36px rgba(20, 24, 35, 0.14);
   --admin-shadow-card-rest:  0 0 0 0.5px rgba(20, 24, 35, 0.04) inset;
-  --admin-shadow-card-hover: 0 0 0 0.5px rgba(20, 24, 35, 0.08) inset, 0 4px 14px rgba(20, 24, 35, 0.08);
-  --admin-shadow-navcard-hover:         0 2px 10px rgba(20, 24, 35, 0.08);
-  --admin-shadow-navcard-primary-hover: 0 2px 14px rgba(20, 24, 35, 0.10);
-  --admin-shadow-action-btn-hover:      0 2px 12px color-mix(in srgb, var(--admin-gold) 24%, transparent);
 }
 
 /* ── Tipografía del panel CEO ──
@@ -507,6 +487,72 @@
 .admin-panel-graphite h3 {
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ESCALA TONAL — la jerarquía sale del tono, no de bordes ni sombras
+   (reemplaza al liquid glass). Cada tema la recalcula con SUS tokens:
+   se declara en cada raíz de tema porque las custom properties heredan
+   ya resueltas, y un color-mix de :root no vería el grafito del CEO ni
+   la paleta de la carta.
+     --tone-low … --tone-highest   contenedores, de menos a más presencia
+     --tone-secondary / on-        botón secundario: marca apagada sobre la superficie
+     --tone-primary-container / on- el acento con presencia (plan, destacados)
+     --tone-indicator              píldora activa (dock, iconos de tarjeta)
+     --tone-float / --tone-shadow  superficies flotantes (.md-surface)
+     --tone-outline                contornos que no pueden desaparecer (zonas de soltar)
+   ═══════════════════════════════════════════════════════════════ */
+:root,
+.admin-panel-graphite {
+  --tone-accent: var(--admin-gold);
+  /* Oscuro: la superficie sube hacia el texto y se entibia con la marca. */
+  --tone-low:     color-mix(in srgb, var(--admin-gold) 3%, color-mix(in srgb, var(--admin-text-primary) 5%, var(--admin-bg-base)));
+  --tone:         color-mix(in srgb, var(--admin-gold) 4%, color-mix(in srgb, var(--admin-text-primary) 8%, var(--admin-bg-base)));
+  --tone-high:    color-mix(in srgb, var(--admin-gold) 5%, color-mix(in srgb, var(--admin-text-primary) 11%, var(--admin-bg-base)));
+  --tone-highest: color-mix(in srgb, var(--admin-gold) 6%, color-mix(in srgb, var(--admin-text-primary) 15%, var(--admin-bg-base)));
+  --tone-secondary:    color-mix(in srgb, var(--admin-gold) 14%, color-mix(in srgb, var(--admin-text-primary) 9%, var(--admin-bg-base)));
+  --tone-on-secondary: color-mix(in srgb, var(--admin-text-primary) 88%, var(--admin-gold));
+  --tone-primary-container:    color-mix(in srgb, var(--admin-gold) 22%, var(--admin-bg-base));
+  --tone-on-primary-container: color-mix(in srgb, var(--admin-gold) 55%, var(--admin-text-primary));
+  --tone-indicator: color-mix(in srgb, var(--admin-gold) 32%, var(--admin-bg-base));
+  --tone-float:     var(--tone-high);
+  --tone-shadow:    0 18px 44px -20px color-mix(in srgb, black 85%, transparent);
+  --tone-outline:   color-mix(in srgb, var(--admin-gold) 40%, transparent);
+  --tone-focus:     var(--admin-gold);
+}
+
+:root[data-theme="light"],
+:root[data-theme="light"] .admin-panel-graphite {
+  /* Claro: contenedores blancos entibiados; el tono sube hacia la marca. */
+  --tone-low:     color-mix(in srgb, var(--admin-gold) 3%, var(--admin-bg-raised));
+  --tone:         color-mix(in srgb, var(--admin-gold) 5%, var(--admin-bg-raised));
+  --tone-high:    color-mix(in srgb, var(--admin-gold) 8%, color-mix(in srgb, var(--admin-text-primary) 2%, var(--admin-bg-raised)));
+  --tone-highest: color-mix(in srgb, var(--admin-gold) 11%, color-mix(in srgb, var(--admin-text-primary) 3%, var(--admin-bg-raised)));
+  --tone-secondary:    color-mix(in srgb, var(--admin-gold) 14%, var(--admin-bg-raised));
+  --tone-on-secondary: color-mix(in srgb, var(--admin-text-primary) 92%, var(--admin-gold));
+  --tone-primary-container:    color-mix(in srgb, var(--admin-gold) 12%, var(--admin-bg-raised));
+  --tone-on-primary-container: color-mix(in srgb, var(--admin-gold) 62%, var(--admin-text-primary));
+  --tone-indicator: color-mix(in srgb, var(--admin-gold) 20%, var(--admin-bg-raised));
+  --tone-float:     var(--tone-low);
+  --tone-shadow:    0 16px 40px -18px color-mix(in srgb, var(--admin-text-primary) 45%, transparent);
+}
+
+/* Carta pública: la misma escala con los tokens de cada paleta. */
+[data-template] {
+  --tone-accent:    var(--t-accent);
+  --tone-low:       color-mix(in srgb, var(--t-accent) 4%, var(--t-surface));
+  --tone:           color-mix(in srgb, var(--t-accent) 7%, var(--t-surface));
+  --tone-high:      color-mix(in srgb, var(--t-accent) 10%, var(--t-surface-2));
+  --tone-highest:   color-mix(in srgb, var(--t-accent) 14%, var(--t-surface-2));
+  --tone-secondary:    color-mix(in srgb, var(--t-accent) 16%, var(--t-surface));
+  --tone-on-secondary: color-mix(in srgb, var(--t-title) 86%, var(--t-accent));
+  --tone-primary-container:    color-mix(in srgb, var(--t-accent) 22%, var(--t-surface));
+  --tone-on-primary-container: var(--t-title);
+  --tone-indicator: color-mix(in srgb, var(--t-accent) 30%, var(--t-surface));
+  --tone-float:     color-mix(in srgb, var(--t-accent) 8%, var(--t-surface));
+  --tone-shadow:    0 18px 44px -20px color-mix(in srgb, color-mix(in srgb, var(--t-title) 22%, black) 70%, transparent);
+  --tone-outline:   color-mix(in srgb, var(--t-accent) 40%, transparent);
+  --tone-focus:     var(--t-accent);
 }
 
 /* ── Dock móvil compartido (panel de usuario + panel CEO) ── */
@@ -551,11 +597,9 @@
     display: flex;
     align-items: stretch;
     gap: var(--space-1);
-    border-radius: var(--admin-radius-2xl);
-    /* Fondo, anillo y desenfoque los pone .md-glass-surface (ver el TSX de
-       cada layout): el dock flota sobre el contenido igual que los paneles. */
-    --md-glass-tint: var(--admin-bg-surface);
-    --md-glass-border: var(--admin-border-default);
+    /* Fondo y sombra los pone .md-surface (ver el TSX de cada layout):
+       el dock flota sobre el contenido igual que los paneles. */
+    border-radius: 28px;
   }
 
   .admin-mobile-dock__button {
@@ -587,7 +631,6 @@
 
   .admin-mobile-dock__button:hover {
     color: var(--admin-text-secondary);
-    background: var(--admin-bg-raised);
   }
 
   .admin-mobile-dock__button:active {
@@ -600,19 +643,44 @@
     outline-offset: 1px;
   }
 
+  /* El activo no pinta toda la celda: una píldora tonal detrás del icono. */
   .admin-mobile-dock__button--active,
   .admin-mobile-dock__button--active:hover {
-    color: var(--admin-gold);
-    background: var(--admin-gold-glow);
+    color: var(--tone-on-primary-container);
+    background: transparent;
+    font-weight: 700;
   }
 
   .admin-mobile-dock__icon {
     position: relative;
+    isolation: isolate;
     width: 28px;
     height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .admin-mobile-dock__icon::before {
+    content: '';
+    position: absolute;
+    inset: -1px -16px;
+    z-index: -1;
+    border-radius: var(--radius-full);
+    background: var(--tone-accent);
+    opacity: 0;
+    transition: opacity var(--admin-transition);
+  }
+
+  @media (hover: hover) {
+    .admin-mobile-dock__button:hover .admin-mobile-dock__icon::before {
+      opacity: 0.1;
+    }
+  }
+
+  .admin-mobile-dock__button--active .admin-mobile-dock__icon::before {
+    background: var(--tone-indicator);
+    opacity: 1;
   }
 
   .admin-mobile-dock__icon svg {
@@ -639,10 +707,7 @@
     padding: var(--space-2);
     display: grid;
     gap: var(--space-1);
-    border-radius: var(--admin-radius-xl);
-    --md-glass-tint: var(--admin-bg-surface);
-    --md-glass-border: var(--admin-border-default);
-    --md-glass-shadow: var(--admin-shadow-popover);
+    border-radius: 24px;
     transform-origin: bottom right;
     animation: admin-mobile-more-in var(--admin-transition-spring) both;
   }
@@ -654,7 +719,7 @@
     align-items: center;
     gap: var(--space-3);
     border: 0;
-    border-radius: var(--admin-radius-md);
+    border-radius: 16px;
     background: transparent;
     color: var(--admin-text-secondary);
     font-family: var(--font-sans);
@@ -667,7 +732,7 @@
 
   .admin-mobile-more__item:hover {
     color: var(--admin-text-primary);
-    background: var(--admin-bg-raised);
+    background: var(--tone-highest);
   }
 
   .admin-mobile-more__item--danger {
@@ -683,10 +748,16 @@
 
 @media (prefers-reduced-motion: reduce) {
   .admin-mobile-dock__button,
+  .admin-mobile-dock__icon::before,
   .admin-mobile-more {
     transition: none;
     animation: none;
   }
+}
+
+@media (forced-colors: active) {
+  .admin-mobile-dock__icon::before { display: none; }
+  .admin-mobile-dock__button--active { outline: 2px solid Highlight; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -763,7 +834,6 @@
   /* Sombras */
   --auth-shadow-card:  0 0 60px color-mix(in srgb, var(--auth-amber) 8%, transparent), 0 40px 80px rgba(0, 0, 0, 0.6);
   --auth-shadow-btn:   0 0 28px color-mix(in srgb, var(--auth-amber) 35%, transparent);
-  --auth-shadow-btn-hover: 0 0 50px color-mix(in srgb, var(--auth-amber) 60%, transparent);
   --auth-shadow-logo:  0 0 16px color-mix(in srgb, var(--auth-amber) 40%, transparent);
   --auth-shadow-logo-brand: 0 0 16px color-mix(in srgb, var(--gold) 40%, transparent);
   --auth-shadow-checkbox: 0 0 15px color-mix(in srgb, var(--auth-amber) 35%, transparent), 0 0 30px color-mix(in srgb, var(--auth-amber) 15%, transparent);
@@ -857,14 +927,23 @@
   mask-image: linear-gradient(to bottom, black, transparent 90%);
 }
 
+/* Tarjeta tonal (ver ESCALA TONAL): sin contorno, campos rellenos con
+   un toque del ámbar de auth. El borde transparente conserva el tamaño. */
 .auth-surface {
+  --auth-input-bg:       color-mix(in srgb, var(--auth-amber) 7%, var(--auth-bg-elevated));
+  --auth-input-bg-focus: color-mix(in srgb, var(--auth-amber) 11%, var(--auth-bg-elevated));
+  --auth-border-soft:    transparent;
   position: relative;
   z-index: 1;
   width: 100%;
-  border: 1px solid var(--auth-border);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--auth-bg-card) 96%, transparent);
-  box-shadow: var(--auth-shadow-card);
+  border: 1px solid transparent;
+  border-radius: 32px;
+  background: color-mix(in srgb, var(--auth-amber) 4%, var(--auth-bg-card));
+  box-shadow: 0 24px 60px -28px color-mix(in srgb, black 80%, transparent);
+}
+
+@media (forced-colors: active) {
+  .auth-surface { border-color: CanvasText; box-shadow: none; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2099,11 +2178,8 @@ a.t-info-row:focus-visible {
 }
 
 /* ── Botón principal ──
-   REFACTOR: el transform ahora usa --transition-spring en vez de
-   --transition plano. Opacity y box-shadow siguen con su curva
-   calma de siempre — solo el movimiento físico del botón tiene ese
-   micro-rebote. Es la diferencia entre un botón que "se mueve" y
-   uno que "responde". */
+   Primario lleno del estilo tonal: forma, capa de estado (hover, foco,
+   presión) y transiciones las pone la receta de CONTROLES, más abajo. */
 .t-btn {
   display: flex;
   align-items: center;
@@ -2115,7 +2191,7 @@ a.t-info-row:focus-visible {
   background: var(--t-btn-bg, var(--t-accent));
   color: var(--t-btn-text);
   border: none;
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   padding: 0.9rem var(--space-6);
   font-family: var(--font-sans);
   font-size: var(--text-base);
@@ -2123,66 +2199,81 @@ a.t-info-row:focus-visible {
   letter-spacing: -0.01em;
   cursor: pointer;
   margin-top: var(--space-6);
-  position: relative;
   overflow: hidden;
-  isolation: isolate;
-  transition:
-    opacity var(--transition),
-    transform var(--transition-spring),
-    box-shadow var(--transition);
-  box-shadow:
-    0 2px 8px var(--t-accent-glow, rgba(0,0,0,0.15)),
-    inset 0 1px 0 rgba(255,255,255,0.12);
-}
-
-.t-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.10) 0%, transparent 60%);
-  pointer-events: none;
-}
-
-.t-btn:hover {
-  opacity: 0.92;
-  transform: translateY(-2px);
-  box-shadow:
-    0 8px 24px var(--t-accent-glow, rgba(0,0,0,0.20)),
-    inset 0 1px 0 rgba(255,255,255,0.12);
-}
-
-.t-btn:active {
-  transform: translateY(0) scale(0.98);
-  opacity: 0.86;
-  transition-duration: 0.08s;
 }
 
 /* ── Variantes de botón ── */
+/* Secundario tonal (antes contorneado). */
 .t-btn-ghost {
-  background: transparent;
-  color: var(--t-accent);
-  border: 1px solid color-mix(in srgb, var(--t-accent) 30%, transparent);
-  box-shadow: none;
+  background: var(--tone-secondary);
+  color: var(--tone-on-secondary);
 }
 
-.t-btn-ghost:hover {
-  background: var(--t-accent-soft, color-mix(in srgb, var(--t-accent) 8%, transparent));
-  box-shadow: none;
-}
+/* ═══════════════════════════════════════════════════════════════
+   CONTROLES Y SUPERFICIES FLOTANTES — estilo tonal
+   Los módulos componen estas clases explícitamente
+   (composes: md-button from global / md-surface from global).
+   Jerarquía por tono, no por bordes ni sombras (ver ESCALA TONAL):
+     · primario   = lleno: el color que ya pone cada módulo, intacto
+     · secundario = contenedor tonal (--tone-secondary)
+     · terciario  = texto o icono sin contenedor
+   ═══════════════════════════════════════════════════════════════ */
 
-/* Liquid glass compartido: los módulos componen esta clase explícitamente.
-   Conserva fondo, tinta, variantes y posición de cada control. El reflejo
-   va detrás del contenido, sin interceptar clics ni ocupar ::before.
-   Las cartas siguen usando --t-* (incluidos sus degradados premium).
-   El fondo de cada módulo es también el fallback sin backdrop-filter. */
-:where(.md-glass-button),
+/* Controles: forma píldora, sin relieve. Cada módulo pone el fondo y la
+   tinta de su variante; para no reescribir las 131 variantes, la receta
+   reinterpreta los tokens NEUTROS dentro del propio control: una variante
+   que pinta con --admin-bg-elevated (o --t-surface) pasa a ser secundaria
+   tonal, y los bordes grises se vuelven transparentes sin cambiar el tamaño.
+   El primario (--admin-gold, --t-accent, --auth-amber) no se toca.
+   Ojo: la reinterpretación alcanza a lo que haya DENTRO del control.
+   La forma y el "sin relieve" van con la clase doble (0,2,0): los módulos
+   cargan después de globals.css y su regla base (0,1,0) traía radios y
+   sombras de la época del vidrio. Sus estados (:hover, .active: 0,2,0)
+   siguen ganando por orden, así que una variante puede ajustarse ahí. */
+:where(.md-button),
 .t-btn,
 .t-notfound-retry {
   position: relative;
   isolation: isolate;
 }
 
-.md-glass-button::after,
+.md-button.md-button,
+.t-btn.t-btn,
+.t-notfound-retry.t-notfound-retry {
+  --admin-bg-surface:     var(--tone-secondary);
+  --admin-bg-raised:      var(--tone-secondary);
+  --admin-bg-raised-2:    var(--tone-secondary);
+  --admin-bg-elevated:    var(--tone-secondary);
+  --admin-gold-glow:      var(--tone-primary-container);
+  --admin-border-default: transparent;
+  --admin-border-subtle:  transparent;
+  --admin-editor-border:  transparent;
+  --admin-border-gold-mid:    transparent;
+  --admin-border-gold-strong: transparent;
+  --admin-red-border:     transparent;
+  --admin-text-secondary: var(--tone-on-secondary);
+  --admin-text-warm:      var(--tone-on-secondary);
+  --admin-text-muted:     var(--tone-on-secondary);
+  --admin-text-faint:     var(--tone-on-secondary);
+  --t-surface:   var(--tone-secondary);
+  --t-border:    transparent;
+  --t-border-md: transparent;
+  --t-muted:     var(--tone-on-secondary);
+  --auth-cream-dim:   transparent;
+  --auth-border-soft: transparent;
+
+  border-radius: var(--control-shape, var(--control-radius));
+  box-shadow: none;
+  transition:
+    border-radius 240ms cubic-bezier(0.2, 0, 0, 1),
+    background-color var(--transition),
+    color var(--transition),
+    opacity var(--transition);
+}
+
+/* Capa de estado: un tinte del color del contenido, detrás del texto,
+   que sube con hover, foco y presión (en vez de sombras o brillos). */
+.md-button::after,
 .t-btn::after,
 .t-notfound-retry::after {
   content: '';
@@ -2191,113 +2282,107 @@ a.t-info-row:focus-visible {
   z-index: -1;
   border-radius: inherit;
   pointer-events: none;
-  background: radial-gradient(ellipse 120% 90% at 50% -25%, var(--control-glass-sheen), transparent 75%);
-  box-shadow:
-    0 4px 12px var(--control-glass-shadow),
-    inset 0 1px 0 var(--control-glass-rim),
-    inset 0 0 0 1px var(--control-glass-edge),
-    inset 0 -1px 0 var(--control-glass-edge);
+  background: currentColor;
+  opacity: 0;
   transition: opacity var(--transition);
 }
 
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  .md-glass-button::after,
-  .t-btn::after {
-    backdrop-filter: blur(var(--control-glass-blur));
-    -webkit-backdrop-filter: blur(var(--control-glass-blur));
-  }
-}
-
 @media (hover: hover) {
-  .md-glass-button:enabled:hover::after,
-  a.md-glass-button:hover::after,
-  .t-btn:hover::after {
-    --control-glass-sheen: rgba(255, 255, 255, 0.25);
-    --control-glass-rim: rgba(255, 255, 255, 0.36);
+  .md-button:enabled:hover::after,
+  a.md-button:hover::after,
+  .t-btn:hover::after,
+  .t-notfound-retry:hover::after {
+    opacity: 0.09;
   }
 }
 
-.md-glass-button:focus-visible,
-.t-btn:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 3px;
+.md-button:focus-visible::after,
+.t-btn:focus-visible::after,
+.t-notfound-retry:focus-visible::after {
+  opacity: 0.12;
 }
 
-.md-glass-button:disabled::after,
-.md-glass-button[aria-disabled="true"]::after {
-  opacity: 0.35;
+/* Al presionar, la píldora se achica: la respuesta es de forma, no de relieve. */
+.md-button:enabled:active,
+a.md-button:active,
+.t-btn:active,
+.t-notfound-retry:active {
+  --control-shape: var(--control-radius-pressed);
 }
 
-.md-glass-button:enabled:active::after,
-a.md-glass-button:active::after {
-  opacity: 0.6;
+.md-button:enabled:active::after,
+a.md-button:active::after,
+.t-btn:active::after,
+.t-notfound-retry:active::after {
+  opacity: 0.16;
+}
+
+.md-button:focus-visible,
+.t-btn:focus-visible,
+.t-notfound-retry:focus-visible {
+  outline: 3px solid var(--tone-focus, currentColor);
+  outline-offset: 2px;
+}
+
+.md-button:disabled,
+.md-button[aria-disabled="true"] {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.md-button:disabled::after,
+.md-button[aria-disabled="true"]::after {
+  opacity: 0;
+}
+
+/* Superficies flotantes: barras, docks, paneles, hojas, diálogos y avisos.
+   Sólidas y elevadas por tono, con una sola sombra muy suave. Los módulos
+   componen la clase y no declaran fondo ni sombra propios; el tono sale
+   del tema vigente (panel, grafito o paleta de la carta). */
+.md-surface {
+  background: var(--tone-float);
+  box-shadow: var(--tone-shadow);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .md-glass-button,
-  .md-glass-button::after,
+  .md-button,
+  .md-button::after,
   .t-btn,
-  .t-btn::after {
+  .t-btn::after,
+  .t-notfound-retry,
+  .t-notfound-retry::after {
     animation: none !important;
     transition: none !important;
   }
-}
 
-@media (prefers-reduced-transparency: reduce) {
-  .md-glass-button::after,
-  .t-btn::after { backdrop-filter: none; -webkit-backdrop-filter: none; }
-}
-
-@media (forced-colors: active) {
-  .md-glass-button,
-  .t-btn { border: 1px solid ButtonText; }
-  .md-glass-button::after,
-  .t-btn::after { display: none; }
-}
-
-/* Liquid glass para superficies flotantes: barras, docks, paneles, hojas,
-   diálogos y avisos. Mismo acabado que .md-glass-button (velo translúcido,
-   filo de luz arriba, sombra suave) pero sobre el propio elemento, para que
-   el contenido que pasa por detrás se vea desenfocado.
-   Los módulos componen la clase y NO declaran background ni box-shadow
-   propios: ajustan el tono con variables, que se resuelven en el elemento y
-   siguen el tema vigente (panel, grafito, auth o paleta --t-*).
-     --md-glass-tint    color base del velo (default: superficie elevada)
-     --md-glass-border  color del anillo
-     --md-glass-shadow  sombra exterior
-     --md-glass-opacity cuánto tinte conserva el velo (default 76%)
-   El contorno va como anillo interior, no como `border`: así cada módulo
-   conserva sus propios bordes (un solo lado, por ejemplo) y el tamaño del
-   elemento no cambia. Sin backdrop-filter, o con transparencia reducida,
-   queda el tinte opaco. */
-.md-glass-surface {
-  background: var(--md-glass-tint, var(--admin-bg-elevated));
-  box-shadow:
-    inset 0 0 0 1px var(--md-glass-border, color-mix(in srgb, var(--admin-text-primary) 12%, transparent)),
-    inset 0 1px 0 var(--control-glass-rim),
-    var(--md-glass-shadow, var(--admin-shadow-dock));
-}
-
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  .md-glass-surface {
-    background:
-      linear-gradient(180deg, var(--md-glass-sheen, rgba(255, 255, 255, 0.06)), transparent 96px),
-      color-mix(in srgb, var(--md-glass-tint, var(--admin-bg-elevated)) var(--md-glass-opacity, 76%), transparent);
-    backdrop-filter: blur(22px) saturate(140%);
-    -webkit-backdrop-filter: blur(22px) saturate(140%);
-  }
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  .md-glass-surface {
-    background: var(--md-glass-tint, var(--admin-bg-elevated));
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+  .md-button:enabled:active,
+  a.md-button:active,
+  .t-btn:active,
+  .t-notfound-retry:active {
+    --control-shape: var(--control-radius);
   }
 }
 
 @media (forced-colors: active) {
-  .md-glass-surface {
+  .md-button.md-button,
+  .t-btn.t-btn,
+  .t-notfound-retry.t-notfound-retry {
+    border: 1px solid ButtonText;
+  }
+
+  .md-button::after,
+  .t-btn::after,
+  .t-notfound-retry::after {
+    display: none;
+  }
+
+  .md-button:focus-visible,
+  .t-btn:focus-visible,
+  .t-notfound-retry:focus-visible {
+    outline-color: Highlight;
+  }
+
+  .md-surface {
     border: 1px solid CanvasText;
     box-shadow: none;
   }
@@ -2310,7 +2395,9 @@ a.md-glass-button:active::after {
   --admin-text-faint: color-mix(in srgb, var(--admin-text-primary) 52%, var(--admin-bg-base));
   --admin-editor-header-height: 88px;
   --admin-editor-radius: 24px;
-  --admin-editor-border: color-mix(in srgb, var(--admin-text-primary) 14%, var(--admin-bg-base));
+  /* Sin divisores grises: las zonas se separan por tono. Lo que no puede
+     perder el contorno (zonas de soltar al arrastrar) usa --tone-outline. */
+  --admin-editor-border: transparent;
   --admin-editor-surface: color-mix(in srgb, var(--admin-bg-elevated) 98%, var(--admin-gold));
   --admin-editor-canvas: radial-gradient(ellipse 90% 440px at 5% 0%, var(--admin-gold-glow), transparent 75%), var(--admin-bg-base);
   --admin-editor-highlight: linear-gradient(135deg, var(--admin-gold-glow), transparent 65%);
@@ -2320,15 +2407,7 @@ a.md-glass-button:active::after {
 .admin-editor-header {
   min-height: calc(var(--admin-editor-header-height) + env(safe-area-inset-top));
   border-bottom: 1px solid var(--admin-editor-border);
-  background: var(--admin-editor-surface);
-}
-
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  .admin-editor-header {
-    background: color-mix(in srgb, var(--admin-editor-surface) 88%, transparent);
-    backdrop-filter: blur(22px) saturate(140%);
-    -webkit-backdrop-filter: blur(22px) saturate(140%);
-  }
+  background: var(--tone-low);
 }
 
 /* ── Divider ── */

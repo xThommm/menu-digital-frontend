@@ -26,12 +26,12 @@
 }
 
 .reloadBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   min-height: var(--control-min-size);
   margin-top: var(--space-4);
   background: var(--admin-gold);
   border: none;
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   padding: var(--space-3) var(--space-6);
   font-family: inherit;
   font-size: var(--text-sm);

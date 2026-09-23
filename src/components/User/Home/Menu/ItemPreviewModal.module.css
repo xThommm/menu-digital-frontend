@@ -15,8 +15,6 @@
   inset: 0;
   z-index: var(--z-modal); /* por encima del CartDrawer */
   background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -40,10 +38,7 @@
 }
 
 .sheet {
-  composes: md-glass-surface from global;
-  --md-glass-tint: var(--t-surface);
-  --md-glass-border: var(--t-border);
-  --md-glass-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  composes: md-surface from global;
   position: relative;
   z-index: 2;
   width: 100%;
@@ -91,7 +86,7 @@
 }
 
 .close {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
@@ -116,7 +111,7 @@
    muestran con puntero fino: en mobile la navegación es por swipe
    vertical sobre la imagen. */
 .navBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   display: none;
   position: fixed;
   top: 50%;
@@ -287,7 +282,7 @@
 }
 
 .addBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   min-height: var(--control-min-size);
   align-self: flex-start;
   display: flex;

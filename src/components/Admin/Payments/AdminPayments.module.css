@@ -10,8 +10,7 @@
   top: 0;
   z-index: 10;
   border-bottom: 0.5px solid var(--admin-border-subtle);
-  background: color-mix(in srgb, var(--admin-bg-base) 90%, transparent);
-  backdrop-filter: blur(12px);
+  background: var(--admin-bg-base);
 }
 .topBarInner {
   max-width: 1920px;
@@ -108,11 +107,11 @@
 .searchInput:focus,
 .select:focus { outline: none; border-color: var(--admin-gold); box-shadow: 0 0 0 3px var(--admin-gold-glow); }
 .searchButton {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   min-height: var(--control-min-size);
   padding: 0.5rem 0.9rem;
   border: 0;
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   background: var(--admin-gold);
   color: var(--admin-gold-ink);
   font-family: var(--font-sans);
@@ -160,11 +159,11 @@
 .toneDanger { color: var(--admin-red-text); border-color: var(--admin-red-border); background: var(--admin-red-bg); }
 .toneNeutral { color: var(--admin-text-muted); border-color: var(--admin-border-default); background: var(--admin-bg-elevated); }
 .expandButton {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   width: 34px;
   height: 34px;
   border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   background: var(--admin-bg-elevated);
   color: var(--admin-text-warm);
   font-size: var(--text-lg);

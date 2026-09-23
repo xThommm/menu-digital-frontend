@@ -90,12 +90,12 @@
 }
 
 .backBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
   background: var(--admin-bg-elevated);
   border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -167,9 +167,7 @@
   gap: 0.5rem;
   margin-bottom: 1.25rem;
   padding: 0.15rem 0 0.75rem;
-  background: color-mix(in srgb, var(--admin-bg-base) 96%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--admin-bg-base);
 }
 
 .searchInput {
@@ -199,12 +197,12 @@
 }
 
 .searchClear {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   min-width: 72px;
   min-height: var(--control-min-size);
   align-self: center;
   border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   background: var(--admin-bg-raised);
   padding: 0 0.75rem;
   color: var(--admin-text-secondary);
@@ -427,8 +425,8 @@
   margin: 0.65rem 1rem;
   overflow: hidden;
   border: 1px solid var(--admin-editor-border);
-  border-radius: var(--admin-radius-2xl);
-  background: var(--admin-editor-surface);
+  border-radius: 24px;
+  background: var(--tone-high);
 }
 
 .formSectionHeader {
@@ -506,8 +504,8 @@
 }
 
 .formSectionOpen {
-  border-color: var(--admin-border-gold-mid);
-  background: var(--admin-editor-highlight), var(--admin-editor-surface);
+  border-color: transparent;
+  background: var(--tone-high);
 }
 
 .formSectionBody {
@@ -566,10 +564,10 @@
 }
 
 .iconBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   background: transparent;
   border: 0.5px solid transparent;
   display: flex;
@@ -856,7 +854,7 @@
 
 /* ── Pill disponible/pausado ── */
 .pillBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   font-size: 0.65rem;
   letter-spacing: 0.03em;
   padding: 3px 8px;
@@ -883,11 +881,11 @@
 
 
 .addItemBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   min-height: var(--control-min-size);
   background: var(--admin-gold-glow);
   border: 1px solid var(--admin-border-gold-mid);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   padding: 0.35rem 0.75rem;
   font-family: var(--font-sans);
   font-size: 0.75rem;
@@ -900,7 +898,7 @@
 .addItemBtn:hover {
   color: var(--admin-gold-hover);
   background: var(--admin-gold-glow);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
 }
 
 .addItemBtn:focus-visible {
@@ -952,9 +950,9 @@
 .field textarea,
 .field select {
   width: 100%;
-  background: var(--admin-bg-surface);
-  border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-md);
+  background: var(--tone-low);
+  border: 0.5px solid transparent;
+  border-radius: 16px;
   padding: 0.75rem 1rem;
   font-size: 0.9rem;
   color: var(--admin-text-secondary);
@@ -977,7 +975,7 @@
 .field textarea:focus,
 .field select:focus {
   border-color: var(--admin-gold);
-  background: var(--admin-bg-surface);
+  background: var(--tone-low);
   box-shadow: 0 0 0 3px var(--admin-gold-glow);
 }
 
@@ -1009,10 +1007,10 @@
 }
 
 .removeBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   background: transparent;
   border: 0.5px solid var(--admin-red-border);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   width: var(--control-min-size);
   height: var(--control-min-size);
   display: flex;
@@ -1199,12 +1197,12 @@
 }
 
 .saveBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   min-height: 48px;
   width: 100%;
   background: var(--admin-gold);
   border: none;
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   padding: 0.875rem;
   font-family: var(--font-sans);
   font-size: 0.93rem;
@@ -1221,7 +1219,6 @@
 
 .saveBtn:hover:not(:disabled) {
   background: var(--admin-gold-hover);
-  box-shadow: var(--admin-shadow-action-btn-hover);
 }
 
 .saveBtn:active:not(:disabled) {
@@ -1275,12 +1272,12 @@
 }
 
 .deleteBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   min-height: 48px;
   width: 100%;
   background: none;
   border: 0.5px solid var(--admin-red-border);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   padding: 0.875rem;
   font-family: var(--font-sans);
   font-size: 0.93rem;
@@ -1321,14 +1318,10 @@
   z-index: var(--z-overlay);
   padding: 1.25rem;
   animation: fadeIn 0.15s ease;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 
 .modal {
-  composes: md-glass-surface from global;
-  --md-glass-border: var(--admin-border-warm);
-  --md-glass-shadow: var(--admin-shadow-modal);
+  composes: md-surface from global;
   border-radius: var(--admin-radius-2xl);
   padding: 1.5rem;
   width: 100%;
@@ -1384,11 +1377,11 @@
 }
 
 .modalCancel {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   flex: 1;
   background: var(--admin-bg-raised);
   border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   padding: 0.72rem;
   font-family: var(--font-sans);
   font-size: 0.88rem;
@@ -1409,11 +1402,11 @@
 }
 
 .modalConfirm {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   flex: 1;
   background: var(--admin-red-bg);
   border: 0.5px solid var(--admin-red-border);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   padding: 0.72rem;
   font-family: var(--font-sans);
   font-size: 0.88rem;
@@ -1434,7 +1427,7 @@
 }
 
 .modalUpgrade {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   flex: 1;
   display: flex;
   align-items: center;
@@ -1442,7 +1435,7 @@
   gap: 6px;
   background: var(--admin-gold);
   border: none;
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   padding: 0.72rem;
   font-family: var(--font-sans);
   font-size: 0.88rem;
@@ -1475,9 +1468,7 @@
 /* ── Sheet de opciones (Categoría / Sección / Importar) ── */
 /* El overlay reutiliza .modalOverlay — se centra igual */
 .sheet {
-  composes: md-glass-surface from global;
-  --md-glass-border: var(--admin-border-warm);
-  --md-glass-shadow: var(--admin-shadow-modal);
+  composes: md-surface from global;
   border-radius: var(--admin-radius-2xl);
   padding: 1.25rem;
   width: 100%;
@@ -1502,9 +1493,9 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  background: var(--admin-bg-raised);
-  border: 0.5px solid var(--admin-border-default);
-  border-radius: var(--admin-radius-lg);
+  background: var(--tone-highest);
+  border: 0.5px solid transparent;
+  border-radius: 20px;
   padding: 0.7rem 0.85rem;
   text-align: left;
   cursor: pointer;
@@ -1512,9 +1503,7 @@
 }
 
 .sheetOption:hover {
-  border-color: var(--admin-border-warm);
-  background: var(--admin-bg-elevated);
-  box-shadow: 0 0 0 1px var(--admin-gold-glow);
+  background: var(--tone-secondary);
 }
 
 .sheetOption:focus-visible {
@@ -1533,10 +1522,10 @@
   width: var(--control-min-size);
   height: var(--control-min-size);
   flex-shrink: 0;
-  border-radius: var(--admin-radius-md);
-  background: var(--admin-bg-elevated);
+  border-radius: var(--radius-full);
+  background: var(--tone-indicator);
   color: var(--admin-gold);
-  border: 0.5px solid var(--admin-border-default);
+  border: 0.5px solid transparent;
 }
 
 .sheetOptionText {
@@ -1577,11 +1566,11 @@
 }
 
 .sheetCancel {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   margin-top: 0.2rem;
   background: transparent;
   border: 0.5px solid var(--admin-border-subtle);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   padding: 0.7rem;
   font-family: var(--font-sans);
   font-size: 0.87rem;
@@ -1873,7 +1862,7 @@
   min-height: var(--control-min-size);
   padding: 0.6rem 0.75rem;
 
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
 
   font-family: var(--font-sans);
   font-size: 0.85rem;
@@ -1888,7 +1877,7 @@
 }
 
 .changeImageButton {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   border: 1px solid var(--admin-border-gold-strong);
   background: color-mix(in srgb, var(--admin-gold) 6%, transparent);
   color: var(--admin-gold);
@@ -1905,7 +1894,7 @@
 }
 
 .removeImageButton {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   border: 0.5px solid var(--admin-red-border);
   background: transparent;
   color: var(--admin-red-text);
@@ -1933,8 +1922,7 @@
 /* Barra fija sobre el contenido: el vidrio deja ver qué queda debajo
    mientras se recorre la lista con productos seleccionados. */
 .bulkBar {
-  composes: md-glass-surface from global;
-  --md-glass-border: transparent;
+  composes: md-surface from global;
   position: fixed;
   left: 0;
   right: 0;
@@ -1975,12 +1963,12 @@
 }
 
 .bulkBarBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   font-family: var(--font-sans);
   font-size: 0.78rem;
   font-weight: 500;
   padding: 0.5rem 0.75rem;
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   border: 0.5px solid var(--admin-border-default);
   background: var(--admin-bg-raised);
   color: var(--admin-text-secondary);
@@ -2074,16 +2062,7 @@
   margin: 0.75rem 0 0;
   padding: 0.85rem 0.9rem;
   border-top: 1px solid var(--admin-editor-border);
-  background: var(--admin-bg-elevated);
-}
-
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  .panelForm .itemForm .formBtns,
-  .panelFields .formBtns {
-    background: color-mix(in srgb, var(--admin-bg-elevated) 82%, transparent);
-    backdrop-filter: blur(18px) saturate(140%);
-    -webkit-backdrop-filter: blur(18px) saturate(140%);
-  }
+  background: var(--tone);
 }
 
 .panelFields .formBtns {
@@ -2097,10 +2076,10 @@
 }
 
 .saveNextBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   min-height: 48px;
   border: 1px solid var(--admin-border-gold-mid);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   background: var(--admin-gold-glow);
   padding: 0.875rem 0.5rem;
   font-family: var(--font-sans);
@@ -2126,5 +2105,5 @@
   padding-inline: 0.5rem;
 }
 
-/* Acabado compartido de los controles (ver .md-glass-button en globals.css). */
-.backToResults { composes: md-glass-button from global; }
+/* Acabado compartido de los controles (ver .md-button en globals.css). */
+.backToResults { composes: md-button from global; }

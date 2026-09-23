@@ -131,7 +131,7 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
 
       {/* Top bar */}
       <header className="top-bar">
-        <button className="back-btn md-glass-button" onClick={onBack}>
+        <button className="back-btn md-button" onClick={onBack}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
@@ -184,7 +184,7 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
                   <p className="info-card-desc">Incluye tus categorías y productos actuales para que puedas editarlos directamente.</p>
                 </div>
               </div>
-              <button className="outline-btn md-glass-button" onClick={downloadTemplate} disabled={downloading}>
+              <button className="outline-btn md-button" onClick={downloadTemplate} disabled={downloading}>
                 {downloading ? "Descargando…" : "Descargar"}
               </button>
             </div>
@@ -208,7 +208,7 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
                     <span className="file-name">{file.name}</span>
                     <span className="file-size">{Math.round(file.size / 1024)} KB</span>
                   </div>
-                  <button className="remove-file-btn md-glass-button" onClick={e => { e.stopPropagation(); reset(); }}>
+                  <button className="remove-file-btn md-button" onClick={e => { e.stopPropagation(); reset(); }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
@@ -229,7 +229,7 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
             <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }}
               onChange={e => { handleFileSelect(e.target.files?.[0] ?? null); e.target.value = ""; }} />
 
-            <button className="save-btn md-glass-button" onClick={preview} disabled={!file || loading}>
+            <button className="save-btn md-button" onClick={preview} disabled={!file || loading}>
               {loading ? "Procesando..." : "Ver resumen de cambios →"}
             </button>
           </>
@@ -283,10 +283,10 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
             )}
 
             <div className="form-btns">
-              <button className="delete-btn md-glass-button" onClick={() => setStep("upload")} disabled={loading}>
+              <button className="delete-btn md-button" onClick={() => setStep("upload")} disabled={loading}>
                 ← Volver
               </button>
-              <button className="save-btn md-glass-button" onClick={confirm} disabled={loading || (totalCrear + totalActualizar === 0)}>
+              <button className="save-btn md-button" onClick={confirm} disabled={loading || (totalCrear + totalActualizar === 0)}>
                 {loading ? "Importando..." : `Confirmar importación`}
               </button>
             </div>
@@ -325,8 +325,8 @@ export default function MassiveImport({ onBack, onSuccess }: MassiveImportProps)
             />
 
             <div className="form-btns">
-              <button className="outline-btn md-glass-button" onClick={reset}>Importar otro</button>
-              <button className="save-btn md-glass-button" onClick={onBack}>Volver al menú</button>
+              <button className="outline-btn md-button" onClick={reset}>Importar otro</button>
+              <button className="save-btn md-button" onClick={onBack}>Volver al menú</button>
             </div>
           </>
         )}

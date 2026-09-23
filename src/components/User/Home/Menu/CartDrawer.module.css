@@ -11,8 +11,6 @@
   inset: 0;
   z-index: var(--z-overlay);
   background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -25,10 +23,7 @@
 
 /* El vidrio toma el color de la paleta del local (--t-*), no el del panel. */
 .drawer {
-  composes: md-glass-surface from global;
-  --md-glass-tint: var(--t-surface);
-  --md-glass-border: var(--t-border);
-  --md-glass-shadow: 0 -8px 40px rgba(0, 0, 0, 0.3);
+  composes: md-surface from global;
   width: 100%;
   max-width: 480px;
   max-height: 85dvh;
@@ -61,7 +56,7 @@
 }
 
 .close {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
   display: flex;
@@ -161,7 +156,7 @@
 }
 
 .lineRemove {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
   display: flex;
@@ -206,7 +201,7 @@
 }
 
 .waBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -216,7 +211,7 @@
   font-weight: 600;
   font-size: 0.9rem;
   padding: 0.75rem 1rem;
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   text-decoration: none;
   min-height: 46px;
   transition: transform 0.15s ease, opacity 0.15s ease;

@@ -32,19 +32,18 @@
   position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-modal);
   display: flex; align-items: center; justify-content: space-between;
   padding: 1.25rem 3rem;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--auth-bg) 96%, transparent) 0%, transparent 100%);
-  backdrop-filter: blur(8px);
+  background: var(--auth-bg);
   border-bottom: 1px solid color-mix(in srgb, var(--auth-amber) 8%, transparent);
 }
 
 .navRight { display: flex; align-items: center; gap: .75rem; }
 
 .themeToggle {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   display: inline-flex; align-items: center; justify-content: center;
   width: var(--control-min-size); height: var(--control-min-size);
   border: 1px solid color-mix(in srgb, var(--auth-amber) 20%, transparent);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   background: transparent; cursor: pointer;
   color: var(--auth-amber-text);
   transition: border-color .25s, background .25s, color .25s;
@@ -298,11 +297,11 @@
 
 /* ── BUTTONS ── */
 .btnPrimary {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   min-height: var(--control-min-size);
   font-family: var(--font-sans); font-size: .82rem; font-weight: 700;
   letter-spacing: .1em; text-transform: uppercase;
-  padding: .9rem 2.2rem; border-radius: var(--control-glass-radius);
+  padding: .9rem 2.2rem; border-radius: var(--control-radius);
   background: var(--auth-amber); color: #000;
   box-shadow: 0 0 30px color-mix(in srgb, var(--auth-amber) 35%, transparent);
   border: none; cursor: pointer;
