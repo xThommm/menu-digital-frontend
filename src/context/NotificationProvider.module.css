@@ -13,9 +13,7 @@
 /* El borde izquierdo de color indica el tipo de aviso, así que el vidrio no
    dibuja su anillo: quedarían dos contornos encimados. */
 .notice {
-  composes: md-glass-surface from global;
-  --md-glass-border: transparent;
-  --md-glass-shadow: var(--admin-shadow-modal);
+  composes: md-surface from global;
   min-height: 52px;
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) 32px;
@@ -55,7 +53,7 @@
 }
 
 .close {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   width: 32px;
   height: 32px;
   border: 0;

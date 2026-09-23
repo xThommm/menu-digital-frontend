@@ -95,9 +95,9 @@
 .tableScroll td { white-space: nowrap; }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .primaryButton,
-.secondaryButton { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--control-min-size); padding: var(--space-2) var(--space-3); border: 1px solid var(--admin-border-default); border-radius: var(--control-glass-radius); background: var(--admin-bg-elevated); color: var(--admin-text-secondary); font-family: inherit; font-size: var(--text-sm); font-weight: 600; cursor: pointer; }
+.secondaryButton { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--control-min-size); padding: var(--space-2) var(--space-3); border: 1px solid var(--admin-border-default); border-radius: var(--control-radius); background: var(--admin-bg-elevated); color: var(--admin-text-secondary); font-family: inherit; font-size: var(--text-sm); font-weight: 600; cursor: pointer; }
 .primaryButton {
-  composes: md-glass-button from global; border-color: var(--admin-gold); background: var(--admin-gold); color: var(--admin-gold-ink); }
+  composes: md-button from global; border-color: var(--admin-gold); background: var(--admin-gold); color: var(--admin-gold-ink); }
 .primaryButton:hover:not(:disabled) { background: var(--admin-gold-hover); }
 .secondaryButton:hover:not(:disabled) { border-color: var(--admin-gold); }
 .primaryButton:disabled,
@@ -127,4 +127,4 @@
 }
 
 /* Acabado compartido, conservando las variantes locales. */
-.secondaryButton { composes: md-glass-button from global; }
+.secondaryButton { composes: md-button from global; }

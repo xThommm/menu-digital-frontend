@@ -63,12 +63,12 @@
 }
 
 .newSellerButton {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   align-self: end;
   min-height: var(--control-min-size);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--admin-border-gold-mid);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   background: var(--admin-gold-glow);
   color: var(--admin-accent, var(--admin-gold));
   font-family: inherit;
@@ -123,7 +123,6 @@
   place-items: center;
   padding: var(--space-4);
   background: color-mix(in srgb, var(--admin-bg-base) 72%, transparent);
-  backdrop-filter: blur(2px);
 }
 
 .modal {
@@ -360,7 +359,7 @@
   min-height: var(--control-min-size);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--admin-border-default);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   background: var(--admin-bg-elevated);
   color: var(--admin-text-secondary);
   font-family: inherit;
@@ -370,7 +369,7 @@
 }
 
 .primaryButton {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   border-color: var(--admin-gold);
   background: var(--admin-gold);
   color: var(--admin-gold-ink);
@@ -385,7 +384,7 @@
 }
 
 .dangerButton {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   border-color: var(--admin-red-border);
   background: var(--admin-red-bg);
   color: var(--admin-red-text);
@@ -448,4 +447,4 @@
 }
 
 /* Acabado compartido, conservando las variantes locales. */
-.secondaryButton { composes: md-glass-button from global; }
+.secondaryButton { composes: md-button from global; }

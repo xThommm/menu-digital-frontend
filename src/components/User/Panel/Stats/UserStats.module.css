@@ -1,10 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════
-   FONDO DECORATIVO (glassmorphism)
-   Mismo recurso que el dashboard del usuario: --admin-bg-base es un color
-   plano, y sin algo con variación detrás el backdrop-filter de las cards no
-   tiene nada que desenfocar (blurear un color sólido se ve igual que el
-   color sólido). Estos dos blobs radiales, fixed y detrás de todo, le dan
-   la base de color con la que las cards "conversan".
+   FONDO DECORATIVO
+   Mismo recurso que el dashboard del usuario: dos blobs radiales de la
+   marca, fixed y detrás de todo, le dan calidez al fondo plano entre las
+   tarjetas tonales.
    El TSX ya usaba .root pero la clase no existía en este módulo: la pantalla
    quedó afuera cuando el dashboard adoptó el efecto.
    ═══════════════════════════════════════════════════════════════ */
@@ -32,19 +30,22 @@
   flex-wrap: wrap;
 }
 .periodPicker legend { margin-bottom: var(--space-2); color: var(--admin-text-secondary); }
+/* Mismo patrón que las pestañas de Mi negocio: secundario tonal, y el
+   período elegido en primario lleno. */
 .periodPicker button {
   min-height: var(--control-min-size);
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--admin-border-warm);
-  border-radius: var(--admin-radius-md);
-  color: var(--admin-text-primary);
-  background: var(--admin-bg-surface);
+  border: 1px solid transparent;
+  border-radius: var(--control-radius);
+  color: var(--tone-on-secondary);
+  background: var(--tone-secondary);
   cursor: pointer;
   font: inherit;
 }
 .periodPicker button[aria-pressed="true"] {
-  border-color: var(--admin-gold);
-  color: var(--admin-text-primary);
+  color: var(--admin-gold-ink);
+  background: var(--admin-gold);
+  font-weight: 600;
 }
 .periodDates { grid-column: 1 / -1; color: var(--admin-text-secondary); margin: 0; font-size: var(--text-sm); }
 .measurementNote {
@@ -163,11 +164,9 @@
   flex-direction: column;
   gap: 0.15rem;
   padding: var(--space-4) var(--space-3);
-  border: 0.5px solid var(--admin-border-warm);
-  border-radius: var(--admin-radius-xl);
-  background: color-mix(in srgb, var(--admin-bg-surface) 72%, transparent);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 0.5px solid transparent;
+  border-radius: 24px;
+  background: var(--tone);
   overflow: hidden;
 }
 
@@ -228,12 +227,9 @@
    ═══════════════════════════════════════════════════════════════ */
 .card {
   padding: var(--space-5);
-  border: 0.5px solid var(--admin-border-warm);
-  border-radius: var(--admin-radius-2xl);
-  background: color-mix(in srgb, var(--admin-bg-surface) 70%, transparent);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  box-shadow: var(--admin-shadow-card-rest);
+  border: 0.5px solid transparent;
+  border-radius: 28px;
+  background: var(--tone);
   animation: fadeUp 0.45s var(--ease-out) both;
   animation-delay: 0.25s;
 }
@@ -377,12 +373,10 @@
   align-items: baseline;
   gap: 0.3rem;
   padding: 0.4rem 0.6rem;
-  border: 0.5px solid var(--admin-border-gold-mid);
-  border-radius: var(--admin-radius-md);
-  background: color-mix(in srgb, var(--admin-bg-elevated) 92%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: var(--admin-shadow-popover);
+  border: 0.5px solid transparent;
+  border-radius: 12px;
+  background: var(--tone-float);
+  box-shadow: var(--tone-shadow);
   white-space: nowrap;
   pointer-events: none;
 }
@@ -580,11 +574,9 @@
   align-items: center;
   text-align: center;
   padding: var(--space-8) var(--space-6);
-  border: 0.5px dashed var(--admin-border-warm);
-  border-radius: var(--admin-radius-2xl);
-  background: color-mix(in srgb, var(--admin-bg-surface) 60%, transparent);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 0.5px dashed var(--tone-outline);
+  border-radius: 28px;
+  background: var(--tone-low);
   animation: fadeUp 0.45s var(--ease-out) both;
   animation-delay: 0.15s;
 }
@@ -640,17 +632,14 @@
    ESTADO BLOQUEADO (UPSELL)
    ═══════════════════════════════════════════════════════════════ */
 .lockCard {
-  background: color-mix(in srgb, var(--admin-bg-surface) 70%, transparent);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border: 0.5px solid var(--admin-border-warm);
-  border-radius: var(--admin-radius-2xl);
+  background: var(--tone);
+  border: 0.5px solid transparent;
+  border-radius: 28px;
   padding: var(--space-8) var(--space-6);
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: var(--admin-shadow-card-rest);
   animation: fadeUp 0.45s var(--ease-out) both;
   animation-delay: 0.15s;
 }
@@ -684,10 +673,10 @@
 }
 
 .lockBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   min-height: var(--control-min-size);
   padding: 0.7rem var(--space-6);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 600;
@@ -700,7 +689,6 @@
 
 .lockBtn:hover {
   background: var(--admin-gold-hover);
-  box-shadow: var(--admin-shadow-action-btn-hover);
 }
 
 .lockBtn:active { transform: scale(0.97); }

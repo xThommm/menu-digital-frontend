@@ -187,14 +187,14 @@ export default function SellerLayout() {
       </div>
 
       {/* ── Bottom nav (mobile) ───────────────────────────────────────────── */}
-      <nav className="admin-mobile-dock md-glass-surface" aria-label={isInfluencer ? "Navegación del panel de influencer" : "Navegación del panel de vendedor"}>
+      <nav className="admin-mobile-dock md-surface" aria-label={isInfluencer ? "Navegación del panel de influencer" : "Navegación del panel de vendedor"}>
         {NAV_ITEMS.map((item) => {
           const active = location.pathname === item.path;
           return (
             <button
               type="button"
               key={item.path}
-              className={`admin-mobile-dock__button ${active ? "admin-mobile-dock__button--active md-glass-button" : ""}`}
+              className={`admin-mobile-dock__button ${active ? "admin-mobile-dock__button--active md-button" : ""}`}
               onClick={() => {
                 setMobileMoreOpen(false);
                 navigate(item.path);
@@ -218,7 +218,7 @@ export default function SellerLayout() {
         <button
           ref={mobileMoreButtonRef}
           type="button"
-          className={`admin-mobile-dock__button ${mobileMoreOpen ? "admin-mobile-dock__button--active md-glass-button" : ""}`}
+          className={`admin-mobile-dock__button ${mobileMoreOpen ? "admin-mobile-dock__button--active md-button" : ""}`}
           onClick={() => setMobileMoreOpen((open) => !open)}
           aria-label="Más opciones"
           aria-expanded={mobileMoreOpen}
@@ -245,7 +245,7 @@ export default function SellerLayout() {
           />
           <div
             id="seller-mobile-more-menu"
-            className="admin-mobile-more md-glass-surface"
+            className="admin-mobile-more md-surface"
             role="group"
             aria-label="Más opciones"
           >

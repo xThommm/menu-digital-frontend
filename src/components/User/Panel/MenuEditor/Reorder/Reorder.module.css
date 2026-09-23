@@ -67,7 +67,7 @@
   min-height: 44px;
   place-items: center;
   padding: 0.6rem 0.75rem;
-  border: 1px dashed var(--admin-editor-border);
+  border: 1px dashed var(--tone-outline);
   border-radius: 12px;
   color: var(--admin-text-faint);
   font-size: 0.76rem;

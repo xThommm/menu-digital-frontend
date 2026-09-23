@@ -165,14 +165,14 @@ function DashboardLayoutInner() {
           (ej. el Gestor de imágenes: ya tiene su propio botón de "volver"
           arriba a la izquierda, y el dock solo tapa contenido ahí). */}
       {!mobileDockHidden && (
-        <nav className="admin-mobile-dock md-glass-surface" aria-label="Navegación principal">
+        <nav className="admin-mobile-dock md-surface" aria-label="Navegación principal">
           {NAV_ITEMS.map(item => {
             const active = location.pathname === item.path;
             return (
               <button
                 type="button"
                 key={item.path}
-                className={`admin-mobile-dock__button ${active ? "admin-mobile-dock__button--active md-glass-button" : ""}`}
+                className={`admin-mobile-dock__button ${active ? "admin-mobile-dock__button--active md-button" : ""}`}
                 onClick={() => {
                   setMobileMoreOpen(false);
                   navigate(item.path);
@@ -188,7 +188,7 @@ function DashboardLayoutInner() {
           <button
             ref={mobileMoreButtonRef}
             type="button"
-            className={`admin-mobile-dock__button ${mobileMoreOpen ? "admin-mobile-dock__button--active md-glass-button" : ""}`}
+            className={`admin-mobile-dock__button ${mobileMoreOpen ? "admin-mobile-dock__button--active md-button" : ""}`}
             onClick={() => setMobileMoreOpen(open => !open)}
             aria-label="Más opciones"
             aria-expanded={mobileMoreOpen}
@@ -212,7 +212,7 @@ function DashboardLayoutInner() {
             tabIndex={-1}
             aria-label="Cerrar menú de opciones"
           />
-          <div id="user-mobile-more-menu" className="admin-mobile-more md-glass-surface" role="group" aria-label="Más opciones">
+          <div id="user-mobile-more-menu" className="admin-mobile-more md-surface" role="group" aria-label="Más opciones">
             <button
               ref={firstMobileMoreActionRef}
               type="button"

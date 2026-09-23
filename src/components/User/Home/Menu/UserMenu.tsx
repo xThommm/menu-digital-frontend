@@ -646,9 +646,9 @@ function OrderSummary({
               )}
             </div>
             <div className={styles.orderQty}>
-              <button className="md-glass-button" type="button" onClick={() => updateQuantity(line.itemId, line.selectedOption, line.quantity - 1)} aria-label={`Quitar una unidad de ${line.title}`}>−</button>
+              <button className="md-button" type="button" onClick={() => updateQuantity(line.itemId, line.selectedOption, line.quantity - 1)} aria-label={`Quitar una unidad de ${line.title}`}>−</button>
               <span>{line.quantity}</span>
-              <button className="md-glass-button" type="button" onClick={() => updateQuantity(line.itemId, line.selectedOption, line.quantity + 1)} aria-label={`Agregar una unidad de ${line.title}`}>+</button>
+              <button className="md-button" type="button" onClick={() => updateQuantity(line.itemId, line.selectedOption, line.quantity + 1)} aria-label={`Agregar una unidad de ${line.title}`}>+</button>
             </div>
           </li>
         ))}

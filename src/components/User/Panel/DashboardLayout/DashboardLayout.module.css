@@ -156,12 +156,12 @@
 }
 
 .expiryBannerAction {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   flex: 0 0 auto;
   min-height: var(--control-min-size);
   padding: 0 var(--space-4);
   border: 0.5px solid var(--admin-red-border);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   background: var(--admin-bg-raised);
   color: var(--admin-red-text);
   font: inherit;

@@ -26,7 +26,7 @@
 }
 
 .mpCartShortcut {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   position: relative;
   flex-shrink: 0;
   width: 48px;
@@ -148,11 +148,9 @@
   align-items: center;
   gap: 0.875rem;
   padding: 0.9rem 1.25rem;
-  border-bottom: 0.5px solid var(--t-border-md);
+  border-bottom: 0.5px solid transparent;
   animation: t-fadeUp 0.35s ease both;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  background: color-mix(in srgb, var(--t-surface) 88%, transparent);
+  background: var(--tone);
 }
 
 @media (min-width: 768px) {
@@ -162,18 +160,18 @@
 }
 
 .mpBack {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
   flex-shrink: 0;
-  background: var(--t-bg);
+  background: var(--tone-secondary);
   border: 0.5px solid var(--t-border-md);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--t-muted);
+  color: var(--tone-on-secondary);
   transition:
     background 0.18s ease,
     border-color 0.18s ease,
@@ -182,8 +180,6 @@
 }
 
 .mpBack:hover {
-  background: color-mix(in srgb, var(--t-accent) 8%, var(--t-bg));
-  border-color: color-mix(in srgb, var(--t-accent) 30%, transparent);
   color: var(--t-accent);
   transform: translateX(-2px);
 }
@@ -241,13 +237,15 @@
 .mpTabs::-webkit-scrollbar { display: none; }
 
 .mpTab {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   flex-shrink: 0;
   min-height: 44px;
   padding: 0.7rem 1.1rem;
-  background: var(--t-surface);
+  /* Viven sobre --t-bg: el tonal se deriva de ahí para que se lean también
+     en paletas de fondo tintado (Aurora). */
+  background: color-mix(in srgb, var(--t-accent) 15%, var(--t-bg));
   border: 1px solid var(--t-border-md);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   font-family: var(--font-sans);
   font-size: 0.875rem;
   font-weight: 500;
@@ -494,30 +492,16 @@
   flex-direction: column;
   overflow: hidden;
   padding: 0;
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--t-accent) 7%, var(--t-surface)) 0%,
-    var(--t-surface) 65%
-  );
-  border: 0.5px solid color-mix(in srgb, var(--t-accent) 22%, var(--t-border));
-  border-radius: var(--radius-lg);
+  background: var(--tone);
+  border: 0.5px solid transparent;
+  border-radius: 24px;
   color: inherit;
   text-align: left;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.15s ease;
+  transition: background-color 0.2s ease;
 }
 
 .featuredCard:hover {
-  border-color: color-mix(in srgb, var(--t-accent) 35%, var(--t-border));
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--t-accent) 12%, transparent);
-  transform: translateY(-2px);
-}
-
-.featuredCard:active {
-  transform: translateY(0);
-  transition-duration: 0.06s;
+  background: var(--tone-high);
 }
 
 .featuredImg,
@@ -594,9 +578,9 @@
    ITEM CARD
    ═══════════════════════════════════════════════════════════════ */
 .itemCard {
-  background: var(--t-surface);
-  border: 0.5px solid var(--t-border);
-  border-radius: var(--radius-lg);
+  background: var(--tone);
+  border: 0.5px solid transparent;
+  border-radius: 24px;
   padding: 0.875rem;
   min-height: 156px;
   display: grid;
@@ -604,34 +588,22 @@
   gap: 0.875rem;
   margin-bottom: 0.5rem;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.15s ease,
+    background-color 0.2s ease,
     opacity 0.4s var(--ease-out);
-  transition-delay: 0s, 0s, 0s, var(--reveal-delay, 0s);
+  transition-delay: 0s, var(--reveal-delay, 0s);
   cursor: pointer;
   opacity: 0;
 }
 
-/* Reveal al entrar en viewport (ver useReveal + UserMenu.tsx). Solo opacity
-   —no transform— porque .itemCard ya usa transform para el hover/press y
-   una sola transition no puede tener dos duraciones distintas para la
-   misma propiedad según qué la disparó. */
+/* Reveal al entrar en viewport (ver useReveal + UserMenu.tsx). Solo opacity:
+   el retraso escalonado es de la aparición, no del hover. */
 .itemCard.itemRevealed {
   opacity: 1;
 }
 
+/* Sin relieve: al pasar el mouse la tarjeta sube un tono. */
 .itemCard:hover {
-  border-color: color-mix(in srgb, var(--t-accent) 35%, var(--t-border));
-  box-shadow:
-    0 8px 24px color-mix(in srgb, var(--t-accent) 12%, transparent),
-    0 2px 6px color-mix(in srgb, var(--t-text) 6%, transparent);
-  transform: translateY(-2px);
-}
-
-.itemCard:active {
-  transform: translateY(0);
-  transition-duration: 0.06s;
+  background: var(--tone-high);
 }
 
 .itemCard.unavailable {
@@ -641,15 +613,10 @@
   pointer-events: none;
 }
 
-/* Fondo apenas teñido con el acento — suficiente para que el ojo lo
-   distinga del resto de la lista al pasar la vista rápido, sin gritar. */
+/* Acento tonal que se desvanece hacia la superficie: suficiente para que el
+   ojo lo distinga del resto de la lista al pasar la vista rápido, sin gritar. */
 .itemCard.recommended {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--t-accent) 7%, var(--t-surface)) 0%,
-    var(--t-surface) 65%
-  );
-  border-color: color-mix(in srgb, var(--t-accent) 22%, var(--t-border));
+  background: linear-gradient(155deg, var(--tone-primary-container), var(--tone) 62%);
 }
 
 .optionsContainer {
@@ -687,7 +654,7 @@
    flotante.
    ═══════════════════════════════════════════════════════════════ */
 .addBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   width: var(--control-min-size);
   height: var(--control-min-size);
   flex-shrink: 0;
@@ -713,8 +680,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: color-mix(in srgb, var(--t-accent) 10%, transparent);
-  border: 0.5px solid color-mix(in srgb, var(--t-accent) 30%, transparent);
+  background: var(--tone-secondary);
+  border: 0.5px solid transparent;
   border-radius: var(--radius-full);
   padding: 2px 6px;
 }
@@ -742,7 +709,7 @@
 }
 
 .cartFab {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   position: fixed;
   bottom: var(--floating-edge);
   right: var(--floating-edge);
@@ -801,7 +768,7 @@
    revisar cantidades y total. Ambos estados usan el mismo CartProvider y el
    mismo enlace de WhatsApp. */
 .cartBar {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   position: fixed;
   z-index: calc(var(--z-raised) + 20);
   left: 0;
@@ -815,11 +782,10 @@
   padding: 0.5rem 1.25rem;
   border: 0;
   border-top: 1px solid var(--t-border);
-  background: color-mix(in srgb, var(--t-bg) 94%, transparent);
+  /* Píldora sólo arriba: la barra apoya contra el borde de la pantalla. */
+  --control-shape: 28px 28px 0 0;
+  background: var(--tone-high);
   color: var(--t-title);
-  box-shadow: 0 -8px 24px color-mix(in srgb, var(--t-bg) 35%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   font: inherit;
   cursor: pointer;
   text-align: left;
@@ -841,7 +807,6 @@
 
 .cartBarLabel { font-size: 0.9rem; font-weight: 700; }
 .cartBarTotal { margin-left: auto; color: var(--t-accent); font-size: 0.9rem; font-weight: 700; }
-.cartBar:hover { background: color-mix(in srgb, var(--t-accent) 8%, var(--t-bg)); }
 .cartBar:focus-visible { outline: 2px solid var(--t-accent); outline-offset: -3px; }
 
 .orderSummary {
@@ -850,9 +815,11 @@
   top: calc(var(--free-ad-h, 0px) + 7rem);
   min-width: 0;
   padding: 1rem;
-  background: var(--t-surface);
-  border: 1px solid var(--t-border-md);
-  border-radius: var(--radius-lg);
+  /* Divisores internos apenas teñidos: el resumen se separa por tono. */
+  --t-border: color-mix(in srgb, var(--t-accent) 12%, transparent);
+  background: var(--tone);
+  border: 1px solid transparent;
+  border-radius: 28px;
   box-shadow: 0 12px 32px color-mix(in srgb, var(--t-bg) 22%, transparent);
 }
 
@@ -877,7 +844,7 @@
 /* Con clase propia y no como span:last-child: con los precios ocultos la
    línea no lleva monto y el último span pasaría a ser la variante. */
 .orderLineInfo .orderLinePrice { grid-column: 2; grid-row: 1; color: var(--t-title); font-size: 0.8rem; font-weight: 600; }
-.orderQty { display: inline-flex; align-items: center; gap: 0.35rem; width: fit-content; min-height: 44px; padding: 0.15rem 0.35rem; border: 1px solid var(--t-border-md); border-radius: var(--radius-full); background: var(--t-bg); }
+.orderQty { display: inline-flex; align-items: center; gap: 0.35rem; width: fit-content; min-height: 44px; padding: 0.15rem 0.35rem; border: 1px solid transparent; border-radius: var(--radius-full); background: var(--tone-secondary); }
 .orderQty button { width: 36px; height: 36px; border: 0; background: transparent; color: var(--t-accent); font: inherit; cursor: pointer; }
 .orderQty span { min-width: 1.2ch; color: var(--t-title); font-size: 0.8rem; font-weight: 700; text-align: center; }
 .orderTotal { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; border-top: 1px solid var(--t-border); color: var(--t-title); font-size: 0.9rem; font-weight: 600; }
@@ -886,7 +853,7 @@
    y el mismo aire que dejaba el total antes del botón de WhatsApp. */
 .orderLinesNoTotal { margin-bottom: 1rem; border-bottom: 1px solid var(--t-border); }
 .orderWhatsapp {
-  composes: md-glass-button from global; display: flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 52px; border-radius: var(--control-glass-radius); background: var(--t-accent); color: var(--t-btn-text); font-size: 0.85rem; font-weight: 700; text-decoration: none; }
+  composes: md-button from global; display: flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 52px; border-radius: var(--control-radius); background: var(--t-accent); color: var(--t-btn-text); font-size: 0.85rem; font-weight: 700; text-decoration: none; }
 .orderWhatsapp:hover { opacity: 0.9; }
 .orderNoWhatsapp { margin: 0; color: var(--t-muted); font-size: 0.75rem; line-height: 1.4; text-align: center; }
 .orderClear { display: block; width: 100%; min-height: 44px; border: 0; background: transparent; color: var(--t-muted); font: inherit; font-size: 0.75rem; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
@@ -1057,6 +1024,12 @@
   border: 0.5px solid color-mix(in srgb, var(--t-accent) 22%, transparent);
 }
 
+/* Recomendado: contenedor tonal del acento, como el fondo de su tarjeta. */
+.badgeReco {
+  background: var(--tone-primary-container);
+  border-color: transparent;
+}
+
 /* Oferta: usa un acento propio (rojo/coral) en vez del dorado de marca,
    para que el ahorro se distinga a simple vista del resto de los badges. */
 .badgeOffer {
@@ -1102,10 +1075,10 @@
 }
 
 .emptyMenuBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   background: none;
   border: 0.5px solid var(--t-border-md, #312d22);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   padding: 0.625rem 1.5rem;
   color: var(--t-accent, #c9a84c);
   cursor: pointer;

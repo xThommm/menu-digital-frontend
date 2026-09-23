@@ -40,5 +40,5 @@
 /* El candado va a la esquina, no centrado: a diferencia de la miniatura
    abstracta de una paleta, acá la muestra tiene el nombre del diseño en el
    medio y el ícono se le encimaba. El velo sigue cubriendo todo. */
-.lockOverlay { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: flex-end; padding: 0.75rem; background: rgba(0, 0, 0, 0.35); color: var(--admin-gold); backdrop-filter: blur(1.5px); -webkit-backdrop-filter: blur(1.5px); }
+.lockOverlay { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: flex-end; padding: 0.75rem; background: rgba(0, 0, 0, 0.35); color: var(--admin-gold); }
 .familyPlan { position: absolute; top: 0.6rem; right: 0.6rem; padding: 2px 7px; border: 0.5px solid var(--admin-border-gold-mid); border-radius: 4px; background: var(--admin-gold-glow); color: var(--admin-gold); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }

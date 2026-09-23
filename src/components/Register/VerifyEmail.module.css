@@ -86,7 +86,7 @@
   box-sizing: border-box;
   background: var(--auth-input-bg);
   border: 1px solid var(--auth-border-soft);
-  border-radius: var(--radius-xs);
+  border-radius: 16px;
   padding: 0.85rem;
   font-family: var(--font-auth-mono);
   font-size: var(--text-xl);
@@ -127,12 +127,12 @@
 
 /* ── BUTTONS ──────────────────────────────────────────── */
 .submitBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   width: 100%;
   min-height: 48px;
   background: var(--auth-amber);
   border: none;
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   padding: 0.9rem;
   font-family: var(--font-sans);
   font-size: var(--text-xs);
@@ -145,14 +145,13 @@
   transition: box-shadow var(--transition-md), transform var(--transition);
 }
 .submitBtn:hover:not(:disabled) {
-  box-shadow: var(--auth-shadow-btn-hover);
   transform: translateY(-1px);
 }
 .submitBtn:active:not(:disabled) { transform: scale(0.98); }
 .submitBtn:disabled { opacity: 0.55; cursor: not-allowed; filter: grayscale(.3); }
 
 .resendBtn {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   display: block;
   margin: var(--space-5) auto 0;
   background: none;

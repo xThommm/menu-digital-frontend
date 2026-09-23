@@ -135,11 +135,11 @@
 }
 .filterRow input:focus-visible, .filterRow select:focus-visible { outline: 2px solid var(--admin-gold); outline-offset: 1px; }
 .toolButton {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   min-height: var(--control-min-size);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--admin-border-default);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   background: var(--admin-bg-elevated);
   color: var(--admin-text-primary);
   font: inherit;
@@ -182,13 +182,13 @@
 }
 
 .chevronButton {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   display: grid;
   place-items: center;
   width: 26px;
   height: 26px;
   border: 0;
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   background: transparent;
   color: var(--admin-text-muted);
   cursor: pointer;
@@ -229,11 +229,11 @@
 .error p { margin: 0 0 var(--space-3); }
 
 .retryButton {
-  composes: md-glass-button from global;
+  composes: md-button from global;
   min-height: var(--control-min-size);
   padding: var(--space-2) var(--space-4);
   border: 1px solid var(--admin-border-default);
-  border-radius: var(--control-glass-radius);
+  border-radius: var(--control-radius);
   background: var(--admin-bg-elevated);
   color: var(--admin-text-secondary);
   font: inherit;
