@@ -19,6 +19,8 @@ interface CartDrawerProps {
   // drawer va sin montos por línea ni total (las líneas valen 0) y el
   // mensaje de WhatsApp sale solo con productos y cantidades.
   hidePrices?: boolean;
+  // Abre la confirmación de "Vaciar pedido" (ClearCartDialog en UserMenu).
+  onRequestClear: () => void;
 }
 
 export default function CartDrawer({
@@ -28,8 +30,9 @@ export default function CartDrawer({
   waTargets,
   orderMessage,
   hidePrices = false,
+  onRequestClear,
 }: CartDrawerProps) {
-  const { items, updateQuantity, removeItem, clearCart, totalPrice } = useCart();
+  const { items, updateQuantity, removeItem, totalPrice } = useCart();
 
   if (!open) return null;
 
@@ -118,11 +121,9 @@ export default function CartDrawer({
               )}
               <button
                 className={styles.clearBtn}
-                onClick={() => {
-                  // Acción destructiva sin undo — confirmación nativa simple,
-                  // no amerita un modal propio para un solo botón.
-                  if (window.confirm("¿Vaciar todo el pedido?")) clearCart();
-                }}
+                // Acción destructiva sin undo: la confirmación (ClearCartDialog)
+                // la monta UserMenu, para que quede por encima del drawer.
+                onClick={onRequestClear}
                 type="button"
               >
                 Vaciar pedido

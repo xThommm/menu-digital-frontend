@@ -7,6 +7,7 @@ import { CartProvider } from "../../../../context/CartProvider";
 import { useCart } from "../../../../context/useCart";
 import type { CartLine } from "../../../../context/CartContext";
 import CartDrawer from "./CartDrawer";
+import ClearCartDialog from "./ClearCartDialog";
 import ItemPreviewModal from "./ItemPreviewModal";
 import styles from "./UserMenu.module.css";
 import BusinessSEO from "../../../Common/BusinessSEO";
@@ -80,6 +81,10 @@ export default function MenuPage() {
   const [loadError, setLoadError] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [cartOpen, setCartOpen] = useState(false);
+  // Confirmación de "Vaciar pedido", compartida por el drawer y el resumen.
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const openClearConfirm = useCallback(() => setClearConfirmOpen(true), []);
+  const closeClearConfirm = useCallback(() => setClearConfirmOpen(false), []);
   const [preview, setPreview]   = useState<PreviewState | null>(null);
   // Categorías abiertas cuando son desplegables, por categoryKey (pestaña +
   // posición: la carta pública no trae _id de categorías). Vive acá (no en
@@ -525,6 +530,7 @@ export default function MenuPage() {
                 waTargets={waTargets}
                 orderMessage={info.orderMessage}
                 hidePrices={display.hidePrices}
+                onRequestClear={openClearConfirm}
               />
             )}
           </div>
@@ -545,8 +551,13 @@ export default function MenuPage() {
               waTargets={waTargets}
               orderMessage={info.orderMessage}
               hidePrices={display.hidePrices}
+              onRequestClear={openClearConfirm}
             />
           )}
+
+          {/* También dentro de .mp (tokens del template), después del drawer
+              para quedar encima cuando se abre desde ahí. */}
+          {ordersEnabled && clearConfirmOpen && <ClearCartDialog onClose={closeClearConfirm} />}
 
           {preview !== null && (
             <ItemPreviewModal
@@ -614,13 +625,15 @@ function OrderSummary({
   waTargets,
   orderMessage,
   hidePrices,
+  onRequestClear,
 }: {
   businessName: string;
   waTargets: WaTarget[];
   orderMessage?: string;
   hidePrices: boolean;
+  onRequestClear: () => void;
 }) {
-  const { items, totalPrice, updateQuantity, clearCart } = useCart();
+  const { items, totalPrice, updateQuantity } = useCart();
   if (items.length === 0) return null;
 
   const orderText = buildOrderMessage(items, businessName, orderMessage, { hidePrices });
@@ -670,9 +683,7 @@ function OrderSummary({
       <button
         type="button"
         className={styles.orderClear}
-        onClick={() => {
-          if (window.confirm("¿Vaciar todo el pedido?")) clearCart();
-        }}
+        onClick={onRequestClear}
       >
         Vaciar pedido
       </button>

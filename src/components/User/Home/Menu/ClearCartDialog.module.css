@@ -1,0 +1,89 @@
+/* Confirmación de "Vaciar pedido". Tokens del template (--t-*), igual que
+   CartDrawer: se ve como parte de la carta de cada local, en claro u oscuro. */
+@keyframes clearFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes clearPopIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Por encima del drawer del carrito (--z-overlay). */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.55);
+  animation: clearFadeIn 0.15s ease both;
+}
+
+.dialog {
+  composes: md-surface from global;
+  width: 100%;
+  max-width: 360px;
+  padding: 1.35rem 1.25rem 1.1rem;
+  border: 0.5px solid var(--t-border-md);
+  border-radius: var(--t-radius-modal);
+  animation: clearPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.title {
+  margin: 0 0 0.4rem;
+  color: var(--t-title);
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.text {
+  margin: 0 0 1.25rem;
+  color: var(--t-text);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.cancelBtn,
+.confirmBtn {
+  composes: md-button from global;
+  min-height: 46px;
+  padding: 0 1rem;
+  border-radius: var(--control-radius);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancelBtn {
+  border: 1px solid var(--t-border-md);
+  background: transparent;
+  color: var(--t-title);
+}
+
+.cancelBtn:hover { background: var(--t-accent-soft); }
+
+.confirmBtn {
+  border: 0;
+  background: var(--t-accent);
+  color: var(--t-btn-text);
+}
+
+.confirmBtn:hover { opacity: 0.9; }
+
+.cancelBtn:focus-visible,
+.confirmBtn:focus-visible {
+  outline: 2px solid var(--t-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay, .dialog { animation: none; }
+}
