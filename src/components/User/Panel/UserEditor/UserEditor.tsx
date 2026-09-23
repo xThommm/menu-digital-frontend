@@ -46,6 +46,75 @@ const EMPTY_FORM: FormState = {
 // Espejo del máximo de contactInfo.orderMessage en el backend.
 const ORDER_MESSAGE_MAX_LENGTH = 500;
 
+// ── Logo del favicon (media.favicon) ──
+// Espejo de FAVICON_MAX_BYTES en el backend (config/cloudinary.js). Se
+// valida sobre el archivo que elige el dueño, antes de procesarlo: un logo
+// no necesita más, y así una foto de varios MB no llega a decodificarse.
+const FAVICON_MAX_BYTES = 1024 * 1024;
+const FAVICON_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+// Debajo de esto el ícono se ve pixelado hasta en la pestaña.
+const FAVICON_MIN_SIDE = 32;
+// Lo que se sube: un PNG cuadrado de 256 px con el logo centrado sobre
+// fondo transparente (pesa pocos KB). Un favicon no cuadrado el navegador
+// lo deforma o lo recorta según el caso.
+const FAVICON_OUTPUT_SIDE = 256;
+
+const formatMb = (bytes: number) =>
+  `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
+
+// Valida el logo y lo devuelve listo para subir como favicon. Tira un Error
+// con el mensaje para el usuario si no sirve.
+async function prepareFaviconFile(file: File): Promise<File> {
+  if (!FAVICON_ALLOWED_TYPES.includes(file.type)) {
+    throw new Error("El logo tiene que ser una imagen JPG, PNG o WebP.");
+  }
+  if (file.size > FAVICON_MAX_BYTES) {
+    throw new Error(
+      `El logo pesa ${formatMb(file.size)}. El máximo es ${formatMb(FAVICON_MAX_BYTES)}: probá con una versión más liviana.`
+    );
+  }
+
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    try {
+      await img.decode();
+    } catch {
+      throw new Error("No se pudo leer la imagen. Probá con otro archivo.");
+    }
+
+    const { naturalWidth: w, naturalHeight: h } = img;
+    if (w < FAVICON_MIN_SIDE || h < FAVICON_MIN_SIDE) {
+      throw new Error(
+        `El logo es muy chico (${w} × ${h} px). Tiene que medir al menos ${FAVICON_MIN_SIDE} × ${FAVICON_MIN_SIDE} px.`
+      );
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = FAVICON_OUTPUT_SIDE;
+    canvas.height = FAVICON_OUTPUT_SIDE;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("No se pudo procesar la imagen. Probá de nuevo.");
+    // "contain": entra entero, sin recortar, y nunca se agranda más allá de
+    // su tamaño real.
+    const scale = Math.min(FAVICON_OUTPUT_SIDE / w, FAVICON_OUTPUT_SIDE / h, 1);
+    const dw = w * scale, dh = h * scale;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, (FAVICON_OUTPUT_SIDE - dw) / 2, (FAVICON_OUTPUT_SIDE - dh) / 2, dw, dh);
+
+    const blob: Blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        b => (b ? resolve(b) : reject(new Error("No se pudo procesar la imagen. Probá de nuevo."))),
+        "image/png"
+      );
+    });
+    return new File([blob], "favicon.png", { type: "image/png" });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 // WhatsApp por sucursal (contactInfo.whatsappNumbers). Espejo de los topes
 // del backend (parseWhatsappNumbers en userController.js).
 interface WaNumberRow {
@@ -159,11 +228,12 @@ export default function UserEditorPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef   = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
   const galleryDragCounter = useRef(0);
 
   const [loading,   setLoading]   = useState(true);
   const [saving,    setSaving]    = useState(false);
-  const [uploading, setUploading] = useState<"bg" | "gallery" | null>(null);
+  const [uploading, setUploading] = useState<"bg" | "gallery" | "favicon" | null>(null);
   const [galleryProgress, setGalleryProgress] = useState<{ done: number; total: number } | null>(null);
   const [galleryDragOver, setGalleryDragOver] = useState(false);
   const [error,     setError]     = useFeedbackMessage("error");
@@ -178,7 +248,8 @@ export default function UserEditorPage() {
   const initialWaNumbersRef = useRef<WaNumberRow[]>([]);
   const [pictures,         setPictures]   = useState<string[]>([]);
   const [backgroundPicture, setBackground] = useState("");
-  const [template,          setTemplate]   = useState(1);
+  const [favicon,           setFavicon]    = useState("");
+  const [template,         setTemplate]   = useState(1);
   const [menuStyle, setMenuStyle] = useState<MenuStyle>("classic");
   const [savingAppearance, setSavingAppearance] = useState(false);
   const appearanceSavingRef = useRef(false);
@@ -316,6 +387,7 @@ export default function UserEditorPage() {
         initialScheduleRef.current = loadedSchedule;
         setPictures(data.media?.pictures || []);
         setBackground(data.media?.backgroundPicture || "");
+        setFavicon(data.media?.favicon || "");
         setTemplate(data.template || 1);
         setMenuStyle(resolveMenuStyle(data.menuStyle));
         setSubscription(data.subscription || "free");
@@ -681,6 +753,64 @@ export default function UserEditorPage() {
       setError(err instanceof Error ? err.message : "No se pudo subir la imagen de portada.");
     } finally {
       setUploading(null);
+    }
+  };
+
+  // Logo del favicon: se valida y se achica en el navegador (ver
+  // prepareFaviconFile) y recién ahí se sube.
+  const uploadFaviconImage = async (file: File) => {
+    setUploading("favicon"); setError(""); setSuccess("");
+    try {
+      const prepared = await prepareFaviconFile(file);
+      const formData = new FormData();
+      formData.append("image", prepared);
+      const res = await fetch("/api/users/upload-favicon", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "No se pudo subir el logo.");
+      }
+      const data = await res.json();
+      setFavicon(data.media?.favicon || data.imageUrl || "");
+      setSuccess("Logo actualizado.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo subir el logo.");
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  // Quitar el logo (optimista): la landing y la carta vuelven al favicon
+  // de Menú Digital.
+  const removeFavicon = async () => {
+    const prev = favicon;
+    setFavicon("");
+    try {
+      const res = await fetch("/api/users/favicon", {
+        method: "DELETE",
+        headers: authHeaders,
+      });
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "No se pudo quitar el logo.");
+      }
+      setSuccess("Logo quitado. Se muestra el ícono de Menú Digital.");
+    } catch (err) {
+      setFavicon(prev);
+      setError(err instanceof Error ? err.message : "No se pudo quitar el logo.");
     }
   };
 
@@ -1267,6 +1397,70 @@ export default function UserEditorPage() {
                 style={{ display: "none" }}
                 onChange={e => {
                   if (e.target.files?.[0]) openCropModal(e.target.files[0]);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+
+            {/* Favicon */}
+            <div className={styles.mediaSection}>
+              <div className={styles.mediaLabelRow}>
+                <p className={styles.mediaLabel}>Logo (ícono de la pestaña)</p>
+                {favicon && (
+                  <button
+                    className={styles.textBtn}
+                    onClick={removeFavicon}
+                    disabled={uploading !== null}
+                    type="button"
+                  >
+                    Quitar logo
+                  </button>
+                )}
+              </div>
+              <div className={styles.faviconRow}>
+                <button
+                  className={`${styles.faviconPreview} ${uploading === "favicon" ? styles.uploading : ""}`}
+                  onClick={() => faviconInputRef.current?.click()}
+                  disabled={uploading !== null}
+                  aria-label={favicon ? "Cambiar logo" : "Subir logo"}
+                  type="button"
+                >
+                  {uploading === "favicon" ? (
+                    <Spinner size={18} />
+                  ) : favicon ? (
+                    <img src={favicon} alt="Logo actual" />
+                  ) : (
+                    <img src="/favicon-96x96.png" alt="Ícono de Menú Digital (por defecto)" />
+                  )}
+                </button>
+                <div className={styles.faviconInfo}>
+                  <p className={styles.faviconText}>
+                    {favicon
+                      ? "Tu logo se muestra en la pestaña del navegador cuando entran a tu página y a tu carta."
+                      : "Sin logo cargado: tu página y tu carta muestran el ícono de Menú Digital."}
+                  </p>
+                  <span className={styles.uploadHint}>
+                    Imagen cuadrada, JPG, PNG o WebP, hasta {formatMb(FAVICON_MAX_BYTES)}. Mejor con fondo transparente.
+                  </span>
+                  <button
+                    className={styles.textBtn}
+                    onClick={() => faviconInputRef.current?.click()}
+                    disabled={uploading !== null}
+                    type="button"
+                  >
+                    {uploading === "favicon"
+                      ? <><Spinner size={12} /> Subiendo...</>
+                      : favicon ? "Cambiar logo" : "+ Subir logo"}
+                  </button>
+                </div>
+              </div>
+              <input
+                ref={faviconInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                style={{ display: "none" }}
+                onChange={e => {
+                  if (e.target.files?.[0]) uploadFaviconImage(e.target.files[0]);
                   e.target.value = "";
                 }}
               />

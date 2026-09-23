@@ -89,6 +89,9 @@ export type LandingVisibility = Record<LandingVisibilityKey, boolean>
 export interface Media {
   pictures: string[]
   backgroundPicture: string
+  // Logo del favicon de la landing y la carta. Opcional para tolerar un
+  // backend anterior a la opción: ausente o vacío = favicon de Menú Digital.
+  favicon?: string
 }
 
 // Horario de atención del negocio: un DayHours fijo por día de la semana.
@@ -371,6 +374,7 @@ export interface PublicMenuContactInfo {
 
 export interface PublicMenuMedia {
   backgroundPicture?: string
+  favicon?: string
   // v2 manda solo la primera imagen (la que usa BusinessSEO para og:image).
   pictures?: string[]
 }

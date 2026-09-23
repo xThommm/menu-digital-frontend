@@ -64,11 +64,57 @@ function setCanonical(url: string) {
   canonical.setAttribute("href", url);
 }
 
+// Cambia el favicon del sitio por el logo del local mientras se ve su landing
+// o su carta. En vez de agregar un <link> nuevo se reescriben los de
+// index.html: con varios rel="icon" cada navegador elige uno distinto (por
+// tamaño o tipo) y podría quedarse con el de Menú Digital. Devuelve la
+// función que deja los originales como estaban, para cuando se sale de la
+// página del local (el resto del sitio sigue con el favicon por defecto).
+function applyBusinessFavicon(url: string) {
+  const links = Array.from(
+    document.querySelectorAll<HTMLLinkElement>(
+      'link[rel="icon"], link[rel="apple-touch-icon"]'
+    )
+  );
+
+  const originals = links.map((link) => ({
+    link,
+    href: link.getAttribute("href"),
+    type: link.getAttribute("type"),
+    sizes: link.getAttribute("sizes"),
+  }));
+
+  for (const link of links) {
+    link.setAttribute("href", url);
+    // Cloudinary lo guarda como PNG (ver faviconStorage en el backend).
+    if (link.rel === "icon") link.setAttribute("type", "image/png");
+    link.removeAttribute("sizes");
+  }
+
+  return () => {
+    for (const { link, href, type, sizes } of originals) {
+      if (href === null) link.removeAttribute("href");
+      else link.setAttribute("href", href);
+      if (type === null) link.removeAttribute("type");
+      else link.setAttribute("type", type);
+      if (sizes === null) link.removeAttribute("sizes");
+      else link.setAttribute("sizes", sizes);
+    }
+  };
+}
+
 export default function BusinessSEO({
   user,
   slug,
   page,
 }: BusinessSEOProps) {
+  const favicon = user.media?.favicon?.trim() || "";
+
+  useEffect(() => {
+    if (!favicon) return;
+    return applyBusinessFavicon(favicon);
+  }, [favicon]);
+
   useEffect(() => {
     const info = user.contactInfo;
     // Lo que el dueño ocultó de la landing tampoco va a los datos

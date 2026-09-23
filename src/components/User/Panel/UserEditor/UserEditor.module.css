@@ -602,6 +602,71 @@
   color: var(--admin-text-faint) !important;
 }
 
+/* ── Logo del favicon ── */
+.faviconRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.faviconPreview {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  padding: 10px;
+  border-radius: var(--admin-radius-lg);
+  border: 0.5px solid var(--admin-border-default);
+  background-color: var(--admin-bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.faviconPreview:hover:not(:disabled) {
+  border-color: var(--admin-border-warm);
+}
+
+.faviconPreview:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
+}
+
+.faviconPreview:disabled {
+  cursor: not-allowed;
+}
+
+.faviconPreview.uploading {
+  cursor: wait;
+}
+
+.faviconPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.faviconInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.faviconInfo .textBtn {
+  padding: 0;
+  margin-top: 2px;
+}
+
+.faviconText {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--admin-text-secondary, var(--admin-text-muted));
+  line-height: 1.4;
+}
+
 .uploadingOverlay {
   display: flex;
   flex-direction: column;
