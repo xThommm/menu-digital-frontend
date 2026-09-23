@@ -2,12 +2,12 @@ import type { PublicMenuData, PublicMenuItem, PublicMenuTab } from "../types/ind
 
 // Helpers puros de la carta pública (contrato v2, con tolerancia al legacy).
 
-// El contrato v2 EXCLUYE del JSON los productos no disponibles (interruptor
-// manual apagado o fuera de su programación), así que nunca manda `available`.
-// La respuesta legacy sí lo manda, y ahí un producto agotado se muestra con
-// "No disponible". Por eso la pregunta correcta es "¿viene explícitamente
-// apagado?" y no `!item.available`: con v2 el campo está ausente (undefined)
-// y todos los productos aparecerían como no disponibles.
+// Los productos no disponibles (interruptor manual apagado o fuera de su
+// programación) llegan con `available: false` y se muestran con "No
+// disponible". El contrato v2 omite la clave en los disponibles, así que la
+// pregunta correcta es "¿viene explícitamente apagado?" y no
+// `!item.available`: con v2 el campo está ausente (undefined) en los
+// disponibles y todos aparecerían como no disponibles.
 export const isItemUnavailable = (item: Pick<PublicMenuItem, "available">): boolean =>
   item.available === false;
 

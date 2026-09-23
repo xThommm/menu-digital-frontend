@@ -143,8 +143,8 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
   // producto no tenga precio. null = no se puede agregar.
   const simplePrice = cartUnitPrice(item, undefined, { hidePrices });
 
-  // v2 no manda available (excluye los no disponibles); el legacy sí, y ahí
-  // un producto agotado se ve con "No disponible" y sin controles de pedido.
+  // Un producto no disponible (available: false) se ve con "No disponible" y
+  // sin controles de pedido.
   const unavailable = isItemUnavailable(item);
 
   const handleAddSimple = () => {

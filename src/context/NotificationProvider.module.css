@@ -1,7 +1,6 @@
 .viewport {
   position: fixed;
-  top: var(--space-4);
-  right: var(--space-4);
+  bottom: var(--space-4);
   z-index: var(--z-toast);
   width: min(380px, calc(100vw - 2 * var(--space-4)));
   display: flex;
