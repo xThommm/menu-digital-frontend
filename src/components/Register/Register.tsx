@@ -5,6 +5,7 @@ import { useFeedbackMessage } from "../../hooks/useFeedbackMessage";
 import BrandMark from "../Common/BrandMark";
 import BrandWordmark from "../Common/BrandWordmark";
 import { useAuthTheme } from "../../hooks/useAuthTheme";
+import { normalizeArPhone, isValidArLocalPhone } from "../../lib/whatsapp";
 import styles from "./Register.module.css";
 
 const PLAN_IDS = ["free", "basic", "pro"] as const;
@@ -58,9 +59,10 @@ export default function RegisterPage() {
       setError("Ingresá un email válido.");
       return;
     }
-    const phoneDigits = phone.replace(/\D/g, "");
-    if (!phoneDigits) {
-      setError("Ingresá un teléfono de contacto válido.");
+    // Código de área + número; si lo tipean con 54, 0 o 15 se normaliza.
+    const phoneDigits = normalizeArPhone(phone);
+    if (!isValidArLocalPhone(phoneDigits)) {
+      setError("Ingresá un teléfono válido: código de área y número, sin 0 ni 15 (ej: 11 2345-6789).");
       return;
     }
     if (!acceptedTerms) {
@@ -210,7 +212,7 @@ export default function RegisterPage() {
 
           {/* Teléfono */}
           <div className={styles.field}>
-            <label htmlFor="phone">Teléfono</label>
+            <label htmlFor="phone">Teléfono (código de área y número)</label>
             <div className={styles.fieldWrap}>
               <svg
                 className={styles.fieldIcon}
@@ -228,7 +230,7 @@ export default function RegisterPage() {
               <input
                 id="phone"
                 type="tel"
-                placeholder="+54 9 111234-5678"
+                placeholder="11 2345-6789"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 autoComplete="tel"

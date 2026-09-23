@@ -12,6 +12,7 @@ import UpgradeModal from "../../../Common/UpgradeModal";
 import MenuStylePicker from "./MenuStylePicker";
 import { resolveMenuStyle, getVisualFamily, buildAppearanceBody, type MenuStyle } from "../../../../lib/menuStyles";
 import { TEMPLATES, type TemplateOption } from "../../../../lib/templates";
+import { normalizeArPhone, isValidArLocalPhone } from "../../../../lib/whatsapp";
 import styles from "./UserEditor.module.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -44,6 +45,16 @@ const EMPTY_FORM: FormState = {
 
 // Espejo del máximo de contactInfo.orderMessage en el backend.
 const ORDER_MESSAGE_MAX_LENGTH = 500;
+
+// WhatsApp por sucursal (contactInfo.whatsappNumbers). Espejo de los topes
+// del backend (parseWhatsappNumbers en userController.js).
+interface WaNumberRow {
+  name: string;
+  number: string;
+}
+const WHATSAPP_NUMBERS_MAX = 10;
+const WHATSAPP_NAME_MAX_LENGTH = 40;
+const PHONE_FORMAT_HINT = "Código de área y número, sin 0 ni 15 (ej: 11 2345-6789).";
 
 // ── Horario de atención ──
 // Los tipos (DayKey/DayHours/Schedule) viven en types/index.ts, espejo del
@@ -163,7 +174,9 @@ export default function UserEditorPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [schedule, setSchedule] = useState<Schedule>(EMPTY_SCHEDULE);
   const initialScheduleRef = useRef<Schedule>(EMPTY_SCHEDULE);
-  const [pictures,          setPictures]   = useState<string[]>([]);
+  const [waNumbers, setWaNumbers] = useState<WaNumberRow[]>([]);
+  const initialWaNumbersRef = useRef<WaNumberRow[]>([]);
+  const [pictures,         setPictures]   = useState<string[]>([]);
   const [backgroundPicture, setBackground] = useState("");
   const [template,          setTemplate]   = useState(1);
   const [menuStyle, setMenuStyle] = useState<MenuStyle>("classic");
@@ -253,8 +266,9 @@ export default function UserEditorPage() {
       k => form[k] !== initial[k]
     );
     const scheduleDirty = JSON.stringify(schedule) !== JSON.stringify(initialScheduleRef.current);
-    setIsDirty(formDirty || scheduleDirty);
-  }, [form, schedule]);
+    const waNumbersDirty = JSON.stringify(waNumbers) !== JSON.stringify(initialWaNumbersRef.current);
+    setIsDirty(formDirty || scheduleDirty || waNumbersDirty);
+  }, [form, schedule, waNumbers]);
 
   // Load initial data
   useEffect(() => {
@@ -277,7 +291,9 @@ export default function UserEditorPage() {
         const loaded: FormState = {
           businessName: data.contactInfo?.businessName || "",
           mail:         data.contactInfo?.mail         || "",
-          number:       data.contactInfo?.number?.toString() || "",
+          // Se muestra ya normalizado (sin 54/9/0/15): los números viejos
+          // guardados con código de país quedan en el formato nuevo al guardar.
+          number:       normalizeArPhone(data.contactInfo?.number),
           address:      data.contactInfo?.address      || "",
           instagram:    data.contactInfo?.social?.instagram || "",
           facebook:     data.contactInfo?.social?.facebook  || "",
@@ -287,6 +303,14 @@ export default function UserEditorPage() {
         };
         setForm(loaded);
         initialFormRef.current = loaded;
+        const loadedWaNumbers: WaNumberRow[] = Array.isArray(data.contactInfo?.whatsappNumbers)
+          ? data.contactInfo.whatsappNumbers.map((w: { name?: string; number?: string }) => ({
+            name: w.name || "",
+            number: w.number || "",
+          }))
+          : [];
+        setWaNumbers(loadedWaNumbers);
+        initialWaNumbersRef.current = loadedWaNumbers;
         const loadedSchedule = normalizeSchedule(data.schedule);
         setSchedule(loadedSchedule);
         initialScheduleRef.current = loadedSchedule;
@@ -316,9 +340,19 @@ export default function UserEditorPage() {
       setError("Ingresá un email de contacto válido.");
       return false;
     }
-    const numberDigits = form.number.replace(/\D/g, "");
-    if (form.number.trim() && !numberDigits) {
-      setError("El teléfono no es válido.");
+    if (form.number.trim() && !isValidArLocalPhone(normalizeArPhone(form.number))) {
+      setError(`El teléfono no es válido. ${PHONE_FORMAT_HINT}`);
+      return false;
+    }
+    const filledWaNumbers = waNumbers.filter(w => w.name.trim() || w.number.trim());
+    for (const w of filledWaNumbers) {
+      if (!isValidArLocalPhone(normalizeArPhone(w.number))) {
+        setError(`El WhatsApp${w.name.trim() ? ` "${w.name.trim()}"` : ""} no es válido. ${PHONE_FORMAT_HINT}`);
+        return false;
+      }
+    }
+    if (filledWaNumbers.length > 1 && filledWaNumbers.some(w => !w.name.trim())) {
+      setError("Si cargás más de un WhatsApp, ponele un nombre a cada uno (ej: la sucursal).");
       return false;
     }
     for (const day of DAY_ORDER) {
@@ -340,7 +374,12 @@ export default function UserEditorPage() {
   // Save info
   const saveInfo = async () => {
     const trimmedMail = form.mail.trim();
-    const numberDigits = form.number.replace(/\D/g, "");
+    const numberDigits = normalizeArPhone(form.number);
+    // Las filas vacías se descartan; el resto va normalizado como lo guarda
+    // el backend, y así queda también como estado "sin cambios".
+    const savedWaNumbers: WaNumberRow[] = waNumbers
+      .filter(w => w.name.trim() || w.number.trim())
+      .map(w => ({ name: w.name.trim(), number: normalizeArPhone(w.number) }));
     // Cambiar el mail no pasa por este PUT (el backend lo rechaza): se manda
     // siempre el valor ya guardado, y si el dueño tipeó uno distinto se
     // dispara aparte el flujo de confirmación por código.
@@ -356,6 +395,7 @@ export default function UserEditorPage() {
             businessName: form.businessName.trim(),
             mail:         initialFormRef.current.mail,
             number:       numberDigits ? Number(numberDigits) : null,
+            whatsappNumbers: savedWaNumbers,
             address:      form.address.trim(),
             social: {
               instagram: form.instagram.trim(),
@@ -380,8 +420,12 @@ export default function UserEditorPage() {
       // El mail queda afuera a propósito: sigue siendo el viejo hasta
       // confirmar el código, así isDirty refleja que ese cambio puntual
       // todavía no se guardó de verdad.
-      initialFormRef.current = { ...form, mail: initialFormRef.current.mail };
+      // El teléfono se reemplaza por su versión normalizada (la guardada).
+      initialFormRef.current = { ...form, number: numberDigits, mail: initialFormRef.current.mail };
+      setForm(f => ({ ...f, number: numberDigits }));
       initialScheduleRef.current = schedule;
+      initialWaNumbersRef.current = savedWaNumbers;
+      setWaNumbers(savedWaNumbers);
       setIsDirty(mailChanged);
       setSuccess("Información guardada.");
 
@@ -928,11 +972,14 @@ export default function UserEditorPage() {
                 <input
                   id="phone"
                   type="tel"
-                  placeholder="+54 9 111234-5678"
+                  inputMode="tel"
+                  placeholder="11 2345-6789"
                   value={form.number}
                   onChange={e => setForm(f => ({ ...f, number: e.target.value }))}
-                  autoComplete="tel"
+                  autoComplete="tel-national"
+                  aria-describedby="phone-hint"
                 />
+                <p id="phone-hint" className={styles.fieldHint}>{PHONE_FORMAT_HINT}</p>
               </div>
               <div className={styles.field}>
                 <label htmlFor="email">Email</label>
@@ -996,6 +1043,56 @@ export default function UserEditorPage() {
                 </div>
               </div>
             )}
+
+            <div className={styles.field} role="group" aria-labelledby="waNumbers-label" aria-describedby="waNumbers-hint">
+              <p id="waNumbers-label" className={styles.groupLabel}>WhatsApp para pedidos y reservas</p>
+              {waNumbers.length > 0 && (
+                <ul className={styles.waList}>
+                  {waNumbers.map((w, i) => (
+                    <li key={i} className={styles.waRow}>
+                      <input
+                        type="text"
+                        placeholder={waNumbers.length > 1 ? "Nombre (ej: Sucursal Centro)" : "Nombre (opcional)"}
+                        value={w.name}
+                        maxLength={WHATSAPP_NAME_MAX_LENGTH}
+                        onChange={e => setWaNumbers(list => list.map((row, j) => j === i ? { ...row, name: e.target.value } : row))}
+                        aria-label={`Nombre del WhatsApp ${i + 1}`}
+                      />
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        placeholder="11 2345-6789"
+                        value={w.number}
+                        onChange={e => setWaNumbers(list => list.map((row, j) => j === i ? { ...row, number: e.target.value } : row))}
+                        aria-label={`Número del WhatsApp ${i + 1}`}
+                      />
+                      <button
+                        type="button"
+                        className={styles.waRemove}
+                        onClick={() => setWaNumbers(list => list.filter((_, j) => j !== i))}
+                        aria-label={`Quitar el WhatsApp ${w.name.trim() || i + 1}`}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {waNumbers.length < WHATSAPP_NUMBERS_MAX && (
+                <button
+                  type="button"
+                  className={styles.textBtn}
+                  onClick={() => setWaNumbers(list => [...list, { name: "", number: "" }])}
+                >
+                  + Agregar {waNumbers.length === 0 ? "un WhatsApp" : "otro WhatsApp"}
+                </button>
+              )}
+              <p id="waNumbers-hint" className={styles.fieldHint}>
+                {PHONE_FORMAT_HINT} Si tenés más de una sucursal, cargá un número por cada una con su
+                nombre: al pedir o reservar, tus clientes eligen a cuál escribir. Si no cargás
+                ninguno, se usa el teléfono de arriba.
+              </p>
+            </div>
 
             <div className={styles.field}>
               <label htmlFor="reservationMessage">Mensaje de reserva (WhatsApp)</label>

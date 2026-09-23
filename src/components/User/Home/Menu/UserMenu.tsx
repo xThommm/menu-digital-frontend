@@ -12,7 +12,8 @@ import styles from "./UserMenu.module.css";
 import BusinessSEO from "../../../Common/BusinessSEO";
 import FreePlanAd from "../../../Common/FreePlanAd";
 import { isOfferActive } from "../../../../lib/offers";
-import { buildOrderMessage, buildWaLink } from "../../../../lib/whatsapp";
+import { buildOrderMessage, getWaTargets, type WaTarget } from "../../../../lib/whatsapp";
+import WaTargetPicker from "../WaTargetPicker/WaTargetPicker";
 import { resolveMenuDisplay } from "../../../../lib/menuDisplay";
 import { cartUnitPrice, repriceCartLines } from "../../../../lib/cartPricing";
 import { getVisualFamily, resolveMenuStyle } from "../../../../lib/menuStyles";
@@ -290,6 +291,8 @@ export default function MenuPage() {
   // productos y cantidades, sin subtotales ni total.
   const ordersEnabled = user.features?.pedido_whatsapp === true;
   const canOrder = user.hasDelivery === true && ordersEnabled;
+  // Un destino por sucursal; sin sucursales cargadas, el teléfono de siempre.
+  const waTargets = getWaTargets(info);
 
   // El carrito guardado se pone al día contra esta carta al montar: fuera
   // lo que ya no se puede pedir y precios actuales (o 0, con los precios
@@ -519,7 +522,7 @@ export default function MenuPage() {
             {ordersEnabled && (
               <OrderSummary
                 businessName={info.businessName || "el local"}
-                whatsappNumber={info.number ?? null}
+                waTargets={waTargets}
                 orderMessage={info.orderMessage}
                 hidePrices={display.hidePrices}
               />
@@ -539,7 +542,7 @@ export default function MenuPage() {
               open={cartOpen}
               onClose={() => setCartOpen(false)}
               businessName={info.businessName || "el local"}
-              whatsappNumber={info.number ?? null}
+              waTargets={waTargets}
               orderMessage={info.orderMessage}
               hidePrices={display.hidePrices}
             />
@@ -608,22 +611,19 @@ function CartBar({ onClick, hidePrices }: { onClick: () => void; hidePrices: boo
 // (las líneas del carrito valen 0: mostrarlas diría "$0").
 function OrderSummary({
   businessName,
-  whatsappNumber,
+  waTargets,
   orderMessage,
   hidePrices,
 }: {
   businessName: string;
-  whatsappNumber: number | null;
+  waTargets: WaTarget[];
   orderMessage?: string;
   hidePrices: boolean;
 }) {
   const { items, totalPrice, updateQuantity, clearCart } = useCart();
   if (items.length === 0) return null;
 
-  const waLink = buildWaLink(
-    whatsappNumber,
-    buildOrderMessage(items, businessName, orderMessage, { hidePrices })
-  );
+  const orderText = buildOrderMessage(items, businessName, orderMessage, { hidePrices });
 
   return (
     <aside className={styles.orderSummary} aria-label="Tu pedido">
@@ -655,8 +655,15 @@ function OrderSummary({
       {!hidePrices && (
         <div className={styles.orderTotal}><span>Total</span><strong>{fmt(totalPrice)}</strong></div>
       )}
-      {waLink ? (
-        <a className={styles.orderWhatsapp} href={waLink} target="_blank" rel="noopener noreferrer">Pedir por WhatsApp <span aria-hidden>↗</span></a>
+      {waTargets.length > 0 ? (
+        <WaTargetPicker
+          targets={waTargets}
+          message={orderText}
+          className={styles.orderWhatsapp}
+          prompt="¿A qué sucursal querés mandar el pedido?"
+        >
+          Pedir por WhatsApp <span aria-hidden>{waTargets.length > 1 ? "▾" : "↗"}</span>
+        </WaTargetPicker>
       ) : (
         <p className={styles.orderNoWhatsapp}>Este local todavía no cargó un WhatsApp para pedidos.</p>
       )}

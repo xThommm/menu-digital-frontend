@@ -43,9 +43,17 @@ export type ApiErrorType =
 
 // ── Entidades base ─────────────────────────────────────────────────────────
 
+export interface WhatsappNumber {
+  name: string
+  number: string
+}
+
 export interface ContactInfo {
   mail: string
   number: number | null
+  // WhatsApp para pedidos y reservas, uno por sucursal (código de área +
+  // número). Vacío o ausente = se usa `number`. Ver getWaTargets.
+  whatsappNumbers?: WhatsappNumber[]
   location: Record<string, unknown>
   address: string
   social: Record<string, string>
@@ -356,6 +364,7 @@ export interface PublicMenuTab {
 export interface PublicMenuContactInfo {
   businessName?: string
   number?: number | null
+  whatsappNumbers?: WhatsappNumber[]
   address?: string
   orderMessage?: string
 }

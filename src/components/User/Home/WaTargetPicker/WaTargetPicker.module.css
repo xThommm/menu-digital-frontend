@@ -1,0 +1,82 @@
+/* Lista de sucursales debajo del botón de WhatsApp. Usa los tokens del
+   template activo (--t-*), igual que el resto de la carta y la landing. */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+/* El botón usa la clase de cada pantalla, pensada para un <a>: acá solo se
+   resetea lo propio de un <button>. :where() deja la especificidad en un
+   elemento, así cualquier borde o tipografía de esa clase gana. */
+:where(.wrap) > button {
+  width: 100%;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  border: 1px solid var(--t-border-md, var(--t-border));
+  border-radius: var(--control-radius, 10px);
+  background: var(--t-surface, var(--t-bg));
+  animation: waPickerIn 0.15s ease;
+}
+
+.prompt {
+  margin: 0 0 0.15rem;
+  color: var(--t-muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 44px;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--t-border-md, var(--t-border));
+  border-radius: var(--control-radius, 10px);
+  background: var(--t-bg);
+  color: var(--t-title, var(--t-text));
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.option:hover,
+.option:focus-visible {
+  border-color: var(--t-accent);
+  background: color-mix(in srgb, var(--t-accent) 10%, var(--t-bg));
+}
+
+.optionArrow {
+  color: var(--t-accent);
+  flex-shrink: 0;
+}
+
+@keyframes waPickerIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel { animation: none; }
+}

@@ -8,6 +8,8 @@ import FreePlanAd from "../../../Common/FreePlanAd";
 import { getOpenStatus, getBusinessDayIndex, JS_DAY_TO_KEY } from "../../../../Utils/businessSchedule";
 import { resolveLandingVisibility } from "../../../../lib/landingVisibility";
 import { getVisualFamily, resolveMenuStyle } from "../../../../lib/menuStyles";
+import { buildWaHref, getWaTargets, sanitizePhoneForWa, type WaTarget } from "../../../../lib/whatsapp";
+import WaTargetPicker from "../WaTargetPicker/WaTargetPicker";
 
 // ── Tokens por template ───────────────────────────────────────────────────────
 
@@ -321,8 +323,8 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
               <button type="button" onClick={goMenu} className="t-btn">
                 {tokens.btnLabel}
               </button>
-              {visible.whatsappReserve && info.number && (
-                <ReserveButton number={String(info.number)} message={info.reservationMessage} businessName={businessName} />
+              {visible.whatsappReserve && (
+                <ReserveButton targets={getWaTargets(info)} message={info.reservationMessage} businessName={businessName} />
               )}
             </div>
             {visible.address && <MapBadge address={info.address} businessName={businessName} />}
@@ -518,29 +520,29 @@ function ScheduleSection({ schedule }: { schedule?: Schedule }) {
 // Botón de reserva: abre WhatsApp con un mensaje pre-cargado. El texto lo
 // define el dueño del negocio (campo editable en el panel); si no cargó
 // nada, se usa un mensaje genérico de respaldo con el nombre del negocio.
+// Con más de un WhatsApp (sucursales), el cliente elige a cuál escribir;
+// sin ningún número el picker no dibuja nada.
 function ReserveButton({
-  number,
+  targets,
   message,
   businessName,
 }: {
-  number: string;
+  targets: WaTarget[];
   message?: string;
   businessName: string;
 }) {
-  const digits = number.replace(/\D/g, "");
   const text = message?.trim() || `Hola! Quiero hacer una reserva en ${businessName}.`;
-  const href = `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
 
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+    <WaTargetPicker
+      targets={targets}
+      message={text}
       className={styles.reserveBtn}
+      prompt="¿En qué sucursal querés reservar?"
     >
       <WhatsAppIcon />
       <span>Reservar por WhatsApp</span>
-    </a>
+    </WaTargetPicker>
   );
 }
 
@@ -601,7 +603,9 @@ function PhoneRow({ number }: { number: string }) {
     };
   }, [open]);
 
-  const digits = number.replace(/\D/g, "");
+  // Mismo formato que pedidos y reservas: el número se guarda sin 54/9 y
+  // wa.me lo necesita completo (ver sanitizePhoneForWa).
+  const waPhone = sanitizePhoneForWa(number);
 
   return (
     <div className={styles.phoneWrap} ref={wrapRef}>
@@ -629,17 +633,19 @@ function PhoneRow({ number }: { number: string }) {
             <span className={styles.phoneMenuIcon} aria-hidden><PhoneIcon /></span>
             <span>Llamar</span>
           </a>
-          <a
-            className={styles.phoneMenuItem}
-            href={`https://wa.me/${digits}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            role="menuitem"
-            onClick={() => setOpen(false)}
-          >
-            <span className={styles.phoneMenuIcon} aria-hidden><WhatsAppIcon /></span>
-            <span>WhatsApp</span>
-          </a>
+          {waPhone && (
+            <a
+              className={styles.phoneMenuItem}
+              href={buildWaHref(waPhone)}
+              target="_blank"
+              rel="noopener noreferrer"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+            >
+              <span className={styles.phoneMenuIcon} aria-hidden><WhatsAppIcon /></span>
+              <span>WhatsApp</span>
+            </a>
+          )}
         </div>
       )}
     </div>

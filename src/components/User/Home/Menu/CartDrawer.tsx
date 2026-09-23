@@ -1,5 +1,6 @@
 import { useCart } from "../../../../context/useCart";
-import { buildOrderMessage, buildWaLink } from "../../../../lib/whatsapp";
+import { buildOrderMessage, type WaTarget } from "../../../../lib/whatsapp";
+import WaTargetPicker from "../WaTargetPicker/WaTargetPicker";
 import styles from "./CartDrawer.module.css";
 
 const fmt = (n: number) =>
@@ -9,7 +10,9 @@ interface CartDrawerProps {
   open: boolean;
   onClose: () => void;
   businessName: string;
-  whatsappNumber: number | null;
+  // Un destino por sucursal (ver getWaTargets); con más de uno el cliente
+  // elige a cuál mandar el pedido.
+  waTargets: WaTarget[];
   // "Mensaje de pedido" de Mi negocio: se suma al final del texto del pedido.
   orderMessage?: string;
   // Opción "Ocultar precios" de la carta: se puede pedir igual, pero el
@@ -22,7 +25,7 @@ export default function CartDrawer({
   open,
   onClose,
   businessName,
-  whatsappNumber,
+  waTargets,
   orderMessage,
   hidePrices = false,
 }: CartDrawerProps) {
@@ -30,10 +33,7 @@ export default function CartDrawer({
 
   if (!open) return null;
 
-  const waLink = buildWaLink(
-    whatsappNumber,
-    buildOrderMessage(items, businessName, orderMessage, { hidePrices }),
-  );
+  const orderText = buildOrderMessage(items, businessName, orderMessage, { hidePrices });
 
   return (
     <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true" aria-label="Tu pedido">
@@ -104,10 +104,15 @@ export default function CartDrawer({
                 un botón de pago con MercadoPago (fase futura) es un cambio
                 aislado, no una reestructuración de este componente. */}
             <div className={styles.checkoutActions}>
-              {waLink ? (
-                <a className={styles.waBtn} href={waLink} target="_blank" rel="noopener noreferrer">
+              {waTargets.length > 0 ? (
+                <WaTargetPicker
+                  targets={waTargets}
+                  message={orderText}
+                  className={styles.waBtn}
+                  prompt="¿A qué sucursal querés mandar el pedido?"
+                >
                   <WhatsAppIcon /> Pedir por WhatsApp
-                </a>
+                </WaTargetPicker>
               ) : (
                 <p className={styles.noWa}>Este local todavía no cargó un WhatsApp para pedidos.</p>
               )}

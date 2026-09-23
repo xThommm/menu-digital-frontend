@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildOrderMessage, buildWaLink, sanitizePhoneForWa } from "../src/lib/whatsapp.ts";
+import {
+  buildOrderMessage, buildWaLink, getWaTargets, isValidArLocalPhone, normalizeArPhone, sanitizePhoneForWa,
+} from "../src/lib/whatsapp.ts";
 import type { CartLine } from "../src/context/CartContext.tsx";
 
 // Mismo formateador que whatsapp.ts: es-AR separa con espacios no
@@ -83,4 +85,35 @@ test("buildWaLink codifica el mensaje y devuelve null sin teléfono", () => {
   const link = buildWaLink(1112345678, message);
   assert.equal(link, `https://wa.me/5491112345678?text=${encodeURIComponent(message)}`);
   assert.equal(new URL(link ?? "").searchParams.get("text"), message);
+});
+
+test("normalizeArPhone deja código de área + número, sin 54/9/0/15", () => {
+  for (const input of [
+    "11 2345-6789", "1123456789", 1123456789, "+54 9 11 2345-6789", "5491123456789",
+    "54 11 2345 6789", "541123456789", "011 2345-6789", "11 15 2345-6789", "011 15 2345 6789",
+    "0054 9 11 2345 6789",
+  ]) {
+    assert.equal(normalizeArPhone(input), "1123456789", String(input));
+  }
+  // Áreas de 3 y 4 dígitos con el 15 en el medio.
+  assert.equal(normalizeArPhone("351 15 234-5678"), "3512345678");
+  assert.equal(normalizeArPhone("2972 15 45-6789"), "2972456789");
+  assert.equal(normalizeArPhone(null), "");
+  assert.equal(isValidArLocalPhone("1123456789"), true);
+  assert.equal(isValidArLocalPhone("123456"), false);
+  assert.equal(isValidArLocalPhone("0123456789"), false);
+});
+
+test("getWaTargets usa los WhatsApp por sucursal y si no hay, el teléfono", () => {
+  assert.deepEqual(getWaTargets({ number: 1123456789 }), [{ name: "", phone: "5491123456789" }]);
+  assert.deepEqual(getWaTargets({ number: 1123456789, whatsappNumbers: [] }), [{ name: "", phone: "5491123456789" }]);
+  assert.deepEqual(getWaTargets({ number: null }), []);
+  assert.deepEqual(getWaTargets(undefined), []);
+  assert.deepEqual(
+    getWaTargets({
+      number: 1123456789,
+      whatsappNumbers: [{ name: " Centro ", number: "1133334444" }, { name: "Norte", number: "3515556666" }],
+    }),
+    [{ name: "Centro", phone: "5491133334444" }, { name: "Norte", phone: "5493515556666" }],
+  );
 });
