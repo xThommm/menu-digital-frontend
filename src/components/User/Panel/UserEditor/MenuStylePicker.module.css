@@ -42,3 +42,11 @@
    medio y el ícono se le encimaba. El velo sigue cubriendo todo. */
 .lockOverlay { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: flex-end; padding: 0.75rem; background: rgba(0, 0, 0, 0.35); color: var(--admin-gold); }
 .familyPlan { position: absolute; top: 0.6rem; right: 0.6rem; padding: 2px 7px; border: 0.5px solid var(--admin-border-gold-mid); border-radius: 4px; background: var(--admin-gold-glow); color: var(--admin-gold); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* Diseños premium (premium_menu_styles): marca fija en la muestra, abajo a
+   la izquierda para no pisar el "Activa" ni la etiqueta del plan. */
+.premiumTag { position: absolute; left: 0.75rem; bottom: 0.75rem; padding: 2px 8px; border-radius: 4px; background: var(--admin-gold); color: var(--admin-gold-ink); font: 700 0.6rem var(--font-template-sans); letter-spacing: 0.08em; text-transform: uppercase; }
+.sample[data-menu-family="neo-brutalism"] { border-bottom: var(--nb-border); }
+.sample[data-menu-family="neo-brutalism"] .sampleTitle { display: inline-block; justify-self: start; padding: 2px 8px; border: var(--nb-border); background: var(--t-surface); box-shadow: var(--nb-shadow-sm); }
+.sample[data-menu-family="tactile"] { background-image: var(--tx-dots); }
+.sample[data-menu-family="tactile"] .sampleTitle { text-shadow: 0 2px 0 var(--t-accent), 0 4px 0 var(--tx-base); }

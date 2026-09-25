@@ -320,7 +320,7 @@ function PlanCard({ plan, usage, onUpdated }: {
           <fieldset className={s.featureFields} disabled={busy}>
             <legend>Funciones incluidas</legend>
             {BOOLEAN_FEATURES.map(feature => <label key={feature}>
-              <input type="checkbox" checked={features[feature]} onChange={event => setFeatures(current => ({ ...current, [feature]: event.target.checked }))} />
+              <input type="checkbox" checked={features[feature] === true} onChange={event => setFeatures(current => ({ ...current, [feature]: event.target.checked }))} />
               {FEATURE_LABELS[feature]}
             </label>)}
           </fieldset>

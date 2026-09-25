@@ -1365,3 +1365,122 @@
   .mp[data-menu-style="bistro"] .mpShell:has(.orderSummary) .mpCatItems:not([hidden]) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mp[data-menu-style="bistro"] .mpContent { padding: 1.75rem 0 2rem; }
 }
+
+/* ── Diseños premium ──
+   Tokens en globals.css ([data-menu-family="neo-brutalism"|"tactile"]); los
+   colores salen de la paleta. Las familias base de arriba ya ajustan radios
+   y tipografía; esto suma la "materialidad" de cada diseño. Los movimientos
+   usan translate/rotate (propiedades sueltas) para no pisar transform. */
+
+/* Neobrutalismo */
+.mp[data-menu-family="neo-brutalism"] .mpHeader { background: var(--t-bg); border-bottom: var(--nb-border); }
+.mp[data-menu-family="neo-brutalism"] .mpBack { border: var(--nb-border); border-radius: var(--t-family-radius); background: var(--t-surface); color: var(--nb-ink); box-shadow: var(--nb-shadow-sm); }
+.mp[data-menu-family="neo-brutalism"] .mpTabs { border-bottom: var(--nb-border); padding-bottom: 1rem; }
+.mp[data-menu-family="neo-brutalism"] .mpTab { border: var(--nb-border-thin); border-radius: 999px; background: var(--t-surface); color: var(--nb-ink); font-weight: 700; box-shadow: var(--nb-shadow-sm); margin-bottom: 3px; }
+.mp[data-menu-family="neo-brutalism"] .mpTab.active { background: var(--t-accent); border-color: var(--nb-ink); color: var(--t-btn-text); }
+.mp[data-menu-family="neo-brutalism"] .mpCatTitle { font-size: 1.9rem; letter-spacing: -0.01em; color: var(--nb-ink); border-bottom: var(--nb-border); }
+.mp[data-menu-family="neo-brutalism"] .featuredTitle { width: fit-content; padding: 4px 10px; border-radius: 6px; background: var(--nb-ink); color: var(--t-bg); font-family: var(--font-serif); font-weight: 400; letter-spacing: 0.04em; rotate: -2deg; }
+.mp[data-menu-family="neo-brutalism"] .featuredTrack { gap: 1rem; padding-bottom: 1rem; }
+.mp[data-menu-family="neo-brutalism"] .featuredCard { border: var(--nb-border); border-radius: var(--t-family-radius); background: var(--t-surface); box-shadow: var(--nb-shadow); }
+.mp[data-menu-family="neo-brutalism"] :is(.featuredImg, .featuredImgPlaceholder) { border-bottom: var(--nb-border); }
+.mp[data-menu-family="neo-brutalism"] .featuredName { font-weight: 700; color: var(--nb-ink); }
+.mp[data-menu-family="neo-brutalism"] .featuredPrice { font-family: var(--font-serif); font-weight: 400; color: var(--nb-ink); }
+.mp[data-menu-family="neo-brutalism"] .itemCard {
+  margin-bottom: 1.1rem;
+  border: var(--nb-border);
+  border-radius: var(--t-family-radius);
+  background: var(--t-surface);
+  box-shadow: var(--nb-shadow);
+  transition: opacity 0.4s var(--ease-out), translate 0.1s ease, box-shadow 0.1s ease;
+  transition-delay: var(--reveal-delay, 0s), 0s, 0s;
+}
+.mp[data-menu-family="neo-brutalism"] .itemCard:hover { background: var(--t-surface); translate: -2px -2px; box-shadow: var(--nb-shadow-lg); }
+.mp[data-menu-family="neo-brutalism"] .itemCard.recommended { background: color-mix(in srgb, var(--t-accent) 16%, var(--t-surface)); }
+.mp[data-menu-family="neo-brutalism"] .itemCard.unavailable { border-style: dashed; box-shadow: none; }
+.mp[data-menu-family="neo-brutalism"] :is(.itemImg, .itemImgPlaceholder) { border: var(--nb-border-thin); }
+/* El nombre del plato lleva t-family-heading: acá vuelve a la sans para que
+   la lista no sea un muro de mayúsculas. */
+.mp[data-menu-family="neo-brutalism"] .itemName { font-family: var(--font-sans); font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em; text-transform: none; color: var(--nb-ink); }
+.mp[data-menu-family="neo-brutalism"] .itemPrice { font-family: var(--font-serif); font-weight: 400; font-size: 1.1rem; color: var(--nb-ink); }
+.mp[data-menu-family="neo-brutalism"] .badge { border: var(--nb-border-thin); border-radius: 6px; font-weight: 700; }
+.mp[data-menu-family="neo-brutalism"] .badgeReco { background: var(--t-accent); color: var(--t-btn-text); }
+.mp[data-menu-family="neo-brutalism"] .badgeOffer { rotate: -3deg; }
+.mp[data-menu-family="neo-brutalism"] :is(.addBtn, .mpCartShortcut) { border: var(--nb-border-thin); border-radius: var(--t-family-radius); box-shadow: var(--nb-shadow-sm); transition: translate 0.1s ease, box-shadow 0.1s ease; }
+.mp[data-menu-family="neo-brutalism"] :is(.addBtn, .mpCartShortcut):active { translate: 3px 3px; box-shadow: 0 0 0 var(--nb-ink); }
+.mp[data-menu-family="neo-brutalism"] .qtyStepper { border: var(--nb-border-thin); border-radius: var(--t-family-radius); background: var(--t-accent); box-shadow: var(--nb-shadow-sm); }
+.mp[data-menu-family="neo-brutalism"] .qtyStepper :is(button, span) { color: var(--t-btn-text); font-weight: 700; }
+.mp[data-menu-family="neo-brutalism"] .cartBar { --control-shape: 0; border-top: var(--nb-border); background: var(--t-accent); color: var(--t-btn-text); }
+.mp[data-menu-family="neo-brutalism"] .cartBarCount { border-radius: 8px; background: var(--nb-ink); color: var(--t-bg); }
+.mp[data-menu-family="neo-brutalism"] .cartBarLabel { font-family: var(--font-serif); text-transform: uppercase; }
+.mp[data-menu-family="neo-brutalism"] .cartBarTotal { color: inherit; font-weight: 700; }
+.mp[data-menu-family="neo-brutalism"] .orderWhatsapp { border: var(--nb-border-thin); border-radius: var(--t-family-radius); box-shadow: var(--nb-shadow-sm); }
+.mp[data-menu-family="neo-brutalism"] .orderQty { border: var(--nb-border-thin); border-radius: var(--t-family-radius); }
+.mp[data-menu-family="neo-brutalism"] .orderSummary { border: var(--nb-border); border-radius: var(--t-family-radius); background: var(--t-surface); box-shadow: var(--nb-shadow-lg); }
+
+/* Maximalismo táctil */
+.mp[data-menu-family="tactile"] { background-image: var(--tx-dots), var(--t-bg-image, none); }
+.mp[data-menu-family="tactile"] .mpHeader { box-shadow: 0 6px 0 var(--tx-base); }
+.mp[data-menu-family="tactile"] .mpBack { border: 0; border-radius: 50%; background: var(--t-surface); color: var(--t-title); box-shadow: var(--tx-puffy); }
+.mp[data-menu-family="tactile"] .mpEyebrow { font: italic 400 1.2rem/1 var(--tx-script); letter-spacing: 0; text-transform: none; color: var(--t-accent); }
+.mp[data-menu-family="tactile"] .mpTabs { border-bottom: 0; padding-block: 1.1rem 1.3rem; gap: 0.75rem; }
+.mp[data-menu-family="tactile"] .mpTab { border: 0; border-radius: 999px; background: var(--t-surface); color: var(--t-title); font-weight: 800; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.16), inset 0 2px 0 rgba(255, 255, 255, 0.2), 0 4px 0 var(--tx-base); }
+.mp[data-menu-family="tactile"] .mpTab.active { background: var(--t-accent); color: var(--t-btn-text); box-shadow: var(--tx-puffy); }
+.mp[data-menu-family="tactile"] .mpCatTitle { font-size: 2rem; border-bottom: 0; text-decoration: underline wavy var(--t-accent); text-decoration-thickness: 3px; text-underline-offset: 10px; text-decoration-skip-ink: none; }
+.mp[data-menu-family="tactile"] .featuredTitle { width: fit-content; padding: 5px 14px; border-radius: 6px; background: var(--t-accent); color: var(--t-btn-text); font-family: var(--font-serif); font-weight: 400; font-size: 1rem; letter-spacing: 0; box-shadow: 0 4px 0 var(--tx-base); rotate: -3deg; }
+.mp[data-menu-family="tactile"] .featuredTrack { gap: 1.1rem; padding-block: 1rem 1.5rem; }
+.mp[data-menu-family="tactile"] .featuredCard { align-items: center; padding: 0.9rem 0.75rem; border: 0; border-radius: var(--t-family-radius); background: var(--t-surface); box-shadow: var(--tx-card); }
+.mp[data-menu-family="tactile"] .featuredSlide:nth-child(odd) .featuredCard { rotate: -2deg; }
+.mp[data-menu-family="tactile"] .featuredSlide:nth-child(even) .featuredCard { rotate: 1.5deg; }
+/* Fotos como platos: redondas, con borde de loza. */
+.mp[data-menu-family="tactile"] :is(.featuredImg, .featuredImgPlaceholder) { width: 88%; aspect-ratio: 1; border-radius: 50%; border: 6px solid var(--tx-rim); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); }
+.mp[data-menu-family="tactile"] .featuredBody { align-items: center; text-align: center; }
+.mp[data-menu-family="tactile"] .featuredName { font-weight: 800; }
+.mp[data-menu-family="tactile"] .featuredPrice { justify-content: center; font-family: var(--font-serif); font-weight: 400; }
+.mp[data-menu-family="tactile"] .itemCard {
+  grid-template-columns: 92px minmax(0, 1fr);
+  margin-bottom: 1.3rem;
+  padding: 1rem;
+  border: 0;
+  border-radius: var(--t-family-radius);
+  background: var(--t-surface);
+  box-shadow: var(--tx-card);
+  transition: opacity 0.4s var(--ease-out), translate 0.12s ease;
+  transition-delay: var(--reveal-delay, 0s), 0s;
+}
+.mp[data-menu-family="tactile"] .itemCard:hover { background: var(--t-surface); translate: 0 -2px; }
+.mp[data-menu-family="tactile"] .itemCard.recommended { background: color-mix(in srgb, var(--t-accent) 14%, var(--t-surface)); }
+.mp[data-menu-family="tactile"] :is(.itemImg, .itemImgPlaceholder) { grid-column: 1; width: 92px; height: 92px; border-radius: 50%; border: 6px solid var(--tx-rim); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); }
+.mp[data-menu-family="tactile"] .itemBody { grid-column: 2; }
+.mp[data-menu-family="tactile"] .itemName { font-family: var(--font-sans); font-size: 1.1rem; font-weight: 800; letter-spacing: -0.01em; text-shadow: none; }
+.mp[data-menu-family="tactile"] .itemDesc { font: italic 400 1rem/1.3 var(--tx-script); }
+.mp[data-menu-family="tactile"] .itemPrice { display: inline-block; padding: 2px 11px; border-radius: 999px; background: var(--t-accent); color: var(--t-btn-text); font-family: var(--font-serif); font-weight: 400; font-size: 1rem; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18), inset 0 2px 0 rgba(255, 255, 255, 0.4); rotate: -2deg; }
+.mp[data-menu-family="tactile"] .badge { border: 0; border-radius: 999px; padding: 3px 10px; font-weight: 800; }
+.mp[data-menu-family="tactile"] .badgeOffer { rotate: -8deg; font-family: var(--font-serif); font-weight: 400; }
+.mp[data-menu-family="tactile"] :is(.addBtn, .mpCartShortcut) { border-radius: 50%; box-shadow: var(--tx-puffy); transition: translate 0.12s ease, box-shadow 0.12s ease; }
+.mp[data-menu-family="tactile"] .addBtn { width: 48px; height: 48px; }
+.mp[data-menu-family="tactile"] :is(.addBtn, .mpCartShortcut):active { translate: 0 4px; box-shadow: var(--tx-puffy-pressed); }
+/* El selector de cantidad es un canal hundido con botones que sobresalen. */
+.mp[data-menu-family="tactile"] .qtyStepper { padding: 3px; border-radius: 999px; background: color-mix(in srgb, var(--t-bg) 70%, black); box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.35); }
+.mp[data-menu-family="tactile"] .qtyStepper button { border-radius: 50%; background: var(--t-surface); color: var(--t-title); font-weight: 800; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.15), 0 3px 0 var(--tx-base); }
+.mp[data-menu-family="tactile"] .qtyStepper span { color: #fff; font-family: var(--font-serif); font-size: 0.95rem; }
+/* La barra del pedido flota como una gran píldora apretable. */
+.mp[data-menu-family="tactile"] .cartBar {
+  --control-shape: 999px;
+  left: 12px;
+  right: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  width: auto;
+  border-top: 0;
+  background: var(--t-accent);
+  color: var(--t-btn-text);
+  box-shadow: var(--tx-puffy), 0 18px 30px rgba(0, 0, 0, 0.4);
+}
+.mp[data-menu-family="tactile"] .cartBarCount { border-radius: 50%; background: var(--t-title); color: var(--t-bg); font-family: var(--font-serif); font-weight: 400; }
+.mp[data-menu-family="tactile"] :is(.cartBarLabel, .cartBarTotal) { color: inherit; font-family: var(--font-serif); font-weight: 400; }
+.mp[data-menu-family="tactile"] .orderWhatsapp { border-radius: 999px; box-shadow: var(--tx-puffy); }
+.mp[data-menu-family="tactile"] .orderSummary { border: 0; border-radius: var(--t-family-radius); box-shadow: var(--tx-card); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mp:is([data-menu-family="neo-brutalism"], [data-menu-family="tactile"]) :is(.itemCard, .addBtn, .mpCartShortcut) { transition: opacity 0.01s; }
+  .mp:is([data-menu-family="neo-brutalism"], [data-menu-family="tactile"]) .itemCard:hover { translate: none; }
+}

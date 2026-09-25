@@ -244,3 +244,13 @@
 @media (prefers-reduced-motion: reduce) {
   .overlay, .drawer { animation: none; }
 }
+
+/* Diseños premium: el carrito hereda el borde/relieve de la carta. */
+:global([data-menu-family="neo-brutalism"]) .drawer { border: var(--nb-border); border-bottom: 0; }
+:global([data-menu-family="neo-brutalism"]) .header { border-bottom: var(--nb-border); }
+:global([data-menu-family="neo-brutalism"]) .title { font-family: var(--font-serif); font-weight: 400; text-transform: uppercase; }
+:global([data-menu-family="neo-brutalism"]) :is(.close, .waBtn) { border: var(--nb-border-thin); border-radius: var(--t-family-radius); box-shadow: var(--nb-shadow-sm); }
+:global([data-menu-family="tactile"]) .drawer { box-shadow: 0 -6px 0 var(--tx-base), 0 -20px 40px rgba(0, 0, 0, 0.35); }
+:global([data-menu-family="tactile"]) .title { font-family: var(--font-serif); font-weight: 400; }
+:global([data-menu-family="tactile"]) .close { border: 0; box-shadow: var(--tx-puffy); }
+:global([data-menu-family="tactile"]) .waBtn { min-height: 52px; border-radius: 999px; font-weight: 800; box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.2), inset 0 3px 0 rgba(255, 255, 255, 0.4), 0 5px 0 #0d6b33; }

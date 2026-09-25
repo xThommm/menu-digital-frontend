@@ -10,7 +10,7 @@ import type { WeekRanges } from "../../../Common/WeeklySchedule/weekSchedule";
 import Spinner from "../../../Common/Spinner";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import MenuStylePicker from "./MenuStylePicker";
-import { resolveMenuStyle, getVisualFamily, buildAppearanceBody, type MenuStyle } from "../../../../lib/menuStyles";
+import { resolveMenuStyle, getMenuStyleFeature, buildAppearanceBody, type MenuStyle } from "../../../../lib/menuStyles";
 import { TEMPLATES, type TemplateOption } from "../../../../lib/templates";
 import { normalizeArPhone, isValidArLocalPhone } from "../../../../lib/whatsapp";
 import styles from "./UserEditor.module.css";
@@ -255,7 +255,7 @@ export default function UserEditorPage() {
   const appearanceSavingRef = useRef(false);
   const [subscription,      setSubscription] = useState<Subscription>("free");
   const [lockedTemplate,    setLockedTemplate] = useState<typeof TEMPLATES[number] | null>(null);
-  const [stylesLocked,      setStylesLocked] = useState(false);
+  const [stylesLocked,      setStylesLocked] = useState<"menu_styles" | "premium_menu_styles" | null>(null);
   const [nameChangeConfirmOpen, setNameChangeConfirmOpen] = useState(false);
 
   const currentPlan = catalog.isError ? undefined : catalog.data?.find(plan => plan.name === subscription);
@@ -267,8 +267,13 @@ export default function UserEditorPage() {
   const orderMessagePlan = catalog.data?.find(plan => plan.features.pedido_whatsapp);
   // Las familias visuales son una feature aparte de las paletas: el permiso y
   // la etiqueta del plan que las incluye salen del catálogo, no del nombre.
+  // Los diseños premium tienen su propia clave (premium_menu_styles). Se lee
+  // con `!== true` y no `=== false`: un backend anterior no la manda, y ahí
+  // tampoco acepta esos diseños.
   const familiesLocked = currentPlan?.features.menu_styles === false;
+  const premiumLocked = currentPlan !== undefined && currentPlan.features.premium_menu_styles !== true;
   const familiesPlan = catalog.data?.find(plan => plan.features.menu_styles);
+  const premiumPlan = catalog.data?.find(plan => plan.features.premium_menu_styles === true);
 
   const [isDirty, setIsDirty]   = useState(false);
   const initialFormRef = useRef<FormState>(EMPTY_FORM);
@@ -625,9 +630,11 @@ export default function UserEditorPage() {
         const data = await res.json().catch(() => null);
         const fallback = res.status !== 403
           ? "No se pudo guardar la apariencia."
-          : getVisualFamily(nextStyle)
-            ? "Las familias visuales requieren un plan superior."
-            : "Ese template requiere un plan pago.";
+          : nextStyle !== undefined && getMenuStyleFeature(nextStyle) === "premium_menu_styles"
+            ? "Los diseños premium requieren un plan superior."
+            : nextStyle !== undefined && getMenuStyleFeature(nextStyle) === "menu_styles"
+              ? "Las familias visuales requieren un plan superior."
+              : "Ese template requiere un plan pago.";
         throw new Error(data?.message || fallback);
       }
       const data = await res.json();
@@ -1567,9 +1574,9 @@ export default function UserEditorPage() {
               disabled={savingAppearance || !currentPlan || catalog.isFetching}
               onChange={(value) => void saveTemplate(template, value)}
               templateIds={currentPlan?.features.templateIds}
-              familiesLocked={familiesLocked}
-              lockedPlanLabel={familiesPlan?.label}
-              onLockedFamily={() => setStylesLocked(true)}
+              lockedFeatures={{ menu_styles: familiesLocked, premium_menu_styles: premiumLocked }}
+              planLabels={{ menu_styles: familiesPlan?.label, premium_menu_styles: premiumPlan?.label }}
+              onLocked={setStylesLocked}
             />
             <h2 className={styles.appearanceHeading}>Paleta de colores</h2>
             <p className={styles.templateDesc}>Se aplica al diseño elegido y a la página de tu local. Las paletas disponibles dependen de tu plan.</p>
@@ -1659,14 +1666,25 @@ export default function UserEditorPage() {
       )}
 
       {/* ── Modal: template bloqueado por plan ── */}
-      {stylesLocked && (
+      {stylesLocked === "menu_styles" && (
         <UpgradeModal
           currentPlan={subscription}
           minPlan="basic"
           requiredFeature="menu_styles"
           title="Desbloqueá las familias visuales"
           description="Una identidad completa para la portada y la carta. Tu paleta de colores actual se conserva."
-          onClose={() => setStylesLocked(false)}
+          onClose={() => setStylesLocked(null)}
+        />
+      )}
+
+      {stylesLocked === "premium_menu_styles" && (
+        <UpgradeModal
+          currentPlan={subscription}
+          minPlan="basic"
+          requiredFeature="premium_menu_styles"
+          title="Desbloqueá los diseños premium"
+          description="Neobrutalismo y Maximalismo táctil para la portada y la carta. Tu paleta de colores actual se conserva."
+          onClose={() => setStylesLocked(null)}
         />
       )}
 

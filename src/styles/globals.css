@@ -1,5 +1,9 @@
-/* Poppins: plataforma. DM Sans + Playfair Display: cartas públicas ([data-template]). */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,300;1,400;1,500;1,600;1,700;1,900&display=swap');
+/* Poppins: plataforma. DM Sans + Playfair Display: cartas públicas ([data-template]).
+   Archivo Black + Space Grotesk (Neobrutalismo) y Bagel Fat One + Figtree +
+   Instrument Serif (Maximalismo táctil): el navegador solo descarga los
+   archivos de una fuente cuando algún texto la usa, así que las cartas que no
+   eligen esos diseños pagan únicamente las declaraciones @font-face. */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,300;1,400;1,500;1,600;1,700;1,900&family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=Bagel+Fat+One&family=Figtree:wght@500;700;800&family=Instrument+Serif:ital@1&display=swap');
 
 /* ═══════════════════════════════════════════════════════════════
    RESET & BASE
@@ -1319,6 +1323,64 @@ a:hover { opacity: 0.75; }
   --t-family-photo-radius: 22px;
   --t-family-image-ratio: 1;
 }
+/* ── Diseños premium (feature premium_menu_styles) ──
+   Igual que las familias de arriba, NO traen colores propios: todo se deriva
+   de la paleta ([data-template]). La "tinta" de cada diseño es --t-title, que
+   es oscura en las paletas claras y clara en las oscuras, así que el mismo
+   bloque se invierte solo según la paleta. */
+[data-menu-family="neo-brutalism"] {
+  --font-sans:  'Space Grotesk', var(--font-template-sans);
+  --font-serif: 'Archivo Black', 'Space Grotesk', var(--font-template-sans);
+  --t-family-title-weight: 400;
+  --t-family-title-spacing: -0.02em;
+  --t-family-title-case: uppercase;
+  --t-family-radius: 10px;
+  --t-family-photo-radius: 8px;
+  --t-family-image-ratio: 1;
+  --t-family-muted: color-mix(in srgb, var(--t-title) 82%, var(--t-bg));
+  --nb-ink: var(--t-title);
+  --nb-border: 3px solid var(--nb-ink);
+  --nb-border-thin: 2px solid var(--nb-ink);
+  --nb-shadow-sm: 3px 3px 0 var(--nb-ink);
+  --nb-shadow: 5px 5px 0 var(--nb-ink);
+  --nb-shadow-lg: 7px 7px 0 var(--nb-ink);
+  --t-family-shadow: var(--nb-shadow);
+}
+[data-menu-family="tactile"] {
+  --font-sans:  'Figtree', var(--font-template-sans);
+  --font-serif: 'Bagel Fat One', 'Figtree', var(--font-template-sans);
+  --tx-script:  'Instrument Serif', var(--font-template-serif);
+  --t-family-title-weight: 400;
+  --t-family-title-spacing: -0.01em;
+  --t-family-radius: 26px;
+  --t-family-photo-radius: 18px;
+  --t-family-image-ratio: 1;
+  /* Base del relieve: el fondo hundido hacia el negro. Es la "sombra sólida"
+     que hace que botones y tarjetas parezcan apoyados y apretables. */
+  --tx-base: color-mix(in srgb, var(--t-bg) 45%, black);
+  --tx-rim: color-mix(in srgb, var(--t-title) 88%, var(--t-bg));
+  --tx-dots: radial-gradient(circle, color-mix(in srgb, var(--t-title) 9%, transparent) 1.6px, transparent 2.2px) 0 0 / 18px 18px;
+  --tx-puffy:
+    inset 0 -5px 0 rgba(0, 0, 0, 0.2),
+    inset 0 3px 0 rgba(255, 255, 255, 0.4),
+    0 5px 0 var(--tx-base),
+    0 12px 20px rgba(0, 0, 0, 0.28);
+  --tx-puffy-pressed:
+    inset 0 -2px 0 rgba(0, 0, 0, 0.2),
+    inset 0 3px 0 rgba(255, 255, 255, 0.3),
+    0 1px 0 var(--tx-base),
+    0 4px 8px rgba(0, 0, 0, 0.22);
+  --tx-card:
+    inset 0 -6px 0 rgba(0, 0, 0, 0.08),
+    0 6px 0 var(--tx-base),
+    0 16px 26px rgba(0, 0, 0, 0.26);
+  --t-family-shadow: var(--tx-card);
+  --t-radius-modal: 30px;
+}
+[data-menu-family="tactile"] :is(.t-title, .t-title-sans, .t-family-heading) {
+  text-shadow: 0 2px 0 var(--t-accent), 0 4px 0 var(--tx-base);
+}
+
 [data-menu-family] :is(.t-title, .t-title-sans, .t-family-heading) {
   font-family: var(--font-serif);
   font-weight: var(--t-family-title-weight);
