@@ -3,7 +3,7 @@ import { useAuth } from "../../../../context/useAuth";
 import { useFeedbackMessage } from "../../../../hooks/useFeedbackMessage";
 import type { Subscription, DayKey, DayHours, Schedule } from "../../../../types/index";
 import { usePlans } from "../../../../hooks/usePlans";
-import { BUSINESS_TIME_PATTERN } from "../../../../Utils/businessSchedule";
+import { BUSINESS_TIME_PATTERN, getDayRanges } from "../../../../Utils/businessSchedule";
 import WeeklySchedule from "../../../Common/WeeklySchedule/WeeklySchedule";
 import { WEEK_DAYS } from "../../../Common/WeeklySchedule/weekSchedule";
 import type { WeekRanges } from "../../../Common/WeeklySchedule/weekSchedule";
@@ -155,34 +155,36 @@ function normalizeSchedule(raw: unknown): Schedule {
   const src = (raw && typeof raw === "object" ? raw : {}) as Partial<Record<DayKey, Partial<DayHours>>>;
   return DAY_ORDER.reduce((acc, day) => {
     const d = src[day];
-    acc[day] = {
+    const hours: DayHours = {
       enabled: d?.enabled ?? DEFAULT_DAY_HOURS.enabled,
       open:    d?.open    ?? DEFAULT_DAY_HOURS.open,
       close:   d?.close   ?? DEFAULT_DAY_HOURS.close,
     };
+    // Siempre con `ranges` (los horarios viejos solo traen open/close), así
+    // el estado cargado y el que arma weekToSchedule comparan igual en isDirty.
+    acc[day] = { ...hours, ranges: getDayRanges({ ...hours, ranges: d?.ranges }).map(r => ({ ...r })) };
     return acc;
   }, {} as Schedule);
 }
 
 // El horario de atención se edita con el mismo control que la programación
-// de productos (WeeklySchedule), que habla en rangos por día. Como el negocio
-// guarda un solo turno por día, va con maxRangesPerDay={1}.
+// de productos y ofertas (WeeklySchedule), que habla en rangos por día: cada
+// rango es un turno, así el local carga horarios cortados (12 a 15 y 20 a 00).
 function scheduleToWeek(schedule: Schedule): WeekRanges {
   return WEEK_DAYS.reduce((acc, day) => {
-    const d = schedule[day];
-    acc[day] = d?.enabled ? [{ from: d.open, to: d.close }] : [];
+    acc[day] = getDayRanges(schedule[day]).map(range => ({ ...range }));
     return acc;
   }, {} as WeekRanges);
 }
 
-// Un día que queda cerrado conserva las horas que tenía guardadas: volver a
-// abrirlo no pierde lo que había cargado el dueño.
+// open/close copian el primer turno, igual que en el backend. Un día que
+// queda cerrado conserva las horas que tenía guardadas.
 function weekToSchedule(week: WeekRanges, previous: Schedule): Schedule {
   return DAY_ORDER.reduce((acc, day) => {
-    const range = week[day]?.[0];
-    acc[day] = range
-      ? { enabled: true, open: range.from, close: range.to }
-      : { ...previous[day], enabled: false };
+    const ranges = week[day] ?? [];
+    acc[day] = ranges.length > 0
+      ? { enabled: true, open: ranges[0].from, close: ranges[0].to, ranges }
+      : { ...previous[day], enabled: false, ranges: [] };
     return acc;
   }, {} as Schedule);
 }
@@ -433,9 +435,11 @@ export default function UserEditorPage() {
       return false;
     }
     for (const day of DAY_ORDER) {
-      const d = schedule[day];
-      if (d.enabled && (!BUSINESS_TIME_PATTERN.test(d.open) || !BUSINESS_TIME_PATTERN.test(d.close))) {
-        setError(`En ${DAY_LABEL[day]} ingresá una hora de apertura y de cierre válidas.`);
+      // Las superposiciones entre turnos las rechaza el servidor, con su mensaje.
+      const invalid = getDayRanges(schedule[day]).some(({ from, to }) =>
+        !BUSINESS_TIME_PATTERN.test(from) || !BUSINESS_TIME_PATTERN.test(to));
+      if (invalid) {
+        setError(`En ${DAY_LABEL[day]} ingresá una hora de apertura y de cierre válidas en cada turno.`);
         return false;
       }
     }
@@ -1322,18 +1326,19 @@ export default function UserEditorPage() {
                   value={scheduleWeek}
                   onChange={handleScheduleChange}
                   idPrefix="business-hours"
-                  maxRangesPerDay={1}
                   daysLabel="Días que abrís"
                   timeLabel="Horario de atención"
                   allDayLabel="Abierto 24 h"
+                  addRangeLabel="+ Agregar otro turno"
                   emptyLabel="Sin días abiertos: la carta no va a mostrar horarios."
                   exceptionLabel="Algún día abro en otro horario"
                 />
               </div>
 
               <p className={styles.fieldHint}>
-                Cargá el horario una sola vez y prendé los días que abrís. Si algún
-                día tenés otro horario, marcá la opción y cambiá solo ese día.
+                Cargá el horario una sola vez y prendé los días que abrís. Si cortás
+                al mediodía, agregá otro turno (por ejemplo, 12:00 a 15:00 y 20:00 a 00:00).
+                Si algún día tenés otro horario, marcá la opción y cambiá solo ese día.
                 Si el cierre es anterior a la apertura, termina al día siguiente.
                 Se muestra en tu carta pública junto con el estado abierto/cerrado.
               </p>

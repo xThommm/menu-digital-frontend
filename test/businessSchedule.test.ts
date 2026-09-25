@@ -54,6 +54,26 @@ test("horarios diurnos, días cerrados y datos ausentes conservan su comportamie
   assert.equal(getOpenStatus(schedule, at(11, 12)), false);
 });
 
+test("un horario cortado abre en cada turno y respeta el que cruza la medianoche", () => {
+  const schedule = closedWeek();
+  // open/close copian el primer turno; manda `ranges`.
+  schedule.fri = {
+    enabled: true, open: "12:00", close: "15:00",
+    ranges: [{ from: "12:00", to: "15:00" }, { from: "20:00", to: "01:00" }],
+  };
+  for (const [date, expected] of [
+    [at(11, 11, 59), false], [at(11, 12), true], [at(11, 14, 59), true],
+    [at(11, 15), false], [at(11, 19, 59), false], [at(11, 20), true],
+    [at(12, 0, 30), true], [at(12, 1), false], [at(12, 12), false],
+  ] as const) assert.equal(getOpenStatus(schedule, date), expected, date.toString());
+});
+
+test("un día cerrado ignora los turnos que tenga guardados", () => {
+  const schedule = closedWeek();
+  schedule.fri = { enabled: false, open: "12:00", close: "15:00", ranges: [{ from: "12:00", to: "15:00" }] };
+  assert.equal(getOpenStatus(schedule, at(11, 13)), false);
+});
+
 test("la validación mantiene HH:mm y rechaza horas incompletas o fuera de rango", () => {
   for (const value of ["", "01", "24:00", "15:60", "9:00"]) {
     assert.equal(BUSINESS_TIME_PATTERN.test(value), false, value);

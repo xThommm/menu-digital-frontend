@@ -22,8 +22,8 @@ import styles from "./WeeklySchedule.module.css";
 //
 // Habla el shape plano que ya guardan el backend y el modelo Item
 // (`{ mon: [{from,to}], ... }`). El horario de atención del negocio, que
-// guarda un solo open/close por día, lo adapta UserEditor con
-// maxRangesPerDay={1}.
+// guarda sus turnos junto a open/close por compatibilidad, lo adapta
+// UserEditor.
 
 interface RangeRowProps {
   range: TimeRange;
@@ -84,11 +84,12 @@ export interface WeeklyScheduleProps {
   onChange: (next: WeekRanges) => void;
   /** Prefijo de ids/aria — único por instancia dentro de la pantalla. */
   idPrefix: string;
-  /** El horario de atención del negocio guarda un solo turno por día. */
+  /** Mismo tope que el backend (MAX_RANGES_PER_DAY en utils/itemAvailability.js). */
   maxRangesPerDay?: number;
   timeLabel?: string;
   daysLabel?: string;
   allDayLabel?: string;
+  addRangeLabel?: string;
   emptyLabel?: string;
   exceptionLabel?: string;
 }
@@ -101,6 +102,7 @@ export default function WeeklySchedule({
   timeLabel = "Horario",
   daysLabel = "Días",
   allDayLabel = "Todo el día",
+  addRangeLabel = "+ Agregar otro horario",
   emptyLabel = "Elegí al menos un día.",
   exceptionLabel = "Algún día tiene un horario distinto",
 }: WeeklyScheduleProps) {
@@ -232,7 +234,7 @@ export default function WeeklySchedule({
         ))}
         {state.base.length < maxRangesPerDay && (
           <button type="button" className={styles.linkBtn} onClick={() => addRange()}>
-            + Agregar otro horario
+            {addRangeLabel}
           </button>
         )}
       </div>
@@ -280,7 +282,7 @@ export default function WeeklySchedule({
                           ))}
                           {ranges.length < maxRangesPerDay && (
                             <button type="button" className={styles.linkBtn} onClick={() => addRange(day)}>
-                              + Agregar otro horario
+                              {addRangeLabel}
                             </button>
                           )}
                         </>
