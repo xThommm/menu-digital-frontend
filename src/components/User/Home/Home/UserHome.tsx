@@ -2,10 +2,10 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styles from "./UserHome.module.css";
 import { useReveal } from "../../../../hooks/useReveal";
-import type { User, ContactInfo, DayKey, DayHours, LandingVisibility, Schedule } from "../../../../types/index";
+import type { User, ContactInfo, DayKey, DayHours, LandingVisibility, Schedule, TimeRange } from "../../../../types/index";
 import BusinessSEO from "../../../Common/BusinessSEO";
 import FreePlanAd from "../../../Common/FreePlanAd";
-import { getOpenStatus, getBusinessDayIndex, JS_DAY_TO_KEY } from "../../../../Utils/businessSchedule";
+import { getOpenStatus, getBusinessDayIndex, getDayRanges, JS_DAY_TO_KEY } from "../../../../Utils/businessSchedule";
 import { resolveLandingVisibility } from "../../../../lib/landingVisibility";
 import { getVisualFamily, resolveMenuStyle } from "../../../../lib/menuStyles";
 import { buildWaHref, getWaTargets, sanitizePhoneForWa, type WaTarget } from "../../../../lib/whatsapp";
@@ -477,10 +477,16 @@ function ContactList({ info, visible }: ContactListProps) {
 // Lista completa de la semana, con el día de hoy resaltado. El estado
 // "abierto/cerrado ahora" ya se muestra como badge arriba, en el hero
 // (ver OpenStatusBadge) — acá solo el detalle día por día.
+function formatRange({ from, to }: TimeRange): string {
+  if (from === to) return from === "00:00" ? "24 horas" : `24 horas desde ${from}`;
+  return `${from} – ${to}${to < from ? " (día siguiente)" : ""}`;
+}
+
+// Horario cortado: "12:00 – 15:00 y 20:00 – 00:00 (día siguiente)".
 function formatHours(day?: DayHours): string {
-  if (!day?.enabled) return "Cerrado";
-  if (day.open === day.close) return day.open === "00:00" ? "24 horas" : `24 horas desde ${day.open}`;
-  return `${day.open} – ${day.close}${day.close < day.open ? " (día siguiente)" : ""}`;
+  const ranges = getDayRanges(day);
+  if (ranges.length === 0) return "Cerrado";
+  return ranges.map(formatRange).join(" y ");
 }
 
 function ScheduleSection({ schedule }: { schedule?: Schedule }) {

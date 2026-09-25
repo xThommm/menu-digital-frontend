@@ -106,10 +106,14 @@ export interface Media {
 // "sin horario cargado", no como "cerrado todos los días".
 export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"
 
+// `ranges` son los turnos del día (horario cortado, hasta 4); `open`/`close`
+// copian el primero. Los horarios guardados antes de los turnos solo tienen
+// open/close: leerlos con getDayRanges (Utils/businessSchedule.ts).
 export interface DayHours {
   enabled: boolean
   open: string
   close: string
+  ranges?: TimeRange[]
 }
 
 export interface TimeRange {
