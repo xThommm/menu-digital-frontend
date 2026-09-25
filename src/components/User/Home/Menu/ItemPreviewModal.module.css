@@ -393,3 +393,23 @@
 :global([data-menu-style="bistro"]) .imgPlaceholder { aspect-ratio: 1; width: min(100%, 310px, 38dvh); margin-inline: auto; border-radius: 50%; box-shadow: var(--t-bistro-shadow); }
 :global([data-menu-style="bistro"]) .content { padding: 1.25rem 1.5rem 1.75rem; }
 :global([data-menu-style="bistro"]) .name { font-weight: 750; font-size: 1.5rem; letter-spacing: -0.035em; }
+
+/* Diseños premium: la ficha repite la materialidad de la carta. */
+:global([data-menu-family="neo-brutalism"]) .sheet { border: var(--nb-border); box-shadow: var(--nb-shadow-lg); }
+:global([data-menu-family="neo-brutalism"]) :is(.img, .imgPlaceholder) { border-bottom: var(--nb-border); }
+:global([data-menu-family="neo-brutalism"]) .close { border: var(--nb-border-thin); border-radius: var(--t-family-radius); background: var(--t-surface); color: var(--nb-ink); box-shadow: var(--nb-shadow-sm); }
+:global([data-menu-family="neo-brutalism"]) .price { font-family: var(--font-serif); font-weight: 400; font-size: 1.3rem; color: var(--nb-ink); }
+:global([data-menu-family="neo-brutalism"]) .badge { border: var(--nb-border-thin); border-radius: 6px; font-weight: 700; }
+:global([data-menu-family="neo-brutalism"]) .addBtn { border: var(--nb-border-thin); border-radius: var(--t-family-radius); box-shadow: var(--nb-shadow-sm); font-weight: 700; }
+:global([data-menu-family="neo-brutalism"]) .addBtn:active { translate: 3px 3px; box-shadow: 0 0 0 var(--nb-ink); }
+:global([data-menu-family="neo-brutalism"]) .qtyStepper { border: var(--nb-border-thin); border-radius: var(--t-family-radius); box-shadow: var(--nb-shadow-sm); }
+
+:global([data-menu-family="tactile"]) .sheet { box-shadow: 0 8px 0 var(--tx-base), 0 30px 60px rgba(0, 0, 0, 0.45); }
+:global([data-menu-family="tactile"]) .imageZone { padding: 1.25rem 1.25rem 0; }
+:global([data-menu-family="tactile"]) :is(.img, .imgPlaceholder) { width: min(100%, 300px, 36dvh); margin-inline: auto; border-radius: 50%; border: 8px solid var(--tx-rim); box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35); }
+:global([data-menu-family="tactile"]) .close { border: 0; border-radius: 50%; background: var(--t-surface); color: var(--t-title); box-shadow: var(--tx-puffy); }
+:global([data-menu-family="tactile"]) .desc { font: italic 400 1.15rem/1.35 var(--tx-script); }
+:global([data-menu-family="tactile"]) .price { padding: 2px 12px; border-radius: 999px; background: var(--t-accent); color: var(--t-btn-text); font-family: var(--font-serif); font-weight: 400; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18), inset 0 2px 0 rgba(255, 255, 255, 0.4); rotate: -2deg; }
+:global([data-menu-family="tactile"]) .badge { border: 0; border-radius: 999px; font-weight: 800; }
+:global([data-menu-family="tactile"]) .addBtn { min-height: 52px; padding-inline: 1.4rem; border-radius: 999px; font-weight: 800; box-shadow: var(--tx-puffy); }
+:global([data-menu-family="tactile"]) .addBtn:active { translate: 0 4px; box-shadow: var(--tx-puffy-pressed); }

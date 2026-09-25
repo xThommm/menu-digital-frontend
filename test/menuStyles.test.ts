@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   VISUAL_FAMILIES, LEGACY_STYLES, LEGACY_MENU_STYLES, MENU_STYLE_OPTIONS,
   isLegacyMenuStyle, getVisualFamily, resolveMenuStyle, buildAppearanceBody,
+  PREMIUM_MENU_STYLES, isPremiumMenuStyle, getMenuStyleFeature,
 } from "../src/lib/menuStyles.ts";
 import { TEMPLATES } from "../src/lib/templates.ts";
 
@@ -62,4 +63,19 @@ test("el cuerpo del PATCH lleva el diseño cuando el dueño lo eligió", () => {
   assert.deepEqual(buildAppearanceBody(3, "bakery"), { template: 3, menuStyle: "bakery" });
   // Elegir Clásico a mano sí es una elección explícita: tiene que pisar lo guardado.
   assert.deepEqual(buildAppearanceBody(1, "classic"), { template: 1, menuStyle: "classic" });
+});
+
+// Espejo de PREMIUM_MENU_STYLES del backend: si divergen, el selector ofrece
+// un diseño que el PATCH rechaza (o candadea uno que el plan ya incluye).
+test("los diseños premium son familias con su propia feature", () => {
+  assert.deepEqual([...PREMIUM_MENU_STYLES], ["neo-brutalism", "tactile"]);
+  for (const style of PREMIUM_MENU_STYLES) {
+    assert.equal(isPremiumMenuStyle(style), true);
+    assert.equal(getVisualFamily(style)?.id, style);
+    assert.equal(getMenuStyleFeature(style), "premium_menu_styles");
+  }
+  for (const family of VISUAL_FAMILIES.filter(family => !isPremiumMenuStyle(family.id))) {
+    assert.equal(getMenuStyleFeature(family.id), "menu_styles");
+  }
+  for (const style of LEGACY_MENU_STYLES) assert.equal(getMenuStyleFeature(style), null);
 });

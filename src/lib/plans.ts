@@ -27,6 +27,7 @@ export const FEATURE_LABELS: Record<BooleanPlanFeature, string> = {
   image_manager: "Gestor de imágenes",
   menu_templates: "Plantillas de menú",
   menu_styles: "Familias visuales",
+  premium_menu_styles: "Diseños premium de carta",
 };
 
 // Solo sirve para pintar el estado mientras llega el refresh del backend; los

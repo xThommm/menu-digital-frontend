@@ -621,3 +621,93 @@
   color: var(--t-muted);
   opacity: 0.7;
 }
+
+/* ── Diseños premium ──
+   Tokens en globals.css ([data-menu-family="neo-brutalism"|"tactile"]).
+   Solo forma: los colores siguen saliendo de la paleta del local. */
+
+/* Neobrutalismo: bordes de tinta, sombras duras sin desenfoque, todo plano. */
+.landing[data-menu-family="neo-brutalism"] .cover { border: var(--nb-border); box-shadow: var(--nb-shadow-lg); }
+.landing[data-menu-family="neo-brutalism"] .avatar { border: var(--nb-border); border-radius: 14px; box-shadow: var(--nb-shadow-sm); rotate: -3deg; }
+.landing[data-menu-family="neo-brutalism"] .title { font-size: clamp(2.4rem, 10vw, 4.5rem); line-height: 0.95; }
+.landing[data-menu-family="neo-brutalism"] .familyEyebrow { display: inline-block; padding: 3px 9px; background: var(--nb-ink); color: var(--t-bg); font-family: var(--font-sans); font-weight: 700; rotate: -2deg; }
+.landing[data-menu-family="neo-brutalism"] :global(.t-badge) { padding: 4px 11px; border: var(--nb-border-thin); border-radius: 999px; background: var(--t-surface); color: var(--nb-ink); font-weight: 700; box-shadow: 2px 2px 0 var(--nb-ink); }
+.landing[data-menu-family="neo-brutalism"] .actions :global(.t-btn) {
+  border: var(--nb-border);
+  border-radius: var(--t-family-radius);
+  box-shadow: var(--nb-shadow);
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.landing[data-menu-family="neo-brutalism"] :is(.reserveBtn, .mapBadge, .contactCard, .scheduleCard) {
+  border: var(--nb-border);
+  border-radius: var(--t-family-radius);
+  background: var(--t-surface);
+  box-shadow: var(--nb-shadow);
+  color: var(--nb-ink);
+}
+.landing[data-menu-family="neo-brutalism"] .reserveBtn { font-weight: 700; font-size: 0.95rem; transition: transform 0.1s ease, box-shadow 0.1s ease; }
+.landing[data-menu-family="neo-brutalism"] :is(.actions :global(.t-btn), .reserveBtn, .mapBadge):hover { transform: translate(-2px, -2px); box-shadow: var(--nb-shadow-lg); }
+.landing[data-menu-family="neo-brutalism"] :is(.actions :global(.t-btn), .reserveBtn, .mapBadge):active { transform: translate(5px, 5px); box-shadow: 0 0 0 var(--nb-ink); }
+.landing[data-menu-family="neo-brutalism"] .mapBadge { font-weight: 500; }
+.landing[data-menu-family="neo-brutalism"] :is(.sectionLabel, .scheduleHeading, .galleryTitle) { font-family: var(--font-serif); font-weight: 400; text-transform: uppercase; color: var(--nb-ink); }
+.landing[data-menu-family="neo-brutalism"] .sectionLabel { font-size: 1rem; letter-spacing: 0.02em; }
+.landing[data-menu-family="neo-brutalism"] .galleryItem { border: var(--nb-border); box-shadow: var(--nb-shadow); }
+.landing[data-menu-family="neo-brutalism"] .gallery { gap: 1rem; }
+.landing[data-menu-family="neo-brutalism"] .scheduleTableRow { border-bottom: 2px dashed color-mix(in srgb, var(--nb-ink) 45%, transparent); opacity: 1; }
+.landing[data-menu-family="neo-brutalism"] .scheduleTableToday { padding-inline: 0.5rem; border-radius: 6px; background: var(--t-accent); color: var(--t-btn-text); }
+.landing[data-menu-family="neo-brutalism"] .contactCard :global(.t-info-row) { border-bottom: 2px dashed color-mix(in srgb, var(--nb-ink) 45%, transparent); color: var(--nb-ink); font-weight: 500; }
+.landing[data-menu-family="neo-brutalism"] .contactCard :global(.t-info-row:last-child) { border-bottom: 0; }
+.landing[data-menu-family="neo-brutalism"] :global(.t-info-icon) { border: var(--nb-border-thin); border-radius: 8px; background: var(--t-accent); color: var(--t-btn-text); }
+
+/* Maximalismo táctil: textura de puntos, relieve "inflado" y piezas giradas. */
+.landing[data-menu-family="tactile"] { background-image: var(--tx-dots), var(--t-bg-image, none); }
+.landing[data-menu-family="tactile"] .cover { border: 6px solid var(--tx-rim); border-radius: 200px 200px var(--t-family-radius) var(--t-family-radius); box-shadow: var(--tx-card); }
+.landing[data-menu-family="tactile"] .avatar { border: 4px solid var(--tx-rim); border-radius: 24px; box-shadow: var(--tx-puffy); rotate: -6deg; }
+.landing[data-menu-family="tactile"] .title { font-size: clamp(2.6rem, 11vw, 4.75rem); line-height: 0.98; }
+.landing[data-menu-family="tactile"] .familyEyebrow { font: italic 400 1.5rem/1.1 var(--tx-script); letter-spacing: 0; text-transform: none; color: var(--t-accent); }
+.landing[data-menu-family="tactile"] :global(.t-badge) { padding: 5px 13px; border: 0; border-radius: 999px; background: var(--t-accent); color: var(--t-btn-text); font-weight: 800; box-shadow: var(--tx-puffy); }
+.landing[data-menu-family="tactile"] .badgeRow { gap: 10px; }
+.landing[data-menu-family="tactile"] .badgeRow > :nth-child(odd) { rotate: -2deg; }
+.landing[data-menu-family="tactile"] .badgeRow > :nth-child(even) { rotate: 1.5deg; }
+.landing[data-menu-family="tactile"] .actions { gap: 18px; }
+.landing[data-menu-family="tactile"] .actions :global(.t-btn) {
+  min-height: 64px;
+  border-radius: 999px;
+  box-shadow: var(--tx-puffy);
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1.25rem;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.landing[data-menu-family="tactile"] .reserveBtn { min-height: 56px; border: 0; border-radius: 999px; background: var(--tone-secondary); color: var(--tone-on-secondary); font-weight: 800; font-size: 1rem; box-shadow: var(--tx-puffy); transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.landing[data-menu-family="tactile"] :is(.actions :global(.t-btn), .reserveBtn):active { transform: translateY(4px); box-shadow: var(--tx-puffy-pressed); }
+/* "Cómo llegar" como entrada de cine: muescas a los costados del color del fondo. */
+.landing[data-menu-family="tactile"] .mapBadge { position: relative; border: 0; border-radius: 20px; padding-inline: 1.5rem; background: var(--t-surface); box-shadow: var(--tx-card); }
+.landing[data-menu-family="tactile"] .mapBadge::before,
+.landing[data-menu-family="tactile"] .mapBadge::after { content: ""; position: absolute; top: 50%; width: 22px; height: 22px; margin-top: -11px; border-radius: 50%; background: var(--t-bg); }
+.landing[data-menu-family="tactile"] .mapBadge::before { left: -11px; }
+.landing[data-menu-family="tactile"] .mapBadge::after { right: -11px; }
+.landing[data-menu-family="tactile"] .mapBadge:hover { transform: translateY(-2px); }
+.landing[data-menu-family="tactile"] :is(.contactCard, .scheduleCard) { border: 0; border-radius: var(--t-family-radius); box-shadow: var(--tx-card); }
+.landing[data-menu-family="tactile"] :is(.sectionLabel, .scheduleHeading) { font-family: var(--font-serif); font-weight: 400; font-size: 1.3rem; letter-spacing: 0; text-transform: none; color: var(--t-title); }
+.landing[data-menu-family="tactile"] .galleryTitle { font: italic 400 2rem/1.1 var(--tx-script); }
+.landing[data-menu-family="tactile"] .scheduleTableRow { border-bottom: 0; padding: 0.4rem 0.75rem; border-radius: 999px; }
+.landing[data-menu-family="tactile"] .scheduleTableToday { background: var(--t-accent); color: var(--t-btn-text); font-weight: 800; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18), inset 0 2px 0 rgba(255, 255, 255, 0.4); }
+/* Galería en polaroids, apenas giradas. */
+.landing[data-menu-family="tactile"] .gallery { gap: 1.25rem; padding: 0.5rem; }
+.landing[data-menu-family="tactile"] .galleryItem { padding: 7px 7px 26px; background: var(--tx-rim); box-shadow: 0 5px 0 var(--tx-base), 0 12px 18px rgba(0, 0, 0, 0.3); overflow: visible; }
+.landing[data-menu-family="tactile"] .galleryItem:nth-child(odd) { rotate: -2.5deg; }
+.landing[data-menu-family="tactile"] .galleryItem:nth-child(even) { rotate: 2deg; }
+.landing[data-menu-family="tactile"] .galleryButton { border-radius: calc(var(--t-family-photo-radius) - 6px); }
+/* Contacto como teclas: cada fila se "hunde" un poco. */
+.landing[data-menu-family="tactile"] .contactCard :global(.t-info-list) { display: grid; gap: 12px; }
+.landing[data-menu-family="tactile"] .contactCard :global(.t-info-row) { padding: 0.6rem 0.85rem; border-radius: 16px; background: var(--t-surface-2, var(--t-bg)); box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.14), 0 4px 0 var(--tx-base); font-weight: 700; color: var(--t-title); }
+.landing[data-menu-family="tactile"] :global(.t-info-icon) { background: var(--t-accent); color: var(--t-btn-text); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2), inset 0 2px 0 rgba(255, 255, 255, 0.35); }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing:is([data-menu-family="neo-brutalism"], [data-menu-family="tactile"]) :is(.actions :global(.t-btn), .reserveBtn, .mapBadge) { transition: none; }
+}

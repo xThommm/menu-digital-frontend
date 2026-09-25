@@ -25,6 +25,10 @@ export const VISUAL_FAMILIES = [
   { id: "grill", name: "Parrilla / Restaurante", description: "Fotografía protagonista, detalles sobrios y platos con presencia.", palettes: [1, 7, 10] },
   { id: "premium", name: "Bistró / Premium", description: "Serif elegante, composición editorial y más espacio entre platos.", palettes: [5, 12, 7] },
   { id: "bakery", name: "Pastelería / Bakery", description: "Formas suaves, fotos generosas y una presentación cercana.", palettes: [15, 6, 10] },
+  // Diseños premium: familias como las de arriba (los colores siguen saliendo
+  // de la paleta), pero gateadas con su propia feature. Ver PREMIUM_MENU_STYLES.
+  { id: "neo-brutalism", name: "Neobrutalismo", description: "Bordes gruesos, sombras duras y colores planos que se leen de lejos.", palettes: [5, 8, 11] },
+  { id: "tactile", name: "Maximalismo táctil", description: "Botones con relieve, texturas y platos que dan ganas de tocar.", palettes: [4, 9, 6] },
 ] as const;
 
 export type LegacyStyle = typeof LEGACY_STYLES[number];
@@ -35,6 +39,20 @@ export type MenuStyle = LegacyStyle["id"] | VisualFamily["id"];
 // que cualquier plan puede usar, después lo que se desbloquea.
 export const MENU_STYLE_OPTIONS = [...LEGACY_STYLES, ...VISUAL_FAMILIES];
 export const LEGACY_MENU_STYLES = LEGACY_STYLES.map(style => style.id) as readonly MenuStyle[];
+
+// Espejo de PREMIUM_MENU_STYLES en el backend: se habilitan con
+// premium_menu_styles en vez de menu_styles (arrancan exclusivos de Pro).
+export const PREMIUM_MENU_STYLES: readonly MenuStyle[] = ["neo-brutalism", "tactile"];
+
+export function isPremiumMenuStyle(value: MenuStyle): boolean {
+  return PREMIUM_MENU_STYLES.includes(value);
+}
+
+// Feature del catálogo que habilita un diseño; null = abierto a todos los planes.
+export function getMenuStyleFeature(value: MenuStyle): "menu_styles" | "premium_menu_styles" | null {
+  if (isPremiumMenuStyle(value)) return "premium_menu_styles";
+  return isLegacyMenuStyle(value) ? null : "menu_styles";
+}
 
 export function isLegacyMenuStyle(value: MenuStyle): boolean {
   return LEGACY_MENU_STYLES.includes(value);
