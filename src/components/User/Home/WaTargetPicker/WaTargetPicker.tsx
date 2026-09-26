@@ -12,13 +12,16 @@ interface WaTargetPickerProps {
   children: ReactNode;
   // Pregunta que encabeza la lista cuando hay más de un número.
   prompt: string;
+  // Se llama al abrir el chat (no al desplegar la lista): la carta lo usa
+  // para contar el pedido en las estadísticas.
+  onSend?: () => void;
 }
 
 // Botón de WhatsApp para pedidos y reservas. Con un solo número (o sin
 // sucursales cargadas) es el link directo de siempre; con varios, el botón
 // despliega debajo la lista de sucursales y el cliente elige a cuál
 // escribir. Sin números no dibuja nada: cada pantalla decide qué mostrar.
-export default function WaTargetPicker({ targets, message, className, children, prompt }: WaTargetPickerProps) {
+export default function WaTargetPicker({ targets, message, className, children, prompt, onSend }: WaTargetPickerProps) {
   const [open, setOpen] = useState(false);
   const listId = useId();
 
@@ -26,7 +29,7 @@ export default function WaTargetPicker({ targets, message, className, children, 
 
   if (targets.length === 1) {
     return (
-      <a className={className} href={buildWaHref(targets[0].phone, message)} target="_blank" rel="noopener noreferrer">
+      <a className={className} href={buildWaHref(targets[0].phone, message)} target="_blank" rel="noopener noreferrer" onClick={onSend}>
         {children}
       </a>
     );
@@ -54,7 +57,7 @@ export default function WaTargetPicker({ targets, message, className, children, 
                   href={buildWaHref(target.phone, message)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => setOpen(false)}
+                  onClick={() => { setOpen(false); onSend?.(); }}
                 >
                   <span>{target.name}</span>
                   <span className={styles.optionArrow} aria-hidden>↗</span>

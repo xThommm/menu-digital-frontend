@@ -1,4 +1,5 @@
 import { useCart } from "../../../../context/useCart";
+import type { CartLine } from "../../../../context/CartContext";
 import { buildOrderMessage, type WaTarget } from "../../../../lib/whatsapp";
 import WaTargetPicker from "../WaTargetPicker/WaTargetPicker";
 import styles from "./CartDrawer.module.css";
@@ -21,6 +22,8 @@ interface CartDrawerProps {
   hidePrices?: boolean;
   // Abre la confirmación de "Vaciar pedido" (ClearCartDialog en UserMenu).
   onRequestClear: () => void;
+  // Se abrió el chat de WhatsApp con el pedido (estadísticas de la carta).
+  onOrderSent?: (lines: CartLine[]) => void;
 }
 
 export default function CartDrawer({
@@ -31,6 +34,7 @@ export default function CartDrawer({
   orderMessage,
   hidePrices = false,
   onRequestClear,
+  onOrderSent,
 }: CartDrawerProps) {
   const { items, updateQuantity, removeItem, totalPrice } = useCart();
 
@@ -113,6 +117,7 @@ export default function CartDrawer({
                   message={orderText}
                   className={styles.waBtn}
                   prompt="¿A qué sucursal querés mandar el pedido?"
+                  onSend={() => onOrderSent?.(items)}
                 >
                   <WhatsAppIcon /> Pedir por WhatsApp
                 </WaTargetPicker>

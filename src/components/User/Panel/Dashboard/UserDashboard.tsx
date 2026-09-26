@@ -215,10 +215,12 @@ export default function UserDashboard() {
   // Genera el QR en el navegador (nada se manda a un servicio externo).
   // Apunta directo a la carta (no a la landing) porque en el uso real — QR
   // pegado en la mesa — el cliente quiere ver el menú, no una página de
-  // presentación.
+  // presentación. ?src=qr separa en las estadísticas las visitas que llegan
+  // escaneando de las que llegan por un link compartido (la carta lo saca
+  // de la URL apenas lo lee).
   const generateQrDataUrl = useCallback(() => {
     if (!publicUrl || !canDownloadQr) return null;
-    return QRCode.toDataURL(`${publicUrl}/menu`, {
+    return QRCode.toDataURL(`${publicUrl}/menu?src=qr`, {
       width: 1024,
       margin: 2,
       color: { dark: "#1a1208", light: "#ffffffff" },

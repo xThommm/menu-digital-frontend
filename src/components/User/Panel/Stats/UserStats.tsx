@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../../context/useAuth";
-import type { StatsData, ItemStatsData, DayCount } from "../../../../types";
+import type { StatsData, ItemStatsData, DayCount, TopItemStat } from "../../../../types";
 import { usePlans } from "../../../../hooks/usePlans";
 import { isSubscriptionExpired, PLAN_ORDER } from "../../../../lib/plans";
 import { formatDateAR } from "../../../../lib/dates";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import s from "./UserStats.module.css";
-import { buildInsights, parseLocalDate, type WeekdayStat } from "./statsInsights";
+import {
+  buildAudience, buildHourly, buildInsights, HOURLY_MIN_VISITS, itemTrend, lowConversionItem, parseLocalDate,
+  type AudienceInsights, type HourlyInsights, type WeekdayStat,
+} from "./statsInsights";
 
-import { requestStatsData, isStatsData, isItemStatsData } from "./statsRequests";
+import {
+  requestStatsData, isStatsData, isItemStatsData, sanitizeItemStatsData, sanitizeStatsData,
+} from "./statsRequests";
 
 const WEEKDAY_PLURAL = ["domingos", "lunes", "martes", "miércoles", "jueves", "viernes", "sábados"];
 
@@ -85,8 +90,8 @@ function UserStatsPanel() {
         const validItems = ir.kind === "data" && isItemStatsData(ir.data, windowDays);
         setStatsError(!validStats);
         setItemsError(!validItems);
-        if (validStats) setStats(r.data);
-        if (validItems) setItemStats(ir.data);
+        if (validStats) setStats(sanitizeStatsData(r.data));
+        if (validItems) setItemStats(sanitizeItemStatsData(ir.data));
       } finally {
         window.clearTimeout(timeoutId);
         inFlight = false;
@@ -110,8 +115,14 @@ function UserStatsPanel() {
     };
   }, [authLoading, token, logout, retry, windowDays, user?.subscription, user?.subscriptionStatus, user?.subscriptionExpiresAt]);
 
+  // Los pasos de pedido del embudo solo tienen sentido con pedido por
+  // WhatsApp en el plan (o si igual llegaron pedidos, ej. de antes de bajar).
+  const showOrders = catalog.data?.find(plan => plan.name === effectiveSubscription)?.features.pedido_whatsapp === true;
+
   const days = useMemo(() => stats?.days ?? [], [stats]);
   const insights = useMemo(() => buildInsights(stats), [stats]);
+  const hourly = useMemo(() => buildHourly(stats), [stats]);
+  const audience = useMemo(() => buildAudience(stats, { showOrders }), [stats, showOrders]);
 
   if (loading && !hasLoaded) {
     return (
@@ -237,7 +248,12 @@ function UserStatsPanel() {
                   </p>
                 )}
               </div>
-              <DailyChart key={windowDays} days={days} average={insights.dailyAverage} />
+              <DailyChart
+                key={windowDays}
+                days={days}
+                previousDays={stats.comparisonAvailable ? stats.previousDays : null}
+                average={insights.dailyAverage}
+              />
             </section>
 
             {insights.bestWeekday && insights.hasWeekdayPattern && (
@@ -256,45 +272,48 @@ function UserStatsPanel() {
               </section>
             )}
 
+            {/* Sin semana típica al lado, a lo ancho en vez de media fila vacía. */}
+            {hourly && (
+              <HourlyCard
+                hourly={hourly}
+                periodStart={stats.periodStart}
+                wide={!(insights.bestWeekday && insights.hasWeekdayPattern)}
+              />
+            )}
+
             {!insights.hasWeekdayPattern && <p className={s.measurementNote}>El patrón semanal necesita al menos dos días completos de cada día de la semana desde el alta y alguna visita. Seleccioná 30 días para verlo cuando haya datos suficientes.</p>}
+
+            {audience && <AudienceCard audience={audience} periodStart={stats.periodStart} />}
           </>
         )}
         {itemStats && (
           <section className={s.card}>
             <div className={s.cardHead}>
               <p className={s.cardLabel}>Productos más vistos</p>
-              <p className={s.cardNote}>{formatDay(itemStats.periodStart)} al {formatDay(itemStats.periodEnd)} · Aperturas del detalle</p>
-              <p className={s.cardNote}>Antes: {formatDay(itemStats.previousStart)} al {formatDay(itemStats.previousEnd)}</p>
+              <p className={s.cardNote}>
+                Veces que abrieron el detalle, una por visita · {formatDay(itemStats.periodStart)} al {formatDay(itemStats.periodEnd)}
+                {itemStats.comparisonAvailable && ` · Comparado con ${formatDay(itemStats.previousStart)} al ${formatDay(itemStats.previousEnd)}`}
+              </p>
             </div>
-            {itemStats.topItems.length === 0 && <p className={s.cardNote}>Todavía no hubo aperturas de productos en este período.</p>}
-            <ol className={s.topItemsList}>
-              {itemStats.topItems.map((it, i) => {
-                const maxViews = itemStats.topItems[0].totalViews || 1;
-                return (
-                  <li key={it.itemID} className={s.topItemRow}>
-                    <span className={s.topItemRank}>{i + 1}</span>
-                    <ItemThumb image={it.image} title={it.title} />
-                    <div className={s.topItemMain}>
-                      <span className={s.topItemName}>{it.title}</span>
-                      <span className={s.topItemBarWrap}>
-                        <span
-                          className={s.topItemBar}
-                          style={{ width: `${Math.max((it.totalViews / maxViews) * 100, 4)}%` }}
-                        />
-                      </span>
-                    </div>
-                    <span className={s.topItemCount}>
-                      {it.totalViews.toLocaleString("es-AR")}
-                      <small>vistas</small>
-                      <small>{itemStats.comparisonAvailable ? `${it.previousViews.toLocaleString("es-AR")} antes` : "Sin base previa"}</small>
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
+            {itemStats.topItems.length === 0
+              ? <p className={s.cardNote}>Todavía no abrieron productos en este período.</p>
+              : <ItemRanking items={itemStats.topItems} metric="views" comparisonAvailable={itemStats.comparisonAvailable} showOrders={showOrders} />}
           </section>
         )}
-        <p className={s.measurementNote}>Las visitas cuentan cargas de la carta; las vistas de productos, aperturas de su detalle. Una persona puede generar varias visitas. No representan escaneos QR, pedidos ni ventas.</p>
+        {itemStats?.topOrdered && (showOrders || itemStats.topOrdered.length > 0) && (
+          <section className={s.card}>
+            <div className={s.cardHead}>
+              <p className={s.cardLabel}>Productos más pedidos</p>
+              <p className={s.cardNote}>
+                Pedidos por WhatsApp que los incluían · {formatDay(itemStats.periodStart)} al {formatDay(itemStats.periodEnd)}
+              </p>
+            </div>
+            {itemStats.topOrdered.length === 0
+              ? <p className={s.cardNote}>Todavía no llegaron pedidos por WhatsApp en este período.</p>
+              : <ItemRanking items={itemStats.topOrdered} metric="orders" comparisonAvailable={false} showOrders />}
+          </section>
+        )}
+        <MeasurementNote audienceFrom={stats?.audience?.from ?? null} periodStart={stats?.periodStart} hasViews={insights.total > 0} />
       </main>
     </div>
   );
@@ -302,14 +321,22 @@ function UserStatsPanel() {
 
 // ── Gráfico de visitas por día ────────────────────────────────────────────────
 
-function DailyChart({ days, average }: { days: DayCount[]; average: number }) {
+function DailyChart({ days, previousDays, average }: {
+  days: DayCount[];
+  // Mismo largo que `days`, día por día (el 1.º con el 1.º). null sin base
+  // de comparación: antes del alta serían ceros que no son datos.
+  previousDays: DayCount[] | null;
+  average: number;
+}) {
   // Un índice activo en vez del atributo `title` nativo: `title` no existe en
   // touch, así que en el celular —que es donde el dueño mira esto— el detalle
   // de cada día no se podía ver. Con estado, el mismo tooltip sirve para
   // mouse y para tap.
   const [active, setActive] = useState<number | null>(null);
-  const maxCount = Math.max(1, ...days.map(d => d.count));
+  const previous = previousDays && previousDays.length === days.length ? previousDays : null;
+  const maxCount = Math.max(1, ...days.map(d => d.count), ...(previous ?? []).map(d => d.count));
   const shown = active !== null ? days[active] : null;
+  const shownPrevious = active !== null ? previous?.[active] : undefined;
 
   return (
     <div className={s.chartBlock}>
@@ -335,11 +362,13 @@ function DailyChart({ days, average }: { days: DayCount[]; average: number }) {
           const weekday = parseLocalDate(d.date)?.getUTCDay();
           const isWeekend = weekday === 0 || weekday === 6;
           const height = d.count > 0 ? Math.max((d.count / maxCount) * 100, 6) : 3;
+          const before = previous?.[i];
           return (
             <button
               type="button"
               key={d.date}
-              aria-label={`${formatDayLong(d.date)}: ${d.count} ${d.count === 1 ? "visita" : "visitas"}`}
+              aria-label={`${formatDayLong(d.date)}: ${d.count} ${d.count === 1 ? "visita" : "visitas"}${
+                before ? `; ${before.count} el ${formatDayLong(before.date)}` : ""}`}
               aria-pressed={active === i}
               className={[
                 s.barWrap,
@@ -359,6 +388,16 @@ function DailyChart({ days, average }: { days: DayCount[]; average: number }) {
                 ].join(" ").trim()}
                 style={{ height: `${height}%`, animationDelay: `${i * 14}ms` }}
               />
+              {/* Marca del mismo día del período anterior: una raya en vez
+                  de otra barra, para que 30 pares entren en un celular y la
+                  lectura sea "arriba o abajo de la raya". */}
+              {before && before.count > 0 && (
+                <span
+                  className={s.barPrevious}
+                  style={{ bottom: `${Math.min((before.count / maxCount) * 100, 100)}%` }}
+                  aria-hidden
+                />
+              )}
             </button>
           );
         })}
@@ -367,24 +406,35 @@ function DailyChart({ days, average }: { days: DayCount[]; average: number }) {
           <div
             className={s.tooltip}
             aria-hidden="true"
-            // Se ancla al centro de la barra y se corre hacia adentro en los
-            // extremos para no salirse de la tarjeta.
+            // Se ancla en la barra y se corre en la misma proporción: centrado
+            // en el medio, pegado al borde en los extremos. Nunca se sale de
+            // la tarjeta, sea cual sea su ancho.
             style={{
               left: `${((active + 0.5) / days.length) * 100}%`,
-              transform: `translateX(${
-                active < 3 ? "-12%" : active > days.length - 4 ? "-88%" : "-50%"
-              })`,
+              transform: `translateX(-${((active + 0.5) / days.length) * 100}%)`,
             }}
           >
-            <strong>{shown.count.toLocaleString("es-AR")}</strong>
-            <span>{shown.count === 1 ? "visita" : "visitas"}</span>
-            <small>{formatDayLong(shown.date)}</small>
+            <span className={s.tooltipMain}>
+              <strong>{shown.count.toLocaleString("es-AR")}</strong>
+              <span>{shown.count === 1 ? "visita" : "visitas"}</span>
+              <small>{formatDayLong(shown.date)}</small>
+            </span>
+            {shownPrevious && (
+              <small className={s.tooltipPrevious}>
+                {shownPrevious.count.toLocaleString("es-AR")} el {formatDay(shownPrevious.date)}
+              </small>
+            )}
           </div>
         )}
       </div>
 
       <div className={s.chartAxis}>
         <span>{formatDay(days[0]?.date)}</span>
+        {previous && (
+          <span className={s.chartLegend}>
+            <i className={s.legendPrevious} aria-hidden /> Mismo día del período anterior
+          </span>
+        )}
         <span>{formatDay(days.at(-1)?.date)}</span>
       </div>
 
@@ -393,13 +443,18 @@ function DailyChart({ days, average }: { days: DayCount[]; average: number }) {
         <table className={s.dataTable}>
           <caption>Visitas por día de los últimos {days.length} días</caption>
           <thead>
-            <tr><th scope="col">Día</th><th scope="col">Visitas</th></tr>
+            <tr>
+              <th scope="col">Día</th>
+              <th scope="col">Visitas</th>
+              {previous && <th scope="col">Período anterior</th>}
+            </tr>
           </thead>
           <tbody>
-            {days.map((d) => (
+            {days.map((d, i) => (
               <tr key={d.date}>
                 <th scope="row">{formatDayLong(d.date)}</th>
                 <td>{d.count}</td>
+                {previous && <td>{previous[i].count} ({formatDay(previous[i].date)})</td>}
               </tr>
             ))}
           </tbody>
@@ -456,7 +511,219 @@ function WeekdayChart({
   );
 }
 
+// ── Horarios de más visitas ───────────────────────────────────────────────────
+
+const HOUR_TICKS = [0, 6, 12, 18, 23];
+
+function HourlyCard({ hourly, periodStart, wide }: { hourly: HourlyInsights; periodStart: string; wide: boolean }) {
+  const max = Math.max(1, ...hourly.hours);
+  const { peak } = hourly;
+  const inPeak = (hour: number) => !!peak && hourly.enough && (hour - peak.start + 24) % 24 < 3;
+  const partial = hourly.from !== null && hourly.from > periodStart;
+
+  return (
+    <section className={`${s.card} ${wide ? s.cardWide : ""}`}>
+      <div className={s.cardHead}>
+        <p className={s.cardLabel}>Horarios de más visitas</p>
+        <p className={s.cardNote}>
+          {hourly.total === 0
+            ? "Los horarios se registran a partir de esta actualización: el gráfico aparece con las próximas visitas."
+            : hourly.enough && peak
+              ? <>El <strong>{formatPercent(peak.share)}</strong> de las visitas entra {hourRange(peak.start, peak.end)}.</>
+              : `Todavía son pocas visitas para marcar un horario pico (${hourly.total} de ${HOURLY_MIN_VISITS}).`}
+          {partial && hourly.from && ` Medido desde el ${formatDayLong(hourly.from)}.`}
+        </p>
+      </div>
+      {hourly.total > 0 && (
+        <>
+          <div className={s.hourChart} aria-hidden>
+            {hourly.hours.map((value, hour) => (
+              <span
+                key={hour}
+                className={`${s.hourBar} ${inPeak(hour) ? s.hourBarPeak : ""} ${value === 0 ? s.barEmpty : ""}`}
+                style={{ height: `${value > 0 ? Math.max((value / max) * 100, 6) : 3}%` }}
+              />
+            ))}
+          </div>
+          <div className={s.hourAxis} aria-hidden>
+            {HOUR_TICKS.map(hour => (
+              <span key={hour} style={{ gridColumn: hour + 1 }}>{hour} h</span>
+            ))}
+          </div>
+          <details className={s.dailyDetails}>
+            <summary>Ver visitas por hora</summary>
+            <table className={s.dataTable}>
+              <caption>Visitas por hora del día, sumadas en el período</caption>
+              <thead>
+                <tr><th scope="col">Hora</th><th scope="col">Visitas</th></tr>
+              </thead>
+              <tbody>
+                {hourly.hours.map((value, hour) => (
+                  <tr key={hour}>
+                    <th scope="row">{hour} a {(hour + 1) % 24} h</th>
+                    <td>{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
+        </>
+      )}
+    </section>
+  );
+}
+
+// ── Cómo llegan y qué hacen ───────────────────────────────────────────────────
+
+function AudienceCard({ audience, periodStart }: { audience: AudienceInsights; periodStart: string }) {
+  const partial = audience.from !== null && audience.from > periodStart;
+  return (
+    <section className={`${s.card} ${s.cardWide}`}>
+      <div className={s.cardHead}>
+        <p className={s.cardLabel}>Cómo llegan y qué hacen</p>
+        <p className={s.cardNote}>
+          Sobre {audience.visits.toLocaleString("es-AR")} {audience.visits === 1 ? "visita medida" : "visitas medidas"}
+          {partial && audience.from && ` desde el ${formatDayLong(audience.from)}`}
+        </p>
+      </div>
+      <div className={s.audienceGrid}>
+        <ol className={s.funnel} aria-label="Recorrido de las visitas">
+          {audience.funnel.map(step => (
+            <li key={step.key} className={s.funnelStep}>
+              <div className={s.funnelHead}>
+                <span>{step.label}</span>
+                <strong>{step.count.toLocaleString("es-AR")}</strong>
+                {step.key !== "visits" && <small>{formatPercent(step.rate)}</small>}
+              </div>
+              <span className={s.funnelTrack} aria-hidden>
+                <span
+                  className={s.funnelFill}
+                  style={{ width: `${step.count > 0 ? Math.max(step.rate * 100, 2) : 0}%` }}
+                />
+              </span>
+            </li>
+          ))}
+        </ol>
+        <div className={s.audienceFacts}>
+          <div className={s.fact}>
+            <p className={s.summaryLabel}>Llegaron por el QR</p>
+            <p className={s.factValue}>{formatPercent(audience.qrShare ?? 0)}</p>
+            <p className={s.summaryFoot}>
+              {audience.qrShare
+                ? "El resto entró por un link compartido, redes o buscadores."
+                : "Los QR impresos antes de esta actualización cuentan como link: descargalo de nuevo desde Inicio para medirlo."}
+            </p>
+          </div>
+          {audience.returningShare !== null && (
+            <div className={s.fact}>
+              <p className={s.summaryLabel}>Vuelven</p>
+              <p className={s.factValue}>{formatPercent(audience.returningShare)}</p>
+              <p className={s.summaryFoot}>de los visitantes de cada día ya habían abierto la carta otro día desde el mismo dispositivo</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Rankings de productos ─────────────────────────────────────────────────────
+
+function ItemRanking({ items, metric, comparisonAvailable, showOrders }: {
+  items: TopItemStat[];
+  metric: "views" | "orders";
+  comparisonAvailable: boolean;
+  showOrders: boolean;
+}) {
+  const valueOf = (item: TopItemStat) => (metric === "views" ? item.totalViews : item.orders ?? 0);
+  const max = valueOf(items[0]) || 1;
+  const hint = metric === "views" && showOrders ? lowConversionItem(items) : null;
+
+  return (
+    <>
+      <ol className={s.topItemsList}>
+        {items.map((item, i) => {
+          const value = valueOf(item);
+          const trend = metric === "views" ? itemTrend(item, comparisonAvailable) : null;
+          return (
+            <li key={item.itemID} className={s.topItemRow}>
+              <span className={s.topItemRank}>{i + 1}</span>
+              <ItemThumb image={item.image} title={item.title} />
+              <div className={s.topItemMain}>
+                <span className={s.topItemName}>{item.title}</span>
+                <span className={s.topItemBarWrap}>
+                  <span className={s.topItemBar} style={{ width: `${Math.max((value / max) * 100, 4)}%` }} />
+                </span>
+              </div>
+              <span className={s.topItemCount}>
+                {value.toLocaleString("es-AR")}
+                <small>{metric === "views" ? (value === 1 ? "vista" : "vistas") : (value === 1 ? "pedido" : "pedidos")}</small>
+                {metric === "views" && trend?.kind === "new" && (
+                  <small className={s.trendUp} title="Sin vistas en el período anterior">Nuevo</small>
+                )}
+                {metric === "views" && trend?.kind === "change" && (
+                  <small
+                    className={trend.pct > 0 ? s.trendUp : s.trendDown}
+                    title={`${item.previousViews.toLocaleString("es-AR")} vistas en el período anterior`}
+                  >
+                    {trend.pct > 0 ? "↑" : "↓"} {Math.abs(trend.pct)}%
+                  </small>
+                )}
+                {metric === "views" && comparisonAvailable && !trend && (
+                  <small>{item.previousViews.toLocaleString("es-AR")} antes</small>
+                )}
+                {metric === "views" && showOrders && item.orders !== undefined && (
+                  <small>{item.orders.toLocaleString("es-AR")} {item.orders === 1 ? "pedido" : "pedidos"}</small>
+                )}
+                {metric === "orders" && (
+                  <small>{item.totalViews.toLocaleString("es-AR")} {item.totalViews === 1 ? "vista" : "vistas"}</small>
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      {hint && (
+        <p className={s.weekNote}>
+          <strong>{hint.title}</strong> se mira mucho pero casi no se pide
+          ({hint.orders.toLocaleString("es-AR")} {hint.orders === 1 ? "pedido" : "pedidos"} en {hint.totalViews.toLocaleString("es-AR")} vistas).
+          Revisá la foto, el precio o la descripción.
+        </p>
+      )}
+    </>
+  );
+}
+
+function MeasurementNote({ audienceFrom, periodStart, hasViews }: {
+  audienceFrom: string | null;
+  periodStart?: string;
+  hasViews: boolean;
+}) {
+  const mixed = hasViews && (!audienceFrom || (periodStart !== undefined && audienceFrom > periodStart));
+  return (
+    <p className={s.measurementNote}>
+      Una visita es una sesión en la carta: recargar o volver dentro de 30 minutos no suma otra, y tus
+      propias visitas con la sesión iniciada no cuentan. Las vistas de productos son aperturas del detalle,
+      una por visita. Un pedido cuenta cuando el cliente abre WhatsApp con el pedido armado: no confirma que
+      lo haya enviado ni pagado.
+      {mixed && (audienceFrom
+        ? ` Los días anteriores al ${formatDayLong(audienceFrom)} pueden incluir recargas y tus propias visitas.`
+        : " Los días anteriores a esta actualización pueden incluir recargas y tus propias visitas.")}
+    </p>
+  );
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
+
+function formatPercent(value: number) {
+  return `${Math.round(value * 100)}%`;
+}
+
+// "entre las 20 y las 23 h", "entre las 23 y la 1 h", "entre las 21 h y la medianoche".
+function hourRange(start: number, end: number) {
+  if (end === 0) return `entre las ${start} h y la medianoche`;
+  return `entre ${start === 1 ? "la 1" : `las ${start}`} y ${end === 1 ? "la 1" : `las ${end}`} h`;
+}
 
 function formatDay(dateStr?: string) {
   return formatDateAR(dateStr, { day: "numeric", month: "short", fallback: "" });
