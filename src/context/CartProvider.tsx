@@ -32,6 +32,9 @@ function readCart(slug: string): CartLine[] {
 interface CartProviderProps {
   slug: string;
   enabled: boolean;
+  // Se llama en cada producto agregado (UserMenu lo usa para las
+  // estadísticas de la carta; allá se cuenta una vez por sesión).
+  onAdd?: () => void;
   // Ajusta el carrito guardado antes de usarlo (UserMenu le pasa
   // repriceCartLines con la carta actual). Solo se aplica a lo leído de
   // localStorage — al montar y al cambiar de local —, no a cada cambio del
@@ -45,7 +48,7 @@ interface CartProviderProps {
 // El carrito vive por local (clave localStorage "cart:<slug>"), no global:
 // así no se mezcla si el cliente navega de la carta de un negocio a la de
 // otro sin recargar la página.
-export function CartProvider({ slug, enabled, normalize, children }: CartProviderProps) {
+export function CartProvider({ slug, enabled, onAdd, normalize, children }: CartProviderProps) {
   const loadCart = (key: string) => {
     const lines = readCart(key);
     return normalize ? normalize(lines) : lines;
@@ -75,6 +78,7 @@ export function CartProvider({ slug, enabled, normalize, children }: CartProvide
 
   const addItem = (line: Omit<CartLine, "quantity">, quantity = 1) => {
     if (!enabled) return;
+    onAdd?.();
     setItems((prev) => {
       const key = lineKey(line.itemId, line.selectedOption);
       const existing = prev.find((l) => lineKey(l.itemId, l.selectedOption) === key);

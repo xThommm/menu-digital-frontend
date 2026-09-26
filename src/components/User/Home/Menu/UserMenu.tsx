@@ -19,6 +19,13 @@ import { resolveMenuDisplay } from "../../../../lib/menuDisplay";
 import { cartUnitPrice, repriceCartLines } from "../../../../lib/cartPricing";
 import { getVisualFamily, resolveMenuStyle } from "../../../../lib/menuStyles";
 import { buildMenuTabs, categoryKey, isItemUnavailable, tabHasItems } from "../../../../lib/publicMenu";
+import {
+  decideVisit, isStaffViewer, markOnce, orderKey, sendMenuEvent, visitQuery, type VisitDecision,
+} from "../../../../lib/menuAnalytics";
+
+// Visita decidida y todavía sin respuesta, por carta (ver el efecto de
+// carga en MenuPage).
+const pendingVisits = new Map<string, VisitDecision>();
 
 // ── Helpers de formato ────────────────────────────────────────────────────────
 
@@ -95,31 +102,77 @@ export default function MenuPage() {
   // anterior abrirían categorías al azar en la nueva.
   const [openCats, setOpenCats] = useState<Set<string>>(() => new Set());
 
-  // Analítica por plato (fase 3): abrir la previsualización de un producto
-  // cuenta una vista, fire-and-forget — nunca debe afectar la experiencia
-  // del cliente si falla. Se deduplica por producto acá y no por tarjeta:
-  // con categorías desplegables las tarjetas se desmontan al plegar, y con
-  // el carrusel un mismo producto tiene dos tarjetas, así que contar por
-  // tarjeta inflaría las vistas según las opciones que tenga el dueño. El
-  // registro se vacía al cambiar de pestaña, que es cuando antes se volvía
-  // a contar (<main> se remonta con key={activeTab}).
-  const viewedItems = useRef<Set<string>>(new Set());
-  const trackItemView = useCallback((itemId: string) => {
-    if (viewedItems.current.has(itemId)) return;
-    viewedItems.current.add(itemId);
-    fetch(`/api/users/${slug}/menu/items/${itemId}/view`, { method: "POST" }).catch(() => {});
+  // Estadísticas de la carta (ver lib/menuAnalytics): todo fire-and-forget,
+  // nunca afecta la experiencia del cliente si falla. False para el dueño,
+  // el personal y la vista previa del panel, que no mandan nada.
+  const analyticsOn = useRef(false);
+
+  // Embudo, una vez por sesión cada paso. Los pasos se marcan en cadena
+  // (agregar implica haber explorado; pedir, haber armado un pedido) para
+  // que el embudo quede anidado aunque se agregue sin abrir el detalle o el
+  // carrito venga de una sesión anterior.
+  const trackFunnel = useCallback((step: "engaged" | "cart") => {
+    if (!slug || !analyticsOn.current) return;
+    const steps = step === "cart" ? (["engaged", "cart"] as const) : (["engaged"] as const);
+    for (const current of steps) {
+      if (markOnce(slug, current)) sendMenuEvent(slug, current);
+    }
   }, [slug]);
+
+  const trackOrder = useCallback((lines: CartLine[]) => {
+    if (!slug || !analyticsOn.current || lines.length === 0) return;
+    trackFunnel("cart");
+    if (markOnce(slug, orderKey(lines))) {
+      sendMenuEvent(slug, "order", [...new Set(lines.map(line => line.itemId))]);
+    }
+  }, [slug, trackFunnel]);
+
+  // Abrir la previsualización de un producto cuenta una vista. Se
+  // deduplica por producto y por sesión, no por tarjeta: con categorías
+  // desplegables las tarjetas se desmontan al plegar, y con el carrusel un
+  // mismo producto tiene dos tarjetas, así que contar por tarjeta inflaría
+  // las vistas según las opciones que tenga el dueño.
+  const trackItemView = useCallback((itemId: string) => {
+    if (!slug || !analyticsOn.current) return;
+    trackFunnel("engaged");
+    if (!markOnce(slug, `item:${itemId}`)) return;
+    fetch(`/api/users/${slug}/menu/items/${itemId}/view`, { method: "POST" }).catch(() => {});
+  }, [slug, trackFunnel]);
+
+  const trackCartAdd = useCallback(() => trackFunnel("cart"), [trackFunnel]);
 
   useEffect(() => {
     const controller = new AbortController();
+    const params = new URLSearchParams(window.location.search);
+    // La vista previa del panel también cae acá: el iframe comparte el
+    // localStorage con la sesión del dueño.
+    const skip = isStaffViewer(slug ?? "");
+    analyticsOn.current = !skip;
+    // La decisión se guarda hasta que la carta llega: si el efecto se
+    // repite antes (StrictMode, reintento), la visita no se pierde ni se
+    // cuenta dos veces.
+    const key = slug ?? "";
+    const visit = pendingVisits.get(key)
+      ?? decideVisit(key, { skip, qr: params.get("src") === "qr" });
+    pendingVisits.set(key, visit);
+    // ?src=qr viene del QR descargado del panel. El origen ya quedó
+    // registrado: sin el parámetro, un link copiado
+    // desde esta pantalla no se cuenta como QR. replaceState y no navigate:
+    // el router no necesita enterarse y no hay render de más.
+    if (params.get("src") === "qr") {
+      params.delete("src");
+      const search = params.toString();
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`);
+    }
     const fetchMenu = async () => {
       try {
         // ?v=2 pide la carta liviana (solo lo que se muestra, sin productos
         // agotados/ocultos). Un backend anterior ignora el parámetro y
         // responde el shape viejo, que esta pantalla también tolera.
-        const res = await fetch(`/api/users/${slug}/menu?v=2`, {
+        const res = await fetch(`/api/users/${slug}/menu?v=2&${visitQuery(visit)}`, {
           signal: controller.signal,
         });
+        pendingVisits.delete(key);
         if (!res.ok) {
           if (res.status === 404) setNotFound(true);
           else setLoadError(true);
@@ -212,7 +265,6 @@ export default function MenuPage() {
     // usuario cambia de pestaña con el modal abierto, ese índice ya no
     // correspondería a la misma lista, así que lo cerramos.
     setPreview(null);
-    viewedItems.current.clear();
     // Volver al inicio de la lista: como header+tabs son sticky arriba de
     // todo, el tope de la página ya es el inicio visible del contenido.
     // Antes se hacía scrollIntoView(mpContent), que dejaba el arranque de
@@ -349,6 +401,7 @@ export default function MenuPage() {
       <CartProvider
         slug={menuSlug}
         enabled={ordersEnabled}
+        onAdd={trackCartAdd}
         normalize={normalizeCart}
       >
         {user.features?.sin_publicidad !== true && <FreePlanAd />}
@@ -540,6 +593,7 @@ export default function MenuPage() {
                 orderModes={orderModes}
                 hidePrices={display.hidePrices}
                 onRequestClear={openClearConfirm}
+                onOrderSent={trackOrder}
               />
             )}
           </div>
@@ -562,6 +616,7 @@ export default function MenuPage() {
               orderModes={orderModes}
               hidePrices={display.hidePrices}
               onRequestClear={openClearConfirm}
+              onOrderSent={trackOrder}
             />
           )}
 
@@ -637,6 +692,7 @@ function OrderSummary({
   orderModes,
   hidePrices,
   onRequestClear,
+  onOrderSent,
 }: {
   businessName: string;
   waTargets: WaTarget[];
@@ -644,6 +700,7 @@ function OrderSummary({
   orderModes: OrderMode[];
   hidePrices: boolean;
   onRequestClear: () => void;
+  onOrderSent: (lines: CartLine[]) => void;
 }) {
   const { items, totalPrice, updateQuantity } = useCart();
   if (items.length === 0) return null;
@@ -688,6 +745,7 @@ function OrderSummary({
           choices={orderChoices}
           className={styles.orderWhatsapp}
           prompt="¿A qué sucursal querés mandar el pedido?"
+          onSend={() => onOrderSent(items)}
         >
           Pedir por WhatsApp <span aria-hidden>{opensPanel ? "▾" : "↗"}</span>
         </WaTargetPicker>

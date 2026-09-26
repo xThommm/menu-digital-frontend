@@ -370,8 +370,9 @@
   bottom: calc(100% + 8px);
   z-index: 2;
   display: flex;
-  align-items: baseline;
-  gap: 0.3rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
   padding: 0.4rem 0.6rem;
   border: 0.5px solid transparent;
   border-radius: 12px;
@@ -379,6 +380,11 @@
   box-shadow: var(--tone-shadow);
   white-space: nowrap;
   pointer-events: none;
+}
+.tooltipMain {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
 }
 .tooltip strong {
   font-family: var(--font-serif);
@@ -398,13 +404,174 @@
   font-size: var(--text-xs);
   color: var(--admin-text-secondary);
 }
+/* El mismo día del período anterior va en su propia línea: en una sola, el
+   tooltip no entraba en un celular. */
+.tooltip small.tooltipPrevious {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+}
+.tooltipPrevious::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 2px;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+  background: var(--admin-text-primary);
+  opacity: 0.45;
+}
 
 .chartAxis {
   display: flex;
   justify-content: space-between;
+  gap: var(--space-3);
   margin-top: var(--space-3);
   font-size: var(--text-xs);
   color: var(--admin-text-secondary);
+}
+
+/* Mismo día del período anterior: raya sobre la columna. Por encima de la
+   barra (z-index) para que se lea también cuando queda "adentro". */
+.barPrevious {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  z-index: 1;
+  height: 2px;
+  margin-bottom: -1px;
+  border-radius: 1px;
+  background: var(--admin-text-primary);
+  opacity: 0.45;
+  pointer-events: none;
+}
+.barWrapActive .barPrevious { opacity: 0.8; }
+
+.chartLegend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-align: center;
+}
+.legendPrevious {
+  display: inline-block;
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--admin-text-primary);
+  opacity: 0.45;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HORARIOS DE MÁS VISITAS
+   24 columnas: la franja pico en dorado lleno, el resto tonal (mismo
+   criterio que la semana típica).
+   ═══════════════════════════════════════════════════════════════ */
+.hourChart {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 2px;
+  align-items: end;
+  height: 96px;
+}
+
+.hourBar {
+  min-height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, var(--admin-gold) 32%, transparent);
+  transform-origin: bottom;
+  animation: barGrow 0.5s var(--ease-out) both;
+}
+.hourBarPeak { background: var(--admin-gold); }
+
+.hourAxis {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--admin-text-secondary);
+  white-space: nowrap;
+}
+/* La última marca (23 h) se alinea al final para no desbordar la tarjeta. */
+.hourAxis span:last-child { justify-self: end; }
+
+/* ═══════════════════════════════════════════════════════════════
+   CÓMO LLEGAN Y QUÉ HACEN (embudo + origen + recurrencia)
+   ═══════════════════════════════════════════════════════════════ */
+.audienceGrid {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.funnel {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+}
+
+.funnelHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: 0.35rem;
+  font-size: var(--text-sm);
+  color: var(--admin-text-primary);
+}
+.funnelHead span { flex: 1; min-width: 0; }
+.funnelHead strong {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.funnelHead small {
+  min-width: 3.2em;
+  text-align: right;
+  font-size: var(--text-xs);
+  color: var(--admin-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.funnelTrack {
+  display: block;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--admin-pill-muted-bg);
+  overflow: hidden;
+}
+.funnelFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--admin-gold);
+  transform-origin: left;
+  animation: fillGrow 0.6s var(--ease-out) both;
+}
+@keyframes fillGrow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.audienceFacts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-2);
+}
+
+.fact {
+  padding: var(--space-3) var(--space-4);
+  border-radius: 20px;
+  background: var(--tone-low, var(--admin-bg-elevated));
+}
+
+.factValue {
+  margin: 0.1rem 0;
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  color: var(--admin-text-primary);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
 }
 
 
@@ -564,6 +731,10 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
+/* Variación del producto: gana a la regla de arriba, que es más específica
+   que .trendUp/.trendDown solas. */
+.topItemCount small.trendUp { color: var(--admin-green, var(--admin-gold)); font-weight: 600; }
+.topItemCount small.trendDown { color: var(--admin-red-text); font-weight: 600; }
 
 /* ═══════════════════════════════════════════════════════════════
    SIN DATOS TODAVÍA
@@ -732,6 +903,13 @@
   }
 
   .chart { height: 200px; }
+
+  /* Embudo a la izquierda, origen y recurrencia a la derecha. */
+  .audienceGrid {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+  }
+  .audienceFacts { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 599px) {
@@ -768,6 +946,6 @@
 /* Respeta preferencia de movimiento reducido */
 @media (prefers-reduced-motion: reduce) {
   .welcome, .summaryRow, .card, .lockCard, .emptyCard { animation: none; }
-  .bar, .weekBar { animation: none; }
+  .bar, .weekBar, .hourBar, .funnelFill { animation: none; }
   .liveDot { animation: none; }
 }

@@ -19,23 +19,17 @@ interface WaTargetPickerProps {
   children: ReactNode;
   // Pregunta que encabeza la lista cuando hay más de un número.
   prompt: string;
+  // Se llama al abrir el chat (no al desplegar la lista): la carta lo usa
+  // para contar el pedido en las estadísticas.
+  onSend?: () => void;
 }
 
 // Botón de WhatsApp para pedidos y reservas. Con un solo número (o sin
 // sucursales cargadas) es el link directo de siempre; con varios, el botón
 // despliega debajo la lista de sucursales y el cliente elige a cuál
-// escribir. Si el pedido ofrece más de una modalidad, antes de la sucursal
-// pregunta cuál quiere (con un solo número, esa elección ya abre el chat).
-// Sin números no dibuja nada: cada pantalla decide qué mostrar.
-export default function WaTargetPicker({
-  targets,
-  message,
-  choices,
-  choicePrompt = "¿Cómo querés recibir tu pedido?",
-  className,
-  children,
-  prompt,
-}: WaTargetPickerProps) {
+// escribir. Sin números no dibuja nada: cada pantalla decide qué mostrar.
+export default function WaTargetPicker({ targets, message, className, children, prompt, onSend }: WaTargetPickerProps) {
+    
   const [open, setOpen] = useState(false);
   // Modalidad elegida en el primer paso (solo con varias modalidades y
   // varios números: con uno solo, elegir ya abre el chat).
@@ -49,7 +43,7 @@ export default function WaTargetPicker({
 
   if (targets.length === 1 && !askChoice) {
     return (
-      <a className={className} href={buildWaHref(targets[0].phone, singleMessage)} target="_blank" rel="noopener noreferrer">
+      <a className={className} href={buildWaHref(targets[0].phone, message)} target="_blank" rel="noopener noreferrer" onClick={onSend}>
         {children}
       </a>
     );
@@ -75,68 +69,24 @@ export default function WaTargetPicker({
         {children}
       </button>
       {open && (
-        <div
-          id={listId}
-          className={styles.panel}
-          role="group"
-          aria-label={showTargets ? prompt : choicePrompt}
-        >
-          {showTargets ? (
-            <>
-              {chosen && (
-                <div className={styles.chosen}>
-                  <span>{chosen.label}</span>
-                  <button type="button" className={styles.back} onClick={() => setChoiceKey(null)}>
-                    Cambiar
-                  </button>
-                </div>
-              )}
-              <p className={styles.prompt}>{prompt}</p>
-              <ul className={styles.list}>
-                {targets.map((target) => (
-                  <li key={`${target.name}-${target.phone}`}>
-                    <a
-                      className={styles.option}
-                      href={buildWaHref(target.phone, targetMessage)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={close}
-                    >
-                      <span>{target.name}</span>
-                      <span className={styles.optionArrow} aria-hidden>↗</span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : (
-            <>
-              <p className={styles.prompt}>{choicePrompt}</p>
-              <ul className={styles.list}>
-                {choices!.map((choice) => (
-                  <li key={choice.key}>
-                    {targets.length === 1 ? (
-                      <a
-                        className={styles.option}
-                        href={buildWaHref(targets[0].phone, choice.message)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={close}
-                      >
-                        <ChoiceText choice={choice} />
-                        <span className={styles.optionArrow} aria-hidden>↗</span>
-                      </a>
-                    ) : (
-                      <button type="button" className={styles.option} onClick={() => setChoiceKey(choice.key)}>
-                        <ChoiceText choice={choice} />
-                        <span className={styles.optionArrow} aria-hidden>›</span>
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+        <div id={listId} className={styles.panel} role="group" aria-label={prompt}>
+          <p className={styles.prompt}>{prompt}</p>
+          <ul className={styles.list}>
+            {targets.map((target) => (
+              <li key={`${target.name}-${target.phone}`}>
+                <a
+                  className={styles.option}
+                  href={buildWaHref(target.phone, message)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => { setOpen(false); onSend?.(); }}
+                >
+                  <span>{target.name}</span>
+                  <span className={styles.optionArrow} aria-hidden>↗</span>
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

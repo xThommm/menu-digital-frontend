@@ -23,6 +23,40 @@ export function isItemStatsData(value: unknown, days: 7 | 30): value is ItemStat
     && isCount(item.totalViews) && isCount(item.previousViews));
 }
 
+const isDay = (value: unknown) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+const isAudience = (value: unknown) => isRecord(value)
+  && (value.from === null || isDay(value.from))
+  && ["visits", "visitors", "returning", "qr", "engaged", "carts", "orders"].every(key => isCount(value[key]));
+const isTopItems = (value: unknown) => Array.isArray(value) && value.every(item => isRecord(item)
+  && typeof item.itemID === "string" && typeof item.title === "string" && typeof item.image === "string"
+  && isCount(item.totalViews) && isCount(item.previousViews)
+  && (item.orders === undefined || isCount(item.orders)));
+
+/**
+ * Los campos agregados después (horarios, embudo, pedidos) son opcionales:
+ * si llegan mal formados se descartan y el resto del panel se muestra igual,
+ * en vez de rechazar toda la respuesta como con los campos base.
+ */
+export function sanitizeStatsData(data: StatsData): StatsData {
+  const { hours, hoursFrom, audience, ...base } = data;
+  const validHours = Array.isArray(hours) && hours.length === 24 && hours.every(isCount)
+    && (hoursFrom === null || isDay(hoursFrom));
+  return {
+    ...base,
+    ...(validHours ? { hours, hoursFrom } : {}),
+    ...(isAudience(audience) ? { audience } : {}),
+  };
+}
+
+export function sanitizeItemStatsData(data: ItemStatsData): ItemStatsData {
+  const { topOrdered, ...base } = data;
+  return {
+    ...base,
+    topItems: base.topItems.map(({ orders, ...item }) => (isCount(orders) ? { ...item, orders } : item)),
+    ...(isTopItems(topOrdered) ? { topOrdered } : {}),
+  };
+}
+
 export type StatsResult<T> =
   | { kind: "locked" }
   | { kind: "unauthorized" }

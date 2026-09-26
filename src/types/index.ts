@@ -568,12 +568,31 @@ export interface StatsPeriod {
   comparisonAvailable: boolean
 }
 
+// Lo que solo mide el protocolo de sesiones de la carta (lib/menuAnalytics),
+// sumado sobre los días completos del período. `visits` son las visitas
+// medidas así (base de cada proporción) y `from` el primer día con datos.
+export interface AudienceStats {
+  from: string | null
+  visits: number
+  visitors: number
+  returning: number
+  qr: number
+  engaged: number
+  carts: number
+  orders: number
+}
+
 export interface StatsData extends StatsPeriod {
   totalViews: number
   previousTotalViews: number
   todayViews: number
   days: DayCount[]
   previousDays: DayCount[]
+  // Opcionales: un backend anterior no los manda (ver statsRequests, que
+  // descarta los que llegan mal formados en vez de rechazar todo).
+  hours?: number[] // 24 posiciones, hora de Buenos Aires
+  hoursFrom?: string | null
+  audience?: AudienceStats
 }
 
 export interface TopItemStat {
@@ -582,10 +601,14 @@ export interface TopItemStat {
   image: string
   totalViews: number
   previousViews: number
+  // Pedidos a WhatsApp que lo incluían, en el período. Ausente con un
+  // backend anterior.
+  orders?: number
 }
 
 export interface ItemStatsData extends StatsPeriod {
   topItems: TopItemStat[]
+  topOrdered?: TopItemStat[]
 }
 
 // ── Import masivo (Excel) ──────────────────────────────────────────────────
