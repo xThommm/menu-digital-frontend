@@ -14,8 +14,12 @@ interface CartDrawerProps {
   // Un destino por sucursal (ver getWaTargets); con más de uno el cliente
   // elige a cuál mandar el pedido.
   waTargets: WaTarget[];
-  // "Mensaje de pedido" de Mi negocio: se suma al final del texto del pedido.
-  orderMessage?: string;
+  // Mensajes de pedido de Mi negocio (delivery y take away): el de la
+  // modalidad elegida se suma al final del texto del pedido.
+  orderTexts: OrderExtraTexts;
+  // Delivery / take away que ofrece el local (getOrderModes): con las dos,
+  // "Pedir por WhatsApp" pregunta cuál antes de abrir el chat.
+  orderModes: OrderMode[];
   // Opción "Ocultar precios" de la carta: se puede pedir igual, pero el
   // drawer va sin montos por línea ni total (las líneas valen 0) y el
   // mensaje de WhatsApp sale solo con productos y cantidades.
@@ -31,7 +35,8 @@ export default function CartDrawer({
   onClose,
   businessName,
   waTargets,
-  orderMessage,
+  orderTexts,
+  orderModes,
   hidePrices = false,
   onRequestClear,
   onOrderSent,
@@ -40,7 +45,7 @@ export default function CartDrawer({
 
   if (!open) return null;
 
-  const orderText = buildOrderMessage(items, businessName, orderMessage, { hidePrices });
+  const orderChoices = buildOrderChoices(items, businessName, orderTexts, { hidePrices, modes: orderModes });
 
   return (
     <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true" aria-label="Tu pedido">
@@ -114,7 +119,7 @@ export default function CartDrawer({
               {waTargets.length > 0 ? (
                 <WaTargetPicker
                   targets={waTargets}
-                  message={orderText}
+                  choices={orderChoices}
                   className={styles.waBtn}
                   prompt="¿A qué sucursal querés mandar el pedido?"
                   onSend={() => onOrderSent?.(items)}

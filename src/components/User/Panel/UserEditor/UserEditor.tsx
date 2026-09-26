@@ -27,8 +27,13 @@ interface FormState {
   instagram: string;
   facebook: string;
   hasDelivery: boolean;
+  hasTakeAway: boolean;
   reservationMessage: string;
+  // Texto extra del pedido por WhatsApp, uno por modalidad: orderMessage va
+  // en los pedidos con delivery (y en los que salen sin modalidad) y
+  // takeAwayMessage en los de retiro. Ver buildOrderMessage.
   orderMessage: string;
+  takeAwayMessage: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -39,12 +44,33 @@ const EMPTY_FORM: FormState = {
   instagram: "",
   facebook: "",
   hasDelivery: false,
+  hasTakeAway: false,
   reservationMessage: "",
   orderMessage: "",
+  takeAwayMessage: "",
 };
 
-// Espejo del máximo de contactInfo.orderMessage en el backend.
+// Espejo del máximo de contactInfo.orderMessage / takeAwayMessage en el backend.
 const ORDER_MESSAGE_MAX_LENGTH = 500;
+
+// Un campo de mensaje por modalidad; cada uno se muestra solo con su
+// modalidad activa (apagarla no borra lo cargado).
+const ORDER_MESSAGE_FIELDS = [
+  {
+    key: "orderMessage",
+    enabledBy: "hasDelivery",
+    label: "Mensaje para pedidos con delivery",
+    placeholder: "Nombre y apellido:\nDirección:\nEntre calles:",
+    hint: "Se agrega al final de los pedidos con delivery, después del detalle y el total. Sirve para pedirles nombre, dirección o entre calles.",
+  },
+  {
+    key: "takeAwayMessage",
+    enabledBy: "hasTakeAway",
+    label: "Mensaje para pedidos take away",
+    placeholder: "Nombre y apellido:\nHorario de retiro:",
+    hint: "Se agrega al final de los pedidos take away, después del detalle y el total. Sirve para pedirles el nombre o a qué hora pasan a retirar.",
+  },
+] as const;
 
 // ── Logo del favicon (media.favicon) ──
 // Espejo de FAVICON_MAX_BYTES en el backend (config/cloudinary.js). Se
@@ -189,6 +215,16 @@ function weekToSchedule(week: WeekRanges, previous: Schedule): Schedule {
   }, {} as Schedule);
 }
 
+
+// Cómo queda el pedido por WhatsApp en la carta con cada combinación.
+function orderModesHint(hasDelivery: boolean, hasTakeAway: boolean): string {
+  if (hasDelivery && hasTakeAway) {
+    return "Al tocar \"Pedir por WhatsApp\", tu cliente elige si es delivery o take away, y el pedido te llega marcado con esa opción.";
+  }
+  if (hasDelivery) return "Los pedidos por WhatsApp te llegan marcados como delivery.";
+  if (hasTakeAway) return "Los pedidos por WhatsApp te llegan marcados como take away.";
+  return "Con las dos opciones apagadas, tus clientes no pueden armar pedidos desde la carta.";
+}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -376,8 +412,10 @@ export default function UserEditorPage() {
           instagram:    data.contactInfo?.social?.instagram || "",
           facebook:     data.contactInfo?.social?.facebook  || "",
           hasDelivery:  data.hasDelivery ?? false,
+          hasTakeAway:  data.hasTakeAway ?? false,
           reservationMessage: data.contactInfo?.reservationMessage || "",
           orderMessage: data.contactInfo?.orderMessage || "",
+          takeAwayMessage: data.contactInfo?.takeAwayMessage || "",
         };
         setForm(loaded);
         initialFormRef.current = loaded;
@@ -484,8 +522,10 @@ export default function UserEditorPage() {
             },
             reservationMessage: form.reservationMessage.trim(),
             orderMessage: form.orderMessage.trim(),
+            takeAwayMessage: form.takeAwayMessage.trim(),
           },
           hasDelivery: form.hasDelivery,
+          hasTakeAway: form.hasTakeAway,
           schedule,
         }),
       });
@@ -1251,34 +1291,6 @@ export default function UserEditorPage() {
               </p>
             </div>
 
-            <div className={styles.field}>
-              <label htmlFor="orderMessage">Mensaje de pedido (WhatsApp)</label>
-              <textarea
-                id="orderMessage"
-                rows={3}
-                maxLength={ORDER_MESSAGE_MAX_LENGTH}
-                // Expresión JS y no atributo literal: en JSX "\n" dentro de
-                // comillas no es un salto de línea.
-                placeholder={"Nombre y apellido:\nDirección:\nEntre calles:"}
-                value={form.orderMessage}
-                onChange={e => setForm(f => ({ ...f, orderMessage: e.target.value }))}
-                // Así el lector de pantalla también lee la nota del plan cuando aparece.
-                aria-describedby="orderMessage-hint"
-              />
-              <p id="orderMessage-hint" className={styles.fieldHint}>
-                Se agrega al final del pedido que te mandan tus clientes por WhatsApp, después
-                del detalle y el total. Sirve para pedirles datos como nombre, dirección o entre calles.
-                Si lo dejás vacío, el pedido sale como siempre.
-                {orderMessageLocked && (
-                  <>
-                    {" "}Tu plan actual no incluye pedidos por WhatsApp: podés dejarlo cargado y se
-                    va a usar cuando tengas un plan que los incluya
-                    {orderMessagePlan ? ` (${orderMessagePlan.label})` : ""}.
-                  </>
-                )}
-              </p>
-            </div>
-
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <label htmlFor="instagram">Instagram</label>
@@ -1302,18 +1314,61 @@ export default function UserEditorPage() {
               </div>
             </div>
 
-            <div className={styles.toggleGroup}>
-              <div className={styles.toggleRow}>
-                <div>
-                  <p className={styles.toggleLabel}>Delivery</p>
-                  <p className={styles.toggleDesc}>El negocio realiza envíos a domicilio</p>
+            <div className={styles.orderModes}>
+              <p className={styles.mediaLabel}>Delivery / Take away</p>
+              <div className={styles.toggleGroup}>
+                <div className={styles.toggleRow}>
+                  <div>
+                    <p className={styles.toggleLabel}>Delivery</p>
+                    <p className={styles.toggleDesc}>El negocio realiza envíos a domicilio</p>
+                  </div>
+                  <Toggle
+                    checked={form.hasDelivery}
+                    onChange={() => setForm(f => ({ ...f, hasDelivery: !f.hasDelivery }))}
+                    label="Activar delivery"
+                  />
                 </div>
-                <Toggle
-                  checked={form.hasDelivery}
-                  onChange={() => setForm(f => ({ ...f, hasDelivery: !f.hasDelivery }))}
-                  label="Activar delivery"
-                />
+                <div className={styles.toggleRow}>
+                  <div>
+                    <p className={styles.toggleLabel}>Take away</p>
+                    <p className={styles.toggleDesc}>Los clientes pueden retirar el pedido en el local</p>
+                  </div>
+                  <Toggle
+                    checked={form.hasTakeAway}
+                    onChange={() => setForm(f => ({ ...f, hasTakeAway: !f.hasTakeAway }))}
+                    label="Activar take away"
+                  />
+                </div>
               </div>
+              <p className={styles.fieldHint}>
+                {orderModesHint(form.hasDelivery, form.hasTakeAway)}
+              </p>
+
+              {ORDER_MESSAGE_FIELDS.filter(field => form[field.enabledBy]).map(field => (
+                <div key={field.key} className={`${styles.field} ${styles.orderMessageField}`}>
+                  <label htmlFor={field.key}>{field.label}</label>
+                  <textarea
+                    id={field.key}
+                    rows={3}
+                    maxLength={ORDER_MESSAGE_MAX_LENGTH}
+                    placeholder={field.placeholder}
+                    value={form[field.key]}
+                    onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))}
+                    // Así el lector de pantalla también lee la nota del plan cuando aparece.
+                    aria-describedby={`${field.key}-hint`}
+                  />
+                  <p id={`${field.key}-hint`} className={styles.fieldHint}>
+                    {field.hint} Si lo dejás vacío, el pedido sale sin texto extra.
+                    {orderMessageLocked && (
+                      <>
+                        {" "}Tu plan actual no incluye pedidos por WhatsApp: podés dejarlo cargado y se
+                        va a usar cuando tengas un plan que los incluya
+                        {orderMessagePlan ? ` (${orderMessagePlan.label})` : ""}.
+                      </>
+                    )}
+                  </p>
+                </div>
+              ))}
             </div>
 
             <div className={styles.scheduleSection}>

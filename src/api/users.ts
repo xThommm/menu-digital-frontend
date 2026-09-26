@@ -50,7 +50,7 @@ export const resendVerificationCode = async (): Promise<{ maskedEmail?: string }
 
 // PUT /api/users/me
 export const updateMe = async (
-  data: Partial<Pick<User, 'contactInfo' | 'hasDelivery' | 'media' | 'template'>>
+  data: Partial<Pick<User, 'contactInfo' | 'hasDelivery' | 'hasTakeAway' | 'media' | 'template'>>
 ): Promise<User> => {
   const res = await apiClient.put<User>('/users/me', data)
   return res.data

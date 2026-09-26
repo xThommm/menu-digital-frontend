@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  buildOrderMessage, buildWaLink, getWaTargets, isValidArLocalPhone, normalizeArPhone, sanitizePhoneForWa,
+  buildOrderChoices, buildOrderMessage, buildWaLink, getOrderModes, getWaTargets, isValidArLocalPhone,
+  normalizeArPhone, sanitizePhoneForWa,
 } from "../src/lib/whatsapp.ts";
 import type { CartLine } from "../src/context/CartContext.tsx";
 
@@ -69,6 +70,40 @@ test("con precios ocultos salen solo cantidades y productos, sin subtotales ni t
   assert.doesNotMatch(buildOrderMessage(cart, "La Esquina", "", { hidePrices: true }), /\$|Total/);
   // hidePrices: false explícito = mensaje de siempre.
   assert.equal(buildOrderMessage(cart, "La Esquina", undefined, { hidePrices: false }), baseMessage);
+});
+
+test("con modalidad, el mensaje arranca con ella en su propia línea", () => {
+  assert.equal(buildOrderMessage(cart, "La Esquina", undefined, { mode: "delivery" }), `🛵 *DELIVERY*\n${baseMessage}`);
+  assert.equal(
+    buildOrderMessage(cart, "La Esquina", "Nombre:", { mode: "takeaway" }),
+    `🥡 *TAKE AWAY* (retiro en el local)\n${baseMessage}\n\nNombre:`,
+  );
+});
+
+test("getOrderModes: delivery primero, y un backend sin hasTakeAway = sin take away", () => {
+  assert.deepEqual(getOrderModes({ hasDelivery: true, hasTakeAway: true }), ["delivery", "takeaway"]);
+  assert.deepEqual(getOrderModes({ hasDelivery: true }), ["delivery"]);
+  assert.deepEqual(getOrderModes({ hasDelivery: false, hasTakeAway: true }), ["takeaway"]);
+  assert.deepEqual(getOrderModes({ hasDelivery: false, hasTakeAway: false }), []);
+});
+
+test("buildOrderChoices: cada modalidad lleva su propio texto extra", () => {
+  const texts = { orderMessage: "Dirección:", takeAwayMessage: "Horario de retiro:" };
+  const choices = buildOrderChoices(cart, "La Esquina", texts, { modes: ["delivery", "takeaway"] });
+
+  assert.deepEqual(choices.map(c => [c.key, c.label]), [["delivery", "Delivery"], ["takeaway", "Take away"]]);
+  assert.equal(choices[0].message, `🛵 *DELIVERY*\n${baseMessage}\n\nDirección:`);
+  assert.equal(choices[1].message, `🥡 *TAKE AWAY* (retiro en el local)\n${baseMessage}\n\nHorario de retiro:`);
+
+  // Sin mensaje de take away cargado, el de delivery no se cuela en el retiro.
+  const [takeaway] = buildOrderChoices(cart, "La Esquina", { orderMessage: "Dirección:" }, { modes: ["takeaway"] });
+  assert.equal(takeaway.message, `🥡 *TAKE AWAY* (retiro en el local)\n${baseMessage}`);
+});
+
+test("buildOrderChoices sin modalidades: el mensaje de siempre con orderMessage", () => {
+  const choices = buildOrderChoices(cart, "La Esquina", { orderMessage: "Dirección:", takeAwayMessage: "Nombre:" }, { modes: [] });
+  assert.equal(choices.length, 1);
+  assert.equal(choices[0].message, `${baseMessage}\n\nDirección:`);
 });
 
 test("sanitizePhoneForWa arma 549 + área + número", () => {
