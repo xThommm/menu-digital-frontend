@@ -35,14 +35,14 @@ const STACK_GAP = 225;
 interface ItemPreviewModalProps {
   items: PublicMenuItem[]; // lista de productos en el orden en que se ven en el menú (la carta pública ya no trae los ocultos)
   index: number; // índice activo dentro de `items`
-  hasDelivery: boolean; // si el usuario tiene delivery activo (para mostrar o no el control de agregar al pedido)
+  canOrder: boolean; // pedido por WhatsApp en el plan y delivery o take away activo (muestra los controles de agregar)
   hidePrices: boolean; // carta sin precios (opción del dueño): no se muestra ninguno, pero se puede pedir igual
   showOptionsInitially?: boolean;
   onClose: () => void;
   onNavigate: (index: number) => void;
 }
 
-export default function ItemPreviewModal({ items, index, onClose, onNavigate, hasDelivery, hidePrices, showOptionsInitially = false }: ItemPreviewModalProps) {
+export default function ItemPreviewModal({ items, index, onClose, onNavigate, canOrder, hidePrices, showOptionsInitially = false }: ItemPreviewModalProps) {
   const item = items[index];
   const { items: cartItems, addItem, updateQuantity } = useCart();
 
@@ -322,7 +322,7 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
 
           {unavailable && <span className={styles.unavail}>No disponible</span>}
 
-          {(!hasOptions || isOnOffer) && !unavailable && simplePrice != null && hasDelivery && (
+          {(!hasOptions || isOnOffer) && !unavailable && simplePrice != null && canOrder && (
             <AddControl
               qty={qtyOf(undefined)}
               onAdd={handleAddSimple}
@@ -349,7 +349,7 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ha
                         {/* Sin precios, el nombre y el control para pedirla
                             (el valor viene en 0). */}
                         {!hidePrices && <span className={styles.price}>{fmt(price)}</span>}
-                        {!unavailable && (
+                        {!unavailable && canOrder && (
                           <AddControl
                             qty={qtyOf(name)}
                             onAdd={() => handleAddVariant(name, price)}

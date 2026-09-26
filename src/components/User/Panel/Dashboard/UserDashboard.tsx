@@ -142,6 +142,7 @@ export default function UserDashboard() {
           businessName:  json.contactInfo?.businessName ?? "",
           slug:          json.slug ?? "",
           hasDelivery:   json.hasDelivery ?? false,
+          hasTakeAway:   json.hasTakeAway ?? false,
           template:      json.template ?? 1,
           itemCount:     json.itemCount ?? 0,
           categoryCount: json.categoryCount ?? 0,
@@ -444,9 +445,9 @@ export default function UserDashboard() {
                 label={data.itemCount === 1 ? "producto" : "productos"} />
               <StatPill icon={<GridIcon />} value={data.categoryCount}
                 label={data.categoryCount === 1 ? "categoría" : "categorías"} />
-              <span className={`${s.deliveryPill} ${data.hasDelivery ? s.deliveryOn : s.deliveryOff}`}>
+              <span className={`${s.deliveryPill} ${data.hasDelivery || data.hasTakeAway ? s.deliveryOn : s.deliveryOff}`}>
                 <span className={s.deliveryDot} />
-                {data.hasDelivery ? "Delivery activo" : "Sin delivery"}
+                {orderModesLabel(data)}
               </span>
             </div>
           )}
@@ -638,6 +639,14 @@ function StatPill({ icon, value, label }: { icon: React.ReactNode; value: number
       <strong>{value}</strong> {label}
     </span>
   );
+}
+
+// Modalidades de pedido que ofrece el local (Mi negocio → Delivery / Take away).
+function orderModesLabel({ hasDelivery, hasTakeAway }: Pick<DashData, "hasDelivery" | "hasTakeAway">) {
+  if (hasDelivery && hasTakeAway) return "Delivery y take away";
+  if (hasDelivery) return "Delivery activo";
+  if (hasTakeAway) return "Take away activo";
+  return "Sin delivery ni take away";
 }
 
 // ── Íconos ────────────────────────────────────────────────────────────────────

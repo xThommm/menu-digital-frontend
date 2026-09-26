@@ -62,9 +62,12 @@ export interface ContactInfo {
   social: Record<string, string>
   businessName: string
   reservationMessage?: string
-  // Texto fijo que se suma al final del pedido por WhatsApp (Mi negocio).
-  // Opcional: vacío o ausente = el mensaje sale como siempre.
+  // Texto fijo que se suma al final del pedido por WhatsApp (Mi negocio):
+  // orderMessage en los pedidos con delivery (y los que salen sin
+  // modalidad), takeAwayMessage en los de retiro. Opcionales: vacío o
+  // ausente = el pedido sale sin texto extra.
   orderMessage?: string
+  takeAwayMessage?: string
 }
 
 // Cómo se ve la carta pública (panel de Configuración, sección "Carta").
@@ -161,6 +164,9 @@ export interface User {
   subscriptionExpiresAt?: string | null
   menu: boolean
   hasDelivery: boolean
+  // Retiro en el local. Opcional para tolerar un backend anterior al campo:
+  // ausente = sin take away (ver getOrderModes).
+  hasTakeAway?: boolean
   template: number
   contactInfo: ContactInfo
   menuStyle?: import("../lib/menuStyles").MenuStyle
@@ -377,6 +383,8 @@ export interface PublicMenuContactInfo {
   whatsappNumbers?: WhatsappNumber[]
   address?: string
   orderMessage?: string
+  // Mensaje de pedido para take away (orderMessage es el de delivery).
+  takeAwayMessage?: string
 }
 
 export interface PublicMenuMedia {
@@ -390,6 +398,7 @@ export interface PublicMenuUser {
   contactInfo?: PublicMenuContactInfo
   media?: PublicMenuMedia
   hasDelivery: boolean
+  hasTakeAway?: boolean
   // Ya recortados por plan en el servidor (getTemplateForFeatures /
   // getMenuStyleForFeatures).
   template: number
@@ -536,6 +545,7 @@ export interface DashData {
   businessName: string
   slug: string
   hasDelivery: boolean
+  hasTakeAway: boolean
   template: number
   itemCount: number
   categoryCount: number
