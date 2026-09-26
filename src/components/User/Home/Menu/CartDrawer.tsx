@@ -1,6 +1,6 @@
 import { useCart } from "../../../../context/useCart";
 import type { CartLine } from "../../../../context/CartContext";
-import { buildOrderMessage, type WaTarget } from "../../../../lib/whatsapp";
+import { buildOrderChoices, type OrderExtraTexts, type OrderMode, type WaTarget } from "../../../../lib/whatsapp";
 import WaTargetPicker from "../WaTargetPicker/WaTargetPicker";
 import styles from "./CartDrawer.module.css";
 
