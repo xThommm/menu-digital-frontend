@@ -239,7 +239,7 @@ interface TemplateProps {
 }
 
 function Template({ user, tokens, goMenu }: TemplateProps) {
-  const { contactInfo: info, media, hasDelivery, template, schedule } = user;
+  const { contactInfo: info, media, hasDelivery, hasTakeAway, template, schedule } = user;
   const menuStyle = resolveMenuStyle(user.menuStyle);
   const family = getVisualFamily(menuStyle);
   const useAvatar = !family && tokens.useAvatar;
@@ -281,7 +281,7 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
 
   const scheduleActive = visible.schedule && scheduleHasData(schedule);
   const isOpenNow = scheduleActive ? getOpenStatus(schedule) : false;
-  const showHeroBadges = hasDelivery || scheduleActive;
+  const showHeroBadges = hasDelivery || hasTakeAway || scheduleActive;
 
   return (
     <div className={`t-wrap ${styles.landing}`} data-template={template ?? 1} data-menu-style={menuStyle} data-menu-family={family?.id}>
@@ -315,6 +315,7 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
                   <div className={styles.badgeRow}>
                     {scheduleActive && <OpenStatusBadge isOpen={isOpenNow} />}
                     {hasDelivery && <DeliveryBadge />}
+                    {hasTakeAway && <TakeAwayBadge />}
                   </div>
                 )}
               </div>
@@ -359,6 +360,10 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
 
 function DeliveryBadge() {
   return <span className="t-badge">Delivery disponible</span>;
+}
+
+function TakeAwayBadge() {
+  return <span className="t-badge">Take away</span>;
 }
 
 // Mismo componente base que DeliveryBadge (.t-badge — tipografía, padding y

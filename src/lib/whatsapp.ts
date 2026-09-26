@@ -73,18 +73,46 @@ export function buildWaHref(phone: string, message?: string): string {
   return message ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` : `https://wa.me/${phone}`;
 }
 
+// Modalidades del pedido que ofrece el local (Mi negocio → Delivery / Take
+// away). Con las dos, el cliente elige una al tocar "Pedir por WhatsApp".
+export type OrderMode = "delivery" | "takeaway";
+
+export const ORDER_MODE_LABELS: Record<OrderMode, { label: string; detail: string }> = {
+  delivery: { label: "Delivery", detail: "Te lo llevan a tu domicilio" },
+  takeaway: { label: "Take away", detail: "Lo retirás en el local" },
+};
+
+// Primera línea del mensaje. Es lo que WhatsApp muestra en la lista de chats,
+// así el local distingue un pedido para enviar de uno para retirar sin abrir
+// la conversación (y los encuentra buscando "DELIVERY" o "TAKE AWAY").
+const ORDER_MODE_HEADERS: Record<OrderMode, string> = {
+  delivery: "🛵 *DELIVERY*",
+  takeaway: "🥡 *TAKE AWAY* (retiro en el local)",
+};
+
+// Las modalidades que ofrece el local, en el orden en que se muestran.
+// `hasTakeAway` es opcional: un backend anterior al campo no lo manda.
+export function getOrderModes(user: { hasDelivery?: boolean; hasTakeAway?: boolean }): OrderMode[] {
+  const modes: OrderMode[] = [];
+  if (user.hasDelivery === true) modes.push("delivery");
+  if (user.hasTakeAway === true) modes.push("takeaway");
+  return modes;
+}
+
 // Arma el texto del pedido: cada línea con cantidad, variante (si la hay) y
 // subtotal, más el total al final. Formato legible para que el dueño no
 // tenga que interpretar nada al recibirlo por WhatsApp. `extraText` es el
-// "Mensaje de pedido" de Mi negocio (contactInfo.orderMessage): va después
-// del detalle, separado por una línea en blanco; vacío = mensaje de siempre.
+// mensaje de pedido de Mi negocio para esa modalidad (ver orderExtraText):
+// va después del detalle, separado por una línea en blanco; vacío = sin
+// texto extra.
 // Con `hidePrices` (opción "Ocultar precios" de la carta) el carrito sigue
 // andando pero salen solo cantidades y productos, sin subtotales ni total.
+// Con `mode` el mensaje arranca con la modalidad (ver ORDER_MODE_HEADERS).
 export function buildOrderMessage(
   cart: CartLine[],
   businessName: string,
   extraText?: string,
-  { hidePrices = false }: { hidePrices?: boolean } = {},
+  { hidePrices = false, mode }: { hidePrices?: boolean; mode?: OrderMode } = {},
 ): string {
   const lines = cart.map((l) => {
     const variant = l.selectedOption ? ` (${l.selectedOption})` : "";
@@ -95,10 +123,51 @@ export function buildOrderMessage(
   const extra = extraText?.trim();
 
   return [
+    ...(mode ? [ORDER_MODE_HEADERS[mode]] : []),
     `¡Hola! Quiero hacer un pedido en *${businessName}*:`, "", ...lines,
     ...(hidePrices ? [] : ["", `*Total: ${fmt(total)}*`]),
     ...(extra ? ["", extra] : []),
   ].join("\n");
+}
+
+// Una opción del paso "¿Cómo querés recibir tu pedido?" de WaTargetPicker.
+export interface WaMessageChoice {
+  key: string;
+  label: string;
+  detail?: string;
+  message: string;
+}
+
+// Mensajes de pedido de Mi negocio, uno por modalidad (contactInfo).
+export interface OrderExtraTexts {
+  orderMessage?: string;
+  takeAwayMessage?: string;
+}
+
+// orderMessage es el de delivery: existía antes que el take away y lo que
+// los locales cargaron ahí (dirección, entre calles) es para envíos. Un
+// pedido sin modalidad también lo usa, como antes.
+function orderExtraText(texts: OrderExtraTexts, mode?: OrderMode): string | undefined {
+  return mode === "takeaway" ? texts.takeAwayMessage : texts.orderMessage;
+}
+
+// Un mensaje por modalidad que ofrece el local. Sin ninguna activa (un
+// carrito viejo en un local que después apagó las dos) sale el mensaje de
+// siempre, sin modalidad.
+export function buildOrderChoices(
+  cart: CartLine[],
+  businessName: string,
+  texts: OrderExtraTexts,
+  { hidePrices = false, modes }: { hidePrices?: boolean; modes: OrderMode[] },
+): WaMessageChoice[] {
+  if (modes.length === 0) {
+    return [{ key: "default", label: "", message: buildOrderMessage(cart, businessName, orderExtraText(texts), { hidePrices }) }];
+  }
+  return modes.map((mode) => ({
+    key: mode,
+    ...ORDER_MODE_LABELS[mode],
+    message: buildOrderMessage(cart, businessName, orderExtraText(texts, mode), { hidePrices, mode }),
+  }));
 }
 
 // null si no hay número cargado — el caller oculta el botón en ese caso.

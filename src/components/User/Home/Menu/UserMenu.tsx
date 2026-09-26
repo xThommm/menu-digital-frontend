@@ -13,7 +13,7 @@ import styles from "./UserMenu.module.css";
 import BusinessSEO from "../../../Common/BusinessSEO";
 import FreePlanAd from "../../../Common/FreePlanAd";
 import { isOfferActive } from "../../../../lib/offers";
-import { buildOrderMessage, getWaTargets, type WaTarget } from "../../../../lib/whatsapp";
+import { buildOrderChoices, getOrderModes, getWaTargets, type OrderExtraTexts, type OrderMode, type WaTarget } from "../../../../lib/whatsapp";
 import WaTargetPicker from "../WaTargetPicker/WaTargetPicker";
 import { resolveMenuDisplay } from "../../../../lib/menuDisplay";
 import { cartUnitPrice, repriceCartLines } from "../../../../lib/cartPricing";
@@ -293,9 +293,11 @@ export default function MenuPage() {
   // El pedido por WhatsApp depende solo del plan. Con los precios ocultos
   // se sigue pudiendo pedir, pero el carrito no muestra ningún monto (ni en
   // la barra, ni en el resumen, ni en el drawer) y el mensaje sale con
-  // productos y cantidades, sin subtotales ni total.
+  // productos y cantidades, sin subtotales ni total. Agregar productos pide
+  // además al menos una modalidad (delivery o take away) activa.
   const ordersEnabled = user.features?.pedido_whatsapp === true;
-  const canOrder = user.hasDelivery === true && ordersEnabled;
+  const orderModes = getOrderModes(user);
+  const canOrder = orderModes.length > 0 && ordersEnabled;
   // Un destino por sucursal; sin sucursales cargadas, el teléfono de siempre.
   const waTargets = getWaTargets(info);
 
@@ -323,7 +325,7 @@ export default function MenuPage() {
         key={item._id}
         item={item}
         index={idx}
-        hasDelivery={canOrder}
+        canOrder={canOrder}
         hidePrices={display.hidePrices}
           isBistro={isBistro}
           isFamily={!!family}
@@ -387,6 +389,12 @@ export default function MenuPage() {
                   {user.hasDelivery && (
                     <span>
                       <DeliveryIcon /> Delivery
+                    </span>
+                  )}
+
+                  {user.hasTakeAway && (
+                    <span>
+                      <TakeAwayIcon /> Take away
                     </span>
                   )}
                 </div>
@@ -528,7 +536,8 @@ export default function MenuPage() {
               <OrderSummary
                 businessName={info.businessName || "el local"}
                 waTargets={waTargets}
-                orderMessage={info.orderMessage}
+                orderTexts={info}
+                orderModes={orderModes}
                 hidePrices={display.hidePrices}
                 onRequestClear={openClearConfirm}
               />
@@ -549,7 +558,8 @@ export default function MenuPage() {
               onClose={() => setCartOpen(false)}
               businessName={info.businessName || "el local"}
               waTargets={waTargets}
-              orderMessage={info.orderMessage}
+              orderTexts={info}
+              orderModes={orderModes}
               hidePrices={display.hidePrices}
               onRequestClear={openClearConfirm}
             />
@@ -564,7 +574,7 @@ export default function MenuPage() {
               items={preview.items}
               index={preview.index}
               onClose={() => setPreview(null)}
-              hasDelivery={canOrder}
+              canOrder={canOrder}
               hidePrices={display.hidePrices}
               showOptionsInitially={isBistro || !!family}
               onNavigate={(index) =>
@@ -623,20 +633,24 @@ function CartBar({ onClick, hidePrices }: { onClick: () => void; hidePrices: boo
 function OrderSummary({
   businessName,
   waTargets,
-  orderMessage,
+  orderTexts,
+  orderModes,
   hidePrices,
   onRequestClear,
 }: {
   businessName: string;
   waTargets: WaTarget[];
-  orderMessage?: string;
+  orderTexts: OrderExtraTexts;
+  orderModes: OrderMode[];
   hidePrices: boolean;
   onRequestClear: () => void;
 }) {
   const { items, totalPrice, updateQuantity } = useCart();
   if (items.length === 0) return null;
 
-  const orderText = buildOrderMessage(items, businessName, orderMessage, { hidePrices });
+  const orderChoices = buildOrderChoices(items, businessName, orderTexts, { hidePrices, modes: orderModes });
+  // ▾ cuando el botón despliega algo (modalidad o sucursal) en vez de abrir el chat.
+  const opensPanel = waTargets.length > 1 || orderChoices.length > 1;
 
   return (
     <aside className={styles.orderSummary} aria-label="Tu pedido">
@@ -671,11 +685,11 @@ function OrderSummary({
       {waTargets.length > 0 ? (
         <WaTargetPicker
           targets={waTargets}
-          message={orderText}
+          choices={orderChoices}
           className={styles.orderWhatsapp}
           prompt="¿A qué sucursal querés mandar el pedido?"
         >
-          Pedir por WhatsApp <span aria-hidden>{waTargets.length > 1 ? "▾" : "↗"}</span>
+          Pedir por WhatsApp <span aria-hidden>{opensPanel ? "▾" : "↗"}</span>
         </WaTargetPicker>
       ) : (
         <p className={styles.orderNoWhatsapp}>Este local todavía no cargó un WhatsApp para pedidos.</p>
@@ -695,7 +709,7 @@ function OrderSummary({
 function ItemCard({
   item,
   index,
-  hasDelivery,
+  canOrder,
   hidePrices,
   isBistro,
   isFamily,
@@ -703,7 +717,7 @@ function ItemCard({
 }: {
   item: PublicMenuItem;
   index: number;
-  hasDelivery: boolean;
+  canOrder: boolean;
   hidePrices: boolean;
   isBistro: boolean;
   isFamily: boolean;
@@ -842,7 +856,7 @@ function ItemCard({
             <span className={styles.itemUnavail}>No disponible</span>
           )}
 
-          {(!hasOptions || isOnOffer) && !unavailable && simplePrice != null && hasDelivery && (
+          {(!hasOptions || isOnOffer) && !unavailable && simplePrice != null && canOrder && (
             <AddControl
               qty={qtyOf(undefined)}
               onAdd={handleAddSimple}
@@ -859,7 +873,7 @@ function ItemCard({
                     {/* Sin precios, cada variante es su nombre y el control
                         para pedirla (el valor viene en 0). */}
                     {!hidePrices && <span className={styles.itemPrice}>{fmt(price)}</span>}
-                    {!unavailable && (
+                    {!unavailable && canOrder && (
                       <AddControl
                         qty={qtyOf(name)}
                         onAdd={() => handleAddVariant(name, price)}
@@ -1090,6 +1104,18 @@ function DeliveryIcon() {
       <circle cx="5.5" cy="17.5" r="2.5" />
       <circle cx="18.5" cy="17.5" r="2.5" />
       <path d="M15 17.5H9m6 0V6h-3l-6 6v5.5m6-11 4.5 4.5H21l-1.5-4.5H15Z" />
+    </svg>
+  );
+}
+
+function TakeAwayIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden
+      style={{ display: "inline", verticalAlign: "-1px" }}>
+      <path d="M6 7h12l-1 14H7L6 7Z" />
+      <path d="M9 7V5a3 3 0 0 1 6 0v2" />
     </svg>
   );
 }

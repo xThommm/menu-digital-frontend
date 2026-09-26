@@ -373,6 +373,19 @@
   overflow: hidden;
 }
 
+/* Delivery / Take away: título + toggles + nota, como el horario. */
+.orderModes {
+  margin: 1.25rem 0;
+}
+
+.orderModes .toggleGroup {
+  margin: 0.6rem 0 0;
+}
+
+.orderMessageField {
+  margin: 1rem 0 0;
+}
+
 /* ── Toggle ── */
 .toggleGroup {
   margin: 1.25rem 0;
