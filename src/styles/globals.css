@@ -1,9 +1,5 @@
-/* Poppins: plataforma. DM Sans + Playfair Display: cartas públicas ([data-template]).
-   Archivo Black + Space Grotesk (Neobrutalismo) y Bagel Fat One + Figtree +
-   Instrument Serif (Maximalismo táctil): el navegador solo descarga los
-   archivos de una fuente cuando algún texto la usa, así que las cartas que no
-   eligen esos diseños pagan únicamente las declaraciones @font-face. */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,300;1,400;1,500;1,600;1,700;1,900&family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=Bagel+Fat+One&family=Figtree:wght@500;700;800&family=Instrument+Serif:ital@1&display=swap');
+/* Las fuentes (Poppins de la plataforma y las de las cartas) se cargan con un
+   <link> en index.html, no con @import acá: ver el comentario de ese archivo. */
 
 /* ═══════════════════════════════════════════════════════════════
    RESET & BASE

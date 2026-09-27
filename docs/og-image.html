@@ -1,0 +1,161 @@
+<!doctype html>
+<!--
+  Fuente de public/brand/menu-digital-og.jpg (la imagen que muestran WhatsApp,
+  Facebook, X, etc. al compartir la home). Mismos colores y mockup que el hero
+  de AdminHome. Para regenerarla, desde la raíz del repo:
+
+    "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --headless --hide-scrollbars
+      --window-size=1200,630 --virtual-time-budget=8000
+      --screenshot="%CD%\og.png" "file:///%CD%/docs/og-image.html"
+
+  y convertir og.png a JPG (calidad ~88) en public/brand/menu-digital-og.jpg.
+  WhatsApp no muestra la vista previa si la imagen pesa mucho: mantenerla
+  por debajo de ~300 KB.
+-->
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,700;0,900;1,300;1,500&display=block" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0608;
+    --bg-card: #150d12;
+    --bg-elevated: #1e1219;
+    --gold: #E85D3C;
+    --amber: #ED8167;
+    --cream: #f5ede0;
+    --cream-mid: rgba(245, 237, 224, 0.6);
+    --cream-dim: rgba(245, 237, 224, 0.3);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    font-family: 'Poppins', system-ui, sans-serif;
+    color: var(--cream);
+    background:
+      radial-gradient(ellipse 55% 70% at 78% 50%, color-mix(in srgb, var(--amber) 16%, transparent) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 45% at 8% 95%, rgba(255,58,110,.08) 0%, transparent 60%),
+      var(--bg);
+    position: relative;
+  }
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(color-mix(in srgb, var(--amber) 5%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in srgb, var(--amber) 5%, transparent) 1px, transparent 1px);
+    background-size: 70px 70px;
+  }
+  .left {
+    position: absolute; left: 72px; top: 60px; bottom: 56px; width: 660px;
+    display: flex; flex-direction: column;
+  }
+  .lockup { display: flex; align-items: center; gap: 14px; }
+  .lockup img { width: 50px; height: 50px; }
+  .wordmark { font-size: 34px; font-weight: 400; letter-spacing: -0.02em; }
+  .wordmark b { font-weight: 700; letter-spacing: -0.03em; }
+  h1 {
+    margin-top: 46px;
+    font-size: 60px; font-weight: 900; line-height: 1.02; letter-spacing: -0.02em;
+  }
+  h1 em {
+    font-style: italic; font-weight: 300; color: var(--amber);
+    text-shadow: 0 0 30px color-mix(in srgb, var(--amber) 50%, transparent);
+  }
+  .chips { display: flex; gap: 12px; margin-top: 36px; flex-wrap: wrap; }
+  .chip {
+    font-size: 19px; font-weight: 500; padding: 9px 20px; border-radius: 100px;
+    border: 1.5px solid color-mix(in srgb, var(--amber) 45%, transparent);
+    background: color-mix(in srgb, var(--amber) 8%, transparent);
+  }
+  .chip.solid { background: var(--amber); border-color: var(--amber); color: #000; font-weight: 700; }
+  .url {
+    margin-top: auto; font-size: 18px; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--cream-mid);
+  }
+
+  /* Teléfono: el mismo mockup del hero, a escala de la imagen */
+  .phone {
+    position: absolute; left: 812px; top: 44px; width: 300px;
+    border-radius: 40px; overflow: hidden;
+    border: 2px solid color-mix(in srgb, var(--amber) 40%, transparent);
+    background: var(--bg-elevated);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--amber) 12%, transparent),
+      0 0 60px color-mix(in srgb, var(--amber) 22%, transparent),
+      0 40px 80px rgba(0,0,0,.8);
+    transform: rotate(-3deg);
+  }
+  .notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 100px; height: 26px; border-radius: 0 0 16px 16px; background: var(--bg); z-index: 2;
+  }
+  .screen {
+    background: linear-gradient(160deg, var(--bg-card) 0%, var(--bg) 100%);
+    padding: 42px 18px 20px; display: flex; flex-direction: column; gap: 10px;
+    height: 560px;
+  }
+  .bar { width: 64px; height: 4px; border-radius: 2px; margin: 0 auto 6px; background: color-mix(in srgb, var(--amber) 40%, transparent); }
+  .biz { font-size: 21px; font-style: italic; font-weight: 500; color: var(--amber); text-align: center; }
+  .loc { font-size: 11px; letter-spacing: .15em; color: var(--cream-dim); text-align: center; text-transform: uppercase; }
+  .section { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--amber); margin-top: 8px; font-weight: 500; }
+  .item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px; border-radius: 8px;
+    background: color-mix(in srgb, var(--amber) 5%, transparent);
+    border: 1px solid color-mix(in srgb, var(--amber) 12%, transparent);
+  }
+  .name { font-size: 14px; font-weight: 500; }
+  .desc { font-size: 11px; color: var(--cream-dim); margin-top: 1px; }
+  .price { font-size: 14px; color: var(--amber); font-weight: 500; }
+  .badge {
+    display: inline-block; margin-top: 4px; font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 100px;
+    background: color-mix(in srgb, var(--amber) 16%, transparent); color: var(--amber);
+  }
+  .wa {
+    margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: #25D366; color: #06220f; font-weight: 700; font-size: 15px;
+    padding: 13px; border-radius: 12px;
+  }
+  .wa svg { width: 20px; height: 20px; }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+
+  <div class="left">
+    <div class="lockup">
+      <img src="../public/brand/menu-digital-logo-mark.svg" alt="" />
+      <span class="wordmark"><b>menu</b>digital</span>
+    </div>
+    <h1>Menú digital QR<br />para <em>restaurantes</em>,<br />bares y cafeterías.</h1>
+    <div class="chips">
+      <span class="chip solid">Plan gratis</span>
+      <span class="chip">Pedidos por WhatsApp</span>
+      <span class="chip">Sin apps</span>
+    </div>
+    <div class="url">menudigitalapp.com.ar</div>
+  </div>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen">
+      <div class="bar"></div>
+      <div class="biz">La Pérgola Café</div>
+      <div class="loc">Palermo, CABA</div>
+      <div class="section">Pizzas</div>
+      <div class="item"><div><div class="name">Napolitana</div><div class="desc">Tomate y mozzarella</div><span class="badge">★ Destacada</span></div><div class="price">$2.800</div></div>
+      <div class="item"><div><div class="name">Fugazza</div><div class="desc">Cebolla y mozzarella</div></div><div class="price">$2.600</div></div>
+      <div class="item"><div><div class="name">Especial</div><div class="desc">Ingredientes de estación</div></div><div class="price">$3.200</div></div>
+      <div class="section">Bebidas</div>
+      <div class="item"><div><div class="name">Agua mineral</div><div class="desc">500ml</div></div><div class="price">$800</div></div>
+      <div class="wa">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.85 9.85 0 0 0 4.73 1.2h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm0 18.13h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.55-3.7 8.24-8.24 8.24Zm4.52-6.17c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.13-.17.24-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.12-1.04-.38-1.99-1.22-.73-.66-1.23-1.46-1.37-1.71-.14-.24-.01-.38.11-.5.11-.11.25-.29.37-.43.13-.14.17-.24.25-.4.08-.16.04-.31-.02-.43-.06-.12-.56-1.36-.77-1.86-.2-.49-.41-.42-.56-.43-.14-.01-.31-.01-.48-.01-.16 0-.43.06-.66.31-.23.24-.86.85-.86 2.06 0 1.22.88 2.4 1 2.56.13.16 1.74 2.66 4.22 3.73.59.25 1.05.4 1.41.52.59.19 1.13.16 1.55.1.47-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.23-.17-.48-.29Z"/></svg>
+        Pedir por WhatsApp
+      </div>
+    </div>
+  </div>
+</body>
+</html>
