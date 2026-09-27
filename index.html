@@ -59,6 +59,21 @@
     <!-- Navegador / Mobile -->
     <meta name="theme-color" content="#0a0608" />
 
+    <!-- Fuentes: como <link> y no como @import dentro del CSS del bundle, para
+         que el navegador las pida en paralelo con el JS/CSS en vez de esperar
+         a que llegue el bundle. Poppins: plataforma. DM Sans + Playfair
+         Display: cartas públicas ([data-template]). Archivo Black + Space
+         Grotesk (Neobrutalismo) y Bagel Fat One + Figtree + Instrument Serif
+         (Maximalismo táctil): el navegador solo descarga los archivos de una
+         fuente cuando algún texto la usa, así que las páginas que no las usan
+         pagan únicamente las declaraciones @font-face. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,300;1,400;1,500;1,600;1,700;1,900&family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=Bagel+Fat+One&family=Figtree:wght@500;700;800&family=Instrument+Serif:ital@1&display=swap"
+    />
+
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="es_AR" />
@@ -79,10 +94,17 @@
       content="Creá un menú digital QR para tu restaurante, bar o cafetería. Actualizá productos, precios y ofertas al instante y compartí tu carta desde cualquier celular."
     />
 
+    <!-- 1200×630 (fuente en docs/og-image.html). Ancho y alto declarados para
+         que Facebook/WhatsApp la muestren desde el primer compartido, sin
+         esperar a descargarla. -->
     <meta
       property="og:image"
-      content="https://www.menudigitalapp.com.ar/brand/menu-digital-logo-512.png"
+      content="https://www.menudigitalapp.com.ar/brand/menu-digital-og.jpg"
     />
+
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
 
     <meta
       property="og:image:alt"
@@ -90,10 +112,9 @@
     />
 
     <!-- Twitter / X -->
-    <!-- "summary" (miniatura cuadrada): la imagen es el logo cuadrado y la tarjeta grande (~2:1) lo recortaría -->
     <meta
       name="twitter:card"
-      content="summary"
+      content="summary_large_image"
     />
 
     <meta
@@ -108,7 +129,7 @@
 
     <meta
       name="twitter:image"
-      content="https://www.menudigitalapp.com.ar/brand/menu-digital-logo-512.png"
+      content="https://www.menudigitalapp.com.ar/brand/menu-digital-og.jpg"
     />
 
     <meta
@@ -134,6 +155,18 @@
             "areaServed": {
               "@type": "Country",
               "name": "Argentina"
+            },
+            "sameAs": [
+              "https://www.instagram.com/menudigitalapp_/",
+              "https://www.facebook.com/profile.php?id=61593738855931"
+            ],
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "contactType": "customer support",
+              "telephone": "+5491123329630",
+              "email": "menudigitalappsoporte@gmail.com",
+              "availableLanguage": "es",
+              "areaServed": "AR"
             }
           },
           {
@@ -161,6 +194,12 @@
             "areaServed": {
               "@type": "Country",
               "name": "Argentina"
+            },
+            "offers": {
+              "@type": "AggregateOffer",
+              "lowPrice": "0",
+              "priceCurrency": "ARS",
+              "description": "Plan gratis y planes pagos mensuales. Los precios vigentes se publican en la sección de planes de la página."
             }
           }
         ]

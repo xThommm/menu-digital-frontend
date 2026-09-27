@@ -11,9 +11,9 @@ import {
   Zap,
   FileSpreadsheet,
   Palette,
-  FolderTree,
   Clock,
-  Smartphone,
+  ShoppingBag,
+  ChartColumn,
   Handshake,
   TrendingUp,
   ShieldCheck,
@@ -31,6 +31,7 @@ import styles from "./AdminHome.module.css";
 import { usePlans } from "../../../hooks/usePlans";
 import { useAuthTheme } from "../../../hooks/useAuthTheme";
 import { getPlanFeatureLabels } from "../../../lib/plans";
+import type { BooleanPlanFeature } from "../../../types";
 import Spinner from "../../Common/Spinner";
 import { BLOG_PATH, MENU_QR_GUIDE } from "../../../pages/Blog/blogContent";
 
@@ -112,7 +113,9 @@ const CONTACT_CHANNELS = [
 //   },
 // ];
 
-type IconCard = { icon: LucideIcon; title: string; desc: string; n?: string };
+// feature: si la función depende del plan, la tarjeta muestra desde qué plan
+// está disponible (lo resuelve el catálogo de la API, no un texto fijo).
+type IconCard = { icon: LucideIcon; title: string; desc: string; n?: string; feature?: BooleanPlanFeature };
 
 const STEPS: IconCard[] = [
   { icon: ClipboardCheck, title: "Elegís tu plan", desc: "Seleccionás el plan que mejor se ajusta a tu negocio. Sin contratos, sin letras chicas.", n: "1" },
@@ -121,12 +124,12 @@ const STEPS: IconCard[] = [
 ];
 
 const FEATURES: IconCard[] = [
+  { icon: ShoppingBag, title: "Pedidos por WhatsApp", desc: "Tus clientes arman el pedido desde la carta y te lo mandan por WhatsApp, con delivery o take away. Sin comisiones por venta.", feature: "pedido_whatsapp" },
   { icon: Zap, title: "Actualizaciones instantáneas", desc: "Cambiá precios, ocultá platos agotados o agregá el especial del día. Se actualiza en tiempo real para todos tus clientes." },
-  { icon: FileSpreadsheet, title: "Carga masiva por Excel", desc: "¿Tenés 80 productos? Completá la plantilla y subila. El sistema detecta qué cambió y te muestra un resumen antes de confirmar." },
+  { icon: FileSpreadsheet, title: "Carga masiva por Excel", desc: "¿Tenés 80 productos? Completá la plantilla y subila. El sistema detecta qué cambió y te muestra un resumen antes de confirmar.", feature: "carga_masiva_excel" },
   { icon: Palette, title: "Diseño a tu imagen", desc: "Elegí entre múltiples templates y personalizá con el logo y los colores de tu local. Tu menú, tu identidad." },
-  { icon: FolderTree, title: "Secciones y categorías", desc: "Organizá tu menú como más te guste: secciones generales, categorías, extras y destacados. La estructura que necesite tu negocio." },
-  { icon: Clock, title: "Ofertas programadas", desc: "Configurá un precio de oferta con fechas de inicio y fin. Se activa y desactiva solo, sin que tengas que acordarte." },
-  { icon: Smartphone, title: "Funciona en cualquier celular", desc: "Sin descargas, sin apps. Tus clientes entran desde el navegador y ven el menú al instante, desde cualquier dispositivo." },
+  { icon: Clock, title: "Ofertas programadas", desc: "Configurá un precio de oferta con fechas de inicio y fin. Se activa y desactiva solo, sin que tengas que acordarte.", feature: "programacion_productos" },
+  { icon: ChartColumn, title: "Estadísticas de tu carta", desc: "Mirá cuántas personas abren tu menú, en qué horarios y qué productos miran y piden más.", feature: "estadisticas" },
 ];
 
 const ABOUT_CARDS: IconCard[] = [
@@ -198,6 +201,31 @@ function useDocumentTitle(title: string) {
       document.title = previousTitle;
     };
   }, [title]);
+}
+
+// ─────────────────────────────────────────────
+// HOOK: DATOS ESTRUCTURADOS DEL FAQ
+// Arma el FAQPage desde FAQS (así no se desincroniza del texto visible) y lo
+// saca al desmontar, igual que RouteSeo con el del blog.
+// ─────────────────────────────────────────────
+function useFaqSchema() {
+  useEffect(() => {
+    const schema = document.createElement("script");
+    schema.type = "application/ld+json";
+    schema.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "@id": `${SITE_URL}/#faq`,
+      inLanguage: "es-AR",
+      mainEntity: FAQS.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: { "@type": "Answer", text: faq.answer },
+      })),
+    });
+    document.head.appendChild(schema);
+    return () => schema.remove();
+  }, []);
 }
 
 // ─────────────────────────────────────────────
@@ -440,6 +468,11 @@ const FAQS = [
       "No. El menú funciona desde el navegador del celular, por lo que el cliente no necesita instalar ninguna aplicación ni crear una cuenta.",
   },
   {
+    question: "¿Puedo recibir pedidos por WhatsApp?",
+    answer:
+      "Sí. Tus clientes arman el pedido desde la carta y lo envían por WhatsApp a tu negocio, eligiendo delivery o take away según las modalidades que ofrezcas. No cobramos comisión por pedido.",
+  },
+  {
     question: "¿Puedo usar el mismo QR en todas las mesas?",
     answer:
       "Sí. Podés imprimir el mismo código QR y colocarlo en distintas mesas, en la barra, en la puerta o compartir el enlace del menú por WhatsApp e Instagram.",
@@ -467,6 +500,15 @@ export default function HomePage() {
   useParallax();
   useReveal();
   useDocumentTitle("Menú Digital QR para Restaurantes | Menú Digital App");
+  useFaqSchema();
+
+  // Plan más barato que incluye la función (el catálogo viene ordenado
+  // free → basic → pro). null si ya la trae el gratuito o si el catálogo
+  // todavía no llegó: en ese caso la tarjeta no muestra nada.
+  const minPlanLabel = (feature: BooleanPlanFeature) => {
+    const plan = catalog.data?.find((p) => p.features[feature]);
+    return plan && plan.name !== "free" ? plan.label : null;
+  };
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 80);
@@ -571,6 +613,9 @@ useEffect(() => {
     <a href="#features" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
       Funciones
     </a>
+    <a href="#plans" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
+      Precios
+    </a>
     <Link
   to={BLOG_PATH}
   className={styles.mobileLink}
@@ -618,30 +663,33 @@ useEffect(() => {
               {/* <div className={`${styles.heroTag} ${visible ? styles.vis : ""}`}>
                 🇦🇷 Hecho para gastronomía argentina
               </div> */}
-              <h1 className={`${styles.heroH1} ${visible ? styles.vis : ""}`}>
+              <h1 className={styles.heroH1}>
                 Menú digital QR<br />
                 para <em>restaurantes</em>,<br />
                 bares y cafeterías.
               </h1>
-              <p className={`${styles.heroSub} ${visible ? styles.vis : ""}`}>
-                Creá la carta digital de tu negocio en minutos. Actualizá productos,
-                precios, ofertas y disponibilidad, y compartí tu menú con un código QR
-                desde cualquier celular — sin apps ni descargas.
+              {/* H1 y bajada sin animación de entrada: son el contenido más
+                  grande de la primera pantalla (el LCP) y el fade los
+                  dejaba invisibles casi un segundo. */}
+              <p className={styles.heroSub}>
+                Creá la carta digital de tu negocio en minutos, actualizá precios al
+                instante y recibí pedidos por WhatsApp —con delivery o take away— sin
+                comisiones. Todo con un código QR, sin apps ni descargas.
               </p>
               <div className={`${styles.heroBtns} ${visible ? styles.vis : ""}`}>
-                <button
-                  className={styles.btnPrimary}
-                  onClick={() => document.getElementById("plans")?.scrollIntoView({ behavior: "smooth" })}
-                >
-                  Empezar ahora →
-                </button>
+                <Link className={styles.btnPrimary} to="/register?plan=free">
+                  Crear mi menú gratis →
+                </Link>
                 <button
                   className={styles.btnSecondary}
-                  onClick={() => document.getElementById("how")?.scrollIntoView({ behavior: "smooth" })}
+                  onClick={() => document.getElementById("plans")?.scrollIntoView({ behavior: "smooth" })}
                 >
-                  ¿Cómo funciona?
+                  Ver planes y precios
                 </button>
               </div>
+              <p className={`${styles.heroNote} ${visible ? styles.vis : ""}`}>
+                Plan gratis · Sin tarjeta · 0% comisión
+              </p>
             </div>
 
             <div className={`${styles.heroVisual} ${visible ? styles.vis : ""}`}>
@@ -661,7 +709,7 @@ useEffect(() => {
         <div className={styles.stats}>
           {[
             { n: "QR", l: "acceso directo desde la mesa" },
-            { n: "24/7", l: "tu carta disponible online" },
+            { n: "0%", l: "comisión en tus pedidos" },
             { n: "Sin app", l: "se abre desde el navegador" },
             { n: "En vivo", l: "precios y productos actualizados" },
           ].map((s) => (
@@ -689,7 +737,7 @@ useEffect(() => {
                 <div className={`${styles.step} ${styles.reveal}`} key={i} data-hover>
                   <div className={styles.stepNum}>{s.n}</div>
                   <s.icon className={styles.stepIcon} />
-                  <div className={styles.stepTitle}>{s.title}</div>
+                  <h3 className={styles.stepTitle}>{s.title}</h3>
                   <div className={styles.stepDesc}>{s.desc}</div>
                 </div>
               ))}
@@ -723,8 +771,11 @@ useEffect(() => {
               {FEATURES.map((f, i) => (
                 <div className={`${styles.featCard} ${styles.reveal}`} key={i} data-hover>
                   <f.icon className={styles.featIcon} />
-                  <div className={styles.featTitle}>{f.title}</div>
+                  <h3 className={styles.featTitle}>{f.title}</h3>
                   <div className={styles.featDesc}>{f.desc}</div>
+                  {f.feature && minPlanLabel(f.feature) && (
+                    <div className={styles.featPlan}>Desde el plan {minPlanLabel(f.feature)}</div>
+                  )}
                 </div>
               ))}
             </div>
@@ -796,26 +847,37 @@ useEffect(() => {
             {catalog.isPending && <Spinner label="Cargando planes" />}
             {catalog.isError && <div role="alert"><p>No se pudieron cargar los planes.</p><button className={styles.planCta} onClick={() => void catalog.refetch()} disabled={catalog.isFetching}>Reintentar</button></div>}
             <div className={styles.plansGrid}>
-              {!catalog.isError && catalog.data?.map((plan) => (
-                <article
-                  key={plan.name}
-                  className={`${styles.planCard} ${(plan.name === "pro") ? styles.highlightCard : ""} ${styles.revealed}`}
-                  data-hover
-                >
-                  {plan.name === "pro" && <div className={styles.planBadge}>Pro</div>}
-                  <div className={styles.planName}>{plan.label}</div>
-                  <div className={styles.planPrice}>
-                    <span>$</span>{plan.effectivePrice.toLocaleString("es-AR")}
-                  </div>
-                  <div className={styles.planPeriod}>{plan.name === "free" ? "Sin cargo" : "ARS / mes base"}</div>
-                  <ul className={styles.planFeat}>
-                    {getPlanFeatureLabels(plan.features).map((feature) => <li key={feature}>{feature}</li>)}
-                  </ul>
-                  <Link className={styles.planCta} to={`/register?plan=${plan.name}`}>
-                    {plan.name === "free" ? "Crear cuenta" : "Pagar y crear cuenta"} →
-                  </Link>
-                </article>
-              ))}
+              {!catalog.isError && catalog.data?.map((plan) => {
+                // El precio publicado es el mensual; pagando varios meses
+                // juntos baja (billingOptions trae el ahorro ya calculado).
+                const bestOption = plan.billingOptions.reduce((best, option) =>
+                  option.savings > best.savings ? option : best);
+                return (
+                  <article
+                    key={plan.name}
+                    className={`${styles.planCard} ${(plan.name === "pro") ? styles.highlightCard : ""} ${styles.revealed}`}
+                    data-hover
+                  >
+                    {plan.name === "pro" && <div className={styles.planBadge}>Recomendado</div>}
+                    <div className={styles.planName}>{plan.label}</div>
+                    <div className={styles.planPrice}>
+                      <span>$</span>{plan.effectivePrice.toLocaleString("es-AR")}
+                    </div>
+                    <div className={styles.planPeriod}>{plan.name === "free" ? "Sin cargo · Sin tarjeta" : "ARS por mes"}</div>
+                    {bestOption.savings > 0 && (
+                      <div className={styles.planSave}>
+                        Pagando {bestOption.months} meses ahorrás ${bestOption.savings.toLocaleString("es-AR")}
+                      </div>
+                    )}
+                    <ul className={styles.planFeat}>
+                      {getPlanFeatureLabels(plan.features).map((feature) => <li key={feature}>{feature}</li>)}
+                    </ul>
+                    <Link className={styles.planCta} to={`/register?plan=${plan.name}`}>
+                      {plan.name === "free" ? "Crear cuenta gratis" : `Empezar con ${plan.label}`} →
+                    </Link>
+                  </article>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -939,13 +1001,13 @@ useEffect(() => {
               Tu menú digital,<br /><em>hoy mismo.</em>
             </h2>
             <p className={styles.finalCtaSub}>Sin contratos. Sin instalaciones. Listo en minutos.</p>
-            <button
+            <Link
               className={styles.btnPrimary}
               style={{ fontSize: 18, padding: "18px 48px" }}
-              onClick={() => document.getElementById("plans")?.scrollIntoView({ behavior: "smooth" })}
+              to="/register?plan=free"
             >
-              Ver planes y precios →
-            </button>
+              Crear mi menú gratis →
+            </Link>
           </div>
         </section>
 
@@ -960,8 +1022,7 @@ useEffect(() => {
               <Link to={BLOG_PATH}>Guías y preguntas</Link>
               <Link to="/terminos">Términos</Link>
               <Link to="/privacidad">Privacidad</Link>
-              <Link to="/contacto">Contacto</Link>
-              <Link to="/contacto">Soporte</Link>
+              <Link to="/contacto">Contacto y soporte</Link>
               <Link to="/arrepentimiento">Botón de Arrepentimiento</Link>
               <Link to="/baja">Botón de Baja de Servicio</Link>
             </div>

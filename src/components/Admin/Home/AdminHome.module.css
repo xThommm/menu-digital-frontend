@@ -194,14 +194,12 @@
 }
 .heroTag.vis { opacity: 1; transform: translateY(0); }
 
+/* H1 y bajada se pintan de entrada (sin fade): son el LCP de la página. */
 .heroH1 {
   font-family: var(--font-auth-display); font-weight: 900;
   font-size: clamp(2.8rem, 5vw, 5.2rem); line-height: .95;
   letter-spacing: -.02em; margin-bottom: 1.2rem; color: var(--auth-cream);
-  opacity: 0; transform: translateY(30px);
-  transition: opacity .7s .2s, transform .7s .2s;
 }
-.heroH1.vis { opacity: 1; transform: translateY(0); }
 .heroH1 em {
   font-style: italic; font-weight: 300; color: var(--auth-amber-text);
   text-shadow: 0 0 30px color-mix(in srgb, var(--auth-amber) 50%, transparent), 0 0 70px color-mix(in srgb, var(--auth-amber) 20%, transparent);
@@ -210,10 +208,7 @@
 .heroSub {
   font-size: 1.05rem; line-height: 1.75; color: var(--auth-cream-mid);
   max-width: 42ch; margin-bottom: 2.5rem;
-  opacity: 0; transform: translateY(20px);
-  transition: opacity .7s .35s, transform .7s .35s;
 }
-.heroSub.vis { opacity: 1; transform: translateY(0); }
 
 .heroBtns {
   display: flex; gap: 1rem; flex-wrap: wrap;
@@ -221,6 +216,13 @@
   transition: opacity .7s .5s, transform .7s .5s;
 }
 .heroBtns.vis { opacity: 1; transform: translateY(0); }
+
+.heroNote {
+  margin-top: 1.1rem;
+  font-size: .82rem; letter-spacing: .04em; color: var(--auth-cream-mid);
+  opacity: 0; transition: opacity .7s .65s;
+}
+.heroNote.vis { opacity: 1; }
 
 .heroVisual {
   display: flex; justify-content: center; align-items: center; position: relative;
@@ -437,6 +439,11 @@
 /* .featIcon { composes: icon; width: 2rem; height: 2rem; margin-bottom: 1.2rem; } */
 .featTitle { font-family: var(--font-auth-display); font-size: 1rem; font-weight: 700; margin-bottom: .6rem; color: var(--auth-cream); }
 .featDesc { font-size: .88rem; line-height: 1.7; color: var(--auth-cream-mid); }
+.featPlan {
+  margin-top: .9rem;
+  font-family: var(--font-auth-mono); font-size: var(--text-xs); letter-spacing: .12em;
+  text-transform: uppercase; color: var(--auth-amber-text);
+}
 
 /* ─────────────────────────────────────────────
    SEO CONTENT — MENÚ DIGITAL QR
@@ -902,6 +909,9 @@
 }
 .planPrice span { font-size: 1rem; font-family: var(--font-sans); font-weight: 400; }
 .planPeriod { font-family: var(--font-auth-mono); font-size: var(--text-xs); color: var(--auth-cream-dim); letter-spacing: .15em; margin: .4rem 0 1.5rem; }
+/* El ahorro va pegado al período: le saca su margen inferior y lo lleva él. */
+.planPeriod:has(+ .planSave) { margin-bottom: .5rem; }
+.planSave { font-size: .78rem; color: var(--auth-amber-text); margin-bottom: 1.5rem; }
 .planFeat { flex: 1; font-size: .85rem; color: var(--auth-cream-mid); line-height: 1.9; list-style: none; margin-bottom: 1.75rem; }
 .planFeat li { padding-left: 1.4rem; position: relative; }
 .planFeat li::before { content: '→'; position: absolute; left: 0; color: var(--auth-amber-text); font-size: .75rem; }
@@ -1045,7 +1055,7 @@
 
 @media (max-width: 900px) {
   /* ── Resto del responsive ── */
-  .hero { padding: 6rem 1.5rem 4rem; }
+  .hero { padding: 6rem 1.5rem 5.5rem; }
   .heroInner { grid-template-columns: 1fr; gap: 3rem; text-align: center; }
   .heroSub { max-width: 100%; }
   .heroBtns { justify-content: center; }
@@ -1124,7 +1134,8 @@
 
   .reveal,
   .heroVisual,
-  .heroBtns {
+  .heroBtns,
+  .heroNote {
     opacity: 1;
     transform: none;
     transition: none;
