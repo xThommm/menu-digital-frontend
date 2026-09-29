@@ -1,0 +1,136 @@
+/* Colores por variables --ol-*: el contenedor las define con los tokens de
+   su contexto (--admin-* en el panel y el tomador, --t-* en la carta). Los
+   fallbacks sirven si algún contenedor no las define. */
+
+.empty {
+  padding: 1.5rem 0;
+  text-align: center;
+  color: var(--ol-muted, #888);
+  font-size: 0.85rem;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.line {
+  padding-bottom: 0.6rem;
+  border-bottom: 0.5px solid var(--ol-border, rgba(128, 128, 128, 0.25));
+}
+
+.line:last-child { border-bottom: none; padding-bottom: 0; }
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto auto;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ol-text, inherit);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.option { font-size: 0.72rem; color: var(--ol-muted, #888); }
+
+.qty {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0.5px solid var(--ol-border, rgba(128, 128, 128, 0.35));
+  border-radius: 9999px;
+  padding: 0.15rem 0.35rem;
+}
+
+.qty button {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--ol-accent, currentColor);
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.qty button:disabled { opacity: 0.35; cursor: default; }
+
+.qty span {
+  min-width: 1.5ch;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ol-text, inherit);
+}
+
+.price {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ol-accent, inherit);
+  white-space: nowrap;
+}
+
+.iconBtn {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ol-muted, #888);
+  cursor: pointer;
+}
+
+.iconBtn:hover,
+.iconBtn[aria-expanded="true"] { color: var(--ol-accent, currentColor); }
+
+.remove:hover { color: var(--ol-danger, #c97070); }
+
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.noteField { display: flex; flex-direction: column; gap: 0.2rem; }
+
+.noteLabel { font-size: 0.7rem; color: var(--ol-muted, #888); }
+
+.noteField input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  border: 0.5px solid var(--ol-border, rgba(128, 128, 128, 0.35));
+  background: var(--ol-input-bg, transparent);
+  color: var(--ol-text, inherit);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.noteField input:focus-visible {
+  outline: 2px solid var(--ol-accent, currentColor);
+  outline-offset: 1px;
+}
+
+@media (max-width: 420px) {
+  .row { grid-template-columns: 1fr auto auto auto; }
+  .price { grid-column: 1; grid-row: 2; }
+}

@@ -1,0 +1,93 @@
+/* Colores por variables --ol-* del contenedor (ver UnitLinesEditor.module.css). */
+
+.picker { display: flex; flex-direction: column; gap: 0.9rem; }
+
+.search {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 0.85rem;
+  border-radius: 9999px;
+  border: 0.5px solid var(--ol-border, rgba(128, 128, 128, 0.35));
+  background: var(--ol-surface, transparent);
+  color: var(--ol-muted, #888);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  color: var(--ol-text, inherit);
+  font: inherit;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.empty { color: var(--ol-muted, #888); font-size: 0.85rem; text-align: center; padding: 1rem 0; }
+
+.category { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.categoryTitle {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ol-muted, #888);
+}
+
+.items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  border: 0.5px solid var(--ol-border, rgba(128, 128, 128, 0.25));
+  background: var(--ol-surface, transparent);
+}
+
+.itemOff { opacity: 0.55; }
+
+.itemHead { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+
+.itemTitle { font-size: 0.88rem; color: var(--ol-text, inherit); }
+
+.badge {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  border: 0.5px solid var(--ol-border, rgba(128, 128, 128, 0.35));
+  color: var(--ol-muted, #888);
+  white-space: nowrap;
+}
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
+
+.add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  border-radius: 9999px;
+  border: 0.5px solid var(--ol-accent-border, rgba(232, 93, 60, 0.5));
+  background: var(--ol-accent-soft, rgba(232, 93, 60, 0.1));
+  color: var(--ol-accent, #e85d3c);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.add:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.add:not(:disabled):active { transform: scale(0.97); }

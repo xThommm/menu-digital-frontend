@@ -19,6 +19,11 @@ const NAV_ITEMS = [
   { path: "/configuracion",  label: "Configuración",  short: "Config",  icon: <SettingsIcon /> },
 ];
 
+// Acceso a Gestión de pedidos (sección aparte con su propia barra, ver
+// src/features/orders). En el celular va en "Más" para no sumar un botón al dock.
+const ORDERS_PATH = "/pedidos";
+const ORDERS_LABEL = "Gestión de pedidos";
+
 export default function DashboardLayout() {
   // El Provider tiene que envolver también al propio dock (no solo al
   // Outlet): una vista hija full-screen como el Gestor de imágenes pide
@@ -106,6 +111,14 @@ function DashboardLayoutInner() {
               </button>
             );
           })}
+          <button
+            className={s.sideBtn}
+            onClick={() => navigate(ORDERS_PATH)}
+            aria-label={ORDERS_LABEL}
+            data-tooltip={ORDERS_LABEL}
+          >
+            <OrdersIcon />
+          </button>
         </nav>
 
         <button
@@ -218,6 +231,17 @@ function DashboardLayoutInner() {
               type="button"
               className="admin-mobile-more__item"
               onClick={() => {
+                setMobileMoreOpen(false);
+                navigate(ORDERS_PATH);
+              }}
+            >
+              <OrdersIcon />
+              {ORDERS_LABEL}
+            </button>
+            <button
+              type="button"
+              className="admin-mobile-more__item"
+              onClick={() => {
                 toggleTheme();
                 setMobileMoreOpen(false);
                 mobileMoreButtonRef.current?.focus();
@@ -294,6 +318,20 @@ function SettingsIcon() {
       stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
+function OrdersIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <path d="M12 11h4" />
+      <path d="M12 16h4" />
+      <path d="M8 11h.01" />
+      <path d="M8 16h.01" />
     </svg>
   );
 }

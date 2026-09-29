@@ -1,0 +1,160 @@
+/* Pedido desde la mesa: reusa los tokens --t-* del template de la carta
+   (igual que CartDrawer) y los pasa a las variables --ol-* de los
+   componentes compartidos. */
+
+.scope {
+  --ol-text: var(--t-title);
+  --ol-muted: var(--t-muted);
+  --ol-border: var(--t-border-md);
+  --ol-surface: var(--t-bg);
+  --ol-input-bg: var(--t-bg);
+  --ol-accent: var(--t-accent);
+  --ol-accent-soft: color-mix(in srgb, var(--t-accent) 10%, transparent);
+  --ol-accent-border: color-mix(in srgb, var(--t-accent) 45%, transparent);
+  --ol-danger: var(--t-offer);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.hint { margin: 0; font-size: 0.78rem; color: var(--t-muted); line-height: 1.45; }
+
+.tableField { display: flex; flex-direction: column; gap: 0.35rem; }
+
+.tableField span { font-size: 0.8rem; font-weight: 500; color: var(--t-title); }
+
+.tableField select {
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  border: 0.5px solid var(--t-border-md);
+  background: var(--t-bg);
+  color: var(--t-title);
+  font: inherit;
+}
+
+.tableBadge {
+  align-self: flex-start;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--t-accent) 12%, transparent);
+  color: var(--t-accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.sendBtn {
+  composes: md-button from global;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: var(--control-radius);
+  background: var(--t-accent);
+  color: var(--t-bg);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.sendBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.error {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  color: var(--t-offer);
+  background: color-mix(in srgb, var(--t-offer) 10%, transparent);
+}
+
+.done {
+  padding: 2rem 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: center;
+  color: var(--t-title);
+}
+
+.doneIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--t-status-open) 16%, transparent);
+  color: var(--t-status-open);
+}
+
+.doneTitle { margin: 0; font-size: 1.15rem; font-weight: 600; }
+
+.doneText { margin: 0; font-size: 0.85rem; color: var(--t-muted); line-height: 1.5; }
+
+/* ── Aviso "estás en el local" arriba de la carta ── */
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin: 0.5rem 1rem 0;
+  padding: 0.6rem 0.9rem;
+  border-radius: 14px;
+  border: 0.5px solid color-mix(in srgb, var(--t-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--t-accent) 8%, transparent);
+  color: var(--t-title);
+  font-size: 0.82rem;
+}
+
+.bannerText { display: flex; align-items: center; gap: 0.5rem; }
+
+.bannerBtn {
+  min-height: 36px;
+  padding: 0 0.85rem;
+  border-radius: 9999px;
+  border: 0.5px solid var(--t-border-md);
+  background: var(--t-bg);
+  color: var(--t-title);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+/* ── Historial del comensal ── */
+.historyList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+
+.historyItem {
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 0.5px solid var(--t-border);
+  background: var(--t-bg);
+}
+
+.historyHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--t-muted);
+  margin-bottom: 0.4rem;
+}
+
+.historyHead strong { color: var(--t-title); }
+
+.historyLines { margin: 0; padding-left: 1rem; font-size: 0.84rem; color: var(--t-title); }
+
+.historyLines em { color: var(--t-muted); }

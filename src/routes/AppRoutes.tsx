@@ -159,6 +159,19 @@ const UserMenu = lazy(
 );
 
 // ─────────────────────────────────────────────
+// GESTIÓN DE PEDIDOS (src/features/orders)
+// ─────────────────────────────────────────────
+
+const OrdersLayout = lazy(() => import("../features/orders/components/panel/OrdersLayout"));
+const OrdersBoard = lazy(() => import("../features/orders/components/panel/OrdersBoard"));
+const OrdersHistory = lazy(() => import("../features/orders/components/panel/OrdersHistory"));
+const WaitersPage = lazy(() => import("../features/orders/components/panel/WaitersPage"));
+const CashPage = lazy(() => import("../features/orders/components/panel/CashPage"));
+const OrdersSettingsPage = lazy(() => import("../features/orders/components/panel/OrdersSettingsPage"));
+// Tomador de pedidos del mozo: público, se entra con el QR de acceso.
+const WaiterApp = lazy(() => import("../features/orders/components/waiter/WaiterApp"));
+
+// ─────────────────────────────────────────────
 // ROUTES
 // ─────────────────────────────────────────────
 
@@ -324,6 +337,15 @@ export default function AppRoutes() {
               element={<SettingsPanel />}
             />
           </Route>
+
+          {/* Gestión de pedidos: sección con su propia barra lateral (plan Pro). */}
+          <Route element={<OrdersLayout />}>
+            <Route path="/pedidos" element={<OrdersBoard />} />
+            <Route path="/pedidos/historial" element={<OrdersHistory />} />
+            <Route path="/pedidos/mozos" element={<WaitersPage />} />
+            <Route path="/pedidos/caja" element={<CashPage />} />
+            <Route path="/pedidos/configuracion" element={<OrdersSettingsPage />} />
+          </Route>
         </Route>
 
         {/* ─────────────────────────────────────
@@ -340,6 +362,11 @@ export default function AppRoutes() {
         <Route
           path="/:slug/menu"
           element={<UserMenu />}
+        />
+
+        <Route
+          path="/:slug/mozo"
+          element={<WaiterApp />}
         />
       </Routes>
     </>

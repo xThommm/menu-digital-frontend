@@ -22,6 +22,10 @@ import { buildMenuTabs, categoryKey, isItemUnavailable, tabHasItems } from "../.
 import {
   decideVisit, isStaffViewer, markOnce, orderKey, sendMenuEvent, visitQuery, type VisitDecision,
 } from "../../../../lib/menuAnalytics";
+// Gestión de pedidos (módulo aparte): pedidos desde la mesa al escanear el QR del local.
+import { useVenueSession } from "../../../../features/orders/hooks/useVenueSession";
+import VenueBanner from "../../../../features/orders/components/customer/VenueBanner";
+import VenueOrderDrawer from "../../../../features/orders/components/customer/VenueOrderDrawer";
 
 // Visita decidida y todavía sin respuesta, por carta (ver el efecto de
 // carga en MenuPage).
@@ -101,6 +105,11 @@ export default function MenuPage() {
   // no se remonta al navegar de una carta a otra, las claves abiertas de la
   // anterior abrirían categorías al azar en la nueva.
   const [openCats, setOpenCats] = useState<Set<string>>(() => new Set());
+
+  // ¿Escaneó el QR del local? (?mesa=<token>, ver useVenueSession). Sin QR
+  // válido todo sigue igual: carrito → WhatsApp.
+  const venue = useVenueSession(slug);
+  const [venueHistoryVersion, setVenueHistoryVersion] = useState(0);
 
   // Estadísticas de la carta (ver lib/menuAnalytics): todo fire-and-forget,
   // nunca afecta la experiencia del cliente si falla. False para el dueño,
@@ -349,7 +358,13 @@ export default function MenuPage() {
   // además al menos una modalidad (delivery o take away) activa.
   const ordersEnabled = user.features?.pedido_whatsapp === true;
   const orderModes = getOrderModes(user);
-  const canOrder = orderModes.length > 0 && ordersEnabled;
+  // En el local (QR válido) manda la configuración de Gestión de pedidos:
+  // con pedidos desde la mesa el carrito se envía al panel del local; sin
+  // ellos no hay carrito (se le pide al mozo). Fuera del local, como siempre.
+  const venueContext = venue.token ? venue.context : null;
+  const venueOrdering = venueContext?.ordering === true;
+  const cartOn = venueContext ? venueOrdering : ordersEnabled;
+  const canOrder = venueContext ? venueOrdering : orderModes.length > 0 && ordersEnabled;
   // Un destino por sucursal; sin sucursales cargadas, el teléfono de siempre.
   const waTargets = getWaTargets(info);
 
@@ -400,7 +415,7 @@ export default function MenuPage() {
 
       <CartProvider
         slug={menuSlug}
-        enabled={ordersEnabled}
+        enabled={cartOn}
         onAdd={trackCartAdd}
         normalize={normalizeCart}
       >
@@ -452,7 +467,7 @@ export default function MenuPage() {
                   )}
                 </div>
               </div>
-              {(isBistro || family) && ordersEnabled && <MenuCartShortcut onClick={() => setCartOpen(true)} />}
+              {(isBistro || family) && cartOn && <MenuCartShortcut onClick={() => setCartOpen(true)} />}
             </header>
 
             {/* Tabs */}
@@ -490,6 +505,15 @@ export default function MenuPage() {
               </nav>
             )}
           </div>
+
+          {venueContext && (
+            <VenueBanner
+              slug={menuSlug}
+              context={venueContext}
+              hidePrices={display.hidePrices}
+              historyVersion={venueHistoryVersion}
+            />
+          )}
 
           <div className={styles.mpShell}>
             {/* ── Contenido del tab activo ── */}
@@ -585,7 +609,7 @@ export default function MenuPage() {
               )}
             </main>
 
-            {ordersEnabled && (
+            {ordersEnabled && !venueContext && (
               <OrderSummary
                 businessName={info.businessName || "el local"}
                 waTargets={waTargets}
@@ -598,15 +622,33 @@ export default function MenuPage() {
             )}
           </div>
 
-          {ordersEnabled && (
+          {cartOn && (
             <CartBar
               onClick={() => setCartOpen(true)}
               hidePrices={display.hidePrices}
             />
           )}
 
+          {/* En el local, el carrito envía el pedido al panel (Gestión de pedidos). */}
+          {venueOrdering && venueContext && venue.token && (
+            <VenueOrderDrawer
+              open={cartOpen}
+              onClose={() => setCartOpen(false)}
+              slug={menuSlug}
+              token={venue.token}
+              context={venueContext}
+              hidePrices={display.hidePrices}
+              onSent={(lines) => {
+                trackOrder(lines);
+                setVenueHistoryVersion((version) => version + 1);
+              }}
+              onInvalidQr={venue.invalidate}
+              onRequestClear={openClearConfirm}
+            />
+          )}
+
           {/* El drawer queda dentro de .mp para heredar los tokens del template */}
-          {ordersEnabled && (
+          {ordersEnabled && !venueContext && (
             <CartDrawer
               open={cartOpen}
               onClose={() => setCartOpen(false)}
@@ -622,7 +664,7 @@ export default function MenuPage() {
 
           {/* También dentro de .mp (tokens del template), después del drawer
               para quedar encima cuando se abre desde ahí. */}
-          {ordersEnabled && clearConfirmOpen && <ClearCartDialog onClose={closeClearConfirm} />}
+          {cartOn && clearConfirmOpen && <ClearCartDialog onClose={closeClearConfirm} />}
 
           {preview !== null && (
             <ItemPreviewModal
