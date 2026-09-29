@@ -1,5 +1,17 @@
 # MenuDigital — Arquitectura de la aplicación
-> **Revisión vigente — 26-09-2026:** delivery y take away. El local elige qué
+> **Revisión vigente — 29-09-2026:** Gestión de pedidos (plan Pro), rama
+> `rama-neon` en ambos repos. Se suma una segunda base, **Postgres en Neon**, que
+> convive con MongoDB: Mongo sigue guardando todo lo que ya existía y Postgres solo
+> la operación de pedidos (configuración, mesas y QR, mozos, turnos/caja, pedidos y
+> sus líneas). Backend en `src/orders/` (API `/api/orders`, migración
+> `001_gestion_pedidos.sql` aplicada en la branch `dev` de Neon) y frontend en
+> `src/features/orders/` (sección `/pedidos` con barra propia, carrito "en el
+> local" dentro de la carta y tomador de pedidos `/:slug/mozo`). Ver
+> [Gestión de pedidos](#gestion-pedidos). Typecheck y lint del frontend pasan; por
+> indicación de la tarjeta no se escribieron ni corrieron tests, no se desplegó y
+> no se probó de punta a punta.
+>
+> **Revisión anterior — 26-09-2026:** delivery y take away. El local elige qué
 > modalidades ofrece (`hasDelivery` y el nuevo `hasTakeAway`) y carga un mensaje de
 > pedido por modalidad (`contactInfo.orderMessage` para delivery, el nuevo
 > `contactInfo.takeAwayMessage` para take away). Con las dos activas, "Pedir por
@@ -40,6 +52,7 @@ keyframes y utilidades — ver [styles/](#styles)).
 
 - **Frontend** (`menu-digital-frontend`): React 19 + TypeScript + Vite. Deploy en Vercel.
 - **Backend** (`menu-digital-backend`): Node + Express 4 + Mongoose 7 (MongoDB Atlas). Deploy en Koyeb.
+  Gestión de pedidos usa además Postgres (Neon) con `pg`; es opcional (`DATABASE_URL`).
 - **Servicios externos**: Cloudinary (imágenes), MercadoPago (pagos).
 
 Modelo de negocio: el dueño elige `free`, `basic` o `pro` antes del alta.
@@ -85,6 +98,7 @@ Los beneficios de cada plan se definen explícitamente en MongoDB, sin herencia.
   - [pages/](#pages)
   - [Utils/](#utils-frontend)
   - [styles/](#styles)
+- [Gestión de pedidos (Postgres / Neon)](#gestion-pedidos)
 - [Flujos clave](#flujos-clave)
 
 ---
@@ -100,8 +114,12 @@ validación, duplicados y recursos inexistentes.
 
 Arma la app Express y arranca el servidor.
 
-- Valida entorno (`validateEnvironment()`), espera `connectDB()` e
-  `initializePlans()` antes de `app.listen`; falla el arranque con catálogo inválido.
+- Valida entorno (`validateEnvironment()`), espera `connectDB()`,
+  `connectPostgres()` e `initializePlans()` antes de `app.listen`; falla el arranque
+  con catálogo inválido. Postgres es opcional: sin `DATABASE_URL` o si Neon falla
+  solo lo avisa (banner `🐘 Postgres disabled`) y la API sigue con MongoDB.
+- Monta `/api/orders` (Gestión de pedidos, `src/orders/routes.js`); ver
+  [Gestión de pedidos](#gestion-pedidos).
 - `app.set("trust proxy", 1)` — necesario detrás del balanceador de Koyeb para que
   `req.ip` sea la IP real del cliente (lo usa el rate limiter).
 - Middlewares globales, en orden:
@@ -148,6 +166,20 @@ Arma la app Express y arranca el servidor.
 - **`connectDB()`** — conecta Mongoose a `MONGODB_URI`. Antes fuerza los DNS a
   Google/Cloudflare (`dns.setServers(["8.8.8.8","1.1.1.1"])`) porque el resolver
   de c-ares bloquea las consultas SRV de Atlas. Si falla, corta el proceso.
+
+### `config/postgres.js`
+
+Conexión a Postgres (Neon) con un `Pool` de `pg`, creado recién cuando se usa.
+
+- **`getPool()`** — el pool, o `null` si falta `DATABASE_URL`. Registra
+  `pool.on("error")`: Neon corta conexiones ociosas al suspender la branch y sin
+  ese handler el error tiraría el proceso.
+- **`connectPostgres()`** — `select current_database()` al arrancar; devuelve
+  `true`/`false` y nunca corta el proceso.
+- **`query(text, params)`** — atajo sobre el pool.
+
+`config/environment.js` valida el formato de `DATABASE_URL` solo si está presente
+(`postgres://` o `postgresql://`); no es obligatoria.
 
 ### `config/plans.js`
 
@@ -2268,6 +2300,186 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   en las paletas oscuras. Sus fuentes se importan con las demás, pero el navegador
   solo las descarga si alguna carta las usa.
 - Reset, base de `html/body`, `:focus-visible` global y `prefers-reduced-motion`.
+
+---
+
+# <a id="gestion-pedidos"></a>Gestión de pedidos (Postgres / Neon)
+
+Herramienta de uso diario para que cada local reciba y organice los pedidos del
+salón: panel de pedidos por turno/día, mozos, cierre de caja y configuración.
+**Solo plan Pro.** Es un módulo aparte en los dos repos, sin cambios en los
+modelos de MongoDB.
+
+## Dos bases que conviven
+
+- **MongoDB** sigue siendo la fuente de verdad del local (`User`), la carta
+  (`Menu`/`Item`), los planes y todo lo anterior. El módulo de pedidos solo **lee**
+  de Mongo: el local por slug o id, su plan vigente y los productos para cotizar.
+- **Postgres (Neon)** guarda solo la operación de pedidos. Los ids de Mongo se
+  guardan como texto (`owner_id` = `User._id`, `item_id` = `Item._id`). De cada
+  producto pedido se congela título, variante y precio en la línea (el menú puede
+  cambiar y los reportes tienen que reflejar lo vendido).
+- Sin `DATABASE_URL`, `/api/orders/*` responde 503 y nada más cambia. En la carta,
+  sin contexto válido de "en el local", todo funciona como antes (WhatsApp).
+- Neon: proyecto `menudigitalapp`, branch `dev` (hija de `production`). La
+  migración inicial está aplicada solo en `dev`.
+
+## Esquema SQL (`src/orders/db/migrations/001_gestion_pedidos.sql`)
+
+| Tabla | Para qué |
+|---|---|
+| `order_settings` | Una fila por local: `qr_mode` (`general`/`per_table`), `customer_ordering`, `customer_history`, `table_count`, `general_qr_token`, `period_mode` (`shift`/`day`) y `shift_schedule` (jsonb `[{name, from, to}]`). |
+| `order_tables` | Mesas 1..N con el `qr_token` de su QR. Al bajar la cantidad quedan `active = false` (no se borran, su QR impreso vuelve a servir si se reactivan). |
+| `waiters` | Mozos (nombre, teléfono, notas, activo). Baja lógica (`deleted_at`). Guarda el hash del código de su QR de acceso y su vencimiento. |
+| `waiter_sessions` | Dispositivos habilitados de cada mozo (hash del token, último uso, revocado). |
+| `shifts` | Turnos/días. Índice único parcial: **un solo turno abierto por local**. Al cerrar la caja guarda efectivo contado, notas, cantidad de pedidos y total. |
+| `orders` | Pedido: turno, número correlativo del turno, origen (`customer`/`waiter`/`panel`), estado, mesa, mozo (id + nombre congelado), notas, total, fechas por estado y los campos antiabuso (`client_request_id` único por local, `client_fingerprint`, `content_hash`). |
+| `order_items` | Líneas: producto (id de Mongo), título, variante, precio unitario, cantidad, aclaración. Dos unidades del mismo producto con aclaraciones distintas son dos líneas. |
+
+`schema_migrations` registra qué archivos se aplicaron. Las migraciones son
+manuales: `npm run orders:migrate` (usa `DATABASE_URL`; no corre al levantar la API).
+
+Estados de un pedido y transiciones (`src/orders/constants.js`):
+`pending` (sin confirmar) → `confirmed` (en preparación) → `ready` (listo) →
+`delivered` (entregado) → `returned` (devuelto). `cancelled` desde cualquiera de
+los tres activos; un cancelado se puede reabrir (vuelve a `pending`). Un pedido
+**sin confirmar no puede pasar a listo**. El panel muestra solo los activos
+(`pending`, `confirmed`, `ready`) de cualquier turno; entregado o cancelado sale
+del panel y queda en el historial. Los pedidos del mozo y del panel entran
+`confirmed`; los del comensal, `pending`.
+
+## Backend — `src/orders/`
+
+- `routes.js` — montado en `/api/orders`. `requireOrdersDb` en todo el árbol.
+  - Público (carta): `GET /public/:slug/context?t=<token>`, `POST /public/:slug/orders`
+    (+ `customerOrderLimiter`: 40 cada 10 min por IP, holgado porque todo el salón
+    comparte wifi).
+  - Mozo: `POST /waiter/pair` (`authLimiter`), `GET /waiter/me`, `POST /waiter/logout`,
+    `GET|POST /waiter/orders`. Autenticación `Authorization: Waiter <token>`.
+  - Dueño (`protect` + `requireProPlan` + `loadSettings`): `GET|PUT /settings`,
+    `POST /settings/regenerate-qr`, `GET /board`, `GET|POST /orders`,
+    `PATCH /orders/:id/status`, `PATCH /orders/:id/waiter`, `GET|POST /shifts`,
+    `POST /shifts/current/close`, `GET /shifts/:id/summary` (`:id` = número o
+    `current`), CRUD de `/waiters`, `POST /waiters/:id/pairing-code`,
+    `DELETE /waiters/:id/sessions`.
+- `middleware.js` — `requireOrdersDb` (503 sin Postgres), `requireProPlan` (usa el
+  plan **efectivo** que deja `protect`; 403 `FEATURE_NOT_INCLUDED` con
+  `feature: "gestion_pedidos"`), `loadSettings` (crea la configuración la primera
+  vez) y `protectWaiter` (valida la sesión del dispositivo y que el local siga
+  activo y Pro).
+- `errors.js` — `OrdersError(status, message, code)`: mensaje pensado para el
+  usuario, se devuelve tal cual. Cualquier otro error pasa por `handleError`.
+- `db/sql.js` — `query` y `withTransaction` sobre el pool de `config/postgres.js`.
+- `db/migrate.js` — runner de migraciones.
+- `services/menuCatalog.js` — único puente con Mongo (solo lectura).
+  `findProOwnerBySlug`, `findOwnerById`, `isProOwner` y **`priceOrderLines`**: valida
+  cada línea contra la carta visible del local (`getReachableCategoryIds`,
+  disponibilidad y horario con `isItemAvailableNow`) y pone el precio del servidor
+  (oferta vigente con `resolveOfferPrice` o el de la variante). **Nunca se usa un
+  precio del navegador.**
+- `services/settingsService.js` — configuración, mesas (`syncTables`), regenerar QR
+  (general, una mesa o todas) y `resolveQrToken`.
+- `services/shiftService.js` — `lockOrOpenShift` (abre el turno si no hay y lo
+  bloquea `FOR UPDATE` para numerar pedidos sin choques), nombre del turno según
+  `period_mode` y `shift_schedule` (soporta turnos que cruzan la medianoche, hora de
+  Buenos Aires), `closeShift` (con pedidos sin entregar pide `force`) y
+  `shiftSummary` (totales, ticket promedio, por estado/origen/mozo/mesa, top 10
+  productos, tiempos promedio de preparación y servicio). Cancelados y devueltos no
+  suman a la venta.
+- `services/orderService.js` — `createOrder` (cotiza, abre/bloquea el turno,
+  numera, inserta pedido y líneas en una transacción), cambios de estado con sus
+  transiciones, asignar mozo, panel activo, historial filtrable y pedidos del mozo.
+- `services/waiterService.js` — ABM de mozos, código del QR de acceso (18 bytes
+  aleatorios, **un solo uso, vence a los 2 min**, solo se guarda el hash), canje
+  por un token de sesión (32 bytes, también solo hash), autenticación y cierre de
+  sesiones. Pausar o borrar al mozo revoca sus dispositivos.
+- `utils/tokens.js` y `utils/validate.js` — tokens URL-safe + SHA-256, y
+  validación de entradas (líneas de pedido, textos, turnos `HH:MM`).
+
+**Antiabuso de pedidos del comensal** (sin datos personales):
+1. `clientRequestId` (uuid por envío): un reintento devuelve el mismo pedido.
+2. Mismo contenido (productos, variantes, cantidades, aclaraciones y mesa) desde
+   el mismo dispositivo dentro de 3 min → 409.
+3. Menos de 30 s desde el pedido anterior del mismo dispositivo → 429. El
+   dispositivo es un id aleatorio del navegador (`md:device`) hasheado con el local.
+4. Tope por IP (`customerOrderLimiter`) y el `apiLimiter` general.
+
+## Frontend — `src/features/orders/`
+
+- `api/ordersApi.ts` — panel del dueño con `apiClient` (JWT del panel).
+- `api/publicOrdersApi.ts` — comensal y mozo con `apiFetch` (sin el JWT del dueño
+  y sin la redirección a `/login` del interceptor). `fetchMenuForOrdering` usa la
+  carta v2 con `track=0` para no sumar visitas.
+- `types.ts` — contrato de `/api/orders`.
+- `lib/` — `format.ts` (moneda, horas, etiquetas de estado), `storage.ts`
+  (localStorage tolerante, `uuid`, `deviceId`), `units.ts` (aclaraciones **por
+  unidad** → líneas agrupadas por aclaración), `venueSession.ts` (sesión "en el
+  local" 4 h, mesa elegida e historial del comensal: 30 pedidos / 30 días),
+  `waiterSession.ts`, `qrUrls.ts`, `errors.ts`.
+- `hooks/usePanelData.ts` — configuración, mozos y carta para las páginas del panel.
+- `hooks/useVenueSession.ts` — lee `?mesa=<token>` al montar, lo saca de la URL,
+  lo valida con `/public/:slug/context` y guarda la sesión.
+- `components/shared/` — `ProductPicker` (buscador sobre la carta v2, mismo
+  criterio simple/variante que las tarjetas) y `UnitLinesEditor` (cantidades y una
+  aclaración por unidad). Colores por variables `--ol-*` que define cada contenedor.
+- `components/panel/` — `OrdersLayout` (barra lateral propia reusando
+  `DashboardLayout.module.css`, dock móvil y bloqueo si no es Pro),
+  `OrdersBoard` (columnas Sin confirmar / En preparación / Listos, consulta cada
+  5 s con la pestaña visible, aviso sonoro opcional y resaltado de nuevos, contador
+  en el título de la pestaña, pedidos demorados de 20+ min marcados),
+  `OrderCard`, `ManualOrderModal`, `OrdersHistory` (filtros por estado, fechas,
+  mesa y turno `?turno=<id>`; devolver o reabrir), `WaitersPage` (ABM y QR de acceso
+  que se renueva cada minuto), `CashPage` (resumen del turno, cierre de caja con
+  efectivo contado y diferencia, turnos cerrados) y `OrdersSettingsPage`
+  (pedidos desde la mesa, historial del comensal, QR general o por mesa, cantidad
+  de mesas, QR para descargar/imprimir/regenerar, turnos o días y sus horarios).
+- `components/customer/` — `VenueBanner` (mesa, "pedí desde acá" o "llamá a un
+  mozo", "Mis pedidos") y `VenueOrderDrawer` (carrito del comensal en el local:
+  aclaraciones por unidad, mesa si el QR es general, envío al panel y
+  confirmación).
+- `components/waiter/WaiterApp` — tomador de pedidos en `/:slug/mozo`.
+
+Rutas (`routes/AppRoutes.tsx`): `/pedidos`, `/pedidos/historial`,
+`/pedidos/mozos`, `/pedidos/caja` y `/pedidos/configuracion` dentro de
+`UserRoute` con `OrdersLayout`; `/:slug/mozo` pública. `DashboardLayout` suma el
+acceso "Gestión de pedidos" (barra lateral y menú "Más" en el celular).
+
+## Flujos
+
+- **QR del local**: los QR de `OrdersSettingsPage` apuntan a
+  `/<slug>/menu?mesa=<token>&src=qr`. `src=qr` mantiene el conteo de visitas por QR
+  de Estadísticas; el QR del Dashboard (`?src=qr` sin `mesa`) sigue igual. Quien
+  entra por link, sin token válido, pide por WhatsApp como siempre.
+- **Comensal en el local** (`UserMenu`): con contexto válido y pedidos desde la
+  mesa habilitados, `CartProvider` queda habilitado aunque el local no tenga
+  delivery/take away, se oculta el resumen de WhatsApp y el carrito abre
+  `VenueOrderDrawer`. Si el local desactivó los pedidos desde la mesa, no hay
+  carrito y el aviso dice que se pida al mozo. Si el dueño regenera el QR mientras
+  el cliente está sentado, el envío responde `QR_INVALID` y la sesión se descarta.
+  El comensal no ve el estado del pedido: solo su historial local (si el local lo
+  permite).
+- **Mozo**: en Mozos, "QR de acceso" muestra un QR que rota cada minuto. Al
+  escanearlo, `/<slug>/mozo?code=…` canjea el código (una sola vez, protegido del
+  doble montaje de StrictMode) y guarda el token en `md:waiter:<slug>`. Elige
+  productos, cantidades, aclaraciones y mesa; el pedido entra confirmado con su
+  nombre. "Mis pedidos" muestra los suyos del turno abierto.
+- **Turno y caja**: el primer pedido abre el turno (o "Abrir turno"). Con
+  `period_mode = shift` se nombra según el horario configurado; con `day`, por
+  fecha. "Cerrar caja" cierra el turno y congela totales; el siguiente pedido abre
+  otro.
+
+## Decisiones y pendientes
+
+- El acceso Pro se valida con el plan vigente del usuario (`req.user.subscription`)
+  y no con una clave nueva del catálogo de planes: agregar una feature al catálogo
+  cambia la validación de los documentos `Plan` de producción. Si se quiere
+  administrar desde el panel de planes, sumar `gestion_pedidos` a
+  `BOOLEAN_FEATURES`/`INITIAL_PLANS` (con su backfill) y cambiar `requireProPlan`
+  por `requireFeature("gestion_pedidos")`.
+- Tiempo real por consulta periódica (5 s), sin websockets.
+- Para producción: correr `npm run orders:migrate` contra la branch `production`
+  de Neon y cargar `DATABASE_URL` en Koyeb. Sin eso la sección responde 503.
+- Sin tests, por indicación de la tarjeta.
 
 ---
 
