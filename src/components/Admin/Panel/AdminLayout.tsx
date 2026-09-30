@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/useAuth";
 import { useTheme } from "../../../hooks/useTheme";
+import { useAdminPush } from "../../../hooks/useAdminPush";
 import BrandMark from "../../Common/BrandMark";
 import BrandWordmark from "../../Common/BrandWordmark";
 import s from "./AdminLayout.module.css";
-import { ChevronDown,PanelLeft , DollarSign, LayoutPanelLeft, LogOut, MoreHorizontal, PlayingCards, Speech } from "lucide-react";
+import { Bell, BellOff, BellRing, ChevronDown,PanelLeft , DollarSign, LayoutPanelLeft, LogOut, MoreHorizontal, PlayingCards, Speech } from "lucide-react";
 
 // Preferencia del CEO de ocultar la sidebar (desktop). Persistida para que no
 // tenga que volver a colapsarla en cada visita al panel.
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
 export default function AdminLayout() {
   const { logout } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
+  const push = useAdminPush();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
@@ -67,6 +69,9 @@ export default function AdminLayout() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [mobileMoreOpen]);
 
+  // El logout NO da de baja las push a propósito: el admin quiere seguir
+  // recibiendo avisos en este dispositivo con la sesión cerrada. Para dejar
+  // de recibirlas está el botón "Desactivar notificaciones".
   const handleLogout = useCallback(() => {
     setMobileMoreOpen(false);
     logout();
@@ -172,6 +177,30 @@ export default function AdminLayout() {
             <span className={s.navLabel}>{theme === "dark" ? "Tema claro" : "Tema oscuro"}</span>
           </button>
 
+          {push.available && (
+            <button
+              className={s.navItem}
+              onClick={push.toggle}
+              disabled={push.busy}
+              aria-pressed={push.active}
+              aria-label={push.active ? "Desactivar notificaciones en este dispositivo" : "Activar notificaciones en este dispositivo"}
+            >
+              <span className={s.navIcon}>{push.active ? <Bell size={20} strokeWidth={1.5} /> : <BellOff size={20} strokeWidth={1.5} />}</span>
+              <span className={s.navLabel}>{push.active ? "Notificaciones activas" : "Activar notificaciones"}</span>
+            </button>
+          )}
+
+          {push.available && push.active && (
+            <button
+              className={s.navItem}
+              onClick={push.sendTest}
+              aria-label="Enviar notificación de prueba"
+            >
+              <span className={s.navIcon}><BellRing size={20} strokeWidth={1.5} /></span>
+              <span className={s.navLabel}>Probar notificación</span>
+            </button>
+          )}
+
           <button
             className={`${s.navItem} ${s.navItemDanger}`}
             onClick={handleLogout}
@@ -266,6 +295,28 @@ export default function AdminLayout() {
               {theme === "dark" ? <SunIcon /> : <MoonIcon />}
               {theme === "dark" ? "Usar tema claro" : "Usar tema oscuro"}
             </button>
+            {push.available && (
+              <button
+                type="button"
+                className="admin-mobile-more__item"
+                onClick={push.toggle}
+                disabled={push.busy}
+                aria-pressed={push.active}
+              >
+                {push.active ? <Bell /> : <BellOff />}
+                {push.active ? "Desactivar notificaciones" : "Activar notificaciones"}
+              </button>
+            )}
+            {push.available && push.active && (
+              <button
+                type="button"
+                className="admin-mobile-more__item"
+                onClick={push.sendTest}
+              >
+                <BellRing />
+                Probar notificación
+              </button>
+            )}
             <button
               type="button"
               className="admin-mobile-more__item admin-mobile-more__item--danger"
