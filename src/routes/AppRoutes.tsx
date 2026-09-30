@@ -169,6 +169,9 @@ const TablesPage = lazy(() => import("../features/orders/components/panel/Tables
 const WaitersPage = lazy(() => import("../features/orders/components/panel/WaitersPage"));
 const CashPage = lazy(() => import("../features/orders/components/panel/CashPage"));
 const OrdersSettingsPage = lazy(() => import("../features/orders/components/panel/OrdersSettingsPage"));
+const SectorsPage = lazy(() => import("../features/orders/components/panel/SectorsPage"));
+// Pantalla de comandas de un sector: pública, el equipo se vincula con un código.
+const StationApp = lazy(() => import("../features/orders/components/station/StationApp"));
 // Tomador de pedidos del operador: público, se entra con el QR de acceso.
 const WaiterApp = lazy(() => import("../features/orders/components/waiter/WaiterApp"));
 
@@ -243,6 +246,12 @@ export default function AppRoutes() {
         <Route
           path="/baja"
           element={<Baja />}
+        />
+
+        {/* Pantalla de comandas de un sector (equipo vinculado con código). */}
+        <Route
+          path="/comandas"
+          element={<StationApp />}
         />
 
         {/* ─────────────────────────────────────
@@ -347,6 +356,7 @@ export default function AppRoutes() {
             <Route path="/pedidos/operadores" element={<WaitersPage />} />
             {/* Ruta vieja (antes "Mozos"). */}
             <Route path="/pedidos/mozos" element={<Navigate to="/pedidos/operadores" replace />} />
+            <Route path="/pedidos/sectores" element={<SectorsPage />} />
             <Route path="/pedidos/caja" element={<CashPage />} />
             <Route path="/pedidos/configuracion" element={<OrdersSettingsPage />} />
           </Route>

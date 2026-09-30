@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Check, ChefHat, HandPlatter, MapPin, MessageSquareText, Phone, QrCode, Smartphone, UserRound, X } from "lucide-react";
 import { elapsedLabel, formatMoney, formatTime, placeLabel, STATUS_LABEL } from "../../lib/format";
-import type { Order, OrderStatus, Waiter } from "../../types";
+import type { Order, OrderStatus, TicketStatus, Waiter } from "../../types";
 import p from "./panel.module.css";
 import s from "./OrdersBoard.module.css";
 
@@ -45,6 +45,32 @@ export function CustomerInfo({ order }: { order: Order }) {
   );
 }
 
+const TICKET_LABEL: Record<TicketStatus, string> = {
+  new: "Recibida",
+  preparing: "Preparando",
+  done: "Lista",
+  cancelled: "Anulada",
+};
+
+// Avance de cada sector (una comanda por sector). Cuando están todas listas
+// se avisa, pero el pedido lo sigue marcando "Listo" quien maneja el panel.
+function SectorProgress({ order }: { order: Order }) {
+  const tickets = order.tickets ?? [];
+  if (tickets.length === 0 || order.status === "pending") return null;
+  const allDone = tickets.every(ticket => ticket.status === "done");
+  return (
+    <div className={s.sectors} aria-label="Avance por sector">
+      {tickets.map(ticket => (
+        <span key={ticket.id} className={`${s.sectorChip} ${s[`sector_${ticket.status}`]}`}>
+          {ticket.status === "done" && <Check size={12} aria-hidden />}
+          {ticket.sectorName} · {TICKET_LABEL[ticket.status]}
+        </span>
+      ))}
+      {allDone && order.status === "confirmed" && <span className={s.sectorsDone}>Todo preparado</span>}
+    </div>
+  );
+}
+
 export default function OrderCard({ order, waiters, now, highlight = false, busy = false, onStatus, onWaiter }: Props) {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const minutes = Math.floor((now - new Date(order.createdAt).getTime()) / 60_000);
@@ -78,6 +104,8 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
           </li>
         ))}
       </ul>
+
+      <SectorProgress order={order} />
 
       {order.notes && (
         <p className={s.orderNotes}>
