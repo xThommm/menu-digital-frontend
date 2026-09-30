@@ -1,38 +1,55 @@
 /* Tomador de pedidos: pantalla única pensada para el celular del mozo. Usa
-   los estilos del panel (panel.module.css) y suma lo propio. */
+   los estilos del panel (panel.module.css, estilo tonal) y suma lo propio. */
 
-.shell { max-width: 720px; padding-bottom: 6rem; }
+.shell { max-width: 720px; padding-bottom: 7rem; }
 
 .top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   padding-top: env(safe-area-inset-top);
 }
 
 .business {
   font-size: 0.72rem;
-  letter-spacing: 0.06em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--admin-text-warm);
 }
 
+.tabs { margin-bottom: 1.25rem; }
+
+/* Sin sesión: aviso centrado en la pantalla, con el ícono en un círculo tonal. */
 .locked {
   max-width: 420px;
-  margin: 4rem auto 0;
+  min-height: calc(100dvh - 8rem);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.6rem;
+  justify-content: center;
+  gap: 0.75rem;
   text-align: center;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
-.lockedIcon { color: var(--admin-gold); }
+.lockedIcon {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 0.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--tone-primary-container);
+  color: var(--tone-on-primary-container);
+}
 
+/* Barra flotante del pedido en armado: primario lleno. */
 .cartBar {
+  composes: md-button from global;
   position: fixed;
   left: 1rem;
   right: 1rem;
@@ -42,50 +59,106 @@
   margin: 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.75rem;
-  min-height: 54px;
-  padding: 0 1.1rem;
+  min-height: 56px;
+  padding: 0 1.25rem 0 0.6rem;
   border: none;
-  border-radius: 9999px;
   background: var(--admin-gold);
   color: var(--admin-gold-ink);
   font: inherit;
-  font-weight: 600;
-  box-shadow: var(--shadow-lg);
+  font-weight: 700;
+  box-shadow: var(--tone-shadow);
   cursor: pointer;
 }
 
 .cartCount {
-  min-width: 28px;
-  height: 28px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.4rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
   background: var(--admin-gold-ink);
   color: var(--admin-gold);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }
 
+.cartTotal { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* Aviso tras enviar (snackbar): superficie inversa, bien visible sobre la carta. */
 .toast {
   position: fixed;
-  left: 50%;
-  bottom: calc(5.5rem + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
+  left: 1rem;
+  right: 1rem;
+  bottom: calc(5.75rem + env(safe-area-inset-bottom));
   z-index: var(--z-toast);
-  max-width: calc(100% - 2rem);
-  padding: 0.6rem 1rem;
-  border-radius: 9999px;
-  background: var(--admin-bg-elevated);
-  border: 0.5px solid var(--admin-border-default);
-  color: var(--admin-text-primary);
-  font-size: 0.82rem;
-  box-shadow: var(--shadow-md);
+  max-width: 688px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border-radius: 16px;
+  background: var(--admin-text-primary);
+  color: var(--admin-bg-base);
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.4;
+  box-shadow: var(--tone-shadow);
 }
 
-.orderHead { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; color: var(--admin-text-primary); }
+.toast svg { flex-shrink: 0; }
 
-.orderLines { margin: 0 0 0.4rem; padding-left: 1.1rem; font-size: 0.85rem; color: var(--admin-text-secondary); }
+/* ── Mis pedidos: misma lectura que la tarjeta del panel ── */
+.orderHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
 
-.orderLines em { color: var(--admin-gold); font-style: normal; }
+.orderId { display: flex; align-items: baseline; gap: 0.6rem; }
+
+.orderNumber {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  line-height: 1.1;
+  color: var(--admin-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.orderTable { font-size: 0.9rem; font-weight: 600; color: var(--admin-gold); }
+
+.orderLines {
+  list-style: none;
+  margin: 0.75rem 0;
+  padding: 0.75rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  border-top: 1px solid var(--divider);
+  font-size: 0.9rem;
+  color: var(--admin-text-primary);
+}
+
+.orderLine { display: flex; gap: 0.5rem; align-items: flex-start; }
+
+.orderQty { flex-shrink: 0; min-width: 2.2ch; font-weight: 700; color: var(--admin-gold); font-variant-numeric: tabular-nums; }
+
+.orderText { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+
+.orderText em { font-style: normal; color: var(--admin-text-warm); }
+
+.orderNotes {
+  align-self: flex-start;
+  padding: 0.15rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--tone-primary-container);
+  color: var(--tone-on-primary-container);
+}
+
+.orderTime { font-size: 0.75rem; color: var(--admin-text-warm); }

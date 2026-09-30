@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ChefHat, HandPlatter, QrCode, Smartphone, UserRound, X } from "lucide-react";
+import { Check, ChefHat, HandPlatter, MessageSquareText, QrCode, Smartphone, UserRound, X } from "lucide-react";
 import { elapsedLabel, formatMoney, formatTime, STATUS_LABEL } from "../../lib/format";
 import type { Order, OrderStatus, Waiter } from "../../types";
 import p from "./panel.module.css";
@@ -46,7 +46,7 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
         <span className={s.source} title={`Origen: ${SOURCE_TEXT[order.source]}`}>
           {SOURCE_ICON[order.source]} {SOURCE_TEXT[order.source]}
         </span>
-        <span title={formatTime(order.createdAt)}>{formatTime(order.createdAt)} · {elapsedLabel(order.createdAt, now)}</span>
+        <span className={s.cardTime} title={formatTime(order.createdAt)}>{formatTime(order.createdAt)} · {elapsedLabel(order.createdAt, now)}</span>
       </div>
 
       <ul className={s.items}>
@@ -61,7 +61,12 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
         ))}
       </ul>
 
-      {order.notes && <p className={s.orderNotes}>{order.notes}</p>}
+      {order.notes && (
+        <p className={s.orderNotes}>
+          <MessageSquareText size={14} aria-hidden />
+          <span>{order.notes}</span>
+        </p>
+      )}
 
       <div className={s.cardFoot}>
         <label className={s.waiterSelect}>

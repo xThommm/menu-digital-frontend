@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ClipboardList, LogOut, ScanLine, Send, X } from "lucide-react";
+import { CheckCircle2, ClipboardList, LogOut, ScanLine, Send, X } from "lucide-react";
 import {
   fetchMenuForOrdering, getWaiterOrders, getWaiterSession, logoutWaiter, pairWaiterDevice, sendWaiterOrder,
 } from "../../api/publicOrdersApi";
@@ -89,8 +89,8 @@ export default function WaiterApp() {
   if (phase.kind === "locked") {
     return (
       <Shell>
-        <div className={`${p.card} ${s.locked}`}>
-          <ScanLine size={40} aria-hidden className={s.lockedIcon} />
+        <div className={s.locked}>
+          <span className={s.lockedIcon}><ScanLine size={32} aria-hidden /></span>
           <h1 className={p.title}>Tomador de pedidos</h1>
           <p className={p.subtitle}>{phase.message}</p>
         </div>
@@ -219,7 +219,7 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
         </button>
       </header>
 
-      <div className={p.segmented} role="tablist" style={{ marginBottom: "1rem" }}>
+      <div className={`${p.segmented} ${s.tabs}`} role="tablist">
         <button type="button" role="tab" aria-selected={tab === "new"} className={`${p.segment} ${tab === "new" ? p.segmentActive : ""}`} onClick={() => setTab("new")}>
           Nuevo pedido
         </button>
@@ -238,7 +238,7 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
             <button type="button" className={s.cartBar} onClick={() => setSheetOpen(true)}>
               <span className={s.cartCount}>{unitsCount(lines)}</span>
               <span>Revisar y enviar</span>
-              {!hidePrices && <span>{formatMoney(unitsTotal(lines))}</span>}
+              {!hidePrices && <span className={s.cartTotal}>{formatMoney(unitsTotal(lines))}</span>}
             </button>
           )}
         </>
@@ -251,24 +251,35 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
           {orders?.map(order => (
             <article key={order.id} className={p.card}>
               <div className={s.orderHead}>
-                <strong>#{order.number} · Mesa {order.tableNumber ?? "—"}</strong>
+                <div className={s.orderId}>
+                  <span className={s.orderNumber}>#{order.number}</span>
+                  <span className={s.orderTable}>{order.tableNumber ? `Mesa ${order.tableNumber}` : "Sin mesa"}</span>
+                </div>
                 <span className={`${p.status} ${p[`status_${order.status}`]}`}>{STATUS_LABEL[order.status]}</span>
               </div>
               <ul className={s.orderLines}>
                 {order.items.map(item => (
-                  <li key={item.id}>
-                    {item.quantity}× {item.title}{item.option ? ` · ${item.option}` : ""}
-                    {item.notes && <em> ({item.notes})</em>}
+                  <li key={item.id} className={s.orderLine}>
+                    <span className={s.orderQty}>{item.quantity}×</span>
+                    <span className={s.orderText}>
+                      <span>{item.title}{item.option && <em> · {item.option}</em>}</span>
+                      {item.notes && <span className={s.orderNotes}>{item.notes}</span>}
+                    </span>
                   </li>
                 ))}
               </ul>
-              <span className={p.label}>{elapsedLabel(order.createdAt)}</span>
+              <span className={s.orderTime}>{elapsedLabel(order.createdAt)}</span>
             </article>
           ))}
         </section>
       )}
 
-      {toast && <div className={s.toast} role="status">{toast}</div>}
+      {toast && (
+        <div className={s.toast} role="status">
+          <CheckCircle2 size={18} aria-hidden />
+          <span>{toast}</span>
+        </div>
+      )}
 
       {sheetOpen && (
         <div className={p.overlay} role="dialog" aria-modal="true" aria-label="Enviar pedido" onClick={() => setSheetOpen(false)}>

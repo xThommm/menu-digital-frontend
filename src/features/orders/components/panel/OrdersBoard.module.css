@@ -1,4 +1,5 @@
-/* Panel de pedidos (columnas por estado) y tarjeta de pedido. */
+/* Panel de pedidos (columnas por estado) y tarjeta de pedido. Estilo tonal:
+   la columna es un contenedor bajo y cada pedido sube un tono sobre ella. */
 
 @keyframes newOrder {
   0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--admin-gold) 55%, transparent); }
@@ -15,16 +16,16 @@
 .column {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.6rem;
   min-width: 0;
-  padding: 0.85rem;
-  border-radius: 18px;
-  background: var(--admin-bg-surface);
-  border: 0.5px solid var(--admin-border-subtle);
+  padding: 0.6rem;
+  border-radius: 28px;
+  background: var(--tone-low);
 }
 
 .columnTitle {
   margin: 0;
+  padding: 0.4rem 0.5rem 0.2rem 0.75rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -34,49 +35,72 @@
 }
 
 .columnCount {
-  min-width: 24px;
-  padding: 0.1rem 0.45rem;
+  min-width: 26px;
+  padding: 0.15rem 0.5rem;
   border-radius: 9999px;
-  background: var(--admin-bg-raised-3);
-  color: var(--admin-text-warm);
+  background: var(--tone-secondary);
+  color: var(--tone-on-secondary);
   font-size: 0.72rem;
+  font-weight: 600;
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
-.columnEmpty { margin: 0; padding: 1.5rem 0.5rem; text-align: center; font-size: 0.8rem; color: var(--admin-text-warm); }
+.columnEmpty { margin: 0; padding: 1.75rem 0.5rem; text-align: center; font-size: 0.8rem; color: var(--admin-text-warm); }
 
 .mobileTabs { display: none; margin-bottom: 1rem; }
 
+/* Una columna por vez: la pestaña ya dice cuál es, así que la columna pierde
+   su contenedor y su título y las tarjetas usan todo el ancho. */
 @media (max-width: 1023px) {
   .board { grid-template-columns: 1fr; }
-  .column { display: none; }
+  .column { display: none; padding: 0; background: none; }
   .columnActive { display: flex; }
-  .mobileTabs { display: inline-flex; }
+  .columnTitle { display: none; }
+  .mobileTabs {
+    display: flex;
+    flex-wrap: nowrap;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .mobileTabs > * { flex-shrink: 0; }
 }
 
 /* ── Tarjeta ── */
 .card {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  padding: 0.85rem;
-  border-radius: 14px;
-  background: var(--admin-bg-raised);
-  border: 0.5px solid var(--admin-border-default);
+  gap: 0.7rem;
+  padding: 1rem;
+  border-radius: 22px;
+  border: 1px solid transparent;
+  background: var(--tone-high);
 }
 
+/* Pedido recién entrado: contorno de marca y un pulso corto. */
 .cardNew { border-color: var(--admin-gold); animation: newOrder 1.2s ease-out 3; }
 
-.cardLate { border-color: var(--admin-red-border); }
+/* Demorado: la tarjeta se tiñe de rojo en vez de sumar un borde. */
+.cardLate { background: color-mix(in srgb, var(--admin-red-text) 12%, var(--tone-high)); }
+
+.cardLate .cardTime { color: var(--admin-red-text); font-weight: 600; }
 
 .cardHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
 
 .cardId { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
 
-.cardNumber { font-size: 1.15rem; font-weight: 700; color: var(--admin-text-primary); font-variant-numeric: tabular-nums; }
+.cardNumber {
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--admin-text-primary);
+  font-variant-numeric: tabular-nums;
+}
 
 .table {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--admin-gold);
 }
@@ -86,13 +110,24 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 0.25rem 0.75rem;
+  margin-top: -0.35rem;
   font-size: 0.72rem;
   color: var(--admin-text-warm);
 }
 
+.cardTime { font-variant-numeric: tabular-nums; }
+
 .source { display: inline-flex; align-items: center; gap: 0.25rem; }
 
-.items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0.7rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  border-top: 1px solid var(--divider);
+}
 
 .item { display: flex; gap: 0.5rem; align-items: flex-start; }
 
@@ -100,13 +135,13 @@
   flex-shrink: 0;
   min-width: 2.2ch;
   font-weight: 700;
-  color: var(--admin-text-primary);
+  color: var(--admin-gold);
   font-variant-numeric: tabular-nums;
 }
 
-.itemText { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.itemText { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
 
-.itemTitle { font-size: 0.88rem; color: var(--admin-text-primary); }
+.itemTitle { font-size: 0.9rem; color: var(--admin-text-primary); }
 
 .itemTitle em { font-style: normal; color: var(--admin-text-warm); }
 
@@ -114,30 +149,48 @@
 .itemNotes {
   align-self: flex-start;
   font-size: 0.78rem;
-  font-weight: 500;
-  padding: 0.1rem 0.45rem;
-  border-radius: 6px;
-  color: var(--admin-gold);
-  background: var(--admin-gold-glow);
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 8px;
+  color: var(--tone-on-primary-container);
+  background: var(--tone-primary-container);
 }
 
 .orderNotes {
   margin: 0;
-  padding: 0.45rem 0.6rem;
-  border-radius: 8px;
-  font-size: 0.78rem;
-  color: var(--admin-text-secondary);
-  background: var(--admin-bg-base);
-  border-left: 2px solid var(--admin-gold);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 14px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--admin-text-primary);
+  background: var(--tone-highest);
 }
+
+.orderNotes svg { flex-shrink: 0; margin-top: 0.15em; color: var(--admin-gold); }
 
 .cardFoot { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
 
 .waiterSelect { flex: 1; min-width: 0; max-width: 200px; }
 
-.waiterSelect select { min-height: 36px; padding: 0.3rem 0.6rem; font-size: 0.78rem; }
+/* Selector compacto: secundario tonal, como un chip. */
+.waiterSelect select {
+  min-height: 36px;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  background: var(--tone-secondary);
+  color: var(--tone-on-secondary);
+  font-size: 0.78rem;
+}
 
-.total { font-size: 0.95rem; color: var(--admin-text-primary); font-variant-numeric: tabular-nums; }
+.total {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--admin-text-primary);
+  font-variant-numeric: tabular-nums;
+}
 
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 
@@ -145,7 +198,7 @@
 
 .cancelBtn { margin-left: auto; }
 
-.confirmText { font-size: 0.78rem; color: var(--admin-red-text); margin-right: auto; }
+.confirmText { font-size: 0.78rem; font-weight: 500; color: var(--admin-red-text); margin-right: auto; }
 
 /* ── Alta manual ── */
 .manualModal { max-width: 1000px; }
@@ -153,13 +206,13 @@
 .manualBody {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  gap: 1.25rem;
+  gap: 1.5rem;
   align-items: start;
 }
 
-.manualPicker { max-height: 62dvh; overflow-y: auto; padding-right: 0.25rem; }
+.manualPicker { max-height: 62dvh; overflow-y: auto; padding-right: 0.5rem; }
 
-.manualCart { display: flex; flex-direction: column; gap: 0.9rem; }
+.manualCart { display: flex; flex-direction: column; gap: 1rem; }
 
 .manualSummary { margin-right: auto; font-size: 0.8rem; color: var(--admin-text-warm); }
 

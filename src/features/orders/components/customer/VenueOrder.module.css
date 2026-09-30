@@ -1,16 +1,13 @@
-/* Pedido desde la mesa: reusa los tokens --t-* del template de la carta
-   (igual que CartDrawer) y los pasa a las variables --ol-* de los
-   componentes compartidos. */
+/* Pedido desde la mesa. Estilo tonal con los tokens de la paleta de la carta
+   (--tone-* se recalcula en [data-template], ver ESCALA TONAL en globals.css);
+   el drawer es el de CartDrawer y hereda sus ajustes por familia visual.
+   Acá se pasan los --t-* a las variables --ol-* de los componentes
+   compartidos. */
 
 .scope {
   --ol-text: var(--t-title);
   --ol-muted: var(--t-muted);
-  --ol-border: var(--t-border-md);
-  --ol-surface: var(--t-bg);
-  --ol-input-bg: var(--t-bg);
   --ol-accent: var(--t-accent);
-  --ol-accent-soft: color-mix(in srgb, var(--t-accent) 10%, transparent);
-  --ol-accent-border: color-mix(in srgb, var(--t-accent) 45%, transparent);
   --ol-danger: var(--t-offer);
 }
 
@@ -18,69 +15,77 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0.75rem 1.25rem;
+  padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.hint { margin: 0; font-size: 0.78rem; color: var(--t-muted); line-height: 1.45; }
+.hint { margin: 0; font-size: 0.78rem; color: var(--t-muted); line-height: 1.5; }
 
-.tableField { display: flex; flex-direction: column; gap: 0.35rem; }
+.tableField { display: flex; flex-direction: column; gap: 0.4rem; }
 
-.tableField span { font-size: 0.8rem; font-weight: 500; color: var(--t-title); }
+.tableField span { font-size: 0.8rem; font-weight: 600; color: var(--t-title); }
 
+/* Campo relleno, sin contorno (mismo tono que las aclaraciones). */
 .tableField select {
-  min-height: 44px;
-  padding: 0.5rem 0.75rem;
-  border-radius: 12px;
-  border: 0.5px solid var(--t-border-md);
-  background: var(--t-bg);
+  min-height: 48px;
+  padding: 0.5rem 0.9rem;
+  border: none;
+  border-radius: 16px;
+  background: var(--tone-highest);
   color: var(--t-title);
   font: inherit;
+  cursor: pointer;
 }
+
+.tableField select:focus-visible { outline: 2px solid var(--tone-focus); outline-offset: 1px; }
 
 .tableBadge {
   align-self: flex-start;
-  padding: 0.3rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
   border-radius: 9999px;
-  background: color-mix(in srgb, var(--t-accent) 12%, transparent);
-  color: var(--t-accent);
+  background: var(--tone-primary-container);
+  color: var(--tone-on-primary-container);
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
+.tableBadge svg { color: var(--t-accent); }
+
+/* Primario lleno, con la tinta que cada paleta define para sus botones. */
 .sendBtn {
   composes: md-button from global;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 48px;
+  min-height: 50px;
   padding: 0.75rem 1rem;
   border: none;
-  border-radius: var(--control-radius);
   background: var(--t-accent);
-  color: var(--t-bg);
+  color: var(--t-btn-text);
   font: inherit;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
 }
 
-.sendBtn:disabled { opacity: 0.55; cursor: not-allowed; }
-
 .error {
   margin: 0;
-  padding: 0.6rem 0.8rem;
-  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+  border-radius: 16px;
   font-size: 0.8rem;
+  line-height: 1.45;
   color: var(--t-offer);
-  background: color-mix(in srgb, var(--t-offer) 10%, transparent);
+  background: color-mix(in srgb, var(--t-offer) 14%, var(--tone-float));
 }
 
 .done {
-  padding: 2rem 1.25rem 1.5rem;
+  padding: 2rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -90,71 +95,143 @@
 }
 
 .doneIcon {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--t-status-open) 16%, transparent);
+  background: color-mix(in srgb, var(--t-status-open) 18%, var(--tone-float));
   color: var(--t-status-open);
 }
 
-.doneTitle { margin: 0; font-size: 1.15rem; font-weight: 600; }
+.doneTitle { margin: 0.25rem 0 0; font-family: var(--font-serif); font-size: 1.35rem; font-weight: 500; }
 
-.doneText { margin: 0; font-size: 0.85rem; color: var(--t-muted); line-height: 1.5; }
+.doneText { margin: 0; max-width: 32ch; font-size: 0.85rem; color: var(--t-muted); line-height: 1.55; }
 
-/* ── Aviso "estás en el local" arriba de la carta ── */
+.doneBtn { align-self: stretch; margin-top: 0.75rem; }
+
+/* ── Aviso "estás en el local" arriba de la carta ──
+   Contenedor del acento: se distingue de las tarjetas de productos sin
+   necesidad de contorno. */
 .banner {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 0.75rem;
+  gap: 0.75rem;
   margin: 0.5rem 1rem 0;
-  padding: 0.6rem 0.9rem;
-  border-radius: 14px;
-  border: 0.5px solid color-mix(in srgb, var(--t-accent) 35%, transparent);
-  background: color-mix(in srgb, var(--t-accent) 8%, transparent);
-  color: var(--t-title);
-  font-size: 0.82rem;
+  padding: 0.7rem 0.75rem 0.7rem 0.85rem;
+  border-radius: 20px;
+  background: var(--tone-primary-container);
+  color: var(--tone-on-primary-container);
 }
 
-.bannerText { display: flex; align-items: center; gap: 0.5rem; }
+.bannerIcon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--t-accent);
+  color: var(--t-btn-text);
+}
+
+.bannerText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.bannerText strong { font-size: 0.88rem; color: var(--t-title); }
 
 .bannerBtn {
-  min-height: 36px;
-  padding: 0 0.85rem;
-  border-radius: 9999px;
-  border: 0.5px solid var(--t-border-md);
+  composes: md-button from global;
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 0 0.95rem;
+  border: none;
   background: var(--t-bg);
   color: var(--t-title);
   font: inherit;
   font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 /* ── Historial del comensal ── */
 .historyList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
 
 .historyItem {
-  padding: 0.75rem;
-  border-radius: 12px;
-  border: 0.5px solid var(--t-border);
-  background: var(--t-bg);
+  padding: 0.9rem 1rem;
+  border-radius: 20px;
+  background: var(--tone-high);
 }
 
 .historyHead {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 0.5rem;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--t-muted);
-  margin-bottom: 0.4rem;
 }
 
-.historyHead strong { color: var(--t-title); }
+.historyHead strong { font-size: 0.88rem; color: var(--t-title); }
 
-.historyLines { margin: 0; padding-left: 1rem; font-size: 0.84rem; color: var(--t-title); }
+.historyLines {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0.6rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  border-top: 1px solid color-mix(in srgb, var(--t-accent) 12%, transparent);
+  font-size: 0.84rem;
+  color: var(--t-title);
+}
 
-.historyLines em { color: var(--t-muted); }
+.historyQty { font-weight: 700; color: var(--t-accent); margin-right: 0.35rem; font-variant-numeric: tabular-nums; }
+
+.historyLines em { font-style: normal; color: var(--t-muted); }
+
+.historyTotal {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--t-muted);
+}
+
+.historyTotal strong { font-size: 0.9rem; color: var(--t-title); font-variant-numeric: tabular-nums; }
+
+/* ── Familias visuales: mismo relieve que el carrito de WhatsApp ── */
+:global([data-menu-family="neo-brutalism"]) .sendBtn,
+:global([data-menu-family="neo-brutalism"]) .bannerBtn {
+  border: var(--nb-border-thin);
+  border-radius: var(--t-family-radius);
+  box-shadow: var(--nb-shadow-sm);
+}
+
+:global([data-menu-family="neo-brutalism"]) .banner,
+:global([data-menu-family="neo-brutalism"]) .historyItem {
+  border: var(--nb-border-thin);
+  border-radius: var(--t-family-radius);
+}
+
+:global([data-menu-family="tactile"]) .sendBtn {
+  min-height: 52px;
+  border-radius: 999px;
+  font-weight: 800;
+  box-shadow:
+    inset 0 -5px 0 rgba(0, 0, 0, 0.2),
+    inset 0 3px 0 rgba(255, 255, 255, 0.4),
+    0 5px 0 color-mix(in srgb, var(--t-accent) 55%, black);
+}
+
+:global([data-menu-family="tactile"]) .bannerBtn,
+:global([data-menu-family="tactile"]) .bannerIcon { box-shadow: var(--tx-puffy); }
