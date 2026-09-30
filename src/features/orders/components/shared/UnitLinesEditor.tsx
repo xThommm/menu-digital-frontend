@@ -47,6 +47,7 @@ export default function UnitLinesEditor({ lines, onChange, hidePrices = false, m
               <div className={s.qty}>
                 <button
                   type="button"
+                  className={s.qtyBtn}
                   onClick={() => replace(key, line.quantity > 1 ? withQuantity(line, line.quantity - 1) : null)}
                   aria-label={`Quitar una unidad de ${line.title}`}
                 >
@@ -55,6 +56,7 @@ export default function UnitLinesEditor({ lines, onChange, hidePrices = false, m
                 <span aria-live="polite">{line.quantity}</span>
                 <button
                   type="button"
+                  className={s.qtyBtn}
                   disabled={line.quantity >= maxQuantity}
                   onClick={() => replace(key, withQuantity(line, line.quantity + 1))}
                   aria-label={`Agregar una unidad de ${line.title}`}

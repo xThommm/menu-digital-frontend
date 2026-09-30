@@ -32,8 +32,10 @@ export default function VenueBanner({ slug, context, hidePrices, historyVersion 
   return (
     <>
       <div className={`${s.banner} ${s.scope}`} role="note">
+        <span className={s.bannerIcon}><MapPin size={18} aria-hidden /></span>
         <span className={s.bannerText}>
-          <MapPin size={16} aria-hidden /> <strong>{where}</strong> · {message}
+          <strong>{where}</strong>
+          <span>{message}</span>
         </span>
         {history.length > 0 && (
           <button type="button" className={s.bannerBtn} onClick={() => setHistoryOpen(true)}>
@@ -61,12 +63,12 @@ export default function VenueBanner({ slug, context, hidePrices, historyVersion 
                     <ul className={s.historyLines}>
                       {entry.items.map((item, index) => (
                         <li key={index}>
-                          {item.quantity}× {item.title}{item.option ? ` · ${item.option}` : ""}
+                          <span className={s.historyQty}>{item.quantity}×</span>{item.title}{item.option ? ` · ${item.option}` : ""}
                           {item.notes && <em> ({item.notes})</em>}
                         </li>
                       ))}
                     </ul>
-                    {!hidePrices && <div className={s.historyHead} style={{ marginTop: "0.4rem", marginBottom: 0 }}><span>Total</span><strong>{formatMoney(entry.total)}</strong></div>}
+                    {!hidePrices && <div className={s.historyTotal}><span>Total</span><strong>{formatMoney(entry.total)}</strong></div>}
                   </li>
                 ))}
               </ul>

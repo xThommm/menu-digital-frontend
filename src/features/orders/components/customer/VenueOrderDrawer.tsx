@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { CheckCircle2, Send } from "lucide-react";
+import { CheckCircle2, MapPin, Send } from "lucide-react";
 import { useCart } from "../../../../context/useCart";
 import type { CartLine } from "../../../../context/CartContext";
 import { sendCustomerOrder } from "../../api/publicOrdersApi";
@@ -126,7 +126,7 @@ export default function VenueOrderDrawer({
               {receipt.tableNumber ? `Mesa ${receipt.tableNumber}. ` : ""}
               Ya lo recibieron en el local: en cuanto esté te lo llevan a la mesa.
             </p>
-            <button type="button" className={s.sendBtn} style={{ alignSelf: "stretch", marginTop: "0.75rem" }} onClick={close}>
+            <button type="button" className={`${s.sendBtn} ${s.doneBtn}`} onClick={close}>
               Seguir mirando la carta
             </button>
           </div>
@@ -136,7 +136,7 @@ export default function VenueOrderDrawer({
           <>
             <div className={s.body}>
               {context.tableNumber ? (
-                <span className={s.tableBadge}>Mesa {context.tableNumber}</span>
+                <span className={s.tableBadge}><MapPin size={14} aria-hidden /> Mesa {context.tableNumber}</span>
               ) : (
                 <label className={s.tableField}>
                   <span>¿En qué mesa estás?</span>

@@ -199,16 +199,16 @@ function ScheduleEditor({ value, onChange }: { value: ShiftScheduleEntry[]; onCh
     <div className={p.stack} style={{ gap: "0.6rem" }}>
       {value.length === 0 && <p className={p.switchHint}>Sin horarios cargados: cada turno se nombra con la fecha y hora de apertura.</p>}
       {value.map((entry, index) => (
-        <div key={index} className={p.row}>
+        <div key={index} className={p.shiftEntry}>
           <label className={p.field}>
             <span className={p.label}>Nombre</span>
             <input className={p.input} value={entry.name} maxLength={40} onChange={e => set(index, { name: e.target.value })} placeholder="Mediodía" />
           </label>
-          <label className={p.field} style={{ flex: "0 1 110px" }}>
+          <label className={p.field}>
             <span className={p.label}>Desde</span>
             <input className={p.input} type="time" value={entry.from} onChange={e => set(index, { from: e.target.value })} />
           </label>
-          <label className={p.field} style={{ flex: "0 1 110px" }}>
+          <label className={p.field}>
             <span className={p.label}>Hasta</span>
             <input className={p.input} type="time" value={entry.to} onChange={e => set(index, { to: e.target.value })} />
           </label>

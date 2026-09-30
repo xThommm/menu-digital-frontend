@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import DataTable, { type DataTableColumn } from "../../../../components/Common/DataTable/DataTable";
 import { closeShift, getShiftSummary, listShifts, openShift } from "../../api/ordersApi";
 import { errorCode, errorMessage } from "../../lib/errors";
 import { formatDateTime, formatMoney, SOURCE_LABEL } from "../../lib/format";
@@ -148,44 +149,42 @@ export default function CashPage() {
       {shifts && shifts.shifts.some(shift => shift.closedAt) && (
         <section className={p.card} style={{ marginTop: "1.5rem" }}>
           <h2 className={p.cardTitle}>Turnos cerrados</h2>
-          <div className={p.tableWrap}>
-            <table className={p.table}>
-              <thead>
-                <tr>
-                  <th>Turno</th>
-                  <th>Apertura</th>
-                  <th>Cierre</th>
-                  <th className={p.num}>Pedidos</th>
-                  <th className={p.num}>Vendido</th>
-                  <th className={p.num}>Efectivo contado</th>
-                  <th aria-label="Acciones" />
-                </tr>
-              </thead>
-              <tbody>
-                {shifts.shifts.filter(shift => shift.closedAt).map(shift => (
-                  <tr key={shift.id}>
-                    <td>{shift.label}</td>
-                    <td>{formatDateTime(shift.openedAt)}</td>
-                    <td>{shift.closedAt ? formatDateTime(shift.closedAt) : "—"}</td>
-                    <td className={p.num}>{shift.ordersCount ?? 0}</td>
-                    <td className={p.num}>{formatMoney(shift.totalAmount ?? 0)}</td>
-                    <td className={p.num}>{shift.cashCounted === null ? "—" : formatMoney(shift.cashCounted)}</td>
-                    <td>
-                      <div className={p.headerActions}>
-                        <button type="button" className={`${p.btnGhost} ${p.small}`} onClick={() => showShift(shift)}>Resumen</button>
-                        <Link className={`${p.btnGhost} ${p.small}`} to={`/pedidos/historial?turno=${shift.id}`}>Pedidos</Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className={p.pager}>
-            <button type="button" className={`${p.btn} ${p.small}`} disabled={page <= 1} onClick={() => setPage(prev => prev - 1)}>Anterior</button>
-            <span>Página {page} de {pages}</span>
-            <button type="button" className={`${p.btn} ${p.small}`} disabled={page >= pages} onClick={() => setPage(prev => prev + 1)}>Siguiente</button>
-          </div>
+          {/* Viene paginado del servidor: sin orden por columna (ver OrdersHistory). */}
+          <DataTable<Shift>
+            caption="Turnos cerrados"
+            rows={shifts.shifts.filter(shift => shift.closedAt)}
+            columns={[
+              { id: "label", header: "Turno", width: "170px", render: shift => shift.label },
+              { id: "opened", header: "Apertura", width: "170px", render: shift => formatDateTime(shift.openedAt) },
+              { id: "closed", header: "Cierre", width: "170px", render: shift => (shift.closedAt ? formatDateTime(shift.closedAt) : "—") },
+              { id: "orders", header: "Pedidos", width: "100px", align: "right", render: shift => shift.ordersCount ?? 0 },
+              { id: "total", header: "Vendido", width: "120px", align: "right", render: shift => formatMoney(shift.totalAmount ?? 0) },
+              { id: "cash", header: "Efectivo contado", width: "150px", align: "right", render: shift => (shift.cashCounted === null ? "—" : formatMoney(shift.cashCounted)) },
+              {
+                id: "actions",
+                header: "",
+                headerLabel: "Acciones",
+                width: "200px",
+                resizable: false,
+                render: shift => (
+                  <div className={p.headerActions}>
+                    <button type="button" className={`${p.btnGhost} ${p.small}`} onClick={() => showShift(shift)}>Resumen</button>
+                    <Link className={`${p.btnGhost} ${p.small}`} to={`/pedidos/historial?turno=${shift.id}`}>Pedidos</Link>
+                  </div>
+                ),
+              },
+            ]}
+            getRowId={shift => String(shift.id)}
+            minWidth={900}
+            countLabel={visible => `${visible} ${visible === 1 ? "turno" : "turnos"} en esta página`}
+            footer={pages > 1 && (
+              <div className={p.pager}>
+                <button type="button" className={`${p.btn} ${p.small}`} disabled={page <= 1} onClick={() => setPage(prev => prev - 1)}>Anterior</button>
+                <span>Página {page} de {pages}</span>
+                <button type="button" className={`${p.btn} ${p.small}`} disabled={page >= pages} onClick={() => setPage(prev => prev + 1)}>Siguiente</button>
+              </div>
+            )}
+          />
         </section>
       )}
 
@@ -219,25 +218,25 @@ function SummaryView({ summary }: { summary: ShiftSummary }) {
         <Stat label="Preparación promedio" value={summary.averagePrepMinutes === null ? "—" : `${summary.averagePrepMinutes} min`} />
       </div>
 
-      <div className={p.grid}>
+      <div className={p.summaryGrid}>
         <MiniTable
           title="Productos más pedidos"
-          rows={summary.topProducts.map(row => [`${row.title}${row.option ? ` · ${row.option}` : ""}`, String(row.quantity), formatMoney(row.amount)])}
+          rows={summary.topProducts.map(row => ({ label: `${row.title}${row.option ? ` · ${row.option}` : ""}`, count: row.quantity, amount: row.amount }))}
           head={["Producto", "Cant.", "Total"]}
         />
         <MiniTable
           title="Por mozo"
-          rows={summary.byWaiter.map(row => [row.name, String(row.count), formatMoney(row.amount)])}
+          rows={summary.byWaiter.map(row => ({ label: row.name, count: row.count, amount: row.amount }))}
           head={["Mozo", "Pedidos", "Total"]}
         />
         <MiniTable
           title="Por origen"
-          rows={summary.bySource.map(row => [SOURCE_LABEL[row.source], String(row.count), formatMoney(row.amount)])}
+          rows={summary.bySource.map(row => ({ label: SOURCE_LABEL[row.source], count: row.count, amount: row.amount }))}
           head={["Origen", "Pedidos", "Total"]}
         />
         <MiniTable
           title="Por mesa"
-          rows={summary.byTable.map(row => [`Mesa ${row.tableNumber}`, String(row.count), formatMoney(row.amount)])}
+          rows={summary.byTable.map(row => ({ label: `Mesa ${row.tableNumber}`, count: row.count, amount: row.amount }))}
           head={["Mesa", "Pedidos", "Total"]}
         />
       </div>
@@ -254,20 +253,31 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function MiniTable({ title, head, rows }: { title: string; head: string[]; rows: string[][] }) {
+// Fila de las tablas del resumen: una etiqueta, una cantidad y un monto.
+interface SummaryRow {
+  label: string;
+  count: number;
+  amount: number;
+}
+
+// Tablas chicas del resumen: están completas (no paginan), así que se pueden
+// ordenar. Sin barra de herramientas: no tienen filtros ni anchos ajustables.
+function MiniTable({ title, head, rows }: { title: string; head: [string, string, string]; rows: SummaryRow[] }) {
+  const columns: DataTableColumn<SummaryRow>[] = [
+    { id: "label", header: head[0], resizable: false, sortValue: row => row.label, render: row => row.label },
+    { id: "count", header: head[1], align: "right", resizable: false, initialDirection: "desc", sortValue: row => row.count, render: row => row.count },
+    { id: "amount", header: head[2], align: "right", resizable: false, initialDirection: "desc", sortValue: row => row.amount, render: row => formatMoney(row.amount) },
+  ];
   return (
     <section className={p.card}>
       <h3 className={p.cardTitle}>{title}</h3>
-      {rows.length === 0 ? <p className={p.empty} style={{ padding: "0.5rem 0" }}>Sin datos todavía.</p> : (
-        <table className={p.table}>
-          <thead><tr>{head.map((cell, index) => <th key={cell} className={index > 0 ? p.num : undefined}>{cell}</th>)}</tr></thead>
-          <tbody>
-            {rows.map((row, rowIndex) => (
-              <tr key={rowIndex}>{row.map((cell, index) => <td key={index} className={index > 0 ? p.num : undefined}>{cell}</td>)}</tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <DataTable<SummaryRow>
+        caption={title}
+        rows={rows}
+        columns={columns}
+        getRowId={row => row.label}
+        emptyMessage="Sin datos todavía."
+      />
     </section>
   );
 }
