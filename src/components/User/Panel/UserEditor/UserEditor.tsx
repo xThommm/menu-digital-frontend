@@ -484,12 +484,6 @@ export default function UserEditorPage() {
     return true;
   };
 
-  // Cambiar el nombre cambia el slug de la carta pública (generateUniqueSlug
-  // en el backend) y por lo tanto la URL que codifica cualquier QR ya
-  // impreso o compartido — se confirma aparte para que el dueño no se lo
-  // pierda en medio del resto de los cambios de "Info".
-  const businessNameChanged = form.businessName.trim() !== initialFormRef.current.businessName.trim();
-
   // Save info
   const saveInfo = async () => {
     const trimmedMail = form.mail.trim();
@@ -560,10 +554,14 @@ export default function UserEditorPage() {
     }
   };
 
-  // Si el nombre cambió, primero se confirma en un modal (ver
-  // businessNameChanged); si no, se guarda directo.
+  // Cambiar el nombre cambia el slug de la carta pública (generateUniqueSlug
+  // en el backend) y por lo tanto la URL que codifica cualquier QR ya
+  // impreso o compartido — se confirma aparte en un modal para que el dueño
+  // no se lo pierda en medio del resto de los cambios de "Info". Si no
+  // cambió, se guarda directo.
   const handleSaveClick = () => {
     if (!validateInfoForm()) return;
+    const businessNameChanged = form.businessName.trim() !== initialFormRef.current.businessName.trim();
     if (businessNameChanged) {
       setNameChangeConfirmOpen(true);
       return;
