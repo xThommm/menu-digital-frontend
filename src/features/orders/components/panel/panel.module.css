@@ -456,6 +456,66 @@
 
 .pager { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-top: 1rem; font-size: 0.8rem; }
 
+/* ── Sesiones de mesa ──
+   Cada mesa abierta es un bloque tonal; la cuenta va un tono arriba. */
+.tableGrid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); align-items: start; }
+
+.tableCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border-radius: 24px;
+  background: var(--tone);
+}
+
+.tableHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+
+.tableName {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  line-height: 1.1;
+  color: var(--admin-text-primary);
+}
+
+.tableMeta { font-size: 0.75rem; color: var(--admin-text-warm); line-height: 1.5; }
+
+.tableTotal {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--admin-text-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.guestsField { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; color: var(--admin-text-warm); }
+
+.guestsField input { width: 84px; min-height: 36px; }
+
+/* Cuenta consolidada de la mesa. */
+.bill { padding: 0.75rem 0.9rem; border-radius: 18px; background: var(--tone-high); }
+
+.billLines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+
+.billLine { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.5rem; font-size: 0.85rem; color: var(--admin-text-primary); }
+
+.billQty { font-weight: 700; color: var(--admin-gold); font-variant-numeric: tabular-nums; }
+
+.billTitle em { font-style: normal; color: var(--admin-text-warm); }
+
+.billAmount { font-variant-numeric: tabular-nums; color: var(--admin-text-secondary); }
+
+.billTotal {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--divider);
+  font-size: 0.9rem;
+  color: var(--admin-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 640px) {
   .page { padding: 1rem 1rem 3rem; }
 }

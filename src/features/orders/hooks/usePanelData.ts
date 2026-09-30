@@ -40,7 +40,7 @@ export const useOrderSettings = () =>
   useLoadable<SettingsResponse>(getOrderSettings, "No se pudo cargar la configuración de pedidos.");
 
 export const useWaiters = () =>
-  useLoadable<Waiter[]>(listWaiters, "No se pudieron cargar los mozos.");
+  useLoadable<Waiter[]>(listWaiters, "No se pudieron cargar los operadores.");
 
 export function useOrderingMenu(slug: string | undefined) {
   const load = useCallback(() => {

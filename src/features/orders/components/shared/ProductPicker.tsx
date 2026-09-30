@@ -8,7 +8,7 @@ import { formatMoney } from "../../lib/format";
 import s from "./ProductPicker.module.css";
 
 // Buscador de productos de la carta para cargar pedidos a mano (tomador de
-// pedidos del mozo y alta manual del panel). Trabaja sobre la carta pública
+// pedidos del operador y alta manual del panel). Trabaja sobre la carta pública
 // v2: solo lo visible, con los no disponibles marcados.
 
 export interface PickedProduct {

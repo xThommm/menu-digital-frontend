@@ -1,6 +1,7 @@
 import apiClient from "../../../api/client";
 import type {
-  BoardResponse, Order, OrderLineInput, OrderSettings, OrderStatus, SettingsResponse, Shift, ShiftSummary, Waiter,
+  BoardResponse, CashRegister, CashSession, Order, OrderLineInput, OrderOptions, OrderSettings, OrderStatus,
+  ServiceInput, ServiceType, SettingsResponse, Shift, ShiftSummary, TableSession, Waiter, WaiterDeviceSession,
 } from "../types";
 
 // API del panel del dueño (JWT del panel vía apiClient). Ver
@@ -11,7 +12,7 @@ export const getOrderSettings = async (): Promise<SettingsResponse> =>
   (await apiClient.get<SettingsResponse>("/orders/settings")).data;
 
 export const updateOrderSettings = async (
-  data: Partial<Omit<OrderSettings, "generalQrToken" | "updatedAt">>
+  data: Partial<Omit<OrderSettings, "generalQrToken" | "updatedAt" | "options">> & { options?: Partial<OrderOptions> }
 ): Promise<SettingsResponse> => (await apiClient.put<SettingsResponse>("/orders/settings", data)).data;
 
 // target: "general" | "all" | número de mesa
@@ -25,6 +26,7 @@ export const getBoard = async (): Promise<BoardResponse> =>
 export interface OrdersQuery {
   shiftId?: number;
   status?: OrderStatus;
+  serviceType?: ServiceType;
   from?: string;
   to?: string;
   table?: number;
@@ -34,20 +36,36 @@ export interface OrdersQuery {
 export const listOrders = async (params: OrdersQuery) =>
   (await apiClient.get<{ orders: Order[]; total: number; page: number; pageSize: number }>("/orders/orders", { params })).data;
 
-export const createPanelOrder = async (data: {
+export const createPanelOrder = async (data: ServiceInput & {
   items: OrderLineInput[];
-  tableNumber?: number | null;
   waiterId?: number | null;
   notes?: string;
+  clientRequestId: string;
 }): Promise<Order> => (await apiClient.post<{ order: Order }>("/orders/orders", data)).data.order;
 
-export const updateOrderStatus = async (id: number, status: OrderStatus): Promise<Order> =>
-  (await apiClient.patch<{ order: Order }>(`/orders/orders/${id}/status`, { status })).data.order;
+// reason: motivo de la anulación o devolución (opcional).
+export const updateOrderStatus = async (id: number, status: OrderStatus, reason?: string): Promise<Order> =>
+  (await apiClient.patch<{ order: Order }>(`/orders/orders/${id}/status`, { status, reason })).data.order;
 
 export const assignOrderWaiter = async (id: number, waiterId: number | null): Promise<Order> =>
   (await apiClient.patch<{ order: Order }>(`/orders/orders/${id}/waiter`, { waiterId })).data.order;
 
-// ── Turnos y caja ──
+// ── Sesiones de mesa ──
+export const listTableSessions = async (status: "open" | "closed", page = 1) =>
+  (await apiClient.get<{ sessions: TableSession[]; total: number; page: number; pageSize: number }>(
+    "/orders/table-sessions", { params: { status, page } }
+  )).data;
+
+export const getTableSession = async (id: number): Promise<TableSession> =>
+  (await apiClient.get<{ session: TableSession }>(`/orders/table-sessions/${id}`)).data.session;
+
+export const closeTableSession = async (id: number, force = false): Promise<TableSession> =>
+  (await apiClient.post<{ session: TableSession }>(`/orders/table-sessions/${id}/close`, { force })).data.session;
+
+export const setTableGuests = async (id: number, guests: number | null): Promise<TableSession> =>
+  (await apiClient.patch<{ session: TableSession }>(`/orders/table-sessions/${id}`, { guests })).data.session;
+
+// ── Turnos ──
 export const listShifts = async (page = 1) =>
   (await apiClient.get<{ shifts: Shift[]; total: number; page: number; pageSize: number }>("/orders/shifts", { params: { page } })).data;
 
@@ -57,10 +75,40 @@ export const openShift = async (): Promise<Shift> =>
 export const getShiftSummary = async (id: number | "current") =>
   (await apiClient.get<{ shift: Shift | null; summary: ShiftSummary | null }>(`/orders/shifts/${id}/summary`)).data;
 
-export const closeShift = async (data: { cashCounted?: number | null; notes?: string; force?: boolean }): Promise<Shift> =>
+export const closeShift = async (data: { notes?: string; force?: boolean }): Promise<Shift> =>
   (await apiClient.post<{ shift: Shift }>("/orders/shifts/current/close", data)).data.shift;
 
-// ── Mozos ──
+// ── Caja (independiente del turno) ──
+export const listCashRegisters = async (): Promise<CashRegister[]> =>
+  (await apiClient.get<{ registers: CashRegister[] }>("/orders/cash/registers")).data.registers;
+
+export const createCashRegister = async (name: string): Promise<CashRegister> =>
+  (await apiClient.post<{ register: CashRegister }>("/orders/cash/registers", { name })).data.register;
+
+export const updateCashRegister = async (id: number, data: { name?: string; active?: boolean }): Promise<CashRegister> =>
+  (await apiClient.put<{ register: CashRegister }>(`/orders/cash/registers/${id}`, data)).data.register;
+
+export const listOpenCash = async (): Promise<CashSession[]> =>
+  (await apiClient.get<{ sessions: CashSession[] }>("/orders/cash/sessions/open")).data.sessions;
+
+export const listClosedCash = async (page = 1) =>
+  (await apiClient.get<{ sessions: CashSession[]; total: number; page: number; pageSize: number }>(
+    "/orders/cash/sessions", { params: { page } }
+  )).data;
+
+export const getCashSession = async (id: number): Promise<CashSession> =>
+  (await apiClient.get<{ session: CashSession }>(`/orders/cash/sessions/${id}`)).data.session;
+
+export const openCash = async (data: { registerId?: number; cashierName?: string; openingAmount?: number | null }): Promise<CashSession> =>
+  (await apiClient.post<{ session: CashSession }>("/orders/cash/sessions", data)).data.session;
+
+export const updateCash = async (id: number, data: { cashierName?: string; openingAmount?: number | null }): Promise<CashSession> =>
+  (await apiClient.patch<{ session: CashSession }>(`/orders/cash/sessions/${id}`, data)).data.session;
+
+export const closeCash = async (id: number, data: { cashCounted?: number | null; notes?: string }): Promise<CashSession> =>
+  (await apiClient.post<{ session: CashSession }>(`/orders/cash/sessions/${id}/close`, data)).data.session;
+
+// ── Operadores (en la API: waiters) ──
 export const listWaiters = async (): Promise<Waiter[]> =>
   (await apiClient.get<{ waiters: Waiter[] }>("/orders/waiters")).data.waiters;
 
@@ -79,6 +127,13 @@ export const deleteWaiter = async (id: number): Promise<void> => {
 export const issuePairingCode = async (id: number) =>
   (await apiClient.post<{ code: string; expiresAt: string }>(`/orders/waiters/${id}/pairing-code`)).data;
 
+export const listWaiterSessions = async (id: number): Promise<WaiterDeviceSession[]> =>
+  (await apiClient.get<{ sessions: WaiterDeviceSession[] }>(`/orders/waiters/${id}/sessions`)).data.sessions;
+
 export const revokeWaiterSessions = async (id: number): Promise<void> => {
   await apiClient.delete(`/orders/waiters/${id}/sessions`);
+};
+
+export const revokeWaiterSession = async (id: number, sessionId: number): Promise<void> => {
+  await apiClient.delete(`/orders/waiters/${id}/sessions/${sessionId}`);
 };

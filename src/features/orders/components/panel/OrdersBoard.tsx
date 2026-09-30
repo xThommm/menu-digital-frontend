@@ -142,7 +142,7 @@ export default function OrdersBoard() {
     try {
       replaceOrder(await assignOrderWaiter(order.id, waiterId));
     } catch (err) {
-      setActionError(errorMessage(err, "No se pudo asignar el mozo."));
+      setActionError(errorMessage(err, "No se pudo asignar el operador."));
     } finally {
       setBusyId(null);
     }

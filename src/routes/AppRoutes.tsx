@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { lazy } from "react";
 import RouteSEO from "../components/Common/RouteSeo";
 
@@ -165,10 +165,11 @@ const UserMenu = lazy(
 const OrdersLayout = lazy(() => import("../features/orders/components/panel/OrdersLayout"));
 const OrdersBoard = lazy(() => import("../features/orders/components/panel/OrdersBoard"));
 const OrdersHistory = lazy(() => import("../features/orders/components/panel/OrdersHistory"));
+const TablesPage = lazy(() => import("../features/orders/components/panel/TablesPage"));
 const WaitersPage = lazy(() => import("../features/orders/components/panel/WaitersPage"));
 const CashPage = lazy(() => import("../features/orders/components/panel/CashPage"));
 const OrdersSettingsPage = lazy(() => import("../features/orders/components/panel/OrdersSettingsPage"));
-// Tomador de pedidos del mozo: público, se entra con el QR de acceso.
+// Tomador de pedidos del operador: público, se entra con el QR de acceso.
 const WaiterApp = lazy(() => import("../features/orders/components/waiter/WaiterApp"));
 
 // ─────────────────────────────────────────────
@@ -341,8 +342,11 @@ export default function AppRoutes() {
           {/* Gestión de pedidos: sección con su propia barra lateral (plan Pro). */}
           <Route element={<OrdersLayout />}>
             <Route path="/pedidos" element={<OrdersBoard />} />
+            <Route path="/pedidos/mesas" element={<TablesPage />} />
             <Route path="/pedidos/historial" element={<OrdersHistory />} />
-            <Route path="/pedidos/mozos" element={<WaitersPage />} />
+            <Route path="/pedidos/operadores" element={<WaitersPage />} />
+            {/* Ruta vieja (antes "Mozos"). */}
+            <Route path="/pedidos/mozos" element={<Navigate to="/pedidos/operadores" replace />} />
             <Route path="/pedidos/caja" element={<CashPage />} />
             <Route path="/pedidos/configuracion" element={<OrdersSettingsPage />} />
           </Route>
@@ -364,6 +368,12 @@ export default function AppRoutes() {
           element={<UserMenu />}
         />
 
+        <Route
+          path="/:slug/operador"
+          element={<WaiterApp />}
+        />
+
+        {/* QR de acceso generados antes del cambio de nombre. */}
         <Route
           path="/:slug/mozo"
           element={<WaiterApp />}

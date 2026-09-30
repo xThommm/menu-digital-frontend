@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Check, ChefHat, HandPlatter, MessageSquareText, QrCode, Smartphone, UserRound, X } from "lucide-react";
-import { elapsedLabel, formatMoney, formatTime, STATUS_LABEL } from "../../lib/format";
+import { Check, ChefHat, HandPlatter, MapPin, MessageSquareText, Phone, QrCode, Smartphone, UserRound, X } from "lucide-react";
+import { elapsedLabel, formatMoney, formatTime, placeLabel, STATUS_LABEL } from "../../lib/format";
 import type { Order, OrderStatus, Waiter } from "../../types";
 import p from "./panel.module.css";
 import s from "./OrdersBoard.module.css";
 
 // Tarjeta de un pedido en el panel: todo lo necesario para prepararlo y
-// entregarlo (productos, cantidades, aclaraciones, mesa, mozo, estado) y los
+// entregarlo (productos, cantidades, aclaraciones, destino, operador, estado) y los
 // botones para avanzarlo.
 
 interface Props {
@@ -25,7 +25,25 @@ const SOURCE_ICON = {
   panel: <UserRound size={13} aria-hidden />,
 };
 
-const SOURCE_TEXT = { customer: "QR", waiter: "Mozo", panel: "Panel" };
+const SOURCE_TEXT = { customer: "QR", waiter: "Operador", panel: "Panel" };
+
+// Datos de quien retira (take away) o recibe (delivery), si se cargaron.
+export function CustomerInfo({ order }: { order: Order }) {
+  if (order.serviceType !== "takeaway" && order.serviceType !== "delivery") return null;
+  const who = [order.customerName, order.customerPhone].filter(Boolean).join(" · ");
+  if (!who && !order.deliveryAddress && !order.deliveryNotes) return null;
+  return (
+    <div className={s.customerInfo}>
+      {who && (
+        <span className={s.customerLine}>
+          {order.customerPhone ? <Phone size={13} aria-hidden /> : <UserRound size={13} aria-hidden />} {who}
+        </span>
+      )}
+      {order.deliveryAddress && <span className={s.customerLine}><MapPin size={13} aria-hidden /> {order.deliveryAddress}</span>}
+      {order.deliveryNotes && <span className={s.customerLine}><MessageSquareText size={13} aria-hidden /> {order.deliveryNotes}</span>}
+    </div>
+  );
+}
 
 export default function OrderCard({ order, waiters, now, highlight = false, busy = false, onStatus, onWaiter }: Props) {
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -37,7 +55,7 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
       <header className={s.cardHead}>
         <div className={s.cardId}>
           <span className={s.cardNumber}>#{order.number}</span>
-          <span className={s.table}>{order.tableNumber ? `Mesa ${order.tableNumber}` : "Sin mesa"}</span>
+          <span className={s.table}>{placeLabel(order)}</span>
         </div>
         <span className={`${p.status} ${p[`status_${order.status}`]}`}>{STATUS_LABEL[order.status]}</span>
       </header>
@@ -68,17 +86,19 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
         </p>
       )}
 
+      <CustomerInfo order={order} />
+
       <div className={s.cardFoot}>
         <label className={s.waiterSelect}>
-          <span className="sr-only">Mozo</span>
+          <span className="sr-only">Operador</span>
           <select
             className={p.select}
             value={order.waiterId ?? ""}
             disabled={busy}
             onChange={event => onWaiter(order, event.target.value ? Number(event.target.value) : null)}
-            aria-label={`Mozo del pedido ${order.number}`}
+            aria-label={`Operador del pedido ${order.number}`}
           >
-            <option value="">{order.waiterName && !order.waiterId ? order.waiterName : "Sin mozo"}</option>
+            <option value="">{order.waiterName && !order.waiterId ? order.waiterName : "Sin operador"}</option>
             {waiters.filter(waiter => waiter.active || waiter.id === order.waiterId).map(waiter => (
               <option key={waiter.id} value={waiter.id}>{waiter.name}</option>
             ))}

@@ -1,19 +1,22 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "../../../../context/useAuth";
 import { createPanelOrder } from "../../api/ordersApi";
 import { useOrderingMenu } from "../../hooks/usePanelData";
 import { errorMessage } from "../../lib/errors";
 import { formatMoney } from "../../lib/format";
+import { uuid } from "../../lib/storage";
 import { lineKey, toOrderLines, unitsCount, unitsTotal, type UnitLine } from "../../lib/units";
 import type { Order, Waiter } from "../../types";
 import ProductPicker, { type PickedProduct } from "../shared/ProductPicker";
+import { emptyService, serviceReady, toServiceInput, type ServiceDraft } from "../../lib/service";
+import ServiceFields from "../shared/ServiceFields";
 import UnitLinesEditor from "../shared/UnitLinesEditor";
 import p from "./panel.module.css";
 import s from "./OrdersBoard.module.css";
 
-// Alta manual de un pedido desde el panel (ej. un pedido en la barra o por
-// teléfono). Entra confirmado.
+// Alta manual de un pedido desde el panel (ej. un pedido en la barra, por
+// teléfono o un delivery). Entra confirmado.
 
 interface Props {
   tableCount: number;
@@ -26,11 +29,14 @@ export default function ManualOrderModal({ tableCount, waiters, onClose, onCreat
   const { user } = useAuth();
   const menu = useOrderingMenu(user?.slug);
   const [lines, setLines] = useState<UnitLine[]>([]);
-  const [tableNumber, setTableNumber] = useState("");
+  const [service, setService] = useState<ServiceDraft>(() => emptyService("counter"));
   const [waiterId, setWaiterId] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Mismo contenido = mismo id de envío: un doble clic o un reintento tras
+  // un corte de red no duplica el pedido.
+  const request = useRef<{ key: string; id: string } | null>(null);
   const hidePrices = menu.data?.user.menuDisplay?.hidePrices === true;
 
   const addProduct = (product: PickedProduct) => {
@@ -43,16 +49,16 @@ export default function ManualOrderModal({ tableCount, waiters, onClose, onCreat
   };
 
   const submit = async () => {
-    if (lines.length === 0) return;
+    if (lines.length === 0 || !serviceReady(service)) return;
+    const items = toOrderLines(lines);
+    const payload = { ...toServiceInput(service), items, waiterId: waiterId ? Number(waiterId) : null, notes: notes.trim() || undefined };
+    const key = JSON.stringify(payload);
+    if (request.current?.key !== key) request.current = { key, id: uuid() };
     setSaving(true);
     setError(null);
     try {
-      const order = await createPanelOrder({
-        items: toOrderLines(lines),
-        tableNumber: tableNumber ? Number(tableNumber) : null,
-        waiterId: waiterId ? Number(waiterId) : null,
-        notes: notes.trim() || undefined,
-      });
+      const order = await createPanelOrder({ ...payload, clientRequestId: request.current.id });
+      request.current = null;
       onCreated(order);
     } catch (err) {
       setError(errorMessage(err, "No se pudo cargar el pedido."));
@@ -77,26 +83,17 @@ export default function ManualOrderModal({ tableCount, waiters, onClose, onCreat
           </section>
 
           <section className={s.manualCart} aria-label="Pedido">
-            <div className={p.row}>
-              <label className={p.field}>
-                <span className={p.label}>Mesa</span>
-                <select className={p.select} value={tableNumber} onChange={event => setTableNumber(event.target.value)}>
-                  <option value="">Sin mesa (barra / para llevar)</option>
-                  {Array.from({ length: tableCount }, (_, index) => (
-                    <option key={index + 1} value={index + 1}>Mesa {index + 1}</option>
-                  ))}
-                </select>
-              </label>
-              <label className={p.field}>
-                <span className={p.label}>Mozo</span>
-                <select className={p.select} value={waiterId} onChange={event => setWaiterId(event.target.value)}>
-                  <option value="">Sin asignar</option>
-                  {waiters.filter(waiter => waiter.active).map(waiter => (
-                    <option key={waiter.id} value={waiter.id}>{waiter.name}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
+            <ServiceFields value={service} onChange={setService} tableCount={tableCount} />
+
+            <label className={p.field}>
+              <span className={p.label}>Operador</span>
+              <select className={p.select} value={waiterId} onChange={event => setWaiterId(event.target.value)}>
+                <option value="">Sin asignar</option>
+                {waiters.filter(waiter => waiter.active).map(waiter => (
+                  <option key={waiter.id} value={waiter.id}>{waiter.name}</option>
+                ))}
+              </select>
+            </label>
 
             <UnitLinesEditor lines={lines} onChange={setLines} hidePrices={hidePrices} />
 
@@ -120,8 +117,8 @@ export default function ManualOrderModal({ tableCount, waiters, onClose, onCreat
             {unitsCount(lines)} producto(s){!hidePrices && ` · ${formatMoney(unitsTotal(lines))}`}
           </span>
           <button type="button" className={p.btn} onClick={onClose}>Cancelar</button>
-          <button type="button" className={p.btnPrimary} disabled={saving || lines.length === 0} onClick={submit}>
-            {saving ? "Guardando…" : "Cargar pedido"}
+          <button type="button" className={p.btnPrimary} disabled={saving || lines.length === 0 || !serviceReady(service)} onClick={submit}>
+            {saving ? "Guardando…" : service.serviceType === "table" && !service.table ? "Elegí la mesa" : "Cargar pedido"}
           </button>
         </footer>
       </div>

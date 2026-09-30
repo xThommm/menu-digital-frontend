@@ -1,8 +1,8 @@
 import { isObject, readJson, removeKey, writeJson } from "./storage";
 
-// Sesión del tomador de pedidos en el dispositivo del mozo. El token lo da
+// Sesión del tomador de pedidos en el dispositivo del operador. El token lo da
 // el backend al canjear el QR y se guarda por local (un mismo celular podría
-// trabajar en dos locales). Si el dueño cierra la sesión o pausa al mozo, el
+// trabajar en dos locales). Si el dueño cierra la sesión o pausa al operador, el
 // backend responde 401 y se borra.
 export interface StoredWaiterSession {
   token: string;

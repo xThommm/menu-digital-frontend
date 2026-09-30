@@ -7,7 +7,7 @@ import cart from "../../../../components/User/Home/Menu/CartDrawer.module.css";
 import s from "./VenueOrder.module.css";
 
 // Aviso arriba de la carta cuando el comensal escaneó el QR del local: su
-// mesa, si puede pedir desde acá o tiene que pedírselo al mozo, y acceso a
+// mesa, si puede pedir desde acá o tiene que pedírselo al personal, y acceso a
 // los pedidos que ya hizo (historial en su navegador).
 
 interface Props {
@@ -27,7 +27,7 @@ export default function VenueBanner({ slug, context, hidePrices, historyVersion 
   const where = context.tableNumber ? `Mesa ${context.tableNumber}` : "Estás en el local";
   const message = context.ordering
     ? "Armá tu pedido y envialo desde acá."
-    : "Para pedir, llamá a un mozo.";
+    : "Para pedir, llamá a alguien del personal.";
 
   return (
     <>

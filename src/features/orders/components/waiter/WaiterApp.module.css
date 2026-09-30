@@ -1,7 +1,84 @@
-/* Tomador de pedidos: pantalla única pensada para el celular del mozo. Usa
-   los estilos del panel (panel.module.css, estilo tonal) y suma lo propio. */
+/* Tomador de pedidos: pensado para el celular del operador. Usa los estilos
+   del panel (panel.module.css, estilo tonal) y suma lo propio. */
 
 .shell { max-width: 720px; padding-bottom: 7rem; }
+
+/* Título de una sección (Nuevo pedido, Mis mesas…) con la flecha al inicio. */
+.viewTitle { display: flex; align-items: center; gap: 0.35rem; min-width: 0; margin-left: -0.5rem; }
+
+.sectionTitle {
+  margin: 0.75rem 0 0;
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: var(--admin-text-primary);
+}
+
+/* ── Inicio: accesos grandes ──
+   Botones tonales altos, fáciles de tocar con una mano; el primario lleno. */
+.homeGrid { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.homeBtn {
+  composes: md-button from global;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 96px;
+  padding: 1rem 1.1rem;
+  border: none;
+  border-radius: 28px;
+  background: var(--tone);
+  color: var(--admin-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.homeBtnPrimary { background: var(--admin-gold); color: var(--admin-gold-ink); }
+
+.homeIcon {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: var(--tone-primary-container);
+  color: var(--tone-on-primary-container);
+}
+
+.homeBtnPrimary .homeIcon { background: var(--admin-gold-ink); color: var(--admin-gold); }
+
+.homeText { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; flex: 1; }
+
+.homeLabel { font-family: var(--font-serif); font-size: 1.35rem; line-height: 1.15; }
+
+.homeHint { font-size: 0.78rem; opacity: 0.8; }
+
+.homeBadge {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--tone-secondary);
+  color: var(--tone-on-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.homeBtnPrimary .homeBadge { background: var(--admin-gold-ink); color: var(--admin-gold); }
+
+.homeChevron { flex-shrink: 0; opacity: 0.6; }
+
+.orderCard {
+  background: var(--tone-high);
+  border-radius: 22px;
+  padding: 1rem;
+}
 
 .top {
   display: flex;
@@ -19,8 +96,6 @@
   text-transform: uppercase;
   color: var(--admin-text-warm);
 }
-
-.tabs { margin-bottom: 1.25rem; }
 
 /* Sin sesión: aviso centrado en la pantalla, con el ícono en un círculo tonal. */
 .locked {
@@ -111,7 +186,7 @@
 
 .toast svg { flex-shrink: 0; }
 
-/* ── Mis pedidos: misma lectura que la tarjeta del panel ── */
+/* ── Pedidos: misma lectura que la tarjeta del panel ── */
 .orderHead {
   display: flex;
   justify-content: space-between;

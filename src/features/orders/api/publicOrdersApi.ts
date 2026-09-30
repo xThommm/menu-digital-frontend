@@ -1,10 +1,10 @@
 import { apiFetch } from "../../../api/apiClient";
 import type { PublicMenuPayload } from "../../../types";
 import type {
-  CustomerOrderReceipt, Order, OrderLineInput, VenueContext, WaiterSessionInfo,
+  CustomerOrderReceipt, Order, OrderLineInput, ServiceInput, TableSession, VenueContext, WaiterSessionInfo,
 } from "../types";
 
-// Llamadas sin la sesión del panel: el comensal (token del QR) y el mozo
+// Llamadas sin la sesión del panel: el comensal (token del QR) y el operador
 // (token de su dispositivo). Van con fetch/apiFetch y NO con apiClient: su
 // interceptor manda el JWT del dueño y ante un 401 redirige a /login.
 
@@ -29,8 +29,13 @@ export const sendCustomerOrder = (slug: string, body: {
   { ...json(body), timeoutMs: 15_000 },
 );
 
-// ── Mozo ──
+// ── Operador ──
 const waiterAuth = (token: string) => ({ Authorization: `Waiter ${token}` });
+const waiterJson = (token: string, body: unknown, method = "POST"): RequestInit => ({
+  method,
+  headers: { "Content-Type": "application/json", ...waiterAuth(token) },
+  body: JSON.stringify(body),
+});
 
 export const pairWaiterDevice = (code: string) =>
   apiFetch<WaiterSessionInfo & { token: string }>("/api/orders/waiter/pair", json({ code }));
@@ -44,19 +49,32 @@ export const logoutWaiter = (token: string) =>
 export const getWaiterOrders = (token: string, signal?: AbortSignal) =>
   apiFetch<{ orders: Order[] }>("/api/orders/waiter/orders", { headers: waiterAuth(token), signal });
 
-export const sendWaiterOrder = (token: string, body: {
-  tableNumber: number;
+export const sendWaiterOrder = (token: string, body: ServiceInput & {
   items: OrderLineInput[];
   notes?: string;
   clientRequestId: string;
 }) => apiFetch<{ order: Order; duplicate: boolean }>("/api/orders/waiter/orders", {
-  method: "POST",
-  headers: { "Content-Type": "application/json", ...waiterAuth(token) },
-  body: JSON.stringify(body),
+  ...waiterJson(token, body),
   timeoutMs: 15_000,
 });
 
-// Carta liviana (v2) para el selector de productos del mozo y del panel.
+// "Mis mesas": mesas abiertas del operador (y las que no tomó nadie), con sus pedidos.
+export const getWaiterTables = (token: string, signal?: AbortSignal) =>
+  apiFetch<{ sessions: TableSession[] }>("/api/orders/waiter/tables", { headers: waiterAuth(token), signal });
+
+export const closeWaiterTable = (token: string, id: number, force = false) =>
+  apiFetch<{ session: TableSession }>(`/api/orders/waiter/tables/${id}/close`, waiterJson(token, { force }));
+
+export const setWaiterTableGuests = (token: string, id: number, guests: number | null) =>
+  apiFetch<{ session: TableSession }>(`/api/orders/waiter/tables/${id}`, waiterJson(token, { guests }, "PATCH"));
+
+// Historial: mesas que atendió y ya se cerraron.
+export const getWaiterHistory = (token: string, page = 1, signal?: AbortSignal) =>
+  apiFetch<{ sessions: TableSession[]; total: number; page: number; pageSize: number }>(
+    `/api/orders/waiter/history?page=${page}`, { headers: waiterAuth(token), signal }
+  );
+
+// Carta liviana (v2) para el selector de productos del operador y del panel.
 // track=0: no cuenta como visita en las estadísticas.
 export const fetchMenuForOrdering = (slug: string, signal?: AbortSignal) =>
   apiFetch<PublicMenuPayload>(`/api/users/${encodeURIComponent(slug)}/menu?v=2&track=0`, { signal });

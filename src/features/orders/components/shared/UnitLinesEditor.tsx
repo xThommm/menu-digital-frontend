@@ -5,7 +5,7 @@ import { formatMoney } from "../../lib/format";
 import s from "./UnitLinesEditor.module.css";
 
 // Lista editable del pedido: cantidades y aclaraciones POR UNIDAD. La usan
-// el carrito del comensal en la mesa, el tomador de pedidos del mozo y el
+// el carrito del comensal en la mesa, el tomador de pedidos del operador y el
 // alta manual del panel. Los colores salen de variables --ol-* que define
 // cada contenedor (ver UnitLinesEditor.module.css).
 

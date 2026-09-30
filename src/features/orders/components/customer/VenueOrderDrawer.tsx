@@ -20,6 +20,9 @@ import s from "./VenueOrder.module.css";
 // contenido (CartProvider), más aclaraciones por unidad y la mesa, y un
 // botón que manda el pedido directo al panel.
 
+// Valor del selector de mesa para "Estoy en la barra".
+const COUNTER = "barra";
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -70,10 +73,15 @@ export default function VenueOrderDrawer({
     setNotes(nextNotes);
   };
 
-  const tableNumber = context.tableNumber ?? (table ? Number(table) : null);
+  // Con el QR general y la mesa opcional (configuración del local) se puede
+  // pedir "en la barra", sin mesa.
+  const allowCounter = !context.tableNumber && context.requireTable === false;
+  const atCounter = allowCounter && table === COUNTER;
+  const tableNumber = context.tableNumber ?? (table && table !== COUNTER ? Number(table) : null);
+  const canSend = !!tableNumber || atCounter;
 
   const send = async () => {
-    if (lines.length === 0 || !tableNumber) return;
+    if (lines.length === 0 || !canSend) return;
     const orderLines = toOrderLines(lines);
     const key = JSON.stringify([tableNumber, orderLines]);
     if (request.current?.key !== key) request.current = { key, id: uuid() };
@@ -89,7 +97,7 @@ export default function VenueOrderDrawer({
         deviceId: deviceId(),
       });
       if (context.history) appendOrderHistory(slug, order);
-      if (!context.tableNumber) saveChosenTable(slug, tableNumber);
+      if (!context.tableNumber && tableNumber) saveChosenTable(slug, tableNumber);
       onSent(items, order);
       clearCart();
       setNotes({});
@@ -98,7 +106,7 @@ export default function VenueOrderDrawer({
     } catch (err) {
       const code = errorCode(err);
       if (code === "QR_INVALID" || code === "CUSTOMER_ORDERING_OFF") onInvalidQr();
-      setError(errorMessage(err, "No pudimos enviar el pedido. Probá de nuevo o pedile al mozo."));
+      setError(errorMessage(err, "No pudimos enviar el pedido. Probá de nuevo o pedíselo al personal."));
     } finally {
       setSending(false);
     }
@@ -124,7 +132,9 @@ export default function VenueOrderDrawer({
             <p className={s.doneTitle}>¡Listo! Pedido #{receipt.number}</p>
             <p className={s.doneText}>
               {receipt.tableNumber ? `Mesa ${receipt.tableNumber}. ` : ""}
-              Ya lo recibieron en el local: en cuanto esté te lo llevan a la mesa.
+              {receipt.tableNumber
+                ? "Ya lo recibieron en el local: en cuanto esté te lo llevan a la mesa."
+                : "Ya lo recibieron en el local: en cuanto esté, retiralo en la barra."}
             </p>
             <button type="button" className={`${s.sendBtn} ${s.doneBtn}`} onClick={close}>
               Seguir mirando la carta
@@ -142,6 +152,7 @@ export default function VenueOrderDrawer({
                   <span>¿En qué mesa estás?</span>
                   <select value={table} onChange={event => setTable(event.target.value)} required>
                     <option value="">Elegí tu mesa</option>
+                    {allowCounter && <option value={COUNTER}>Estoy en la barra</option>}
                     {Array.from({ length: context.tableCount }, (_, index) => (
                       <option key={index + 1} value={index + 1}>Mesa {index + 1}</option>
                     ))}
@@ -161,7 +172,7 @@ export default function VenueOrderDrawer({
 
             <div className={cart.checkoutActions}>
               {error && <p className={s.error} role="alert">{error}</p>}
-              <button type="button" className={s.sendBtn} onClick={send} disabled={sending || !tableNumber}>
+              <button type="button" className={s.sendBtn} onClick={send} disabled={sending || !canSend}>
                 <Send size={17} aria-hidden /> {sending ? "Enviando…" : "Enviar pedido"}
               </button>
               <button className={cart.clearBtn} onClick={onRequestClear} type="button">Vaciar pedido</button>

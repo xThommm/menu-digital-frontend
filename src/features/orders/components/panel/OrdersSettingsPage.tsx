@@ -12,7 +12,7 @@ import p from "./panel.module.css";
 // mesas, si los comensales pueden pedir solos, historial en su navegador y
 // cómo se organizan los turnos.
 
-type Draft = Pick<OrderSettings, "qrMode" | "customerOrdering" | "customerHistory" | "tableCount" | "periodMode" | "shiftSchedule">;
+type Draft = Pick<OrderSettings, "qrMode" | "customerOrdering" | "customerHistory" | "tableCount" | "periodMode" | "shiftSchedule" | "options">;
 
 const toDraft = (settings: OrderSettings): Draft => ({
   qrMode: settings.qrMode,
@@ -21,6 +21,7 @@ const toDraft = (settings: OrderSettings): Draft => ({
   tableCount: settings.tableCount,
   periodMode: settings.periodMode,
   shiftSchedule: settings.shiftSchedule,
+  options: settings.options,
 });
 
 export default function OrdersSettingsPage() {
@@ -99,7 +100,7 @@ export default function OrdersSettingsPage() {
               <span className={p.switchTitle}>Permitir que los clientes pidan desde su mesa</span>
               <span className={p.switchHint}>
                 Al escanear el QR del local pueden armar el pedido y enviarlo al panel. Si lo desactivás, ven la
-                carta y le piden al mozo.
+                carta y le piden al personal.
               </span>
             </div>
             <input type="checkbox" className={p.switch} checked={draft.customerOrdering} onChange={e => update({ customerOrdering: e.target.checked })} aria-label="Permitir pedidos desde la mesa" />
@@ -111,6 +112,37 @@ export default function OrdersSettingsPage() {
             </div>
             <input type="checkbox" className={p.switch} checked={draft.customerHistory} onChange={e => update({ customerHistory: e.target.checked })} aria-label="Guardar historial en el navegador del cliente" />
           </div>
+          <div className={p.switchRow}>
+            <div className={p.switchText}>
+              <span className={p.switchTitle}>Pedir el número de mesa con el QR general</span>
+              <span className={p.switchHint}>
+                Si lo desactivás, el cliente también puede elegir "Estoy en la barra" y el pedido llega como Barra.
+                Con un QR por mesa la mesa ya viene indicada.
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              className={p.switch}
+              checked={draft.options.requireTableNumber}
+              onChange={e => update({ options: { ...draft.options, requireTableNumber: e.target.checked } })}
+              aria-label="Pedir el número de mesa con el QR general"
+            />
+          </div>
+          <label className={p.field} style={{ marginTop: "0.85rem" }}>
+            <span className={p.label}>Espera mínima entre pedidos del mismo celular (segundos)</span>
+            <input
+              className={p.input}
+              type="number"
+              min={0}
+              max={600}
+              inputMode="numeric"
+              value={draft.options.customerOrderCooldownSeconds}
+              onChange={e => update({
+                options: { ...draft.options, customerOrderCooldownSeconds: Math.max(0, Math.min(600, Math.round(Number(e.target.value) || 0))) },
+              })}
+            />
+            <span className={p.switchHint}>Evita pedidos repetidos o de prueba. 0 = sin espera.</span>
+          </label>
           <p className={p.cardDesc} style={{ marginTop: "0.75rem" }}>
             Quien entra a la carta por el link (sin escanear el QR del local) sigue pidiendo por WhatsApp, como siempre.
           </p>
@@ -130,6 +162,7 @@ export default function OrdersSettingsPage() {
                 {draft.qrMode === "general"
                   ? "Un solo QR para todo el local: el cliente indica su número de mesa al pedir."
                   : "Cada mesa tiene su QR y el pedido llega con la mesa ya indicada."}
+                {" "}Los QR de las mesas no cambian al pasar de un tipo a otro ni al cambiar la cantidad de mesas: solo si los regenerás.
               </span>
             </div>
             <label className={p.field}>

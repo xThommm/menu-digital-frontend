@@ -1,30 +1,49 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { CheckCircle2, ClipboardList, LogOut, ScanLine, Send, X } from "lucide-react";
 import {
-  fetchMenuForOrdering, getWaiterOrders, getWaiterSession, logoutWaiter, pairWaiterDevice, sendWaiterOrder,
+  ArrowLeft, CheckCircle2, ChevronRight, History, LayoutGrid, LogOut, Plus, ScanLine, Send, X,
+} from "lucide-react";
+import {
+  fetchMenuForOrdering, getWaiterSession, getWaiterTables, logoutWaiter, pairWaiterDevice, sendWaiterOrder,
 } from "../../api/publicOrdersApi";
 import { errorMessage, errorStatus } from "../../lib/errors";
-import { elapsedLabel, formatMoney, STATUS_LABEL } from "../../lib/format";
+import { durationLabel, formatMoney, placeLabel } from "../../lib/format";
+import { emptyService, serviceReady, toServiceInput, type ServiceDraft } from "../../lib/service";
 import { uuid } from "../../lib/storage";
 import { lineKey, toOrderLines, unitsCount, unitsTotal, type UnitLine } from "../../lib/units";
 import { clearWaiterSession, readWaiterSession, saveWaiterSession } from "../../lib/waiterSession";
-import type { Order, WaiterSessionInfo } from "../../types";
+import type { WaiterSessionInfo } from "../../types";
 import type { PublicMenuPayload } from "../../../../types";
 import ProductPicker, { type PickedProduct } from "../shared/ProductPicker";
+import ServiceFields from "../shared/ServiceFields";
 import UnitLinesEditor from "../shared/UnitLinesEditor";
+import WaiterHistory from "./WaiterHistory";
+import WaiterTables from "./WaiterTables";
 import p from "../panel/panel.module.css";
 import s from "./WaiterApp.module.css";
 
-// Tomador de pedidos: interfaz simple para el celular o la tablet del mozo.
-// Se entra escaneando el QR del mozo que muestra el panel (/<slug>/mozo?code=…);
-// el dispositivo queda habilitado con un token en localStorage, así no hace
-// falta la sesión del dueño en cada dispositivo.
+// Tomador de pedidos del operador: interfaz simple para el celular o la
+// tablet. Se entra escaneando el QR del operador que muestra el panel
+// (/<slug>/operador?code=…; /<slug>/mozo sigue andando); el dispositivo
+// queda habilitado con un token en localStorage, así no hace falta la
+// sesión del dueño en cada dispositivo.
+//
+// No es solo para tomar pedidos: al entrar muestra tres accesos grandes,
+// "Nuevo pedido", "Mis mesas" (la cuenta de cada mesa abierta y su cierre
+// para cobrar) e "Historial".
 
 type Phase =
   | { kind: "loading" }
   | { kind: "locked"; message: string }
   | { kind: "ready"; token: string; info: WaiterSessionInfo };
+
+type View = "home" | "new" | "tables" | "history";
+
+const VIEW_TITLE: Record<Exclude<View, "home">, string> = {
+  new: "Nuevo pedido",
+  tables: "Mis mesas",
+  history: "Historial",
+};
 
 const readCode = () => {
   const code = new URLSearchParams(window.location.search).get("code");
@@ -111,17 +130,17 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
   info: WaiterSessionInfo;
   onLocked: (message: string) => void;
 }) {
-  const [tab, setTab] = useState<"new" | "mine">("new");
+  const [view, setView] = useState<View>("home");
   const [menu, setMenu] = useState<PublicMenuPayload | null>(null);
   const [menuError, setMenuError] = useState<string | null>(null);
   const [lines, setLines] = useState<UnitLine[]>([]);
-  const [table, setTable] = useState("");
+  const [service, setService] = useState<ServiceDraft>(() => emptyService("table"));
   const [notes, setNotes] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [orders, setOrders] = useState<Order[] | null>(null);
+  const [openTables, setOpenTables] = useState<number | null>(null);
   const request = useRef<{ key: string; id: string } | null>(null);
   const hidePrices = menu?.user.menuDisplay?.hidePrices === true;
 
@@ -142,20 +161,15 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
     return false;
   }, [onLocked]);
 
-  const loadOrders = useCallback(async () => {
-    try {
-      setOrders((await getWaiterOrders(token)).orders);
-    } catch (err) {
-      handleAuthError(err);
-    }
-  }, [token, handleAuthError]);
-
+  // En el inicio, cuántas mesas abiertas atiende (para el acceso "Mis mesas").
   useEffect(() => {
-    if (tab !== "mine") return;
-    const first = setTimeout(loadOrders, 0);
-    const timer = setInterval(loadOrders, 15_000);
-    return () => { clearTimeout(first); clearInterval(timer); };
-  }, [tab, loadOrders]);
+    if (view !== "home") return;
+    const controller = new AbortController();
+    getWaiterTables(token, controller.signal)
+      .then(({ sessions }) => setOpenTables(sessions.filter(session => session.waiterId === info.waiter.id).length))
+      .catch(err => { if (!controller.signal.aborted) handleAuthError(err); });
+    return () => controller.abort();
+  }, [view, token, info.waiter.id, handleAuthError]);
 
   useEffect(() => {
     if (!toast) return;
@@ -173,26 +187,28 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
     setToast(`+1 ${product.title}${product.option ? ` · ${product.option}` : ""}`);
   };
 
+  // Desde "Mis mesas": pedido nuevo con la mesa ya elegida.
+  const newOrderForTable = (tableNumber: number) => {
+    setService({ ...emptyService("table"), table: String(tableNumber) });
+    setView("new");
+  };
+
   const send = async () => {
-    if (!table || lines.length === 0) return;
+    if (!serviceReady(service) || lines.length === 0) return;
     const items = toOrderLines(lines);
-    const key = JSON.stringify([table, items, notes]);
+    const payload = { ...toServiceInput(service), items, notes: notes.trim() || undefined };
+    const key = JSON.stringify(payload);
     if (request.current?.key !== key) request.current = { key, id: uuid() };
     setSending(true);
     setError(null);
     try {
-      const { order } = await sendWaiterOrder(token, {
-        tableNumber: Number(table),
-        items,
-        notes: notes.trim() || undefined,
-        clientRequestId: request.current.id,
-      });
+      const { order } = await sendWaiterOrder(token, { ...payload, clientRequestId: request.current.id });
       setLines([]);
       setNotes("");
-      setTable("");
+      setService(emptyService("table"));
       setSheetOpen(false);
       request.current = null;
-      setToast(`Pedido #${order.number} enviado a la mesa ${order.tableNumber}.`);
+      setToast(`Pedido #${order.number} enviado · ${placeLabel(order)}.`);
     } catch (err) {
       if (!handleAuthError(err)) setError(errorMessage(err, "No se pudo enviar el pedido. Probá de nuevo."));
     } finally {
@@ -206,29 +222,68 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
   };
 
   const tableCount = info.tableCount ?? 0;
+  const sendLabel = sending
+    ? "Enviando…"
+    : service.serviceType === "table"
+      ? service.table ? `Enviar a mesa ${service.table}` : "Elegí la mesa"
+      : "Enviar pedido";
 
   return (
     <div className={`${p.page} ${s.shell}`}>
       <header className={s.top}>
-        <div className={p.titleBlock}>
-          <span className={s.business}>{info.business.name}</span>
-          <h1 className={p.title}>Hola, {info.waiter.name}</h1>
-        </div>
+        {view === "home" ? (
+          <div className={p.titleBlock}>
+            <span className={s.business}>{info.business.name}</span>
+            <h1 className={p.title}>Hola, {info.waiter.name}</h1>
+            {info.sessionStartedAt && (
+              <span className={p.subtitle}>Conectado desde hace {durationLabel(info.sessionStartedAt)}</span>
+            )}
+          </div>
+        ) : (
+          <div className={s.viewTitle}>
+            <button type="button" className={p.iconBtn} onClick={() => setView("home")} aria-label="Volver al inicio">
+              <ArrowLeft size={20} aria-hidden />
+            </button>
+            <h1 className={p.title}>{VIEW_TITLE[view]}</h1>
+          </div>
+        )}
         <button type="button" className={p.iconBtn} onClick={logout} aria-label="Cerrar sesión en este dispositivo">
           <LogOut size={18} aria-hidden />
         </button>
       </header>
 
-      <div className={`${p.segmented} ${s.tabs}`} role="tablist">
-        <button type="button" role="tab" aria-selected={tab === "new"} className={`${p.segment} ${tab === "new" ? p.segmentActive : ""}`} onClick={() => setTab("new")}>
-          Nuevo pedido
-        </button>
-        <button type="button" role="tab" aria-selected={tab === "mine"} className={`${p.segment} ${tab === "mine" ? p.segmentActive : ""}`} onClick={() => setTab("mine")}>
-          <ClipboardList size={14} aria-hidden /> Mis pedidos
-        </button>
-      </div>
+      {view === "home" && (
+        <nav className={s.homeGrid} aria-label="Inicio">
+          <button type="button" className={`${s.homeBtn} ${s.homeBtnPrimary}`} onClick={() => setView("new")}>
+            <span className={s.homeIcon}><Plus size={26} aria-hidden /></span>
+            <span className={s.homeText}>
+              <span className={s.homeLabel}>Nuevo pedido</span>
+              <span className={s.homeHint}>Mesa, barra, take away o delivery</span>
+            </span>
+            {lines.length > 0 && <span className={s.homeBadge}>{unitsCount(lines)}</span>}
+            <ChevronRight size={20} aria-hidden className={s.homeChevron} />
+          </button>
+          <button type="button" className={s.homeBtn} onClick={() => setView("tables")}>
+            <span className={s.homeIcon}><LayoutGrid size={26} aria-hidden /></span>
+            <span className={s.homeText}>
+              <span className={s.homeLabel}>Mis mesas</span>
+              <span className={s.homeHint}>La cuenta de cada mesa y su cierre</span>
+            </span>
+            {openTables !== null && openTables > 0 && <span className={s.homeBadge}>{openTables}</span>}
+            <ChevronRight size={20} aria-hidden className={s.homeChevron} />
+          </button>
+          <button type="button" className={s.homeBtn} onClick={() => setView("history")}>
+            <span className={s.homeIcon}><History size={26} aria-hidden /></span>
+            <span className={s.homeText}>
+              <span className={s.homeLabel}>Historial</span>
+              <span className={s.homeHint}>Mesas cerradas y pedidos del turno</span>
+            </span>
+            <ChevronRight size={20} aria-hidden className={s.homeChevron} />
+          </button>
+        </nav>
+      )}
 
-      {tab === "new" && (
+      {view === "new" && (
         <>
           {menuError && <p className={p.error}>{menuError}</p>}
           {!menu && !menuError && <p className={p.loading}>Cargando carta…</p>}
@@ -244,35 +299,17 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
         </>
       )}
 
-      {tab === "mine" && (
-        <section className={p.stack}>
-          {orders === null && <p className={p.loading}>Cargando…</p>}
-          {orders?.length === 0 && <p className={p.empty}>Todavía no tomaste pedidos en este turno.</p>}
-          {orders?.map(order => (
-            <article key={order.id} className={p.card}>
-              <div className={s.orderHead}>
-                <div className={s.orderId}>
-                  <span className={s.orderNumber}>#{order.number}</span>
-                  <span className={s.orderTable}>{order.tableNumber ? `Mesa ${order.tableNumber}` : "Sin mesa"}</span>
-                </div>
-                <span className={`${p.status} ${p[`status_${order.status}`]}`}>{STATUS_LABEL[order.status]}</span>
-              </div>
-              <ul className={s.orderLines}>
-                {order.items.map(item => (
-                  <li key={item.id} className={s.orderLine}>
-                    <span className={s.orderQty}>{item.quantity}×</span>
-                    <span className={s.orderText}>
-                      <span>{item.title}{item.option && <em> · {item.option}</em>}</span>
-                      {item.notes && <span className={s.orderNotes}>{item.notes}</span>}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <span className={s.orderTime}>{elapsedLabel(order.createdAt)}</span>
-            </article>
-          ))}
-        </section>
+      {view === "tables" && (
+        <WaiterTables
+          token={token}
+          waiterId={info.waiter.id}
+          onAuthError={handleAuthError}
+          onNewOrder={newOrderForTable}
+          onCountChange={setOpenTables}
+        />
       )}
+
+      {view === "history" && <WaiterHistory token={token} onAuthError={handleAuthError} />}
 
       {toast && (
         <div className={s.toast} role="status">
@@ -289,15 +326,7 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
               <button type="button" className={p.iconBtn} onClick={() => setSheetOpen(false)} aria-label="Cerrar"><X size={18} aria-hidden /></button>
             </header>
             <div className={`${p.modalBody} ${p.stack}`}>
-              <label className={p.field}>
-                <span className={p.label}>Mesa</span>
-                <select className={p.select} value={table} onChange={event => setTable(event.target.value)} required>
-                  <option value="">Elegí la mesa</option>
-                  {Array.from({ length: tableCount }, (_, index) => (
-                    <option key={index + 1} value={index + 1}>Mesa {index + 1}</option>
-                  ))}
-                </select>
-              </label>
+              <ServiceFields value={service} onChange={setService} tableCount={tableCount} />
               <UnitLinesEditor lines={lines} onChange={next => { setLines(next); if (next.length === 0) setSheetOpen(false); }} hidePrices={hidePrices} />
               <label className={p.field}>
                 <span className={p.label}>Nota del pedido (opcional)</span>
@@ -306,8 +335,8 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
               {error && <p className={p.error} role="alert">{error}</p>}
             </div>
             <footer className={p.modalFooter}>
-              <button type="button" className={p.btnPrimary} style={{ flex: 1 }} disabled={sending || !table || lines.length === 0} onClick={send}>
-                <Send size={16} aria-hidden /> {sending ? "Enviando…" : table ? `Enviar a mesa ${table}` : "Elegí la mesa"}
+              <button type="button" className={p.btnPrimary} style={{ flex: 1 }} disabled={sending || !serviceReady(service) || lines.length === 0} onClick={send}>
+                <Send size={16} aria-hidden /> {sendLabel}
               </button>
             </footer>
           </div>
