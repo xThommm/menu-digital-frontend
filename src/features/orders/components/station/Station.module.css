@@ -1,0 +1,281 @@
+/* Pantalla de comandas de un sector: una PC o tablet fija en la cocina o la
+   barra, que se mira de lejos y con las manos ocupadas. Letra grande,
+   botones grandes y lo esencial (destino, número, cantidades) primero.
+   Estilo tonal, sobre panel.module.css. */
+
+@keyframes freshTicket {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--admin-gold) 60%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+
+.shell { max-width: 560px; display: grid; align-content: center; }
+
+/* ── Vincular / elegir sector ── */
+.pairCard {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 2rem 1.5rem;
+  border-radius: 28px;
+  background: var(--tone-high);
+  text-align: center;
+}
+
+.pairIcon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  background: var(--tone-primary-container);
+  color: var(--tone-on-primary-container);
+}
+
+.codeInput {
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.75rem;
+  letter-spacing: 0.12em;
+  min-height: 64px;
+}
+
+.pickList { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.pickBtn {
+  composes: md-button from global;
+  min-height: 64px;
+  border: none;
+  border-radius: 22px;
+  background: var(--tone);
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  cursor: pointer;
+}
+
+.linkBtn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--admin-gold);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── Tablero ── */
+.board { max-width: none; padding-top: 1rem; }
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.headTitle { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+
+.headIcon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--tone-primary-container);
+  color: var(--tone-on-primary-container);
+}
+
+.sectorName {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(1.5rem, 2.5vw, 2.1rem);
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--admin-text-primary);
+}
+
+.columns {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.6rem;
+  border-radius: 28px;
+  background: var(--tone-low);
+}
+
+.columnTitle {
+  margin: 0;
+  padding: 0.4rem 0.5rem 0.2rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--admin-text-primary);
+}
+
+.count {
+  min-width: 28px;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  background: var(--tone-secondary);
+  color: var(--tone-on-secondary);
+  font-size: 0.8rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty { margin: 0; padding: 2rem 0.5rem; text-align: center; font-size: 0.9rem; color: var(--admin-text-warm); }
+
+/* Las comandas se acomodan en varias columnas si la pantalla es ancha. */
+.cards {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.ticket {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem;
+  border-radius: 22px;
+  border: 2px solid transparent;
+  background: var(--tone-high);
+}
+
+.ticketPreparing { background: var(--tone-highest, var(--tone-high)); }
+
+.ticketFresh { border-color: var(--admin-gold); animation: freshTicket 1.2s ease-out 3; }
+
+.ticketLate { border-color: color-mix(in srgb, var(--admin-red-text) 70%, transparent); }
+
+.ticketHead { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+
+.place {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  line-height: 1.1;
+  color: var(--admin-text-primary);
+}
+
+.number {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--admin-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ticketMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--admin-text-warm);
+}
+
+.lateBadge { display: inline-flex; align-items: center; gap: 0.2rem; color: var(--admin-red-text); font-weight: 600; }
+
+.items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+
+.item { display: flex; gap: 0.75rem; align-items: flex-start; }
+
+.qty {
+  min-width: 2.1rem;
+  height: 2.1rem;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--tone-primary-container);
+  color: var(--tone-on-primary-container);
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.itemText { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; padding-top: 0.2rem; }
+
+.itemTitle { font-size: 1.12rem; font-weight: 600; line-height: 1.25; color: var(--admin-text-primary); }
+
+.itemTitle em { font-style: normal; font-weight: 400; color: var(--admin-text-secondary); }
+
+/* Las aclaraciones ("sin cebolla") son lo que más se pasa por alto. */
+.itemNotes {
+  align-self: flex-start;
+  padding: 0.1rem 0.5rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--admin-gold) 22%, transparent);
+  color: var(--admin-text-primary);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.orderNotes {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
+  margin: 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 14px;
+  background: var(--tone);
+  color: var(--admin-text-primary);
+  font-size: 0.92rem;
+}
+
+.orderNotes svg { flex-shrink: 0; margin-top: 0.15rem; }
+
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.2rem; }
+
+.actionBtn { flex: 1; min-height: 52px; font-size: 1rem; justify-content: center; }
+
+/* ── Recientes ── */
+.recent {
+  margin-top: 1rem;
+  padding: 0.6rem;
+  border-radius: 28px;
+  background: var(--tone-low);
+}
+
+.recentList { list-style: none; margin: 0.25rem 0 0; padding: 0; display: flex; flex-direction: column; }
+
+.recentRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-top: 1px solid var(--divider);
+  font-size: 0.88rem;
+  color: var(--admin-text-secondary);
+}
+
+.recentRow:first-child { border-top: none; }
+
+.recentRow strong { color: var(--admin-text-primary); font-variant-numeric: tabular-nums; }
+
+.recentItems { flex: 1; min-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.recentState { font-weight: 600; }
+
+.recentCancelled .recentState { color: var(--admin-red-text); }
+
+.recentCancelled .recentItems { text-decoration: line-through; }
+
+@media (max-width: 767px) {
+  .columns { grid-template-columns: 1fr; }
+  .cards { grid-template-columns: 1fr; }
+}

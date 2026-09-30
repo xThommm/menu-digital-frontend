@@ -18,6 +18,82 @@ export interface OrderItem {
   unitPrice: number;
   quantity: number;
   notes: string | null;
+  // Sector de la comanda a la que fue la línea (sin sectores: null o ausente).
+  sectorName?: string | null;
+}
+
+// ── Sectores y comandas ──
+export type TicketStatus = "new" | "preparing" | "done" | "cancelled";
+// none: solo pantalla · browser: impresora del sistema · escpos: comandera directa (experimental).
+export type PrintMode = "none" | "browser" | "escpos";
+export type PaperWidth = 58 | 80;
+
+// Comanda de un pedido, resumida (lo que ve el panel de pedidos).
+export interface OrderTicketSummary {
+  id: number;
+  sectorId: number;
+  sectorName: string;
+  status: TicketStatus;
+  doneAt: string | null;
+}
+
+export interface Sector {
+  id: number;
+  name: string;
+  isDefault: boolean;
+  position: number;
+  printMode: PrintMode;
+  paperWidth: PaperWidth;
+  printCopies: number;
+  activeDevices: number;
+  sessions: WaiterDeviceSession[];
+  createdAt: string;
+}
+
+export type SectorTargetType = "section" | "category" | "item";
+
+export interface SectorAssignment {
+  targetType: SectorTargetType;
+  targetId: string;
+  sectorId: number;
+}
+
+// Comanda completa: lo que ve (e imprime) el sector. Sin precios.
+export interface Ticket {
+  id: number;
+  orderId: number;
+  sectorId: number;
+  sectorName: string;
+  status: TicketStatus;
+  createdAt: string;
+  startedAt: string | null;
+  doneAt: string | null;
+  cancelledAt: string | null;
+  printedAt: string | null;
+  printCount: number;
+  order: {
+    number: number;
+    status: OrderStatus;
+    serviceType: ServiceType;
+    tableNumber: number | null;
+    customerName: string | null;
+    waiterName: string | null;
+    notes: string | null;
+    createdAt: string;
+  };
+  items: { title: string; option: string | null; quantity: number; notes: string | null }[];
+}
+
+export interface SectorTicketsResponse {
+  sector: Sector;
+  tickets: Ticket[];
+  recent: Ticket[];
+  serverTime: string;
+}
+
+export interface StationSessionInfo {
+  sector: Sector;
+  business: { slug: string; name: string };
 }
 
 export interface Order {
@@ -48,6 +124,8 @@ export interface Order {
   cancelledAt: string | null;
   returnedAt: string | null;
   items: OrderItem[];
+  // Una por sector (vacío sin sectores; ausente con un backend anterior).
+  tickets?: OrderTicketSummary[];
 }
 
 export interface Shift {

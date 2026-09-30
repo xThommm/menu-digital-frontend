@@ -48,6 +48,9 @@ import {
 import { useReorderState } from "./Reorder/reorderContext";
 import { useMenuReorder } from "./Reorder/useMenuReorder";
 import { useReorderList, useReorderSortable } from "./Reorder/useReorderSortable";
+import { useMenuSectors, type SectorLink } from "../../../../features/orders/hooks/useMenuSectors";
+import SectorField from "../../../../features/orders/components/shared/SectorField";
+import type { SectorTargetType } from "../../../../features/orders/types";
 import styles from "./MenuEditor.module.css";
 import rs from "./Reorder/Reorder.module.css";
 import ws from "./Workspace/MenuWorkspace.module.css";
@@ -927,6 +930,25 @@ export default function MenuEditorPage() {
   // Cambia con cada apertura del panel: reinicia el formulario (scroll,
   // autofocus) aunque la vista siga siendo la misma.
   const [formSeq,       setFormSeq]       = useState(0);
+  // ── Sector de la comanda (Gestión de pedidos, plan Pro) ───────────────
+  // Lo elegido en el formulario abierto; undefined = sin tocar. Se guarda
+  // junto con el formulario (después de crear o actualizar el elemento).
+  const menuSectors = useMenuSectors(effectiveSubscription === "pro");
+  const [sectorDraft, setSectorDraft] = useState<{ seq: number; value: number | null } | null>(null);
+  const draftSector = sectorDraft?.seq === formSeq ? sectorDraft.value : undefined;
+  const changeSectorDraft = (value: number | null) => setSectorDraft({ seq: formSeq, value });
+  const sectorDraftChanged = (type: SectorTargetType, id: string | null | undefined) =>
+    draftSector !== undefined && draftSector !== menuSectors.ownSector(type, id);
+  // Si cambió, se guarda después del elemento (un alta recién ahí tiene id).
+  // Si falla, el elemento ya quedó guardado: solo se avisa.
+  const applySectorDraft = async (type: SectorTargetType, id: string | null | undefined) => {
+    if (!id || !sectorDraftChanged(type, id)) return;
+    try {
+      await menuSectors.assign(type, id, draftSector ?? null);
+    } catch {
+      setError("Se guardó, pero no se pudo cambiar el sector de la comanda. Probá de nuevo.");
+    }
+  };
   const searchInputRef = useRef<HTMLInputElement>(null);
   const boardRef       = useRef<HTMLDivElement>(null);
   const pendingLeaveRef = useRef<(() => void) | null>(null);
@@ -1325,6 +1347,7 @@ export default function MenuEditorPage() {
         return;
       }
       if (!res.ok) throw new Error(data.message || "No se pudo guardar el producto.");
+      await applySectorDraft("item", activeItem?._id ?? (typeof data._id === "string" ? data._id : null));
       const savedCategoria = activeCategoria;
       await refetch();
       notifySuccess(activeItem ? "Producto actualizado." : "Producto creado.");
@@ -1826,6 +1849,7 @@ export default function MenuEditorPage() {
       }
       const saved = await res.json().catch(() => ({})) as { _id?: string; hidden?: boolean };
       await syncMenuHidden(categoriaForm.editingId || saved._id, saved.hidden === true, categoriaForm.hidden);
+      await applySectorDraft("category", categoriaForm.editingId || saved._id);
       await refetch();
       notifySuccess(categoriaForm.editingId ? "Categoría actualizada." : "Categoría creada.");
       setView("menu");
@@ -1879,6 +1903,7 @@ export default function MenuEditorPage() {
       }
       const saved = await res.json().catch(() => ({})) as { _id?: string; hidden?: boolean };
       await syncMenuHidden(seccionForm.editingId || saved._id, saved.hidden === true, seccionForm.hidden);
+      await applySectorDraft("section", seccionForm.editingId || saved._id);
       await refetch();
       notifySuccess(seccionForm.editingId ? "Sección actualizada." : "Sección creada.");
       setView("menu");
@@ -1998,7 +2023,27 @@ export default function MenuEditorPage() {
     )?.title ?? "";
   }, [activeCategoria, menuData]);
 
-  const itemFormDirty = view === "item-form" && JSON.stringify(itemForm) !== JSON.stringify(initialItemForm);
+  const itemFormDirty = view === "item-form" && (
+    JSON.stringify(itemForm) !== JSON.stringify(initialItemForm) || sectorDraftChanged("item", activeItem?._id)
+  );
+  // Sección de una categoría (para heredar su sector).
+  const sectionIdOf = (catId: string | null | undefined) => {
+    const location = menuData && catId ? findCategory(menuData, catId) : null;
+    return location && location.sectionKey !== LOOSE_SECTION ? location.sectionKey : null;
+  };
+  const sectorFieldFor = (type: SectorTargetType, id: string | null | undefined, parents: SectorLink[]) => (
+    <SectorField
+      id={`${type}-sector`}
+      targetType={type}
+      sectors={menuSectors.sectors}
+      value={draftSector !== undefined ? draftSector : menuSectors.ownSector(type, id)}
+      inherited={menuSectors.inherited(parents)}
+      onChange={changeSectorDraft}
+      disabled={saving}
+      className={styles.field}
+      hintClassName={styles.toggleDesc}
+    />
+  );
   const itemFormBreadcrumb = [activeSectionTitle, activeCategoria?.title].filter(Boolean).join(" / ");
   const promotionsSummary = itemForm.options.length > 0
     ? `${itemForm.options.length} variante${itemForm.options.length !== 1 ? "s" : ""}${itemForm.offerPrice ? " · Con oferta" : " · Sin oferta"}`
@@ -3137,6 +3182,10 @@ export default function MenuEditorPage() {
           </div>
         ))}
       </div>
+      {sectorFieldFor("item", activeItem?._id, [
+        { type: "category", id: activeCategoria?._id },
+        { type: "section", id: sectionIdOf(activeCategoria?._id) },
+      ])}
       </FormSection>
 
       {/* En escritorio los resultados siguen a la vista en el tablero. */}
@@ -3260,6 +3309,9 @@ export default function MenuEditorPage() {
           </select>
         </div>
       )}
+      {sectorFieldFor("category", categoriaForm.editingId, [
+        { type: "section", id: categoriaForm.editingId ? sectionIdOf(categoriaForm.editingId) : categoriaForm.seccionID },
+      ])}
       <div className={styles.toggleGroup}>
         <div className={styles.toggleRow}>
           <div>
@@ -3311,6 +3363,7 @@ export default function MenuEditorPage() {
           onChange={e => setSeccionForm(f => ({ ...f, code: e.target.value }))}
         />
       </div>
+      {sectorFieldFor("section", seccionForm.editingId, [])}
       <div className={styles.toggleGroup}>
         <div className={styles.toggleRow}>
           <div>

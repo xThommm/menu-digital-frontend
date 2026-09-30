@@ -1,7 +1,9 @@
 import apiClient from "../../../api/client";
 import type {
   BoardResponse, CashRegister, CashSession, Order, OrderLineInput, OrderOptions, OrderSettings, OrderStatus,
-  ServiceInput, ServiceType, SettingsResponse, Shift, ShiftSummary, TableSession, Waiter, WaiterDeviceSession,
+  PaperWidth, PrintMode, Sector, SectorAssignment, SectorTargetType, SectorTicketsResponse, ServiceInput,
+  ServiceType, SettingsResponse, Shift, ShiftSummary, TableSession, Ticket, TicketStatus, Waiter,
+  WaiterDeviceSession,
 } from "../types";
 
 // API del panel del dueño (JWT del panel vía apiClient). Ver
@@ -137,3 +139,42 @@ export const revokeWaiterSessions = async (id: number): Promise<void> => {
 export const revokeWaiterSession = async (id: number, sessionId: number): Promise<void> => {
   await apiClient.delete(`/orders/waiters/${id}/sessions/${sessionId}`);
 };
+
+// ── Sectores y comandas ──
+export const listSectors = async () =>
+  (await apiClient.get<{ sectors: Sector[]; assignments: SectorAssignment[] }>("/orders/sectors")).data;
+
+export const createSector = async (name: string): Promise<Sector> =>
+  (await apiClient.post<{ sector: Sector }>("/orders/sectors", { name })).data.sector;
+
+export const updateSector = async (
+  id: number,
+  data: Partial<{ name: string; isDefault: true; printMode: PrintMode; paperWidth: PaperWidth; printCopies: number }>
+): Promise<Sector> => (await apiClient.put<{ sector: Sector }>(`/orders/sectors/${id}`, data)).data.sector;
+
+export const deleteSector = async (id: number): Promise<void> => {
+  await apiClient.delete(`/orders/sectors/${id}`);
+};
+
+// sectorId null: el elemento vuelve a heredar el sector de lo que lo contiene.
+export const setSectorAssignment = async (targetType: SectorTargetType, targetId: string, sectorId: number | null) =>
+  (await apiClient.put<{ assignment: { targetType: SectorTargetType; targetId: string; sectorId: number | null } }>(
+    "/orders/sectors/assignments", { targetType, targetId, sectorId }
+  )).data.assignment;
+
+export const issueSectorPairingCode = async (id: number) =>
+  (await apiClient.post<{ code: string; expiresAt: string }>(`/orders/sectors/${id}/pairing-code`)).data;
+
+export const revokeSectorSession = async (id: number, sessionId: number): Promise<void> => {
+  await apiClient.delete(`/orders/sectors/${id}/sessions/${sessionId}`);
+};
+
+// Pantalla de un sector abierta con la sesión del dueño.
+export const getOwnerSectorTickets = async (id: number): Promise<SectorTicketsResponse> =>
+  (await apiClient.get<SectorTicketsResponse>(`/orders/sectors/${id}/tickets`)).data;
+
+export const updateOwnerTicketStatus = async (sectorId: number, ticketId: number, status: TicketStatus): Promise<Ticket> =>
+  (await apiClient.patch<{ ticket: Ticket }>(`/orders/sectors/${sectorId}/tickets/${ticketId}/status`, { status })).data.ticket;
+
+export const markOwnerTicketPrinted = async (sectorId: number, ticketId: number): Promise<Ticket> =>
+  (await apiClient.post<{ ticket: Ticket }>(`/orders/sectors/${sectorId}/tickets/${ticketId}/printed`)).data.ticket;

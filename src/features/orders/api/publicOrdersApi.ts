@@ -1,7 +1,8 @@
 import { apiFetch } from "../../../api/apiClient";
 import type { PublicMenuPayload } from "../../../types";
 import type {
-  CustomerOrderReceipt, Order, OrderLineInput, ServiceInput, TableSession, VenueContext, WaiterSessionInfo,
+  CustomerOrderReceipt, Order, OrderLineInput, SectorTicketsResponse, ServiceInput, StationSessionInfo, TableSession,
+  Ticket, TicketStatus, VenueContext, WaiterSessionInfo,
 } from "../types";
 
 // Llamadas sin la sesión del panel: el comensal (token del QR) y el operador
@@ -73,6 +74,33 @@ export const getWaiterHistory = (token: string, page = 1, signal?: AbortSignal) 
   apiFetch<{ sessions: TableSession[]; total: number; page: number; pageSize: number }>(
     `/api/orders/waiter/history?page=${page}`, { headers: waiterAuth(token), signal }
   );
+
+// ── Pantalla de un sector (equipo vinculado con código) ──
+const stationAuth = (token: string) => ({ Authorization: `Station ${token}` });
+
+export const pairStation = (code: string) =>
+  apiFetch<StationSessionInfo & { token: string }>("/api/orders/station/pair", json({ code }));
+
+export const getStationSession = (token: string, signal?: AbortSignal) =>
+  apiFetch<StationSessionInfo>("/api/orders/station/me", { headers: stationAuth(token), signal });
+
+export const logoutStation = (token: string) =>
+  apiFetch<void>("/api/orders/station/logout", { method: "POST", headers: stationAuth(token), parseJson: false });
+
+export const getStationTickets = (token: string, signal?: AbortSignal) =>
+  apiFetch<SectorTicketsResponse>("/api/orders/station/tickets", { headers: stationAuth(token), signal });
+
+export const updateStationTicketStatus = (token: string, id: number, status: TicketStatus) =>
+  apiFetch<{ ticket: Ticket }>(`/api/orders/station/tickets/${id}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...stationAuth(token) },
+    body: JSON.stringify({ status }),
+  });
+
+export const markStationTicketPrinted = (token: string, id: number) =>
+  apiFetch<{ ticket: Ticket }>(`/api/orders/station/tickets/${id}/printed`, {
+    method: "POST", headers: stationAuth(token),
+  });
 
 // Carta liviana (v2) para el selector de productos del operador y del panel.
 // track=0: no cuenta como visita en las estadísticas.

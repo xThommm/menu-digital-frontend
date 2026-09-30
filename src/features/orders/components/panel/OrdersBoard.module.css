@@ -156,6 +156,27 @@
   background: var(--tone-primary-container);
 }
 
+/* Avance de cada sector (comandas): píldoras tonales; la lista se llena. */
+.sectors { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+
+.sectorChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  background: var(--tone-highest);
+  color: var(--admin-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.sector_preparing { background: var(--tone-secondary); color: var(--tone-on-secondary); }
+.sector_done { background: var(--tone-primary-container); color: var(--tone-on-primary-container); }
+.sector_cancelled { text-decoration: line-through; opacity: 0.7; }
+
+.sectorsDone { font-size: 0.72rem; font-weight: 600; color: var(--admin-gold); }
+
 .orderNotes {
   margin: 0;
   display: flex;
