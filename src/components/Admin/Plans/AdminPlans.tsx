@@ -8,8 +8,17 @@ import { PLANS_QUERY_KEY } from "../../../hooks/usePlans";
 import { useNotifications } from "../../../context/useNotifications";
 import { formatPaymentAmount, formatPaymentDate } from "../../../lib/adminPayments";
 import { getPlanFeatureLabels, BOOLEAN_FEATURES, FEATURE_LABELS } from "../../../lib/plans";
+import DataTable from "../../Common/DataTable/DataTable";
 import Spinner from "../../Common/Spinner";
 import s from "./AdminPlans.module.css";
+
+// Fila de la vista previa de totales por período.
+interface PreviewRow {
+  months: number;
+  regularTotal: number;
+  sellerTotal: number | null;
+  savings: number;
+}
 
 const ADMIN_PLANS_QUERY_KEY = ["admin-plans"] as const;
 
@@ -351,23 +360,25 @@ function PlanCard({ plan, usage, onUpdated }: {
             {invalidDraft || parsedPrice === null ? (
               <p className={s.hint}>Completá precios y multiplicadores válidos para ver los totales por período.</p>
             ) : (
-              <div className={s.tableScroll}>
-                <table>
-                  <caption className={s.tableCaption}>Pago único en ARS por período de {plan.label}</caption>
-                  <thead><tr><th scope="col">Período</th><th scope="col">Total regular</th><th scope="col">Con código</th><th scope="col">Ahorro máximo</th></tr></thead>
-                  <tbody>{plan.billingOptions.map((option) => {
+              <div className={s.previewTable}>
+                <p className={s.tableCaption}>Pago único en ARS por período de {plan.label}</p>
+                <DataTable<PreviewRow>
+                  caption={`Pago único en ARS por período de ${plan.label}`}
+                  rows={plan.billingOptions.map((option) => {
                     const multiplier = parsedMultipliers[option.months]!;
                     const regularTotal = Math.round(parsedPrice * multiplier);
                     const sellerTotal = parsedDiscount === null ? null : Math.round(parsedDiscount * multiplier);
-                    const savings = parsedPrice * option.months - (sellerTotal ?? regularTotal);
-                    return <tr key={option.months}>
-                      <th scope="row">{option.months} {option.months === 1 ? "mes" : "meses"}</th>
-                      <td>{formatPaymentAmount(regularTotal, plan.currency)}</td>
-                      <td>{sellerTotal === null ? "—" : formatPaymentAmount(sellerTotal, plan.currency)}</td>
-                      <td>{formatPaymentAmount(savings, plan.currency)}</td>
-                    </tr>;
-                  })}</tbody>
-                </table>
+                    return { months: option.months, regularTotal, sellerTotal, savings: parsedPrice * option.months - (sellerTotal ?? regularTotal) };
+                  })}
+                  columns={[
+                    // Encabezados cortos: en DataTable van en mayúsculas y son lo más ancho.
+                    { id: "months", header: "Plazo", resizable: false, render: row => <span className={s.nowrap}>{row.months} {row.months === 1 ? "mes" : "meses"}</span> },
+                    { id: "regular", header: "Regular", align: "right", resizable: false, render: row => formatPaymentAmount(row.regularTotal, plan.currency) },
+                    { id: "seller", header: "Con código", align: "right", resizable: false, render: row => (row.sellerTotal === null ? "—" : formatPaymentAmount(row.sellerTotal, plan.currency)) },
+                    { id: "savings", header: "Ahorro máx.", align: "right", resizable: false, render: row => formatPaymentAmount(row.savings, plan.currency) },
+                  ]}
+                  getRowId={row => String(row.months)}
+                />
               </div>
             )}
             <p className={s.hint}>El precio con código solo corresponde a altas asociadas a un vendedor. Altas sin código, upgrades y renovaciones usan el total regular. Sin renovación automática.</p>

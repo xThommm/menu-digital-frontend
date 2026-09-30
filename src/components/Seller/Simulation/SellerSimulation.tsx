@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "../../../context/useAuth";
 import {
   CONTRACT_MONTHS,
@@ -10,11 +10,25 @@ import {
   type ContractMonths,
 } from "../../../lib/sellerCommission";
 import { formatPaymentAmount } from "../../../lib/adminPayments";
+import DataTable, { type DataTableColumn } from "../../Common/DataTable/DataTable";
 import { PLAN_LABEL } from "../../../lib/plans";
 import s from "../sellerPanel.module.css";
 
 const PLANS: CommissionPlan[] = ["basic", "pro"];
 const MONTH_LABEL: Record<ContractMonths, string> = { 1: "1 mes", 3: "3 meses", 6: "6 meses", 12: "12 meses" };
+
+// Las dos tablas de la simulación comparten forma: una fila por plan y una
+// columna por duración de contrato; cambia solo el contenido de la celda.
+const planColumns = (cell: (plan: CommissionPlan, months: ContractMonths) => ReactNode): DataTableColumn<CommissionPlan>[] => [
+  { id: "plan", header: "Plan", resizable: false, render: (plan) => <strong>{PLAN_LABEL[plan]}</strong> },
+  ...CONTRACT_MONTHS.map((months): DataTableColumn<CommissionPlan> => ({
+    id: String(months),
+    header: MONTH_LABEL[months],
+    align: "right",
+    resizable: false,
+    render: (plan) => cell(plan, months),
+  })),
+];
 
 type Counts = Record<CommissionPlan, Record<ContractMonths, number>>;
 
@@ -83,36 +97,23 @@ export default function SellerSimulation() {
 
         <section className={s.section}>
           <h2 className={s.sectionTitle}>Cantidad de clientes vendidos</h2>
-          <div className={s.card} style={{ overflowX: "auto" }}>
-            <table className={s.simTable}>
-              <thead>
-                <tr>
-                  <th>Plan</th>
-                  {CONTRACT_MONTHS.map((months) => <th key={months}>{MONTH_LABEL[months]}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {PLANS.map((plan) => (
-                  <tr key={plan}>
-                    <td>{PLAN_LABEL[plan]}</td>
-                    {CONTRACT_MONTHS.map((months) => (
-                      <td key={months}>
-                        <input
-                          className={s.simInput}
-                          type="number"
-                          min={0}
-                          inputMode="numeric"
-                          value={counts[plan][months] || ""}
-                          placeholder="0"
-                          onChange={(event) => setCount(plan, months, event.target.value)}
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<CommissionPlan>
+            caption="Cantidad de clientes vendidos por plan y duración"
+            rows={PLANS}
+            columns={planColumns((plan, months) => (
+              <input
+                className={s.simInput}
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={counts[plan][months] || ""}
+                placeholder="0"
+                aria-label={`Clientes ${PLAN_LABEL[plan]} a ${MONTH_LABEL[months]}`}
+                onChange={(event) => setCount(plan, months, event.target.value)}
+              />
+            ))}
+            getRowId={(plan) => plan}
+          />
         </section>
 
         <section className={s.section}>
@@ -150,26 +151,12 @@ export default function SellerSimulation() {
 
         <section className={s.section}>
           <h2 className={s.sectionTitle}>Comisión por cliente, según el nivel alcanzado</h2>
-          <div className={s.card} style={{ overflowX: "auto" }}>
-            <table className={s.simTable}>
-              <thead>
-                <tr>
-                  <th>Plan</th>
-                  {CONTRACT_MONTHS.map((months) => <th key={months}>{MONTH_LABEL[months]}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {PLANS.map((plan) => (
-                  <tr key={plan}>
-                    <td>{PLAN_LABEL[plan]}</td>
-                    {CONTRACT_MONTHS.map((months) => (
-                      <td key={months}>{formatPaymentAmount(commissionForSale(plan, months, totals.tier.rate))}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<CommissionPlan>
+            caption="Comisión por cliente, según el nivel alcanzado"
+            rows={PLANS}
+            columns={planColumns((plan, months) => formatPaymentAmount(commissionForSale(plan, months, totals.tier.rate)))}
+            getRowId={(plan) => plan}
+          />
         </section>
       </div>
     </main>

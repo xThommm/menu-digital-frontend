@@ -318,8 +318,7 @@
 }
 .dailyDetails { margin-top: var(--space-4); color: var(--admin-text-secondary); }
 .dailyDetails summary { cursor: pointer; padding: var(--space-2) 0; }
-.dataTable { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
-.dataTable th, .dataTable td { padding: var(--space-2); border-bottom: 1px solid var(--admin-border-warm); text-align: left; }
+.nowrap { white-space: nowrap; }
 
 .bar {
   width: 100%;

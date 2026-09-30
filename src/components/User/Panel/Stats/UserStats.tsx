@@ -4,6 +4,7 @@ import type { StatsData, ItemStatsData, DayCount, TopItemStat } from "../../../.
 import { usePlans } from "../../../../hooks/usePlans";
 import { isSubscriptionExpired, PLAN_ORDER } from "../../../../lib/plans";
 import { formatDateAR } from "../../../../lib/dates";
+import DataTable from "../../../Common/DataTable/DataTable";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import s from "./UserStats.module.css";
 import {
@@ -440,25 +441,25 @@ function DailyChart({ days, previousDays, average }: {
 
       <details className={s.dailyDetails}>
         <summary>Ver detalle de visitas por día</summary>
-        <table className={s.dataTable}>
-          <caption>Visitas por día de los últimos {days.length} días</caption>
-          <thead>
-            <tr>
-              <th scope="col">Día</th>
-              <th scope="col">Visitas</th>
-              {previous && <th scope="col">Período anterior</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {days.map((d, i) => (
-              <tr key={d.date}>
-                <th scope="row">{formatDayLong(d.date)}</th>
-                <td>{d.count}</td>
-                {previous && <td>{previous[i].count} ({formatDay(previous[i].date)})</td>}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable<{ day: DayCount; previous?: DayCount }>
+          caption={`Visitas por día de los últimos ${days.length} días`}
+          rows={days.map((day, i) => ({ day, previous: previous?.[i] }))}
+          columns={[
+            { id: "day", header: "Día", resizable: false, sortValue: row => row.day.date, render: row => <span className={s.nowrap}>{formatDayLong(row.day.date)}</span> },
+            { id: "visits", header: "Visitas", align: "right", resizable: false, initialDirection: "desc", sortValue: row => row.day.count, render: row => row.day.count },
+            ...(previous ? [{
+              id: "previous",
+              // Corto: en el celular el encabezado (sin cortes) le robaba el ancho al día.
+              header: "Anterior",
+              align: "right" as const,
+              resizable: false,
+              initialDirection: "desc" as const,
+              sortValue: (row: { previous?: DayCount }) => row.previous?.count,
+              render: (row: { previous?: DayCount }) => (row.previous ? `${row.previous.count} (${formatDay(row.previous.date)})` : "—"),
+            }] : []),
+          ]}
+          getRowId={row => row.day.date}
+        />
       </details>
     </div>
   );
@@ -552,20 +553,15 @@ function HourlyCard({ hourly, periodStart, wide }: { hourly: HourlyInsights; per
           </div>
           <details className={s.dailyDetails}>
             <summary>Ver visitas por hora</summary>
-            <table className={s.dataTable}>
-              <caption>Visitas por hora del día, sumadas en el período</caption>
-              <thead>
-                <tr><th scope="col">Hora</th><th scope="col">Visitas</th></tr>
-              </thead>
-              <tbody>
-                {hourly.hours.map((value, hour) => (
-                  <tr key={hour}>
-                    <th scope="row">{hour} a {(hour + 1) % 24} h</th>
-                    <td>{value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable<{ hour: number; visits: number }>
+              caption="Visitas por hora del día, sumadas en el período"
+              rows={hourly.hours.map((visits, hour) => ({ hour, visits }))}
+              columns={[
+                { id: "hour", header: "Hora", resizable: false, sortValue: row => row.hour, render: row => `${row.hour} a ${(row.hour + 1) % 24} h` },
+                { id: "visits", header: "Visitas", align: "right", resizable: false, initialDirection: "desc", sortValue: row => row.visits, render: row => row.visits },
+              ]}
+              getRowId={row => String(row.hour)}
+            />
           </details>
         </>
       )}
