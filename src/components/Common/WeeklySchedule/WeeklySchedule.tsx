@@ -242,7 +242,7 @@ export default function WeeklySchedule({
       {state.active.length > 0 && (
         <div className={styles.block}>
           <label className={styles.exceptionToggle}>
-            <input type="checkbox" checked={showExceptions} onChange={toggleExceptions} />
+            <input type="checkbox" className="md-check" checked={showExceptions} onChange={toggleExceptions} />
             <span>{exceptionLabel}</span>
           </label>
 

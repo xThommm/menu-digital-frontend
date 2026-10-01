@@ -361,7 +361,7 @@ export default function RegisterPlansPage() {
   return (
     <div
       className="auth-page-shell"
-      data-auth-theme={theme === "light" ? "light" : undefined}
+      data-auth-theme={theme}
     >
       <div className={`auth-surface ${styles.card}`}>
         <div className={styles.header}>

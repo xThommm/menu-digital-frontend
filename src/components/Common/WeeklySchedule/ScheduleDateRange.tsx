@@ -27,7 +27,7 @@ export default function ScheduleDateRange({
     <div className={styles.block}>
       <label className={styles.exceptionToggle}>
         <input
-          type="checkbox"
+          type="checkbox" className="md-check"
           checked={open}
           onChange={() => {
             if (open) onChange({ ...EMPTY_DATE_RANGE });

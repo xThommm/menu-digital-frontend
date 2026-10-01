@@ -200,11 +200,10 @@
   cursor: pointer;
 }
 
+/* Receta global .md-check; texto chico al lado: caja más compacta. */
 .exceptionToggle input {
-  width: 17px;
-  height: 17px;
-  accent-color: var(--admin-gold);
-  cursor: pointer;
+  --check-size: 16px;
+  --check-radius: 4px;
 }
 
 .exceptionList {

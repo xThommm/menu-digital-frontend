@@ -68,7 +68,7 @@ export default function Contact() {
   };
 
   return (
-    <div className={styles.page} data-auth-theme={theme === "light" ? "light" : undefined}>
+    <div className={styles.page} data-auth-theme={theme}>
       <nav className={styles.nav}>
         <Link to="/" className={styles.navLogo}>
           <BrandWordmark />

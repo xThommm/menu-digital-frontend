@@ -152,7 +152,13 @@
   font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
+  transition: color var(--transition);
 }
+
+/* Receta global .md-check; filtro de la barra: con el filtro activo la
+   etiqueta también se enciende. */
+.onlyPendingToggle input { --check-size: 17px; }
+.onlyPendingToggle:has(input:checked) { color: var(--admin-gold); }
 
 /* ── Barra de tamaño de grilla (solo PC, ver breakpoint más abajo) ────────── */
 
@@ -639,6 +645,14 @@
   color: var(--admin-text-secondary);
   font-size: var(--text-sm);
   cursor: pointer;
+}
+
+/* Receta global .md-check; está dentro del aviso de borrado, así que
+   marcada toma el rojo del botón Eliminar en vez del dorado. */
+.confirmCheckbox input {
+  --check-size: 18px;
+  --check-accent: var(--admin-danger-core);
+  --check-ink: var(--admin-bg-base);
 }
 
 .confirmActions {

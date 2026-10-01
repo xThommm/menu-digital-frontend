@@ -203,6 +203,39 @@
   white-space: nowrap;
 }
 
+/* Notificaciones sin leer — mismo badge que el CRM en SellerLayout. */
+.navBadge {
+  flex-shrink: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--admin-danger-core);
+  color: var(--text-inv);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* Versión chica superpuesta al ícono del dock mobile (el ícono padre,
+   .admin-mobile-dock__icon en globals.css, ya es position: relative). */
+.navBadgeDot {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  background: var(--admin-danger-core);
+  color: var(--text-inv);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
 /* ── Ítem con desplegable ("Vendedores" → accesos a /sellers/*) ── */
 .navGroup {
   display: flex;

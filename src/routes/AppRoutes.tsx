@@ -62,6 +62,10 @@ const AdminSellers = lazy(
   () => import("../components/Admin/Sellers/AdminSellers")
 );
 
+const AdminNotifications = lazy(
+  () => import("../components/Admin/Notifications/AdminNotifications")
+);
+
 // ─────────────────────────────────────────────
 // SELLER
 // ─────────────────────────────────────────────
@@ -278,6 +282,11 @@ export default function AppRoutes() {
             <Route
               path="/admin/sellers"
               element={<AdminSellers />}
+            />
+
+            <Route
+              path="/admin/notifications"
+              element={<AdminNotifications />}
             />
           </Route>
         </Route>

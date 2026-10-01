@@ -250,7 +250,7 @@ export default function MenuTemplatePicker({ onBack, onSuccess }: MenuTemplatePi
                 <div key={sec._id} className={styles.seccionBlock}>
                   <label className={styles.seccionHeader}>
                     <input
-                      type="checkbox"
+                      type="checkbox" className="md-check"
                       checked={allSelected}
                       ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
                       onChange={() => toggleSeccion(sec)}
@@ -317,7 +317,7 @@ function CategoriaBlock({ cat, selectedItemIds, onToggleCategoria, onToggleItem,
       >
         <label className={styles.catCheckboxWrap} onClick={(e) => e.stopPropagation()}>
           <input
-            type="checkbox"
+            type="checkbox" className="md-check"
             checked={allSelected}
             ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
             onChange={() => onToggleCategoria(cat)}
@@ -336,7 +336,7 @@ function CategoriaBlock({ cat, selectedItemIds, onToggleCategoria, onToggleItem,
           {cat.items.map((item) => (
             <label key={item._id} className={styles.itemRow}>
               <input
-                type="checkbox"
+                type="checkbox" className="md-check"
                 checked={selectedItemIds.has(item._id)}
                 onChange={() => onToggleItem(item._id)}
               />

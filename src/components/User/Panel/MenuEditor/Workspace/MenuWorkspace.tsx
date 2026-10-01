@@ -314,7 +314,7 @@ export function WorkspaceSection({
       {selection ? (
         <label className={cx(ws.check, ws.sectionCheck)}>
           <input
-            type="checkbox"
+            type="checkbox" className="md-check"
             checked={selection.checked}
             ref={el => { if (el) el.indeterminate = selection.indeterminate; }}
             onChange={selection.onToggle}
@@ -602,7 +602,7 @@ function WorkspaceCategoryCard({
         {catSelection !== "hidden" && (
           <label className={ws.check}>
             <input
-              type="checkbox"
+              type="checkbox" className="md-check"
               checked={catSelection === "on"}
               ref={el => { if (el) el.indeterminate = catSelection === "partial"; }}
               onChange={() => onToggleSelectAllInCat(cat)}
@@ -833,7 +833,7 @@ const WorkspaceItemRow = memo(function WorkspaceItemRow({
       {selectionMode ? (
         <label className={ws.check}>
           <input
-            type="checkbox"
+            type="checkbox" className="md-check"
             checked={selected}
             onChange={() => onToggleSelectItem(item._id)}
             aria-label={`Seleccionar ${item.title}`}

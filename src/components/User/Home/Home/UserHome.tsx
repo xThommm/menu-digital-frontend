@@ -8,6 +8,7 @@ import FreePlanAd from "../../../Common/FreePlanAd";
 import { getOpenStatus, getBusinessDayIndex, getDayRanges, JS_DAY_TO_KEY } from "../../../../Utils/businessSchedule";
 import { resolveLandingVisibility } from "../../../../lib/landingVisibility";
 import { getVisualFamily, resolveMenuStyle } from "../../../../lib/menuStyles";
+import { pageScrollbarRef } from "../../../../lib/pageScrollbar";
 import { buildWaHref, getWaTargets, sanitizePhoneForWa, type WaTarget } from "../../../../lib/whatsapp";
 import WaTargetPicker from "../WaTargetPicker/WaTargetPicker";
 
@@ -284,7 +285,7 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
   const showHeroBadges = hasDelivery || hasTakeAway || scheduleActive;
 
   return (
-    <div className={`t-wrap ${styles.landing}`} data-template={template ?? 1} data-menu-style={menuStyle} data-menu-family={family?.id}>
+    <div ref={pageScrollbarRef} className={`t-wrap ${styles.landing}`} data-template={template ?? 1} data-menu-style={menuStyle} data-menu-family={family?.id}>
       {user.features?.sin_publicidad !== true && <FreePlanAd />}
       <main className={styles.layout}>
         <header className={`${styles.header} ${showBg && !useAvatar ? styles.headerWithCover : ""}`}>

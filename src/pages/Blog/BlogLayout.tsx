@@ -20,7 +20,7 @@ export default function BlogLayout({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   return (
-    <div className={styles.page} data-auth-theme={theme === "light" ? "light" : undefined}>
+    <div className={styles.page} data-auth-theme={theme}>
       <a className={styles.skipLink} href="#contenido">Saltar al contenido</a>
       <header className={styles.header}>
         <Link className={`${styles.brand} md-lockup`} to="/" aria-label="menudigital, inicio">

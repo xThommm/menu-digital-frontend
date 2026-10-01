@@ -329,13 +329,13 @@ function PlanCard({ plan, usage, onUpdated }: {
           <fieldset className={s.featureFields} disabled={busy}>
             <legend>Funciones incluidas</legend>
             {BOOLEAN_FEATURES.map(feature => <label key={feature}>
-              <input type="checkbox" checked={features[feature] === true} onChange={event => setFeatures(current => ({ ...current, [feature]: event.target.checked }))} />
+              <input type="checkbox" className="md-check" checked={features[feature] === true} onChange={event => setFeatures(current => ({ ...current, [feature]: event.target.checked }))} />
               {FEATURE_LABELS[feature]}
             </label>)}
           </fieldset>
           <fieldset className={s.featureFields} disabled={busy}>
             <legend>Límite de productos</legend>
-            <label><input type="checkbox" checked={features.item_limit === null} onChange={event => setFeatures(current => ({ ...current, item_limit: event.target.checked ? null : plan.features.item_limit ?? 1 }))} />Productos ilimitados</label>
+            <label><input type="checkbox" className="md-check" checked={features.item_limit === null} onChange={event => setFeatures(current => ({ ...current, item_limit: event.target.checked ? null : plan.features.item_limit ?? 1 }))} />Productos ilimitados</label>
             {features.item_limit !== null && <div className={s.fields}><label htmlFor={`${plan.name}-limit`}>Cantidad máxima
               <input id={`${plan.name}-limit`} type="number" min="1" step="1" value={features.item_limit} onChange={event => setFeatures(current => ({ ...current, item_limit: Number(event.target.value) }))} />
             </label></div>}
@@ -344,7 +344,7 @@ function PlanCard({ plan, usage, onUpdated }: {
             <legend>Diseños disponibles</legend>
             <p className={s.hint}>Elegí al menos uno. Si quitás un diseño en uso, se mostrará el primer diseño permitido sin borrar la selección guardada.</p>
             <div className={s.templateFields}>{Array.from({ length: 15 }, (_, i) => i + 1).map(id => <label key={id}>
-              <input type="checkbox" checked={features.templateIds.includes(id)} onChange={event => setFeatures(current => ({ ...current, templateIds: event.target.checked ? [...current.templateIds, id].sort((a,b) => a-b) : current.templateIds.filter(template => template !== id) }))} />Diseño {id}
+              <input type="checkbox" className="md-check" checked={features.templateIds.includes(id)} onChange={event => setFeatures(current => ({ ...current, templateIds: event.target.checked ? [...current.templateIds, id].sort((a,b) => a-b) : current.templateIds.filter(template => template !== id) }))} />Diseño {id}
             </label>)}</div>
           </fieldset>
           {validationError && <p className={s.error} id={errorID} role="alert">{validationError}</p>}

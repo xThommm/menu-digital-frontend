@@ -215,11 +215,11 @@
   cursor: pointer;
 }
 
+/* Receta global .md-check. El árbol sección › categoría › producto se lee
+   también en las cajas: bajan de tamaño y de contorno en cada nivel. */
 .seccionHeader input[type="checkbox"] {
-  accent-color: var(--admin-gold);
-  width: 17px;
-  height: 17px;
-  flex-shrink: 0;
+  --check-size: 18px;
+  --check-radius: 5px;
 }
 
 .seccionTitle {
@@ -270,9 +270,8 @@
 }
 
 .catCheckboxWrap input[type="checkbox"] {
-  accent-color: var(--admin-gold);
-  width: 17px;
-  height: 17px;
+  --check-size: 17px;
+  --check-radius: 5px;
 }
 
 .catThumb, .itemThumb {
@@ -346,10 +345,9 @@
 }
 
 .itemRow input[type="checkbox"] {
-  accent-color: var(--admin-gold);
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
+  --check-size: 15px;
+  --check-radius: 4px;
+  --check-border: color-mix(in srgb, var(--admin-text-primary) 24%, transparent);
 }
 
 .itemTitle {

@@ -802,11 +802,11 @@
   cursor: pointer;
 }
 
+/* Receta global .md-check; selección múltiple de productos: círculo, como
+   al elegir fotos en una galería. */
 .itemCheckboxWrap input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--admin-gold);
-  cursor: pointer;
+  --check-size: 20px;
+  --check-radius: 50%;
 }
 
 /* Handle de arrastre */

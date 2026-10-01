@@ -391,7 +391,7 @@ function DeleteConfirmModal({
         </p>
         <label className={styles.confirmCheckbox}>
           <input
-            type="checkbox"
+            type="checkbox" className="md-check"
             checked={skipNextTime}
             onChange={(e) => setSkipNextTime(e.target.checked)}
           />
@@ -751,7 +751,7 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
         </div>
         <label className={styles.onlyPendingToggle}>
           <input
-            type="checkbox"
+            type="checkbox" className="md-check"
             checked={onlyPending}
             onChange={(e) => setOnlyPending(e.target.checked)}
           />
