@@ -5,19 +5,25 @@ import { useTheme } from "../../../../hooks/useTheme";
 import { usePlans } from "../../../../hooks/usePlans";
 import { isSubscriptionExpired, PLAN_LABEL } from "../../../../lib/plans";
 import { formatDateAR } from "../../../../lib/dates";
+import { OWNER_SIDEBAR_COLLAPSED_KEY } from "../../../../lib/ownerSidebar";
 import { MobileDockProvider } from "../../../../context/MobileDockProvider";
 import { useMobileDock } from "../../../../context/useMobileDock";
 import BrandMark from "../../../Common/BrandMark";
 import BrandWordmark from "../../../Common/BrandWordmark";
 import s from "./DashboardLayout.module.css";
+import { ArrowUpRight, ChartColumn, ClipboardList, FileText, House, LogOut, MoreHorizontal, PanelLeft, Settings, Store } from "lucide-react";
 
 const NAV_ITEMS = [
-  { path: "/dashboard",      label: "Dashboard",      short: "Inicio",  icon: <HomeIcon /> },
-  { path: "/menu/editor",    label: "Editor de menú", short: "Menú",    icon: <DocIcon /> },
-  { path: "/user/editor",    label: "Mi negocio",     short: "Negocio", icon: <StoreIcon /> },
-  { path: "/estadisticas",   label: "Estadísticas",   short: "Stats",   icon: <ChartIcon /> },
-  { path: "/configuracion",  label: "Configuración",  short: "Config",  icon: <SettingsIcon /> },
+  { path: "/dashboard",      label: "Inicio",         short: "Inicio",  icon: <House size={20} strokeWidth={1.5} /> },
+  { path: "/menu/editor",    label: "Editor de menú", short: "Menú",    icon: <FileText size={20} strokeWidth={1.5} /> },
+  { path: "/user/editor",    label: "Mi negocio",     short: "Negocio", icon: <Store size={20} strokeWidth={1.5} /> },
+  { path: "/estadisticas",   label: "Estadísticas",   short: "Stats",   icon: <ChartColumn size={20} strokeWidth={1.5} /> },
+  { path: "/configuracion",  label: "Configuración",  short: "Config",  icon: <Settings size={20} strokeWidth={1.5} /> },
 ];
+
+// Pantallas de trabajo que necesitan el ancho: ahí la barra queda como riel
+// de íconos (ver .sidebarCompact en DashboardLayout.module.css).
+const COMPACT_SIDEBAR_PATHS = ["/menu/editor"];
 
 // Acceso a Gestión de pedidos (sección aparte con su propia barra, ver
 // src/features/orders). En el celular va en "Más" para no sumar un botón al dock.
@@ -46,6 +52,18 @@ function DashboardLayoutInner() {
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const mobileMoreButtonRef = useRef<HTMLButtonElement>(null);
   const firstMobileMoreActionRef = useRef<HTMLButtonElement>(null);
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem(OWNER_SIDEBAR_COLLAPSED_KEY) === "true"
+  );
+
+  useEffect(() => {
+    localStorage.setItem(OWNER_SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
+  const sidebarCompact = !sidebarCollapsed && COMPACT_SIDEBAR_PATHS.includes(location.pathname);
+  const sidebarStateClass = sidebarCollapsed ? s.sidebarCollapsed : sidebarCompact ? s.sidebarCompact : "";
+  const contentStateClass = sidebarCollapsed ? s.contentExpanded : sidebarCompact ? s.contentCompact : "";
 
   useEffect(() => {
     if (!mobileMoreOpen) return;
@@ -89,11 +107,21 @@ function DashboardLayoutInner() {
     <div className={s.layoutRoot}>
 
       {/* ── Sidebar (desktop) ─────────────────────────────────────────────── */}
-      <aside className={s.sidebar} aria-label="Navegación principal">
-
-        <div className={s.logoSq} role="img" aria-label="menudigital">
-          <BrandMark className={s.brandMarkImage} />
-        </div>
+      <aside
+        id="owner-sidebar"
+        className={`${s.sidebar} ${sidebarStateClass}`}
+        aria-label="Navegación principal"
+        inert={sidebarCollapsed}
+      >
+        <button type="button" className={s.brand} onClick={() => navigate("/dashboard")} aria-label="Ir al inicio">
+          <div className={s.logoSq} role="img" aria-label="menudigital">
+            <BrandMark inline className={s.brandMarkImage} />
+          </div>
+          <div className={s.brandText}>
+            <span className={s.brandName}><BrandWordmark /></span>
+            <span className={s.brandSubtitle}>{user?.name}</span>
+          </div>
+        </button>
 
         <nav className={s.sideNav}>
           {NAV_ITEMS.map(item => {
@@ -101,50 +129,60 @@ function DashboardLayoutInner() {
             return (
               <button
                 key={item.path}
-                className={`${s.sideBtn} ${active ? s.sideBtnActive : ""}`}
+                type="button"
+                className={`${s.navItem} ${active ? s.navItemActive : ""}`}
                 onClick={() => navigate(item.path)}
-                aria-label={item.label}
                 aria-current={active ? "page" : undefined}
                 data-tooltip={item.label}
               >
-                {item.icon}
+                <span className={s.navIcon}>{item.icon}</span>
+                <span className={s.navLabel}>{item.label}</span>
               </button>
             );
           })}
-          <button
-            className={s.sideBtn}
-            onClick={() => navigate(ORDERS_PATH)}
-            aria-label={ORDERS_LABEL}
-            data-tooltip={ORDERS_LABEL}
-          >
-            <OrdersIcon />
-          </button>
+
+          {/* Gestión de pedidos es otra sección, con su propia barra. */}
+          <div className={s.navSection}>
+            <span className={s.navSectionLabel}>Secciones</span>
+            <button type="button" className={s.navItem} onClick={() => navigate(ORDERS_PATH)} data-tooltip={ORDERS_LABEL}>
+              <span className={s.navIcon}><ClipboardList size={20} strokeWidth={1.5} /></span>
+              <span className={s.navLabel}>{ORDERS_LABEL}</span>
+              <span className={s.navTrailing}><ArrowUpRight size={16} strokeWidth={1.5} aria-hidden /></span>
+            </button>
+          </div>
         </nav>
 
-        <button
-          className={`${s.sideBtn} ${s.sideLogout}`}
-          onClick={toggleTheme}
-          aria-label={themeLabel}
-          data-tooltip={themeLabel}
-        >
-          {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-        </button>
-
-        <button
-          className={s.sideBtn}
-          onClick={handleLogout}
-          aria-label="Cerrar sesión"
-          data-tooltip="Salir"
-        >
-          <LogoutIcon />
-        </button>
+        <div className={s.sideFooter}>
+          <button type="button" className={s.navItem} onClick={toggleTheme} aria-label={themeLabel} data-tooltip={themeLabel}>
+            <span className={s.navIcon}>{theme === "dark" ? <SunIcon /> : <MoonIcon />}</span>
+            <span className={s.navLabel}>{theme === "dark" ? "Tema claro" : "Tema oscuro"}</span>
+          </button>
+          <button type="button" className={`${s.navItem} ${s.navItemDanger}`} onClick={handleLogout} data-tooltip="Cerrar sesión">
+            <span className={s.navIcon}><LogOut size={20} strokeWidth={1.5} /></span>
+            <span className={s.navLabel}>Cerrar sesión</span>
+          </button>
+        </div>
       </aside>
+
+      {/* Toggle fijo fuera del <aside>, igual que en AdminLayout.tsx. En el
+          riel compacto no entra (y no hay nada que ocultar). */}
+      {!sidebarCompact && <button
+        type="button"
+        className={`${s.sidebarToggle} ${sidebarCollapsed ? s.sidebarToggleCollapsed : ""}`}
+        onClick={() => setSidebarCollapsed(collapsed => !collapsed)}
+        aria-expanded={!sidebarCollapsed}
+        aria-controls="owner-sidebar"
+        aria-label={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"}
+        title={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"}
+      >
+        <PanelLeft size={18} strokeWidth={1.75} />
+      </button>}
 
       {/* ── Contenido de la página activa ──────────────────────────────────
           admin-layout-content reserva espacio abajo para no quedar tapado
           por el dock (ver globals.css) — con el dock oculto ese espacio
           reservado sobra, así que se saca con el modificador --no-dock. */}
-      <div className={`${s.content} admin-layout-content ${mobileDockHidden ? "admin-layout-content--no-dock" : ""}`}>
+      <div className={`${s.content} admin-layout-content ${contentStateClass} ${mobileDockHidden ? "admin-layout-content--no-dock" : ""}`}>
         {subscriptionExpired && (
           <aside className={s.expiryBanner} role="status" aria-live="polite">
             <div className={s.expiryBannerCopy}>
@@ -207,7 +245,7 @@ function DashboardLayoutInner() {
             aria-expanded={mobileMoreOpen}
             aria-controls="user-mobile-more-menu"
           >
-            <span className="admin-mobile-dock__icon"><MoreIcon /></span>
+            <span className="admin-mobile-dock__icon"><MoreHorizontal size={20} strokeWidth={1.5} /></span>
             Más
           </button>
         </nav>
@@ -235,7 +273,7 @@ function DashboardLayoutInner() {
                 navigate(ORDERS_PATH);
               }}
             >
-              <OrdersIcon />
+              <ClipboardList />
               {ORDERS_LABEL}
             </button>
             <button
@@ -255,7 +293,7 @@ function DashboardLayoutInner() {
               className="admin-mobile-more__item admin-mobile-more__item--danger"
               onClick={handleLogout}
             >
-              <LogoutIcon />
+              <LogOut />
               Cerrar sesión
             </button>
           </div>
@@ -268,84 +306,12 @@ function DashboardLayoutInner() {
 
 // ── Íconos ────────────────────────────────────────────────────────────────────
 
-function HomeIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
-    </svg>
-  );
-}
 
-function DocIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
-      <polyline points="10 9 9 9 8 9" />
-    </svg>
-  );
-}
 
-function StoreIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-    </svg>
-  );
-}
 
-function ChartIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <line x1="18" y1="20" x2="18" y2="10" />
-      <line x1="12" y1="20" x2="12" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="14" />
-    </svg>
-  );
-}
 
-function SettingsIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
-}
 
-function OrdersIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-      <path d="M12 11h4" />
-      <path d="M12 16h4" />
-      <path d="M8 11h.01" />
-      <path d="M8 16h.01" />
-    </svg>
-  );
-}
 
-function LogoutIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-  );
-}
 
 // Sol = "pasar a claro" (se muestra cuando el tema actual es oscuro).
 function SunIcon() {
@@ -368,12 +334,3 @@ function MoonIcon() {
   );
 }
 
-function MoreIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <circle cx="5" cy="12" r="1.5" />
-      <circle cx="12" cy="12" r="1.5" />
-      <circle cx="19" cy="12" r="1.5" />
-    </svg>
-  );
-}

@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useTheme } from "../../hooks/useTheme";
 import { useCrmAlerts } from "../../hooks/useCrmAlerts";
 import BrandMark from "../Common/BrandMark";
 import BrandWordmark from "../Common/BrandWordmark";
+import AdminLayout from "../Admin/Panel/AdminLayout";
 import s from "./SellerLayout.module.css";
 import {
-  BarChart3,
   Calculator,
   LayoutPanelLeft,
   LogOut,
@@ -20,30 +20,33 @@ import {
 // Preferencia de sidebar colapsada (separada de la del admin)
 const SIDEBAR_COLLAPSED_KEY = "seller-sidebar-collapsed";
 
-const BASE_NAV_ITEMS = [
+// Mismo orden y nombres que el submenú "Vendedores" del panel CEO
+// (SELLERS_SUB_ITEMS en AdminLayout.tsx), sin Ranking: es exclusivo admin.
+const SELLER_NAV_ITEMS = [
   { path: "/sellers", label: "Panel general", short: "Panel", icon: <LayoutPanelLeft size={20} strokeWidth={1.5} /> },
-  { path: "/sellers/simulacion", label: "Simulación", short: "Simular", icon: <Calculator size={20} strokeWidth={1.5} /> },
+  { path: "/sellers/simulacion", label: "Simulación de ventas", short: "Simular", icon: <Calculator size={20} strokeWidth={1.5} /> },
   { path: "/sellers/crm", label: "CRM", short: "CRM", icon: <Users size={20} strokeWidth={1.5} /> },
   { path: "/sellers/configuracion", label: "Configuración", short: "Config.", icon: <Settings size={20} strokeWidth={1.5} /> },
 ];
 
-// Ranking es exclusivo admin — se agrega condicionalmente para no mostrarle a
-// un vendedor un link que lo va a rebotar de vuelta a /sellers.
-const RANKING_ITEM = { path: "/sellers/ranking", label: "Ranking", short: "Ranking", icon: <BarChart3 size={20} strokeWidth={1.5} /> };
 const INFLUENCER_NAV_ITEMS = [
   { path: "/sellers/influencer", label: "Mis referidos", short: "Referidos", icon: <Users size={20} strokeWidth={1.5} /> },
 ];
 
+// El admin también entra a /sellers/* (CRM, ranking, simulación), pero lo ve
+// dentro de su propio layout: no cambia de barra al pasar del panel CEO acá.
 export default function SellerLayout() {
+  const { user } = useAuth();
+  return user?.role === "admin" ? <AdminLayout /> : <SellerPanelLayout />;
+}
+
+function SellerPanelLayout() {
   const { logout, user } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const isInfluencer = user?.role === "seller" && user.influencer === true;
-  const NAV_ITEMS = useMemo(
-    () => isInfluencer ? INFLUENCER_NAV_ITEMS : (user?.role === "admin" ? [...BASE_NAV_ITEMS, RANKING_ITEM] : BASE_NAV_ITEMS),
-    [isInfluencer, user?.role],
-  );
+  const NAV_ITEMS = isInfluencer ? INFLUENCER_NAV_ITEMS : SELLER_NAV_ITEMS;
   // Badge del ítem "CRM": seguimientos vencidos + leads nuevos asignados
   // (0 para un influencer, que ni siquiera ve ese ítem).
   const { overdueFollowUps, newAssignments } = useCrmAlerts();
@@ -83,11 +86,9 @@ export default function SellerLayout() {
     navigate("/login");
   }, [logout, navigate]);
 
-  // Este layout lo comparten sellers y admins (que pueden entrar a /sellers
-  // a mirar) — el logo lleva al panel general de cada uno.
   const goToOwnPanel = useCallback(() => {
-    navigate(user?.role === "admin" ? "/admin" : isInfluencer ? "/sellers/influencer" : "/sellers");
-  }, [navigate, isInfluencer, user?.role]);
+    navigate(isInfluencer ? "/sellers/influencer" : "/sellers");
+  }, [navigate, isInfluencer]);
 
   const themeLabel = theme === "dark" ? "Activar tema claro" : "Activar tema oscuro";
 

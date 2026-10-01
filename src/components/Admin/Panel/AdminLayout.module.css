@@ -312,6 +312,18 @@
   color: var(--admin-gold);
 }
 
+/* Sección de /sellers/* abierta: mismo lenguaje que .navItemActive, en chico. */
+.navSubItemActive {
+  composes: md-button from global;
+  background: var(--admin-bg-raised-2);
+  color: var(--admin-gold);
+  box-shadow: inset 2px 0 0 var(--admin-gold);
+}
+
+.navSubItemActive:hover {
+  background: var(--admin-bg-raised-3);
+}
+
 /* ── Footer (tema, logout) ── */
 .sideFooter {
   display: flex;
@@ -345,6 +357,8 @@
 @media (max-width: 599px) {
   .sidebar { display: none; }
   .sidebarToggle { display: none; }
+  /* El toggle no existe en el celular: no hay esquina que reservar. */
+  .contentExpanded { padding-top: 0; }
 
   .content {
     margin-left: 0;
