@@ -463,8 +463,7 @@
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
   scroll-padding-inline: var(--featured-bleed);
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--t-accent) 30%, transparent) transparent;
+  --scrollbar-size: 8px; /* carrusel: barra fina con el acento de la carta (globals.css) */
   /* La tarjeta que queda cortada a la derecha se desvanece: se lee como
      "hay más" sin sumar flechas ni puntos. */
   -webkit-mask-image: linear-gradient(to right, black calc(100% - var(--featured-fade)), transparent);

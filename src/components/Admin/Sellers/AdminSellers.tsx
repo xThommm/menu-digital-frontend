@@ -596,7 +596,7 @@ function SellerEditPanel({
           <label className={s.inlineCheckbox} htmlFor={`seller-${seller._id}-admin`}>
             <input
               id={`seller-${seller._id}-admin`}
-              type="checkbox"
+              type="checkbox" className="md-check"
               checked={admin}
               disabled={saving}
               onChange={(event) => setAdmin(event.target.checked)}
@@ -657,13 +657,13 @@ function SellerLeadOptions({
     <fieldset className={s.leadOptions}>
       <legend>Referidos y seguimiento</legend>
       <label className={s.inlineCheckbox} htmlFor={`${idPrefix}-influencer`}>
-        <input id={`${idPrefix}-influencer`} type="checkbox" checked={influencer} disabled={disabled}
+        <input id={`${idPrefix}-influencer`} type="checkbox" className="md-check" checked={influencer} disabled={disabled}
           onChange={(event) => onInfluencerChange(event.target.checked)} />
         Influencer
       </label>
       <p>Accede únicamente a sus referidos, primeras compras y comisiones.</p>
       <label className={s.inlineCheckbox} htmlFor={`${idPrefix}-receives-leads`}>
-        <input id={`${idPrefix}-receives-leads`} type="checkbox" checked={receivesLeads} disabled={disabled || influencer}
+        <input id={`${idPrefix}-receives-leads`} type="checkbox" className="md-check" checked={receivesLeads} disabled={disabled || influencer}
           onChange={(event) => onReceivesLeadsChange(event.target.checked)} />
         Recibe leads de influencers / publicidad
       </label>

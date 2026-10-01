@@ -862,8 +862,11 @@
    sirva a los dos módulos sin duplicarlo: cualquier contenedor con el
    atributo data-auth-theme="light" (ver useAuthTheme.ts) hereda estos
    valores en vez de los oscuros de :root de arriba. El ámbar se mantiene
-   igual en ambos temas (identidad de marca); solo cambian fondos y texto. */
-[data-auth-theme="light"] {
+   igual en ambos temas (identidad de marca); solo cambian fondos y texto.
+   El :root:has() sube estos valores a <html> en esas páginas, para que la
+   barra de scroll de la página (que pinta <html>) vea el tema claro. */
+[data-auth-theme="light"],
+:root:has([data-auth-theme="light"]) {
   --auth-bg:          #faf5ee;
   --auth-bg-card:     #f1e7d8;
   --auth-bg-elevated: #e8d9c3;
@@ -966,6 +969,108 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: "kern" 1, "liga" 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BARRA DE SCROLL — reemplaza la del navegador en toda la app
+   Píldora fina que flota sobre un riel transparente; al pasar el mouse
+   o arrastrarla se engrosa y toma el acento del tema. Como la escala
+   tonal, los colores se declaran en cada raíz de tema (las custom
+   properties heredan ya resueltas):
+     --scrollbar-size        grosor del área (12px; la píldora es la mitad)
+     --scrollbar-thumb       píldora en reposo
+     --scrollbar-thumb-hover píldora con hover / arrastrando
+     --scrollbar-page-track  riel de la barra de la PÁGINA (<html>): el
+                             fondo de la página, para que no se vea una
+                             franja del fondo de <body>. Los paneles con
+                             scroll propio dejan el riel transparente.
+   La carta pública tiene la paleta en un div, no en <html>: la copia a
+   <html> pageScrollbarRef (lib/pageScrollbar.ts).
+   Un módulo ajusta el grosor con --scrollbar-size (paneles angostos);
+   no usar scrollbar-width/scrollbar-color: en Chromium anulan esta receta.
+   ═══════════════════════════════════════════════════════════════ */
+:root,
+.admin-panel-graphite {
+  --scrollbar-size:        12px;
+  --scrollbar-thumb:       color-mix(in srgb, var(--admin-text-primary) 24%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--admin-gold) 85%, transparent);
+  --scrollbar-page-track:  var(--admin-bg-base);
+}
+
+/* Landing, blog, legales y autenticación (tokens --auth-*). */
+.auth-page-shell,
+[data-auth-theme],
+:root:has(.auth-page-shell, [data-auth-theme]) {
+  --scrollbar-thumb:       color-mix(in srgb, var(--auth-cream) 24%, transparent);
+  --scrollbar-thumb-hover: var(--auth-amber);
+  --scrollbar-page-track:  var(--auth-bg);
+}
+
+/* Carta pública: la paleta de cada diseño. */
+[data-template] {
+  --scrollbar-thumb:       color-mix(in srgb, var(--t-accent) 40%, transparent);
+  --scrollbar-thumb-hover: var(--t-accent);
+  --scrollbar-page-track:  var(--t-bg, var(--t-surface));
+}
+
+::-webkit-scrollbar {
+  width: var(--scrollbar-size, 12px);
+  height: var(--scrollbar-size, 12px);
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Chromium toma la barra del viewport de <body> (no de <html>), así que
+   van los dos; body no tiene scroll propio en la app. */
+html::-webkit-scrollbar-track,
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-track,
+body::-webkit-scrollbar-corner {
+  background: var(--scrollbar-page-track);
+}
+
+/* El borde transparente + background-clip angosta la píldora sin achicar
+   el área que se puede agarrar; con hover el borde baja y la píldora crece. */
+::-webkit-scrollbar-thumb {
+  min-width: 40px;
+  min-height: 40px;
+  border: calc(var(--scrollbar-size, 12px) / 4) solid transparent;
+  border-radius: 9999px;
+  background-color: var(--scrollbar-thumb);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:active {
+  border-width: calc(var(--scrollbar-size, 12px) / 6);
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* Firefox no tiene los pseudo-elementos: color y grosor estándar con los
+   mismos tokens. :where() deja que un módulo lo pise (scrollbar-width: none). */
+@supports not selector(::-webkit-scrollbar) {
+  :where(*) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  :where(html) {
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-page-track);
+  }
+}
+
+@media (forced-colors: active) {
+  ::-webkit-scrollbar-thumb,
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: CanvasText;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2402,6 +2507,102 @@ a.md-button:active::after,
   box-shadow: var(--tone-shadow);
 }
 
+/* Checkbox: caja propia (sin el control nativo), tilde que entra con
+   rebote, guion para el estado intermedio y la misma capa de estado que
+   los botones, pero como halo alrededor de la caja. Se usa como clase en
+   el input (className="md-check"); cada módulo la adapta a su contexto
+   con estas variables, sin redefinir la receta:
+     --check-size    lado de la caja (18px)
+     --check-radius  esquina (5px; 50% para la selección múltiple tipo galería)
+     --check-accent  relleno marcado (el acento del tema vigente)
+     --check-ink     tilde sobre el relleno
+     --check-border  contorno sin marcar
+     --check-bg      fondo sin marcar
+   Clase doble (0,2,0) por lo mismo que .md-button: varios módulos traen
+   reglas `.algo input[type="checkbox"]` con width/height/accent-color. */
+.md-check.md-check {
+  --_size:   var(--check-size, 18px);
+  --_accent: var(--check-accent, var(--tone-accent, var(--admin-gold)));
+  --_ink:    var(--check-ink, var(--admin-gold-ink));
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  display: inline-grid;
+  place-content: center;
+  box-sizing: border-box;
+  width: var(--_size);
+  height: var(--_size);
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 2px solid var(--check-border, color-mix(in srgb, var(--admin-text-primary) 34%, transparent));
+  border-radius: var(--check-radius, 5px);
+  background: var(--check-bg, transparent);
+  box-shadow: 0 0 0 0 transparent;
+  color: var(--_accent);
+  vertical-align: middle;
+  cursor: pointer;
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition-spring);
+}
+
+.md-check::before {
+  content: '';
+  /* Tamaño explícito: un % se resuelve contra la pista del grid, que mide 0. */
+  width: calc(var(--_size) * 0.6);
+  height: calc(var(--_size) * 0.6);
+  background: var(--_ink);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0, 43% 62%);
+  transform: scale(0);
+  transition: transform var(--transition-spring);
+}
+
+.md-check:checked,
+.md-check:indeterminate {
+  border-color: var(--_accent);
+  background: var(--_accent);
+  animation: md-check-pop 0.3s var(--ease-spring);
+}
+
+.md-check:checked::before { transform: scale(1); }
+.md-check:indeterminate::before {
+  clip-path: inset(38% 10% round 2px);
+  transform: scale(1);
+}
+
+@keyframes md-check-pop {
+  0% { transform: scale(0.82); }
+  100% { transform: scale(1); }
+}
+
+@media (hover: hover) {
+  .md-check:enabled:hover {
+    border-color: color-mix(in srgb, var(--_accent) 70%, transparent);
+    box-shadow: 0 0 0 calc(var(--_size) * 0.42) color-mix(in srgb, currentColor 10%, transparent);
+  }
+  .md-check:enabled:checked:hover,
+  .md-check:enabled:indeterminate:hover { border-color: var(--_accent); }
+}
+
+.md-check:enabled:active {
+  transform: scale(0.88);
+  box-shadow: 0 0 0 calc(var(--_size) * 0.42) color-mix(in srgb, currentColor 16%, transparent);
+}
+
+.md-check:focus-visible {
+  outline: 3px solid var(--tone-focus, var(--_accent));
+  outline-offset: 2px;
+}
+
+.md-check:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .md-button,
   .md-button::after,
@@ -2419,6 +2620,13 @@ a.md-button:active::after,
   .t-notfound-retry:active {
     --control-shape: var(--control-radius);
   }
+
+  .md-check.md-check,
+  .md-check::before {
+    animation: none;
+    transition: none;
+  }
+  .md-check:enabled:active { transform: none; }
 }
 
 @media (forced-colors: active) {
@@ -2443,6 +2651,17 @@ a.md-button:active::after,
   .md-surface {
     border: 1px solid CanvasText;
     box-shadow: none;
+  }
+
+  /* Con colores forzados el relleno desaparece: volver al control nativo. */
+  .md-check.md-check {
+    appearance: auto;
+    -webkit-appearance: checkbox;
+    border: 0;
+  }
+
+  .md-check::before {
+    display: none;
   }
 }
 

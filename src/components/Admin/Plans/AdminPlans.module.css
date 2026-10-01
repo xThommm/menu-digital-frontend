@@ -69,7 +69,10 @@
 .featureFields { margin: var(--space-5) 0; padding: var(--space-3); border: 1px solid var(--admin-border-default); border-radius: var(--admin-radius-md); }
 .featureFields legend { padding-inline: var(--space-2); color: var(--admin-text-primary); font-size: var(--text-sm); }
 .featureFields > label, .templateFields label { display: flex; align-items: center; gap: var(--space-2); min-height: var(--control-min-size); font-size: var(--text-sm); cursor: pointer; }
-.featureFields input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--admin-gold); }
+/* Receta global .md-check; lista de funciones del plan: caja estándar y la
+   etiqueta se enciende cuando la función está incluida. */
+.featureFields input[type="checkbox"] { --check-size: 18px; --check-radius: 5px; }
+.featureFields label:has(input:checked) { color: var(--admin-text-primary); }
 .featureFields input:focus-visible { outline: 2px solid var(--admin-gold); outline-offset: 3px; }
 .templateFields { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: var(--space-1); }
 .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }

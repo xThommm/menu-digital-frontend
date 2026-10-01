@@ -201,7 +201,7 @@ export default function RegisterSuccessPage() {
   return (
     <div
       className="auth-page-shell"
-      data-auth-theme={theme === "light" ? "light" : undefined}
+      data-auth-theme={theme}
     >
       <div className={`auth-surface ${styles.card}`} aria-live="polite">
         <span className={styles.eyebrow}>Menú Digital App · Activación</span>

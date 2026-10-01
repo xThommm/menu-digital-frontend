@@ -3,10 +3,11 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/useAuth";
 import { useTheme } from "../../../hooks/useTheme";
 import { useAdminPush } from "../../../hooks/useAdminPush";
+import { useAdminNotifications } from "../../../hooks/useAdminNotifications";
 import BrandMark from "../../Common/BrandMark";
 import BrandWordmark from "../../Common/BrandWordmark";
 import s from "./AdminLayout.module.css";
-import { Bell, BellOff, BellRing, ChevronDown,PanelLeft , DollarSign, LayoutPanelLeft, LogOut, MoreHorizontal, PlayingCards, Speech } from "lucide-react";
+import { Bell, BellOff, BellRing, ChevronDown,PanelLeft , DollarSign, Inbox, LayoutPanelLeft, LogOut, MoreHorizontal, PlayingCards, Speech } from "lucide-react";
 
 // Preferencia del CEO de ocultar la sidebar (desktop). Persistida para que no
 // tenga que volver a colapsarla en cada visita al panel.
@@ -23,6 +24,9 @@ const SELLERS_SUB_ITEMS = [
   { path: "/sellers/configuracion", label: "Configuración" },
 ];
 
+// Bandeja de notificaciones: el único ítem con badge (no leídas).
+const NOTIFICATIONS_PATH = "/admin/notifications";
+
 // El CRM se mudó al panel de vendedores (/sellers/crm, alcanzable por admin
 // también) — ya no vive en este layout.
 const NAV_ITEMS = [
@@ -30,12 +34,18 @@ const NAV_ITEMS = [
   { path: "/admin/payments", label: "Pagos",      short: "Pagos",  icon: <DollarSign size={20} strokeWidth={1.5} /> },
   { path: "/admin/plans",    label: "Planes",     short: "Planes", icon: <PlayingCards size={20} strokeWidth={1.5} /> },
   { path: "/admin/sellers",  label: "Vendedores", short: "Vend.",  icon: <Speech size={20} strokeWidth={1.5} />, subItems: SELLERS_SUB_ITEMS },
+  { path: NOTIFICATIONS_PATH, label: "Notificaciones", short: "Avisos", icon: <Inbox size={20} strokeWidth={1.5} /> },
 ];
 
 export default function AdminLayout() {
   const { logout } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
   const push = useAdminPush();
+  const { unreadCount } = useAdminNotifications();
+  const badgeFor = (path: string) => (path === NOTIFICATIONS_PATH ? unreadCount : 0);
+  const navAriaLabel = (item: { path: string; label: string }) => (
+    badgeFor(item.path) > 0 ? `${item.label} (${badgeFor(item.path)} sin leer)` : item.label
+  );
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
@@ -112,11 +122,14 @@ export default function AdminLayout() {
                   key={item.path}
                   className={`${s.navItem} ${active ? s.navItemActive : ""}`}
                   onClick={() => navigate(item.path)}
-                  aria-label={item.label}
+                  aria-label={navAriaLabel(item)}
                   aria-current={active ? "page" : undefined}
                 >
                   <span className={s.navIcon}>{item.icon}</span>
                   <span className={s.navLabel}>{item.label}</span>
+                  {badgeFor(item.path) > 0 && (
+                    <span className={s.navBadge}>{badgeFor(item.path) > 99 ? "99+" : badgeFor(item.path)}</span>
+                  )}
                 </button>
               );
             }
@@ -247,10 +260,15 @@ export default function AdminLayout() {
                 setMobileMoreOpen(false);
                 navigate(item.path);
               }}
-              aria-label={item.label}
+              aria-label={navAriaLabel(item)}
               aria-current={active ? "page" : undefined}
             >
-              <span className="admin-mobile-dock__icon">{item.icon}</span>
+              <span className="admin-mobile-dock__icon">
+                {item.icon}
+                {badgeFor(item.path) > 0 && (
+                  <span className={s.navBadgeDot}>{badgeFor(item.path) > 9 ? "9+" : badgeFor(item.path)}</span>
+                )}
+              </span>
               {item.short}
             </button>
           );

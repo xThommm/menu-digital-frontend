@@ -481,7 +481,7 @@ function GroupCheckbox({ selection, title }: { selection: GroupSelection; title:
   return (
     <label className={styles.itemCheckboxWrap}>
       <input
-        type="checkbox"
+        type="checkbox" className="md-check"
         checked={selection.checked}
         ref={el => { if (el) el.indeterminate = selection.indeterminate; }}
         onChange={selection.onToggle}
@@ -620,7 +620,7 @@ const CategoriaAcordeon = memo(function CategoriaAcordeon({
         {catSelection !== "hidden" && (
           <label className={styles.itemCheckboxWrap} onClick={e => e.stopPropagation()}>
             <input
-              type="checkbox"
+              type="checkbox" className="md-check"
               checked={catSelection === "on"}
               ref={el => { if (el) el.indeterminate = catSelection === "partial"; }}
               onChange={() => onToggleSelectAllInCat(cat)}
@@ -779,7 +779,7 @@ const AcordeonItemRow = memo(function AcordeonItemRow({
       {selectionMode ? (
         <label className={styles.itemCheckboxWrap}>
           <input
-            type="checkbox"
+            type="checkbox" className="md-check"
             checked={selected}
             onChange={() => onToggleSelectItem(item._id)}
             aria-label={`Seleccionar ${item.title}`}

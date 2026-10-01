@@ -560,7 +560,7 @@ useEffect(() => {
     <>
       <CustomCursor />
 
-      <div className={styles.hpage} data-auth-theme={theme === "light" ? "light" : undefined}>
+      <div className={styles.hpage} data-auth-theme={theme}>
 
         {/* ── NAV ── */}
         <nav className={styles.nav} ref={navRef}>

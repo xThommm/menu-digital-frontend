@@ -28,29 +28,55 @@ self.addEventListener("push", (event) => {
   const title = data.title || payload.notification?.title || "Menú Digital";
   const body = data.body || payload.notification?.body || "";
   const url = data.url || "/admin";
+  // Identifica el aviso en la bandeja de notificaciones del panel.
+  const eventID = data.eventID || null;
 
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon: "/favicon-96x96.png",
-      badge: "/favicon-96x96.png",
-      data: { url },
-    })
+    Promise.all([
+      self.registration.showNotification(title, {
+        body,
+        icon: "/favicon-96x96.png",
+        badge: "/favicon-96x96.png",
+        data: { url, eventID },
+      }),
+      // Las pestañas abiertas refrescan el contador de no leídas al instante.
+      postToWindows({ type: "admin-notification" }),
+    ])
   );
 });
+
+const getWindows = () => self.clients.matchAll({ type: "window", includeUncontrolled: true });
+
+const postToWindows = async (message) => {
+  const windows = await getWindows();
+  windows.forEach((client) => client.postMessage(message));
+};
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const target = new URL(event.notification.data?.url || "/admin", self.location.origin);
+  // El panel lee este parámetro, marca el aviso como leído y lo saca de la URL
+  // (ver src/hooks/useAdminNotifications.ts).
+  const eventID = event.notification.data?.eventID;
+  if (eventID) target.searchParams.set("notification", eventID);
 
   event.waitUntil(
     (async () => {
-      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      // Si el panel ya está abierto en alguna pestaña, se reusa esa.
-      const existing = windows.find((client) => new URL(client.url).origin === target.origin);
+      const windows = await getWindows();
+      // Si el panel admin ya está abierto en alguna pestaña, se reusa esa
+      // (solo el panel escucha el mensaje). No sirve client.navigate(): solo
+      // funciona con páginas que este SW controla y por su scope propio no
+      // controla ninguna. La pestaña navega sola dentro de la SPA.
+      const existing = windows.find((client) => {
+        const url = new URL(client.url);
+        return url.origin === target.origin && url.pathname.startsWith("/admin");
+      });
       if (existing) {
         await existing.focus();
-        if ("navigate" in existing) return existing.navigate(target.href);
+        existing.postMessage({
+          type: "admin-notification-open",
+          path: `${target.pathname}${target.search}`,
+        });
         return undefined;
       }
       return self.clients.openWindow(target.href);

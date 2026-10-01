@@ -315,7 +315,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 0.2rem 0.6rem 0.9rem;
-  scrollbar-width: thin;
+  --scrollbar-size: 9px; /* panel angosto: barra más fina (receta en globals.css) */
 }
 
 .navGroup + .navGroup {
@@ -1024,11 +1024,11 @@
   border-radius: 8px;
 }
 
+/* Receta global .md-check; selección múltiple de productos: círculo, como
+   al elegir fotos en una galería (igual que en MenuEditor). */
 .check input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--admin-gold);
-  cursor: pointer;
+  --check-size: 20px;
+  --check-radius: 50%;
 }
 
 .rowMain {
@@ -1326,7 +1326,7 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
+  --scrollbar-size: 9px; /* panel angosto: barra más fina (receta en globals.css) */
   animation: panelIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 

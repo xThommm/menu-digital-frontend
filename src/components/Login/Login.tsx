@@ -96,7 +96,7 @@ const getRedirectPath = (user: AuthUser | null) => {
   return (
     <div
       className={`${styles.lp} auth-page-shell`}
-      data-auth-theme={theme === "light" ? "light" : undefined}
+      data-auth-theme={theme}
     >
       <div className={`${styles.card} auth-surface`}>
 
