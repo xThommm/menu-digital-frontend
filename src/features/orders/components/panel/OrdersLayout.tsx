@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChefHat, ClipboardList, MoreHorizontal, History, LayoutGrid, Settings, Users, Wallet } from "lucide-react";
+import { ArrowLeft, ChefHat, ClipboardList, MoreHorizontal, History, LayoutGrid, PanelLeft, Settings, Users, Wallet } from "lucide-react";
 import { useAuth } from "../../../../context/useAuth";
 import { isSubscriptionExpired } from "../../../../lib/plans";
+import { OWNER_SIDEBAR_COLLAPSED_KEY } from "../../../../lib/ownerSidebar";
 import BrandMark from "../../../../components/Common/BrandMark";
+import BrandWordmark from "../../../../components/Common/BrandWordmark";
 // Mismo sidebar que el panel principal (DashboardLayout): se reusan sus estilos.
 import s from "../../../../components/User/Panel/DashboardLayout/DashboardLayout.module.css";
 import p from "./panel.module.css";
@@ -32,20 +34,33 @@ export default function OrdersLayout() {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreActive = MORE_ITEMS.some(item => item.path === location.pathname);
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem(OWNER_SIDEBAR_COLLAPSED_KEY) === "true"
+  );
+
+  useEffect(() => {
+    localStorage.setItem(OWNER_SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
   const expired = user ? isSubscriptionExpired(user.subscription, user.subscriptionExpiresAt, user.subscriptionStatus) : true;
   const isPro = !expired && user?.subscription === "pro";
 
   return (
     <div className={s.layoutRoot}>
-      <aside className={s.sidebar} aria-label="Gestión de pedidos">
-        <button
-          type="button"
-          className={s.logoSq}
-          onClick={() => navigate("/dashboard")}
-          aria-label="Volver al panel"
-          style={{ border: "none", background: "none", padding: 0 }}
-        >
-          <BrandMark className={s.brandMarkImage} />
+      <aside
+        id="orders-sidebar"
+        className={`${s.sidebar} ${sidebarCollapsed ? s.sidebarCollapsed : ""}`}
+        aria-label="Gestión de pedidos"
+        inert={sidebarCollapsed}
+      >
+        <button type="button" className={s.brand} onClick={() => navigate("/dashboard")} aria-label="Volver al panel">
+          <div className={s.logoSq} role="img" aria-label="menudigital">
+            <BrandMark inline className={s.brandMarkImage} />
+          </div>
+          <div className={s.brandText}>
+            <span className={s.brandName}><BrandWordmark /></span>
+            <span className={s.brandSubtitle}>Gestión de pedidos</span>
+          </div>
         </button>
 
         <nav className={s.sideNav}>
@@ -55,30 +70,39 @@ export default function OrdersLayout() {
               <button
                 key={item.path}
                 type="button"
-                className={`${s.sideBtn} ${active ? s.sideBtnActive : ""}`}
+                className={`${s.navItem} ${active ? s.navItemActive : ""}`}
                 onClick={() => navigate(item.path)}
-                aria-label={item.label}
                 aria-current={active ? "page" : undefined}
-                data-tooltip={item.label}
               >
-                {item.icon}
+                <span className={s.navIcon}>{item.icon}</span>
+                <span className={s.navLabel}>{item.label}</span>
               </button>
             );
           })}
         </nav>
 
-        <button
-          type="button"
-          className={`${s.sideBtn} ${s.sideLogout}`}
-          onClick={() => navigate("/dashboard")}
-          aria-label="Volver al panel"
-          data-tooltip="Volver al panel"
-        >
-          <ArrowLeft size={20} strokeWidth={1.5} aria-hidden />
-        </button>
+        <div className={s.sideFooter}>
+          <button type="button" className={s.navItem} onClick={() => navigate("/dashboard")}>
+            <span className={s.navIcon}><ArrowLeft size={20} strokeWidth={1.5} aria-hidden /></span>
+            <span className={s.navLabel}>Volver al panel</span>
+          </button>
+        </div>
       </aside>
 
-      <div className={`${s.content} admin-layout-content`}>
+      {/* Toggle fijo fuera del <aside>, igual que en DashboardLayout.tsx. */}
+      <button
+        type="button"
+        className={`${s.sidebarToggle} ${sidebarCollapsed ? s.sidebarToggleCollapsed : ""}`}
+        onClick={() => setSidebarCollapsed(collapsed => !collapsed)}
+        aria-expanded={!sidebarCollapsed}
+        aria-controls="orders-sidebar"
+        aria-label={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"}
+        title={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"}
+      >
+        <PanelLeft size={18} strokeWidth={1.75} />
+      </button>
+
+      <div className={`${s.content} admin-layout-content ${sidebarCollapsed ? s.contentExpanded : ""}`}>
         {isPro ? <Outlet /> : <ProLock onBack={() => navigate("/dashboard")} />}
       </div>
 

@@ -14,8 +14,9 @@ import { Bell, BellOff, BellRing, ChevronDown,PanelLeft , DollarSign, Inbox, Lay
 const SIDEBAR_COLLAPSED_KEY = "admin-sidebar-collapsed";
 
 // Accesos directos a las secciones del panel de vendedor (/sellers/*), para
-// no tener que pasar primero por el ABM y clickear de nuevo desde ahí. Son
-// solo links — esas pantallas siguen viviendo únicamente en /sellers.
+// no tener que pasar primero por el ABM y clickear de nuevo desde ahí. Esas
+// pantallas viven en /sellers, pero el admin las ve dentro de ESTE layout
+// (SellerLayout le delega): no cambia de barra al entrar.
 const SELLERS_SUB_ITEMS = [
   { path: "/sellers", label: "Panel general" },
   { path: "/sellers/simulacion", label: "Simulación de ventas" },
@@ -27,13 +28,16 @@ const SELLERS_SUB_ITEMS = [
 // Bandeja de notificaciones: el único ítem con badge (no leídas).
 const NOTIFICATIONS_PATH = "/admin/notifications";
 
+const SELLERS_PATH = "/admin/sellers";
+const isSellersArea = (pathname: string) => pathname === SELLERS_PATH || pathname.startsWith("/sellers");
+
 // El CRM se mudó al panel de vendedores (/sellers/crm, alcanzable por admin
 // también) — ya no vive en este layout.
 const NAV_ITEMS = [
   { path: "/admin",          label: "Panel",      short: "Panel",  icon: <LayoutPanelLeft size={20} strokeWidth={1.5} /> },
   { path: "/admin/payments", label: "Pagos",      short: "Pagos",  icon: <DollarSign size={20} strokeWidth={1.5} /> },
   { path: "/admin/plans",    label: "Planes",     short: "Planes", icon: <PlayingCards size={20} strokeWidth={1.5} /> },
-  { path: "/admin/sellers",  label: "Vendedores", short: "Vend.",  icon: <Speech size={20} strokeWidth={1.5} />, subItems: SELLERS_SUB_ITEMS },
+  { path: SELLERS_PATH,     label: "Vendedores", short: "Vend.",  icon: <Speech size={20} strokeWidth={1.5} />, subItems: SELLERS_SUB_ITEMS },
   { path: NOTIFICATIONS_PATH, label: "Notificaciones", short: "Avisos", icon: <Inbox size={20} strokeWidth={1.5} /> },
 ];
 
@@ -56,8 +60,16 @@ export default function AdminLayout() {
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true"
   );
 
-  // Desplegable de accesos a /sellers/* dentro del ítem "Vendedores".
-  const [sellersSubmenuOpen, setSellersSubmenuOpen] = useState(false);
+  // Desplegable de accesos a /sellers/* dentro del ítem "Vendedores". Se
+  // abre solo al entrar a esa zona, para que se vea dónde está parado.
+  const inSellersArea = isSellersArea(location.pathname);
+  const [sellersSubmenuOpen, setSellersSubmenuOpen] = useState(inSellersArea);
+
+  const [prevInSellersArea, setPrevInSellersArea] = useState(inSellersArea);
+  if (inSellersArea !== prevInSellersArea) {
+    setPrevInSellersArea(inSellersArea);
+    if (inSellersArea) setSellersSubmenuOpen(true);
+  }
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
@@ -66,7 +78,7 @@ export default function AdminLayout() {
   useEffect(() => {
     if (!mobileMoreOpen) return;
 
-    firstMobileMoreActionRef.current?.focus();
+    (firstMobileMoreActionRef.current ?? document.querySelector<HTMLButtonElement>("#admin-mobile-more-menu button"))?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -163,16 +175,20 @@ export default function AdminLayout() {
                 </div>
                 {sellersSubmenuOpen && (
                   <div id="admin-sellers-submenu" className={s.navSubList}>
-                    {item.subItems.map(sub => (
-                      <button
-                        key={sub.path}
-                        type="button"
-                        className={s.navSubItem}
-                        onClick={() => navigate(sub.path)}
-                      >
-                        {sub.label}
-                      </button>
-                    ))}
+                    {item.subItems.map(sub => {
+                      const subActive = location.pathname === sub.path;
+                      return (
+                        <button
+                          key={sub.path}
+                          type="button"
+                          className={`${s.navSubItem} ${subActive ? s.navSubItemActive : ""}`}
+                          onClick={() => navigate(sub.path)}
+                          aria-current={subActive ? "page" : undefined}
+                        >
+                          {sub.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -250,7 +266,7 @@ export default function AdminLayout() {
       {/* ── Bottom nav (mobile) ───────────────────────────────────────────── */}
       <nav className="admin-mobile-dock md-surface" aria-label="Navegación del panel CEO">
         {NAV_ITEMS.map(item => {
-          const active = location.pathname === item.path;
+          const active = item.path === SELLERS_PATH ? inSellersArea : location.pathname === item.path;
           return (
             <button
               type="button"
@@ -300,8 +316,23 @@ export default function AdminLayout() {
             aria-label="Cerrar menú de opciones"
           />
           <div id="admin-mobile-more-menu" className="admin-mobile-more md-surface" role="group" aria-label="Más opciones">
+            {inSellersArea && SELLERS_SUB_ITEMS.map(sub => (
+              <button
+                key={sub.path}
+                type="button"
+                className="admin-mobile-more__item"
+                aria-current={location.pathname === sub.path ? "page" : undefined}
+                onClick={() => {
+                  setMobileMoreOpen(false);
+                  navigate(sub.path);
+                }}
+              >
+                <Speech />
+                {sub.label}
+              </button>
+            ))}
             <button
-              ref={firstMobileMoreActionRef}
+              ref={inSellersArea ? undefined : firstMobileMoreActionRef}
               type="button"
               className="admin-mobile-more__item"
               onClick={() => {

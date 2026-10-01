@@ -280,6 +280,8 @@
 @media (max-width: 599px) {
   .sidebar { display: none; }
   .sidebarToggle { display: none; }
+  /* El toggle no existe en el celular: no hay esquina que reservar. */
+  .contentExpanded { padding-top: 0; }
 
   .content {
     margin-left: 0;
