@@ -315,13 +315,18 @@ function SellerOverviewAdmin() {
     staleTime: 60_000,
   });
 
-  const rows = overview.data?.sellers ?? [];
+  // Los dados de baja (baja lógica, active:false) no se muestran: el panel
+  // es del equipo vigente. El endpoint los sigue devolviendo; el selector
+  // del filtro ya los excluía (listAdminSellers(false)).
+  const rows = (overview.data?.sellers ?? []).filter((seller) => seller.active);
 
-  // El resumen de equipo se calcula sobre TODOS los vendedores, sin el
+  // El resumen de equipo se calcula sobre todo el equipo activo, sin el
   // filtro de sellerID de la tabla — filtrar a un vendedor puntual no
   // debería achicar el resumen agregado.
-  const teamSellers = teamOverview.data?.sellers ?? [];
-  const activeSellers = teamSellers.filter((seller) => seller.active).length;
+  const allSellers = teamOverview.data?.sellers ?? [];
+  const teamSellers = allSellers.filter((seller) => seller.active);
+  const activeSellers = teamSellers.length;
+  const inactiveSellers = allSellers.length - activeSellers;
   const teamClientsThisCycle = teamSellers.reduce((sum, seller) => sum + seller.currentCycle.total.count, 0);
   const teamCommissionThisCycle = teamSellers.reduce((sum, seller) => sum + seller.currentCycle.total.commission, 0);
   const teamBasicCount = teamSellers.reduce((sum, seller) => sum + seller.currentCycle.basic.count, 0);
@@ -403,7 +408,9 @@ function SellerOverviewAdmin() {
             icon={<Users size={16} />}
             label="Vendedores activos"
             value={teamOverview.isPending ? "—" : activeSellers.toLocaleString("es-AR")}
-            detail={`${teamSellers.length} en total`}
+            detail={inactiveSellers > 0
+              ? `${inactiveSellers} ${inactiveSellers === 1 ? "dado" : "dados"} de baja`
+              : "Todo el equipo"}
           />
           <KpiCard
             icon={<TrendingUp size={16} />}
