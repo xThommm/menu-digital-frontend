@@ -144,6 +144,10 @@ const SettingsPanel = lazy(
     )
 );
 
+const ReservationsPage = lazy(
+  () => import("../features/reservations/components/panel/ReservationsPage")
+);
+
 // ─────────────────────────────────────────────
 // TENANT PÚBLICO
 // ─────────────────────────────────────────────
@@ -354,6 +358,11 @@ export default function AppRoutes() {
             <Route
               path="/configuracion"
               element={<SettingsPanel />}
+            />
+
+            <Route
+              path="/reservas"
+              element={<ReservationsPage />}
             />
           </Route>
 

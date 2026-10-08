@@ -11,6 +11,8 @@ import { getVisualFamily, resolveMenuStyle } from "../../../../lib/menuStyles";
 import { pageScrollbarRef } from "../../../../lib/pageScrollbar";
 import { buildWaHref, getWaTargets, sanitizePhoneForWa, type WaTarget } from "../../../../lib/whatsapp";
 import WaTargetPicker from "../WaTargetPicker/WaTargetPicker";
+import ReservationEntry from "../../../../features/reservations/components/customer/ReservationEntry";
+import { useReservationConfig } from "../../../../features/reservations/hooks/useCustomerReservation";
 
 // ── Tokens por template ───────────────────────────────────────────────────────
 
@@ -223,6 +225,7 @@ export default function BusinessLandingPage() {
     />
 
     <Template
+      slug={slug!}
       user={user}
       tokens={tokens}
       goMenu={goMenu}
@@ -234,12 +237,14 @@ export default function BusinessLandingPage() {
 // ── Template unificado ────────────────────────────────────────────────────────
 
 interface TemplateProps {
+  // El payload público del local no trae el slug: viene de la URL.
+  slug: string;
   user: User;
   tokens: TemplateTokens;
   goMenu: () => void;
 }
 
-function Template({ user, tokens, goMenu }: TemplateProps) {
+function Template({ slug, user, tokens, goMenu }: TemplateProps) {
   const { contactInfo: info, media, hasDelivery, hasTakeAway, template, schedule } = user;
   const menuStyle = resolveMenuStyle(user.menuStyle);
   const family = getVisualFamily(menuStyle);
@@ -279,6 +284,12 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
   // igual se chequea acá porque el número puede venir solo para el botón de
   // reservas (con la fila de teléfono oculta), o de un backend anterior.
   const visible = resolveLandingVisibility(user.landingVisibility);
+
+  // Reservas online (plan Pro, activadas por el local). Sin ellas, o si la
+  // consulta falla, queda el botón de WhatsApp de siempre.
+  const reservations = useReservationConfig(slug);
+  const waTargets = getWaTargets(info);
+  const reserveMessage = info.reservationMessage?.trim() || `Hola! Quiero hacer una reserva en ${businessName}.`;
 
   const scheduleActive = visible.schedule && scheduleHasData(schedule);
   const isOpenNow = scheduleActive ? getOpenStatus(schedule) : false;
@@ -325,8 +336,17 @@ function Template({ user, tokens, goMenu }: TemplateProps) {
               <button type="button" onClick={goMenu} className="t-btn">
                 {tokens.btnLabel}
               </button>
-              {visible.whatsappReserve && (
-                <ReserveButton targets={getWaTargets(info)} message={info.reservationMessage} businessName={businessName} />
+              {reservations?.enabled ? (
+                <ReservationEntry
+                  slug={slug}
+                  businessName={businessName}
+                  config={reservations}
+                  whatsappTargets={visible.whatsappReserve ? waTargets : []}
+                  whatsappMessage={reserveMessage}
+                  buttonClassName={styles.reserveBtn}
+                />
+              ) : visible.whatsappReserve && (
+                <ReserveButton targets={waTargets} message={info.reservationMessage} businessName={businessName} />
               )}
             </div>
             {visible.address && <MapBadge address={info.address} businessName={businessName} />}

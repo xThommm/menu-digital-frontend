@@ -11,7 +11,7 @@ import { useMobileDock } from "../../../../context/useMobileDock";
 import BrandMark from "../../../Common/BrandMark";
 import BrandWordmark from "../../../Common/BrandWordmark";
 import s from "./DashboardLayout.module.css";
-import { ArrowUpRight, ChartColumn, ClipboardList, FileText, House, LogOut, MoreHorizontal, PanelLeft, Settings, Store } from "lucide-react";
+import { ArrowUpRight, CalendarCheck, ChartColumn, ClipboardList, FileText, House, LogOut, MoreHorizontal, PanelLeft, Settings, Store } from "lucide-react";
 
 const NAV_ITEMS = [
   { path: "/dashboard",      label: "Inicio",         short: "Inicio",  icon: <House size={20} strokeWidth={1.5} /> },
@@ -29,6 +29,10 @@ const COMPACT_SIDEBAR_PATHS = ["/menu/editor"];
 // src/features/orders). En el celular va en "Más" para no sumar un botón al dock.
 const ORDERS_PATH = "/pedidos";
 const ORDERS_LABEL = "Gestión de pedidos";
+
+// Reservas (plan Pro): página dentro de este mismo panel, ver src/features/reservations.
+const RESERVATIONS_PATH = "/reservas";
+const RESERVATIONS_LABEL = "Reservas";
 
 export default function DashboardLayout() {
   // El Provider tiene que envolver también al propio dock (no solo al
@@ -148,6 +152,16 @@ function DashboardLayoutInner() {
               <span className={s.navIcon}><ClipboardList size={20} strokeWidth={1.5} /></span>
               <span className={s.navLabel}>{ORDERS_LABEL}</span>
               <span className={s.navTrailing}><ArrowUpRight size={16} strokeWidth={1.5} aria-hidden /></span>
+            </button>
+            <button
+              type="button"
+              className={`${s.navItem} ${location.pathname === RESERVATIONS_PATH ? s.navItemActive : ""}`}
+              onClick={() => navigate(RESERVATIONS_PATH)}
+              aria-current={location.pathname === RESERVATIONS_PATH ? "page" : undefined}
+              data-tooltip={RESERVATIONS_LABEL}
+            >
+              <span className={s.navIcon}><CalendarCheck size={20} strokeWidth={1.5} /></span>
+              <span className={s.navLabel}>{RESERVATIONS_LABEL}</span>
             </button>
           </div>
         </nav>
@@ -275,6 +289,17 @@ function DashboardLayoutInner() {
             >
               <ClipboardList />
               {ORDERS_LABEL}
+            </button>
+            <button
+              type="button"
+              className="admin-mobile-more__item"
+              onClick={() => {
+                setMobileMoreOpen(false);
+                navigate(RESERVATIONS_PATH);
+              }}
+            >
+              <CalendarCheck />
+              {RESERVATIONS_LABEL}
             </button>
             <button
               type="button"

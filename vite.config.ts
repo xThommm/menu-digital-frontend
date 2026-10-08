@@ -13,6 +13,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5000', // ← cambiá el puerto al de tu backend
         changeOrigin: true,
+        ws: true, // WebSocket de reservas (/api/reservations/ws)
       }
     }
   }
