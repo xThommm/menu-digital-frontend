@@ -7,6 +7,7 @@ import { CartProvider } from "../../../../context/CartProvider";
 import { useCart } from "../../../../context/useCart";
 import type { CartLine } from "../../../../context/CartContext";
 import CartDrawer from "./CartDrawer";
+import OnlinePaymentReturn from "../../../../features/orders/components/customer/OnlinePaymentReturn";
 import ClearCartDialog from "./ClearCartDialog";
 import ItemPreviewModal from "./ItemPreviewModal";
 import styles from "./UserMenu.module.css";
@@ -655,6 +656,7 @@ export default function MenuPage() {
               open={cartOpen}
               onClose={() => setCartOpen(false)}
               businessName={info.businessName || "el local"}
+              slug={slug}
               waTargets={waTargets}
               orderTexts={info}
               orderModes={orderModes}
@@ -663,6 +665,9 @@ export default function MenuPage() {
               onOrderSent={trackOrder}
             />
           )}
+
+          {/* Vuelta desde Mercado Pago (?pago=): el resultado lo confirma el servidor. */}
+          {ordersEnabled && !venueContext && slug && <OnlinePaymentReturn slug={slug} />}
 
           {/* También dentro de .mp (tokens del template), después del drawer
               para quedar encima cuando se abre desde ahí. */}

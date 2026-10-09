@@ -1,7 +1,7 @@
 import { apiFetch } from "../../../api/apiClient";
 import type { PublicMenuPayload } from "../../../types";
 import type {
-  CustomerOrderReceipt, Order, OrderLineInput, SectorTicketsResponse, ServiceInput, StationSessionInfo, TableSession,
+  CustomerOrderReceipt, OnlineCheckout, OnlineCheckoutStatus, OnlineOrderingConfig, OnlineServiceType, Order, OrderLineInput, SectorTicketsResponse, ServiceInput, StationSessionInfo, TableSession,
   Ticket, TicketStatus, VenueContext, WaiterSessionInfo,
 } from "../types";
 
@@ -29,6 +29,30 @@ export const sendCustomerOrder = (slug: string, body: {
   `/api/orders/public/${encodeURIComponent(slug)}/orders`,
   { ...json(body), timeoutMs: 15_000 },
 );
+
+// ── Pedidos online con pago (take away / delivery, sin QR del local) ──
+export const getOnlineOrdering = (slug: string, signal?: AbortSignal) =>
+  apiFetch<OnlineOrderingConfig>(`/api/orders/public/${encodeURIComponent(slug)}/online-ordering`, { signal });
+
+// Crea el checkout: el precio lo calcula el servidor. Devuelve el link de Mercado Pago.
+export const createOnlineCheckout = (slug: string, body: {
+  serviceType: OnlineServiceType;
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress?: string;
+  deliveryNotes?: string;
+  notes?: string;
+  items: OrderLineInput[];
+  clientRequestId: string;
+}) => apiFetch<OnlineCheckout>(
+  `/api/orders/public/${encodeURIComponent(slug)}/online-checkout`,
+  { ...json(body), timeoutMs: 20_000 },
+);
+
+export const getOnlineCheckoutStatus = (slug: string, ref: string, signal?: AbortSignal) =>
+  apiFetch<OnlineCheckoutStatus>(
+    `/api/orders/public/${encodeURIComponent(slug)}/online-checkout/${encodeURIComponent(ref)}`, { signal },
+  );
 
 // ── Operador ──
 const waiterAuth = (token: string) => ({ Authorization: `Waiter ${token}` });

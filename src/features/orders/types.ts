@@ -96,6 +96,9 @@ export interface StationSessionInfo {
   business: { slug: string; name: string };
 }
 
+export type PaymentMode = "none" | "mercadopago";
+export type PaymentStatus = "NOT_REQUIRED" | "PENDING" | "APPROVED" | "REJECTED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+
 export interface Order {
   id: number;
   shiftId: number;
@@ -114,6 +117,9 @@ export interface Order {
   waiterName: string | null;
   notes: string | null;
   statusReason: string | null;
+  // Pago online (Mercado Pago), aparte del estado del pedido. Ausentes con un backend anterior.
+  paymentMode?: PaymentMode;
+  paymentStatus?: PaymentStatus;
   subtotal: number;
   discountAmount: number;
   total: number;
@@ -150,6 +156,81 @@ export interface ShiftScheduleEntry {
 export interface OrderOptions {
   requireTableNumber: boolean;
   customerOrderCooldownSeconds: number;
+  // Take away / delivery pagados online con Mercado Pago desde la carta.
+  onlineOrdering: boolean;
+}
+
+// Pedido de take away / delivery pagado online (carta pública).
+export type OnlineServiceType = "takeaway" | "delivery";
+
+export interface OnlineOrderingConfig {
+  enabled: boolean;
+  modes: OnlineServiceType[];
+}
+
+export interface OnlineCheckout {
+  ref: string;
+  status: Exclude<PaymentStatus, "NOT_REQUIRED">;
+  // Solo mientras el pago está pendiente.
+  checkoutUrl: string | null;
+  total: number;
+  expiresAt: string;
+}
+
+export interface OnlineCheckoutStatus {
+  status: Exclude<PaymentStatus, "NOT_REQUIRED">;
+  expired: boolean;
+  total: number;
+  serviceType: OnlineServiceType | null;
+  // Se completa cuando el pago se aprueba y el pedido llega al local.
+  orderNumber: number | null;
+  orderStatus: OrderStatus | null;
+}
+
+// Cuenta de Mercado Pago del local (nunca incluye tokens).
+export interface MpConnection {
+  configured: boolean;
+  connected: boolean;
+  status: "active" | "error" | "revoked" | "disconnected";
+  mpUserId?: string;
+  liveMode?: boolean;
+  connectedAt?: string;
+  tokenExpiresAt?: string | null;
+  lastError?: string | null;
+}
+
+export type RefundStatus = "PENDING" | "COMPLETED" | "FAILED";
+
+export interface OrderRefund {
+  id: number;
+  amount: number;
+  isPartial: boolean;
+  reason: string | null;
+  status: RefundStatus;
+  failureDetail: string | null;
+  requestedByName: string | null;
+  requestedAt: string;
+  completedAt: string | null;
+}
+
+export interface OrderPaymentInfo {
+  status: PaymentStatus;
+  amount: number;
+  refundedAmount: number;
+  // Lo que todavía se puede devolver.
+  refundable: number;
+  canRefund: boolean;
+}
+
+export interface OrderPaymentResponse {
+  payment: OrderPaymentInfo | null;
+  refunds: OrderRefund[];
+}
+
+export interface RefundResult extends OrderPaymentResponse {
+  outcome: "completed" | "pending" | "failed";
+  orderCancelled: boolean;
+  message: string | null;
 }
 
 export interface OrderSettings {

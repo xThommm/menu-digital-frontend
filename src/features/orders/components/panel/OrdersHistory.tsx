@@ -8,6 +8,9 @@ import {
 } from "../../lib/format";
 import type { Order, OrderStatus, ServiceType, Shift } from "../../types";
 import { CustomerInfo } from "./OrderCard";
+import { isRefundable } from "../../lib/payment";
+import PaymentBadge from "./PaymentBadge";
+import RefundModal from "./RefundModal";
 import p from "./panel.module.css";
 
 // Historial de pedidos. Por defecto muestra el turno abierto (o el último,
@@ -62,6 +65,7 @@ export default function OrdersHistory() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [returning, setReturning] = useState<{ id: number; reason: string } | null>(null);
+  const [refunding, setRefunding] = useState<Order | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,6 +152,14 @@ export default function OrdersHistory() {
         </ul>
         {order.notes && <span>Nota: {order.notes}</span>}
         <CustomerInfo order={order} />
+        {order.paymentMode === "mercadopago" && (
+          <div className={p.headerActions}>
+            <PaymentBadge order={order} />
+            {isRefundable(order) && (
+              <button type="button" className={`${p.btn} ${p.small}`} onClick={() => setRefunding(order)}>Reembolsar</button>
+            )}
+          </div>
+        )}
         {order.statusReason && (
           <span className={p.notice}>
             Motivo {order.status === "returned" ? "de la devolución" : "de la cancelación"}: {order.statusReason}
@@ -299,6 +311,10 @@ export default function OrdersHistory() {
           </div>
         )}
       />
+
+      {refunding && (
+        <RefundModal order={refunding} onClose={() => setRefunding(null)} onChanged={() => void load()} />
+      )}
     </div>
   );
 }

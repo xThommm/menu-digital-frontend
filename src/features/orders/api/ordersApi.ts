@@ -1,6 +1,6 @@
 import apiClient from "../../../api/client";
 import type {
-  BoardResponse, CashRegister, CashSession, Order, OrderLineInput, OrderOptions, OrderSettings, OrderStatus,
+  BoardResponse, MpConnection, OrderPaymentResponse, RefundResult, CashRegister, CashSession, Order, OrderLineInput, OrderOptions, OrderSettings, OrderStatus,
   PaperWidth, PrintMode, Sector, SectorAssignment, SectorTargetType, SectorTicketsResponse, ServiceInput,
   ServiceType, SettingsResponse, Shift, ShiftSummary, TableSession, Ticket, TicketStatus, Waiter,
   WaiterDeviceSession,
@@ -51,6 +51,36 @@ export const updateOrderStatus = async (id: number, status: OrderStatus, reason?
 
 export const assignOrderWaiter = async (id: number, waiterId: number | null): Promise<Order> =>
   (await apiClient.patch<{ order: Order }>(`/orders/orders/${id}/waiter`, { waiterId })).data.order;
+
+// ── Pagos con Mercado Pago ──
+export const getMpConnection = async (): Promise<MpConnection> =>
+  (await apiClient.get<MpConnection>("/orders/payments/connection")).data;
+
+// Devuelve la URL de Mercado Pago a la que hay que ir a autorizar la cuenta.
+export const startMpConnection = async (): Promise<{ url: string }> =>
+  (await apiClient.post<{ url: string }>("/orders/payments/connection/start")).data;
+
+export const disconnectMpConnection = async (): Promise<void> => {
+  await apiClient.delete("/orders/payments/connection");
+};
+
+export const getOrderPayment = async (orderId: number): Promise<OrderPaymentResponse> =>
+  (await apiClient.get<OrderPaymentResponse>(`/orders/orders/${orderId}/payment`)).data;
+
+// Sin amount: devolución total. cancelOrder: anula el pedido solo si la devolución se confirma.
+// El backend responde 422 cuando Mercado Pago la rechaza: se acepta para leer el mensaje.
+export const refundOrder = async (
+  orderId: number,
+  data: { amount?: number; reason?: string; cancelOrder?: boolean },
+): Promise<RefundResult> =>
+  (await apiClient.post<RefundResult>(`/orders/orders/${orderId}/refund`, data, {
+    validateStatus: status => status === 201 || status === 202 || status === 422,
+  })).data;
+
+export const retryRefund = async (orderId: number, refundId: number): Promise<RefundResult> =>
+  (await apiClient.post<RefundResult>(`/orders/orders/${orderId}/refunds/${refundId}/retry`, {}, {
+    validateStatus: status => status === 200 || status === 202 || status === 422,
+  })).data;
 
 // ── Sesiones de mesa ──
 export const listTableSessions = async (status: "open" | "closed", page = 1) =>

@@ -519,3 +519,41 @@
 @media (max-width: 640px) {
   .page { padding: 1rem 1rem 3rem; }
 }
+
+/* ── Pago online (Mercado Pago) ──
+   Mismo lenguaje que .status: chip tonal; el color dice el estado del pago. */
+.pay {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--tone-highest);
+  color: var(--admin-text-secondary);
+}
+
+.pay_APPROVED { background: color-mix(in srgb, var(--admin-success-text) 18%, var(--tone)); color: var(--admin-success-text); }
+.pay_PENDING { background: var(--tone-primary-container); color: var(--tone-on-primary-container); }
+.pay_REJECTED,
+.pay_REFUNDED,
+.pay_PARTIALLY_REFUNDED { background: color-mix(in srgb, var(--admin-red-text) 16%, var(--tone)); color: var(--admin-red-text); }
+
+.refundList { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+
+.refundItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 14px;
+  background: var(--tone-high);
+  font-size: 0.78rem;
+  color: var(--admin-text-secondary);
+}
+
+.connRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
