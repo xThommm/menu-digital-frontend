@@ -178,6 +178,11 @@ const WaitersPage = lazy(() => import("../features/orders/components/panel/Waite
 const CashPage = lazy(() => import("../features/orders/components/panel/CashPage"));
 const OrdersSettingsPage = lazy(() => import("../features/orders/components/panel/OrdersSettingsPage"));
 const SectorsPage = lazy(() => import("../features/orders/components/panel/SectorsPage"));
+const DeliveryPage = lazy(() => import("../features/orders/components/delivery/DeliveryPage"));
+const CouriersPage = lazy(() => import("../features/orders/components/delivery/CouriersPage"));
+const DeliveryHistory = lazy(() => import("../features/orders/components/delivery/DeliveryHistory"));
+// App del repartidor: pública, el dispositivo se vincula con el QR del local.
+const CourierApp = lazy(() => import("../features/orders/components/courier/CourierApp"));
 // Pantalla de comandas de un sector: pública, el equipo se vincula con un código.
 const StationApp = lazy(() => import("../features/orders/components/station/StationApp"));
 // Tomador de pedidos del operador: público, se entra con el QR de acceso.
@@ -376,6 +381,10 @@ export default function AppRoutes() {
             <Route path="/pedidos/mozos" element={<Navigate to="/pedidos/operadores" replace />} />
             <Route path="/pedidos/sectores" element={<SectorsPage />} />
             <Route path="/pedidos/caja" element={<CashPage />} />
+            <Route path="/pedidos/delivery" element={<DeliveryPage />} />
+            <Route path="/pedidos/delivery/repartidores" element={<CouriersPage />} />
+            <Route path="/pedidos/repartidores" element={<Navigate to="/pedidos/delivery/repartidores" replace />} />
+            <Route path="/pedidos/delivery/historial" element={<DeliveryHistory />} />
             <Route path="/pedidos/configuracion" element={<OrdersSettingsPage />} />
           </Route>
         </Route>
@@ -399,6 +408,17 @@ export default function AppRoutes() {
         <Route
           path="/:slug/operador"
           element={<WaiterApp />}
+        />
+
+        <Route
+          path="/:slug/repartidor"
+          element={<CourierApp />}
+        />
+
+        {/* Sin slug: el repartidor tipea el código corto de vinculación. */}
+        <Route
+          path="/repartidor"
+          element={<CourierApp />}
         />
 
         {/* QR de acceso generados antes del cambio de nombre. */}

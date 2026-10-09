@@ -1,6 +1,7 @@
 import { apiFetch } from "../../../api/apiClient";
 import type { PublicMenuPayload } from "../../../types";
 import type {
+  CourierOrder, CourierPanel, CourierSessionInfo, CustomerDeliveryInfo,
   CustomerOrderReceipt, OnlineCheckout, OnlineCheckoutStatus, OnlineOrderingConfig, OnlineServiceType, Order, OrderLineInput, SectorTicketsResponse, ServiceInput, StationSessionInfo, TableSession,
   Ticket, TicketStatus, VenueContext, WaiterSessionInfo,
 } from "../types";
@@ -52,6 +53,12 @@ export const createOnlineCheckout = (slug: string, body: {
 export const getOnlineCheckoutStatus = (slug: string, ref: string, signal?: AbortSignal) =>
   apiFetch<OnlineCheckoutStatus>(
     `/api/orders/public/${encodeURIComponent(slug)}/online-checkout/${encodeURIComponent(ref)}`, { signal },
+  );
+
+// Envío del pedido: si ya salió y el código de entrega que le da al repartidor.
+export const getCustomerDelivery = (slug: string, ref: string, signal?: AbortSignal) =>
+  apiFetch<CustomerDeliveryInfo>(
+    `/api/orders/public/${encodeURIComponent(slug)}/online-checkout/${encodeURIComponent(ref)}/delivery`, { signal },
   );
 
 // ── Operador ──
@@ -125,6 +132,46 @@ export const markStationTicketPrinted = (token: string, id: number) =>
   apiFetch<{ ticket: Ticket }>(`/api/orders/station/tickets/${id}/printed`, {
     method: "POST", headers: stationAuth(token),
   });
+
+// ── Repartidor (dispositivo vinculado con el QR del local) ──
+const courierAuth = (token: string) => ({ Authorization: `Courier ${token}` });
+const courierJson = (token: string, body: unknown, method = "POST"): RequestInit => ({
+  method,
+  headers: { "Content-Type": "application/json", ...courierAuth(token) },
+  body: JSON.stringify(body),
+});
+
+export const pairCourierDevice = (code: string) =>
+  apiFetch<CourierSessionInfo & { token: string }>("/api/orders/courier/pair", json({ code }));
+
+export const getCourierSession = (token: string, signal?: AbortSignal) =>
+  apiFetch<CourierSessionInfo>("/api/orders/courier/me", { headers: courierAuth(token), signal });
+
+export const logoutCourier = (token: string) =>
+  apiFetch<void>("/api/orders/courier/logout", { method: "POST", headers: courierAuth(token), parseJson: false });
+
+export const setCourierAvailability = (token: string, available: boolean) =>
+  apiFetch<{ available: boolean }>("/api/orders/courier/availability", courierJson(token, { available }, "PUT"));
+
+// Pendientes de retirar, en camino y pedidos disponibles: la fuente de verdad del panel.
+export const getCourierPanel = (token: string, signal?: AbortSignal) =>
+  apiFetch<CourierPanel>("/api/orders/courier/panel", { headers: courierAuth(token), signal });
+
+export const getCourierHistory = (token: string, page = 1, signal?: AbortSignal) =>
+  apiFetch<{ deliveries: CourierOrder[]; total: number; page: number; pageSize: number }>(
+    `/api/orders/courier/history?page=${page}`, { headers: courierAuth(token), signal },
+  );
+
+export const claimCourierOrder = (token: string, id: number) =>
+  apiFetch<{ order: CourierOrder }>(`/api/orders/courier/orders/${id}/claim`, courierJson(token, {}));
+
+export const pickupCourierOrder = (token: string, id: number) =>
+  apiFetch<{ order: CourierOrder; repeated: boolean }>(`/api/orders/courier/orders/${id}/pickup`, courierJson(token, {}));
+
+export const deliverCourierOrder = (token: string, id: number, code: string) =>
+  apiFetch<{ delivered: boolean; repeated: boolean; deliveredAt: string | null }>(
+    `/api/orders/courier/orders/${id}/deliver`, courierJson(token, { code }),
+  );
 
 // Carta liviana (v2) para el selector de productos del operador y del panel.
 // track=0: no cuenta como visita en las estadísticas.

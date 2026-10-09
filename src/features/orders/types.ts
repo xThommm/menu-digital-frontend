@@ -134,6 +134,145 @@ export interface Order {
   items: OrderItem[];
   // Una por sector (vacío sin sectores; ausente con un backend anterior).
   tickets?: OrderTicketSummary[];
+  // Delivery con repartidor: quién lo lleva y cómo va (solo con Delivery activo o en el historial de envíos).
+  delivery?: OrderDelivery;
+}
+
+// ── Delivery / repartidores ──
+export type AssignmentStatus = "assigned" | "picked_up" | "delivered" | "released";
+
+export interface DeliveryAssignment {
+  id: number;
+  orderId: number;
+  orderNumber?: number;
+  courierId: number;
+  courierName: string;
+  status: AssignmentStatus;
+  assignedVia: "manual" | "open";
+  assignedAt: string;
+  pickedUpAt: string | null;
+  deliveredAt: string | null;
+  releasedAt: string | null;
+  releaseReason: string | null;
+  deliveredBy: "courier" | "admin" | null;
+  // Minutos entre el retiro y la entrega (solo con datos reales).
+  durationMinutes: number | null;
+  // El código de entrega está bloqueado por intentos fallidos.
+  codeLocked: boolean;
+}
+
+export interface PreviousCourier {
+  courierName: string;
+  assignedAt: string;
+  releasedAt: string | null;
+  reason: string | null;
+}
+
+export interface OrderDelivery extends DeliveryAssignment {
+  previousCouriers: PreviousCourier[];
+}
+
+export interface DeliveryConfig {
+  enabled: boolean;
+  assignMode: DeliveryAssignMode;
+  confirmBy: DeliveryConfirmBy;
+  adminOverride: boolean;
+}
+
+export interface DeliveryActiveResponse {
+  config: DeliveryConfig;
+  // Pedidos con repartidor (asignados o en camino).
+  inProgress: { order: Order; assignment: DeliveryAssignment }[];
+  // Pedidos de delivery confirmados o listos que nadie tiene todavía.
+  unassigned: Order[];
+  serverTime: string;
+}
+
+export interface DeliveryEvent {
+  id: number;
+  type: string;
+  actorType: "courier" | "panel" | "system";
+  actorName: string | null;
+  fromCourierId: number | null;
+  toCourierId: number | null;
+  reason: string | null;
+  createdAt: string;
+}
+
+export interface DeliveryTrail {
+  assignments: DeliveryAssignment[];
+  events: DeliveryEvent[];
+}
+
+// Repartidor vinculado al local (en el panel).
+export interface Courier {
+  id: number;
+  name: string;
+  phone: string | null;
+  notes: string | null;
+  active: boolean;
+  // Se marcó disponible para recibir entregas (distinto de estar vinculado).
+  available: boolean;
+  activeDevices: number;
+  sessions: WaiterDeviceSession[];
+  // Entregas asignadas o en camino: impiden desactivarlo sin resolverlas.
+  activeDeliveries: number;
+  createdAt: string;
+}
+
+// ── App del repartidor ──
+export interface CourierSessionInfo {
+  courier: { id: number; name: string; available: boolean };
+  business: { slug: string; name: string };
+  sessionStartedAt?: string | null;
+}
+
+export interface CourierOrder {
+  id: number;
+  number: number;
+  orderStatus: OrderStatus;
+  address: string | null;
+  // Solo en los pedidos del propio repartidor:
+  deliveryNotes?: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  notes?: string | null;
+  items?: { title: string; option: string | null; quantity: number; notes: string | null }[];
+  // Solo en los pedidos disponibles para tomar:
+  itemsCount?: number;
+  createdAt: string;
+  readyAt: string | null;
+  assignment: {
+    status: AssignmentStatus;
+    assignedAt: string;
+    pickedUpAt: string | null;
+    deliveredAt: string | null;
+    codeLocked: boolean;
+  } | null;
+  canPickup: boolean;
+  durationMinutes?: number | null;
+}
+
+export interface CourierPanel extends CourierSessionInfo {
+  enabled: boolean;
+  assignMode: DeliveryAssignMode;
+  available: boolean;
+  assigned: CourierOrder[];
+  inTransit: CourierOrder[];
+  open: CourierOrder[];
+  openCount: number;
+  serverTime: string;
+}
+
+// Lo que ve el cliente del envío de su pedido.
+export interface CustomerDeliveryInfo {
+  tracked: boolean;
+  status?: "picked_up" | "delivered";
+  pickedUpAt?: string | null;
+  deliveredAt?: string | null;
+  courierName?: string;
+  // Código de 6 dígitos que le da al repartidor (solo mientras va en camino).
+  code?: string | null;
 }
 
 export interface Shift {
@@ -165,7 +304,18 @@ export interface OrderOptions {
   // Tiempo estimado de preparación de los pedidos online, en minutos (0 = sin estimación).
   prepMinMinutes: number;
   prepMaxMinutes: number;
+  // Delivery con repartidores (apagado = el local reparte por fuera de Menú Digital).
+  deliveryEnabled: boolean;
+  deliveryAssignMode: DeliveryAssignMode;
+  deliveryConfirmBy: DeliveryConfirmBy;
+  // El administrador puede marcar una entrega sin código para resolver incidencias (con motivo).
+  deliveryAdminOverride: boolean;
 }
+
+// manual: el administrador elige al repartidor · open: lista compartida, los repartidores toman pedidos.
+export type DeliveryAssignMode = "manual" | "open";
+// courier: solo el repartidor con el código del cliente · courier_admin: también el administrador.
+export type DeliveryConfirmBy = "courier" | "courier_admin";
 
 // Pedido de take away / delivery pagado online (carta pública).
 export type OnlineServiceType = "takeaway" | "delivery";

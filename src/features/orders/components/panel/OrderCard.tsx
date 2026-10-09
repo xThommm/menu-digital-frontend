@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Bike, Check, ChefHat, HandPlatter, MapPin, MessageSquareText, Phone, QrCode, Smartphone, Undo2, UserRound, X } from "lucide-react";
 import { elapsedLabel, formatMoney, formatTime, placeLabel, STATUS_LABEL } from "../../lib/format";
 import type { Order, OrderStatus, TicketStatus, Waiter } from "../../types";
@@ -84,7 +85,9 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
   // Pedido ya cobrado online: cancelarlo implica decidir la devolución.
   const paid = onRefund !== undefined && isRefundable(order);
   // Delivery listo que todavía no salió: el siguiente paso es «Salió el pedido», no «Entregado».
-  const toDispatch = order.status === "ready" && order.serviceType === "delivery" && !order.dispatchedAt && onDispatch !== undefined;
+  // Con repartidor asignado, la salida y la entrega las registra él (con el código del cliente).
+  const courierActive = order.delivery?.status === "assigned" || order.delivery?.status === "picked_up";
+  const toDispatch = order.status === "ready" && order.serviceType === "delivery" && !order.dispatchedAt && !courierActive && onDispatch !== undefined;
   const statusLabel = order.status === "ready" && order.dispatchedAt ? "En camino" : STATUS_LABEL[order.status];
 
   return (
@@ -127,6 +130,16 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
       )}
 
       <CustomerInfo order={order} />
+
+      {courierActive && order.delivery && (
+        <p className={s.orderNotes}>
+          <Bike size={14} aria-hidden />
+          <span>
+            {order.delivery.status === "picked_up" ? "En camino con " : "Asignado a "}<strong>{order.delivery.courierName}</strong>.
+            {" "}Se marca entregado con el código del cliente. <Link to="/pedidos/delivery">Ver entregas en curso</Link>
+          </span>
+        </p>
+      )}
 
       <div className={s.cardFoot}>
         <label className={s.waiterSelect}>
@@ -173,7 +186,7 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
                 <Bike size={16} aria-hidden /> Salió el pedido
               </button>
             )}
-            {(order.status === "confirmed" || order.status === "ready") && (
+            {(order.status === "confirmed" || order.status === "ready") && !courierActive && (
               <button
                 type="button"
                 className={order.status === "ready" && !toDispatch ? p.btnPrimary : p.btn}

@@ -4,8 +4,9 @@ import { Download, Plus, Printer, RefreshCw, Trash2 } from "lucide-react";
 import { regenerateQr, updateOrderSettings } from "../../api/ordersApi";
 import { useOrderSettings } from "../../hooks/usePanelData";
 import { errorMessage } from "../../lib/errors";
+import { ORDERS_SETTINGS_CHANGED } from "../../lib/delivery";
 import { venueQrUrl } from "../../lib/qrUrls";
-import type { MpConnection, OrderSettings, PeriodMode, QrMode, SettingsResponse, ShiftScheduleEntry } from "../../types";
+import type { DeliveryAssignMode, DeliveryConfirmBy, MpConnection, OrderSettings, PeriodMode, QrMode, SettingsResponse, ShiftScheduleEntry } from "../../types";
 import PaymentsSection from "./PaymentsSection";
 import p from "./panel.module.css";
 
@@ -54,6 +55,7 @@ export default function OrdersSettingsPage() {
     try {
       settings.setData(await updateOrderSettings(draft));
       setSaved(true);
+      window.dispatchEvent(new Event(ORDERS_SETTINGS_CHANGED));
     } catch (err) {
       setError(errorMessage(err, "No se pudo guardar la configuración."));
     } finally {
@@ -229,6 +231,77 @@ export default function OrdersSettingsPage() {
           <p className={p.cardDesc} style={{ marginTop: "0.75rem" }}>
             Los pedidos pagados quedan sin confirmar hasta que los aceptes: el pago aprobado no acepta el pedido. Si lo rechazás,
             podés devolver el dinero desde el pedido.
+          </p>
+        </section>
+
+        <section className={p.card}>
+          <h2 className={p.cardTitle}>Delivery con repartidores</h2>
+          <div className={p.switchRow}>
+            <div className={p.switchText}>
+              <span className={p.switchTitle}>Gestionar los envíos con repartidores desde Menú Digital</span>
+              <span className={p.switchHint}>
+                Suma a la barra lateral las secciones Entregas en curso, Repartidores e Historial de envíos, y una app para el celular de cada repartidor.
+                Apagado, tus pedidos de delivery funcionan como siempre y los envíos los gestionás por fuera.
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              className={p.switch}
+              checked={draft.options.deliveryEnabled === true}
+              onChange={e => update({ options: { ...draft.options, deliveryEnabled: e.target.checked } })}
+              aria-label="Gestionar los envíos con repartidores desde Menú Digital"
+            />
+          </div>
+
+          <div className={p.field} style={{ marginTop: "0.85rem" }}>
+            <span className={p.label}>Cómo se asignan los pedidos</span>
+            <Segmented<DeliveryAssignMode>
+              value={draft.options.deliveryAssignMode}
+              onChange={deliveryAssignMode => update({ options: { ...draft.options, deliveryAssignMode } })}
+              options={[["manual", "Manual"], ["open", "Abierta"]]}
+            />
+            <span className={p.switchHint}>
+              {draft.options.deliveryAssignMode === "manual"
+                ? "Vos elegís el repartidor de cada pedido."
+                : "Los pedidos de delivery aparecen en una lista compartida y los repartidores disponibles los toman. Si dos tocan a la vez, solo uno se lo queda. Un pedido que ya tiene repartidor no queda disponible para otro al cambiar de modo."}
+            </span>
+          </div>
+
+          <div className={p.field} style={{ marginTop: "0.85rem" }}>
+            <span className={p.label}>Quién puede marcar un pedido como entregado</span>
+            <Segmented<DeliveryConfirmBy>
+              value={draft.options.deliveryConfirmBy}
+              onChange={deliveryConfirmBy => update({ options: { ...draft.options, deliveryConfirmBy } })}
+              options={[["courier", "Solo el repartidor"], ["courier_admin", "Repartidor y administrador"]]}
+            />
+            <span className={p.switchHint}>
+              {draft.options.deliveryConfirmBy === "courier"
+                ? "La entrega se confirma con el código de 6 dígitos que recibe el cliente. El panel de pedidos no puede marcar entregado un pedido que lleva un repartidor."
+                : "Además del repartidor, el administrador puede marcar la entrega desde Entregas en curso (queda registrado quién lo hizo)."}
+            </span>
+          </div>
+
+          <div className={p.switchRow} style={{ marginTop: "0.5rem" }}>
+            <div className={p.switchText}>
+              <span className={p.switchTitle}>Permitir al administrador resolver incidencias</span>
+              <span className={p.switchHint}>
+                Si el repartidor no pudo confirmar con el código (celular roto, cliente sin batería), el administrador puede marcar la entrega indicando
+                un motivo obligatorio. Queda en el registro del pedido.
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              className={p.switch}
+              checked={draft.options.deliveryAdminOverride === true}
+              disabled={draft.options.deliveryConfirmBy === "courier_admin"}
+              onChange={e => update({ options: { ...draft.options, deliveryAdminOverride: e.target.checked } })}
+              aria-label="Permitir al administrador resolver incidencias"
+            />
+          </div>
+
+          <p className={p.cardDesc} style={{ marginTop: "0.75rem" }}>
+            Al apagar Delivery, los pedidos asignados que todavía no se retiraron vuelven a quedar sin repartidor; los que ya salieron se pueden terminar
+            de entregar (con el código o por el administrador, con motivo). No se cancela ni se borra nada del historial.
           </p>
         </section>
 
