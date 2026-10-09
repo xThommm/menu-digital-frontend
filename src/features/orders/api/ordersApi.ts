@@ -49,6 +49,10 @@ export const createPanelOrder = async (data: ServiceInput & {
 export const updateOrderStatus = async (id: number, status: OrderStatus, reason?: string): Promise<Order> =>
   (await apiClient.patch<{ order: Order }>(`/orders/orders/${id}/status`, { status, reason })).data.order;
 
+// Delivery listo → salió del local (no cambia el estado del pedido).
+export const dispatchOrder = async (id: number): Promise<Order> =>
+  (await apiClient.post<{ order: Order }>(`/orders/orders/${id}/dispatch`)).data.order;
+
 export const assignOrderWaiter = async (id: number, waiterId: number | null): Promise<Order> =>
   (await apiClient.patch<{ order: Order }>(`/orders/orders/${id}/waiter`, { waiterId })).data.order;
 

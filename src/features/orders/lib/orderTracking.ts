@@ -8,7 +8,7 @@ import { readJson, removeKey, writeJson } from "./storage";
 
 export const TRACKING_STEPS: Record<OnlineServiceType, string[]> = {
   takeaway: ["Recibido", "Preparando", "Listo para retirar", "Entregado"],
-  delivery: ["Recibido", "Preparando", "Listo, sale hacia vos", "Entregado"],
+  delivery: ["Recibido", "Preparando", "Listo", "En camino", "Entregado"],
 };
 
 const ACTIVE_ORDER = ["pending", "confirmed", "ready"];
@@ -40,7 +40,7 @@ export const estimateWindow = (estimate: OnlineEstimate, fromIso: string): strin
 export interface TrackingView {
   title: string;
   text: string;
-  // Etapa actual (0-3) o -1 si todavía no hay pedido / terminó sin entregarse.
+  // Etapa actual (0-3; 0-4 en delivery) o -1 si todavía no hay pedido / terminó sin entregarse.
   step: number;
   tone: "wait" | "ok" | "bad";
 }
@@ -78,11 +78,12 @@ export const trackingView = (status: OnlineCheckoutStatus | null, gaveUp: boolea
     case "confirmed":
       return { title: "Estamos preparando tu pedido", text: "El local ya confirmó tu pedido y lo está preparando.", step: 1, tone: "ok" };
     case "ready":
-      return delivery
-        ? { title: "¡Tu pedido está listo!", text: "Ya sale hacia la dirección que dejaste.", step: 2, tone: "ok" }
-        : { title: "¡Tu pedido está listo!", text: "Ya podés pasar a retirarlo.", step: 2, tone: "ok" };
+      if (!delivery) return { title: "¡Tu pedido está listo!", text: "Ya podés pasar a retirarlo.", step: 2, tone: "ok" };
+      return status.dispatchedAt
+        ? { title: "Tu pedido va en camino", text: "Ya salió del local hacia la dirección que dejaste.", step: 3, tone: "ok" }
+        : { title: "¡Tu pedido está listo!", text: "Está esperando al repartidor para salir hacia tu dirección.", step: 2, tone: "ok" };
     case "delivered":
-      return { title: "Pedido entregado", text: "¡Gracias por tu compra! Que lo disfrutes.", step: 3, tone: "ok" };
+      return { title: "Pedido entregado", text: "¡Gracias por tu compra! Que lo disfrutes.", step: delivery ? 4 : 3, tone: "ok" };
     default: {
       // Cancelado o devuelto por el local.
       const refund = status.refund === "none"

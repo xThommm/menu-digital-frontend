@@ -126,6 +126,8 @@ export interface Order {
   createdAt: string;
   confirmedAt: string | null;
   readyAt: string | null;
+  // Delivery que ya salió del local (sigue en «Listo» hasta que se entrega). Ausente con un backend anterior.
+  dispatchedAt?: string | null;
   deliveredAt: string | null;
   cancelledAt: string | null;
   returnedAt: string | null;
@@ -203,6 +205,8 @@ export interface OnlineCheckoutStatus {
   createdAt: string | null;
   confirmedAt: string | null;
   readyAt: string | null;
+  // Delivery que ya salió del local.
+  dispatchedAt: string | null;
   deliveredAt: string | null;
   cancelledAt: string | null;
   // Si ya se devolvió el dinero (el local rechazó o canceló el pedido).

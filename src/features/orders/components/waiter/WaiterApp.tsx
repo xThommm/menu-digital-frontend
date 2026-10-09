@@ -258,7 +258,7 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
             <span className={s.homeIcon}><Plus size={26} aria-hidden /></span>
             <span className={s.homeText}>
               <span className={s.homeLabel}>Nuevo pedido</span>
-              <span className={s.homeHint}>Mesa, barra, take away o delivery</span>
+              <span className={s.homeHint}>Pedidos de mesa</span>
             </span>
             {lines.length > 0 && <span className={s.homeBadge}>{unitsCount(lines)}</span>}
             <ChevronRight size={20} aria-hidden className={s.homeChevron} />
@@ -326,7 +326,7 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
               <button type="button" className={p.iconBtn} onClick={() => setSheetOpen(false)} aria-label="Cerrar"><X size={18} aria-hidden /></button>
             </header>
             <div className={`${p.modalBody} ${p.stack}`}>
-              <ServiceFields value={service} onChange={setService} tableCount={tableCount} />
+              <ServiceFields value={service} onChange={setService} tableCount={tableCount} allowed={["table"]} />
               <UnitLinesEditor lines={lines} onChange={next => { setLines(next); if (next.length === 0) setSheetOpen(false); }} hidePrices={hidePrices} />
               <label className={p.field}>
                 <span className={p.label}>Nota del pedido (opcional)</span>
