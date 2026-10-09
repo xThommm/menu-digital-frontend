@@ -2481,6 +2481,32 @@ acceso "Gestión de pedidos" (barra lateral y menú "Más" en el celular).
   de Neon y cargar `DATABASE_URL` en Koyeb. Sin eso la sección responde 503.
 - Sin tests, por indicación de la tarjeta.
 
+## Pagos online de pedidos (Mercado Pago, cuenta de cada local)
+
+Take away y delivery se pueden cobrar desde la carta pública con la cuenta de Mercado Pago
+del propio local (OAuth). La plataforma no cobra comisión ni administra los fondos; las
+suscripciones siguen con su Checkout Pro y su webhook, sin cambios. Opcional: sin las
+variables `MP_ORDERS_*` / `ORDERS_CREDENTIALS_KEY` solo estos pagos responden 503.
+
+- **Backend** `src/orders/payments/`: `config`, `crypto` (AES-256-GCM), `mpApi` (fetch directo),
+  `connectionService` / `connectionController` (OAuth), `checkoutService` / `publicController`
+  (checkout público), `webhookService` / `webhookController` / `signature`, `refundService` /
+  `refundController`. Rutas en `src/orders/routes.js`.
+- **Esquema** (`004_pagos_mercado_pago.sql`): el estado del pago (`orders.payment_status`:
+  NOT_REQUIRED / PENDING / APPROVED / REJECTED / REFUNDED / PARTIALLY_REFUNDED) va aparte del
+  estado del pedido, que no cambia. Un pedido online **se crea al aprobarse el pago**; antes es
+  un borrador en `order_online_payments.draft`.
+- **Flujo**: conectar (Configuración → Pagos) → el cliente arma el carrito y paga → el webhook
+  confirma con `GET /v1/payments/{id}` (token del local) y crea el pedido `pending` pagado →
+  el local lo acepta o lo rechaza y devuelve (`/orders/:id/refund`).
+- **Seguridad**: tokens solo cifrados y nunca en respuestas; `state` de un solo uso; una cuenta de
+  MP viva por local; importes cotizados en el servidor; el resultado sale de la API de MP, no de
+  la URL de retorno; todo filtrado por `owner_id`.
+- **Frontend** `src/features/orders/`: `PaymentsSection`, `RefundModal`, `PaymentBadge` (panel);
+  `OnlineCheckout`, `OnlinePaymentReturn` (carta, vía `CartDrawer` y `UserMenu`).
+- **Pendiente**: aplicar la migración, crear la app de MP de pedidos y probar en vivo; confirmar
+  `user_id` en el body del webhook con tokens OAuth y el secret que firma las notificaciones.
+
 ---
 
 # Flujos clave

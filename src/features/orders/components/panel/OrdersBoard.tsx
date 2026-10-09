@@ -9,6 +9,7 @@ import { readJson, writeJson } from "../../lib/storage";
 import type { Order, OrderStatus, Shift } from "../../types";
 import ManualOrderModal from "./ManualOrderModal";
 import OrderCard from "./OrderCard";
+import RefundModal from "./RefundModal";
 import p from "./panel.module.css";
 import s from "./OrdersBoard.module.css";
 
@@ -39,6 +40,7 @@ export default function OrdersBoard() {
   const [manualOpen, setManualOpen] = useState(false);
   const [mobileColumn, setMobileColumn] = useState<OrderStatus>("pending");
   const [sound, setSound] = useState(() => readJson(SOUND_KEY, (v): v is boolean => typeof v === "boolean") ?? true);
+  const [refunding, setRefunding] = useState<{ order: Order; cancel: boolean } | null>(null);
   const knownIds = useRef<Set<number> | null>(null);
   const soundRef = useRef(sound);
   useEffect(() => { soundRef.current = sound; }, [sound]);
@@ -221,6 +223,7 @@ export default function OrdersBoard() {
                         busy={busyId === order.id}
                         onStatus={changeStatus}
                         onWaiter={changeWaiter}
+                        onRefund={(target, cancel) => setRefunding({ order: target, cancel })}
                       />
                     ))
                   )}
@@ -229,6 +232,15 @@ export default function OrdersBoard() {
             })}
           </div>
         </>
+      )}
+
+      {refunding && (
+        <RefundModal
+          order={refunding.order}
+          cancelOrder={refunding.cancel}
+          onClose={() => setRefunding(null)}
+          onChanged={refresh}
+        />
       )}
 
       {manualOpen && (

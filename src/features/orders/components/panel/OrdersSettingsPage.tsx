@@ -5,7 +5,8 @@ import { regenerateQr, updateOrderSettings } from "../../api/ordersApi";
 import { useOrderSettings } from "../../hooks/usePanelData";
 import { errorMessage } from "../../lib/errors";
 import { venueQrUrl } from "../../lib/qrUrls";
-import type { OrderSettings, PeriodMode, QrMode, SettingsResponse, ShiftScheduleEntry } from "../../types";
+import type { MpConnection, OrderSettings, PeriodMode, QrMode, SettingsResponse, ShiftScheduleEntry } from "../../types";
+import PaymentsSection from "./PaymentsSection";
 import p from "./panel.module.css";
 
 // Configuración de Gestión de pedidos: QR general o por mesa, cantidad de
@@ -30,6 +31,8 @@ export default function OrdersSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // Estado de la cuenta de Mercado Pago (lo informa la sección de pagos).
+  const [mp, setMp] = useState<MpConnection | null>(null);
 
   // El borrador arranca de lo guardado (ajuste de estado durante el render,
   // no en un efecto).
@@ -145,6 +148,34 @@ export default function OrdersSettingsPage() {
           </label>
           <p className={p.cardDesc} style={{ marginTop: "0.75rem" }}>
             Quien entra a la carta por el link (sin escanear el QR del local) sigue pidiendo por WhatsApp, como siempre.
+          </p>
+        </section>
+
+        <PaymentsSection onChange={setMp} />
+
+        <section className={p.card}>
+          <h2 className={p.cardTitle}>Pedidos online con pago</h2>
+          <div className={p.switchRow}>
+            <div className={p.switchText}>
+              <span className={p.switchTitle}>Cobrar pedidos de take away y delivery desde la carta</span>
+              <span className={p.switchHint}>
+                {mp?.connected
+                  ? "Los clientes arman el pedido en tu carta y lo pagan con Mercado Pago. Llega al panel recién cuando el pago está aprobado. Se ofrecen las modalidades que tengas activadas en tu carta (delivery y retiro en el local)."
+                  : "Primero conectá tu cuenta de Mercado Pago en la sección de pagos."}
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              className={p.switch}
+              checked={draft.options.onlineOrdering === true}
+              disabled={!mp?.connected && draft.options.onlineOrdering !== true}
+              onChange={e => update({ options: { ...draft.options, onlineOrdering: e.target.checked } })}
+              aria-label="Cobrar pedidos de take away y delivery desde la carta"
+            />
+          </div>
+          <p className={p.cardDesc} style={{ marginTop: "0.75rem" }}>
+            Los pedidos pagados quedan sin confirmar hasta que los aceptes: el pago aprobado no acepta el pedido. Si lo rechazás,
+            podés devolver el dinero desde el pedido.
           </p>
         </section>
 

@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Check, ChefHat, HandPlatter, MapPin, MessageSquareText, Phone, QrCode, Smartphone, UserRound, X } from "lucide-react";
+import { Check, ChefHat, HandPlatter, MapPin, MessageSquareText, Phone, QrCode, Smartphone, Undo2, UserRound, X } from "lucide-react";
 import { elapsedLabel, formatMoney, formatTime, placeLabel, STATUS_LABEL } from "../../lib/format";
 import type { Order, OrderStatus, TicketStatus, Waiter } from "../../types";
+import { isRefundable } from "../../lib/payment";
+import PaymentBadge from "./PaymentBadge";
 import p from "./panel.module.css";
 import s from "./OrdersBoard.module.css";
 
@@ -17,6 +19,8 @@ interface Props {
   busy?: boolean;
   onStatus: (order: Order, status: OrderStatus) => void;
   onWaiter: (order: Order, waiterId: number | null) => void;
+  // Devolución de un pedido pagado online; cancel = rechazarlo devolviendo el dinero.
+  onRefund?: (order: Order, cancel: boolean) => void;
 }
 
 const SOURCE_ICON = {
@@ -71,10 +75,12 @@ function SectorProgress({ order }: { order: Order }) {
   );
 }
 
-export default function OrderCard({ order, waiters, now, highlight = false, busy = false, onStatus, onWaiter }: Props) {
+export default function OrderCard({ order, waiters, now, highlight = false, busy = false, onStatus, onWaiter, onRefund }: Props) {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const minutes = Math.floor((now - new Date(order.createdAt).getTime()) / 60_000);
   const late = order.status !== "ready" && minutes >= 20;
+  // Pedido ya cobrado online: cancelarlo implica decidir la devolución.
+  const paid = onRefund !== undefined && isRefundable(order);
 
   return (
     <article className={`${s.card} ${highlight ? s.cardNew : ""} ${late ? s.cardLate : ""}`} aria-label={`Pedido ${order.number}`}>
@@ -90,6 +96,7 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
         <span className={s.source} title={`Origen: ${SOURCE_TEXT[order.source]}`}>
           {SOURCE_ICON[order.source]} {SOURCE_TEXT[order.source]}
         </span>
+        <PaymentBadge order={order} />
         <span className={s.cardTime} title={formatTime(order.createdAt)}>{formatTime(order.createdAt)} · {elapsedLabel(order.createdAt, now)}</span>
       </div>
 
@@ -136,7 +143,7 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
       </div>
 
       <div className={s.actions}>
-        {confirmCancel ? (
+        {confirmCancel && !paid ? (
           <>
             <span className={s.confirmText}>¿Cancelar el pedido?</span>
             <button type="button" className={`${p.btnDanger} ${p.small}`} disabled={busy} onClick={() => onStatus(order, "cancelled")}>
@@ -170,11 +177,16 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
               type="button"
               className={`${p.btnGhost} ${s.cancelBtn}`}
               disabled={busy}
-              onClick={() => setConfirmCancel(true)}
-              aria-label={`Cancelar pedido ${order.number}`}
+              onClick={() => (paid ? onRefund(order, true) : setConfirmCancel(true))}
+              aria-label={paid ? `Rechazar pedido ${order.number} y devolver el pago` : `Cancelar pedido ${order.number}`}
             >
-              <X size={16} aria-hidden /> Cancelar
+              <X size={16} aria-hidden /> {paid ? "Rechazar y devolver" : "Cancelar"}
             </button>
+            {paid && (
+              <button type="button" className={p.btnGhost} disabled={busy} onClick={() => onRefund(order, false)}>
+                <Undo2 size={16} aria-hidden /> Reembolsar
+              </button>
+            )}
           </>
         )}
       </div>

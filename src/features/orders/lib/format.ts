@@ -1,4 +1,4 @@
-import type { Order, OrderSource, OrderStatus, ServiceType } from "../types";
+import type { Order, OrderSource, OrderStatus, PaymentStatus, ServiceType } from "../types";
 
 export const formatMoney = (value: number) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(value);
@@ -41,6 +41,15 @@ export const STATUS_LABEL: Record<OrderStatus, string> = {
   delivered: "Entregado",
   cancelled: "Cancelado",
   returned: "Devuelto",
+};
+
+export const PAYMENT_LABEL: Record<PaymentStatus, string> = {
+  NOT_REQUIRED: "Sin pago online",
+  PENDING: "Pago pendiente",
+  APPROVED: "Pagado online",
+  REJECTED: "Pago rechazado",
+  REFUNDED: "Devuelto",
+  PARTIALLY_REFUNDED: "Devuelto en parte",
 };
 
 export const SOURCE_LABEL: Record<OrderSource, string> = {

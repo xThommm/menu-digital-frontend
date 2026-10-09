@@ -1,0 +1,134 @@
+/* Pago online (Mercado Pago) en el carrito de la carta pública. Mismos tokens
+   --t-* / --tone-* que el resto del drawer; se hereda la paleta del local. */
+
+.mpBtn {
+  composes: md-button from global;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 50px;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: var(--t-accent);
+  color: var(--t-btn-text);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.mpBtn:disabled { opacity: 0.6; cursor: default; }
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border-radius: 20px;
+  background: var(--tone-high);
+}
+
+.formTitle { margin: 0; font-size: 0.9rem; font-weight: 700; color: var(--t-title); }
+
+.field { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.field span { font-size: 0.78rem; font-weight: 600; color: var(--t-title); }
+
+/* Campo relleno, sin contorno (mismo criterio que las aclaraciones). */
+.field input,
+.field textarea {
+  min-height: 46px;
+  padding: 0.55rem 0.9rem;
+  border: none;
+  border-radius: 14px;
+  background: var(--tone-highest);
+  color: var(--t-title);
+  font: inherit;
+  resize: none;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible { outline: 2px solid var(--tone-focus); outline-offset: 1px; }
+
+.modes { display: flex; gap: 0.5rem; }
+
+.mode {
+  composes: md-button from global;
+  flex: 1;
+  min-height: 44px;
+  border: none;
+  background: var(--tone-highest);
+  color: var(--t-title);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.modeActive { background: var(--tone-primary-container); color: var(--tone-on-primary-container); }
+
+.hint { margin: 0; font-size: 0.74rem; color: var(--t-muted); line-height: 1.5; }
+
+.error {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--t-offer);
+  background: color-mix(in srgb, var(--t-offer) 14%, var(--tone-float));
+}
+
+.actions { display: flex; gap: 0.5rem; }
+
+.back {
+  composes: md-button from global;
+  min-height: 48px;
+  padding: 0 1rem;
+  border: none;
+  background: var(--tone-highest);
+  color: var(--t-title);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Pantalla de retorno desde Mercado Pago. */
+.returnOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal, 1000);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: color-mix(in srgb, black 55%, transparent);
+}
+
+@media (min-width: 768px) {
+  .returnOverlay { align-items: center; padding: 1.5rem; }
+}
+
+.returnCard {
+  composes: md-surface from global;
+  width: 100%;
+  max-width: 420px;
+  padding: 2rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom));
+  border-radius: 28px 28px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: center;
+  color: var(--t-title);
+}
+
+@media (min-width: 768px) {
+  .returnCard { border-radius: 28px; }
+}
+
+.returnTitle { margin: 0.25rem 0 0; font-family: var(--font-serif); font-size: 1.35rem; font-weight: 500; }
+
+.returnText { margin: 0; max-width: 34ch; font-size: 0.85rem; color: var(--t-muted); line-height: 1.55; }
+
+.returnNumber { font-family: var(--font-serif); font-size: 2.2rem; line-height: 1; color: var(--t-accent); }

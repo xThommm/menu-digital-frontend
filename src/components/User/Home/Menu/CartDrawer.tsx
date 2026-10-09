@@ -1,6 +1,7 @@
 import { useCart } from "../../../../context/useCart";
 import type { CartLine } from "../../../../context/CartContext";
 import { buildOrderChoices, type OrderExtraTexts, type OrderMode, type WaTarget } from "../../../../lib/whatsapp";
+import OnlineCheckout from "../../../../features/orders/components/customer/OnlineCheckout";
 import WaTargetPicker from "../WaTargetPicker/WaTargetPicker";
 import styles from "./CartDrawer.module.css";
 
@@ -11,6 +12,8 @@ interface CartDrawerProps {
   open: boolean;
   onClose: () => void;
   businessName: string;
+  // Slug del local: con él se consulta si cobra pedidos online (Mercado Pago).
+  slug?: string;
   // Un destino por sucursal (ver getWaTargets); con más de uno el cliente
   // elige a cuál mandar el pedido.
   waTargets: WaTarget[];
@@ -34,6 +37,7 @@ export default function CartDrawer({
   open,
   onClose,
   businessName,
+  slug,
   waTargets,
   orderTexts,
   orderModes,
@@ -112,10 +116,10 @@ export default function CartDrawer({
               </div>
             )}
 
-            {/* Zona de acciones de checkout — separada a propósito: sumar acá
-                un botón de pago con MercadoPago (fase futura) es un cambio
-                aislado, no una reestructuración de este componente. */}
+            {/* Zona de acciones de checkout. Pagar online (Mercado Pago) solo
+                aparece si el local lo habilita y los precios están visibles. */}
             <div className={styles.checkoutActions}>
+              {slug && !hidePrices && <OnlineCheckout slug={slug} />}
               {waTargets.length > 0 ? (
                 <WaTargetPicker
                   targets={waTargets}

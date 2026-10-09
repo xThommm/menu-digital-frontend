@@ -183,8 +183,7 @@
   flex-shrink: 0;
 }
 
-/* Zona de acciones de checkout — ver comentario en CartDrawer.tsx: sumar un
-   segundo botón acá (MercadoPago) es un cambio aislado a este bloque. */
+/* Zona de acciones de checkout (pagar online y pedir por WhatsApp). */
 .checkoutActions {
   display: flex;
   flex-direction: column;
