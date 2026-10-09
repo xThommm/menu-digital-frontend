@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App.tsx'
 import './styles/globals.css'
+import './styles/halloween.css'
 
 // QueryClient global — configuración base para todas las queries de React Query
 const queryClient = new QueryClient({

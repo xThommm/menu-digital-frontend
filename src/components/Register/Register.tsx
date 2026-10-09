@@ -7,6 +7,8 @@ import BrandWordmark from "../Common/BrandWordmark";
 import { useAuthTheme } from "../../hooks/useAuthTheme";
 import { normalizeArPhone, isValidArLocalPhone } from "../../lib/whatsapp";
 import styles from "./Register.module.css";
+import Cobweb from "../Halloween/Cobweb";
+import Spider from "../Halloween/Spider";
 
 const PLAN_IDS = ["free", "basic", "pro"] as const;
 
@@ -104,6 +106,9 @@ export default function RegisterPage() {
       data-auth-theme={theme}
     >
       <div className={`${styles.card} auth-surface`}>
+        <Cobweb corner="tl" size={110} />
+        <Cobweb corner="br" size={90} />
+        <Spider thread={36} />
         {/* Brand */}
         <div className={styles.brand}>
           <div className={styles.logoMark}>

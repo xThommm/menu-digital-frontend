@@ -1,3 +1,4 @@
+import Cobweb from "../../../Halloween/Cobweb";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -507,6 +508,7 @@ function SpotlightCard({ onClick, icon, title, desc, primary }: NavCardProps) {
       className={`${s.navCard} ${primary ? s.navCardPrimary : ""}`}
       onClick={onClick}
     >
+      <Cobweb corner="tr" size={64} />
       <div className={`${s.cardIcon} ${primary ? s.cardIconPrimary : ""}`}>
         {icon}
       </div>

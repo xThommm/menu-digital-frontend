@@ -1,0 +1,187 @@
+/* ═══════════════════════════════════════════════════════════════
+   HALLOWEEN — temporada. Todo cuelga de <html data-halloween="full|low">,
+   que pone HalloweenEffects solo en landing, auth y paneles, solo dentro de
+   la fecha (src/lib/halloween.ts) y solo si el visitante no lo apagó.
+   Sin ese atributo, nada de este archivo hace efecto salvo el interruptor
+   y los elementos que el propio componente decide montar.
+   ═══════════════════════════════════════════════════════════════ */
+
+html[data-halloween] {
+  --hw-orange: #ff7518;
+  --hw-violet: #8e5bff;
+  --hw-web-color: #e4daf5;
+
+  /* Calabaza (32px). Hotspot en el centro. La de puntero tiene la cara
+     encendida: ojos y boca amarillos. */
+  --hw-cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M16 8c.5-3 2.5-5 5-5' stroke='%23357a22' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E%3Cellipse cx='16' cy='19' rx='13' ry='11' fill='%23ff7518' stroke='%23a63d00' stroke-width='1.4'/%3E%3Cpath d='M16 8.5c-4 3-4 19 0 21M16 8.5c4 3 4 19 0 21' stroke='%23c4510a' stroke-width='1' fill='none' opacity='.55'/%3E%3Cpath d='M9 15l3.2 4.4H5.8zM23 15l3.2 4.4h-6.4z' fill='%23231320'/%3E%3Cpath d='M9.5 23.5l2.2 2 2.1-2 2.2 2 2.1-2 2.2 2 2.2-2-.6 3-2 .8-2.1-1.6-2.2 1.6-2.1-1.6-2.2 1.6-2-.8z' fill='%23231320'/%3E%3C/svg%3E") 16 16, auto;
+  --hw-cursor-lit: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M16 8c.5-3 2.5-5 5-5' stroke='%23357a22' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E%3Cellipse cx='16' cy='19' rx='13' ry='11' fill='%23ff8a2b' stroke='%23ffb347' stroke-width='1.6'/%3E%3Cpath d='M16 8.5c-4 3-4 19 0 21M16 8.5c4 3 4 19 0 21' stroke='%23c4510a' stroke-width='1' fill='none' opacity='.55'/%3E%3Cpath d='M9 15l3.2 4.4H5.8zM23 15l3.2 4.4h-6.4z' fill='%23ffe066'/%3E%3Cpath d='M9.5 23.5l2.2 2 2.1-2 2.2 2 2.1-2 2.2 2 2.2-2-.6 3-2 .8-2.1-1.6-2.2 1.6-2.1-1.6-2.2 1.6-2-.8z' fill='%23ffe066'/%3E%3C/svg%3E") 16 16, pointer;
+}
+
+html[data-halloween],
+html[data-halloween] body {
+  cursor: var(--hw-cursor);
+}
+
+html[data-halloween] :is(a, button, summary, select, label[for], [role="button"], [role="tab"], [data-hover], .md-button, .t-btn):not(:disabled) {
+  cursor: var(--hw-cursor-lit);
+}
+
+/* La landing trae su propio cursor (punto + aro): con la calabaza sobra. */
+html[data-halloween] :is([class*="curDot"], [class*="curRing"]) {
+  display: none;
+}
+
+/* Niebla violeta al pie y un resplandor naranja arriba, muy tenues. */
+html[data-halloween]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-raised, 10);
+  pointer-events: none;
+  background:
+    linear-gradient(to top, color-mix(in srgb, var(--hw-violet) 9%, transparent), transparent 24%),
+    radial-gradient(ellipse 60% 40% at 0% 0%, color-mix(in srgb, var(--hw-orange) 8%, transparent), transparent 70%);
+}
+html[data-halloween="low"]::after {
+  background: linear-gradient(to top, color-mix(in srgb, var(--hw-violet) 5%, transparent), transparent 14%);
+}
+
+/* ── Botones ──────────────────────────────────────────────────── */
+@media (hover: hover) {
+  html[data-halloween] :is(button, [role="button"], .md-button, .t-btn, a.md-button, a[class*="btn" i], a[class*="cta" i], a[class*="navRegister"]):not(:disabled):not([aria-disabled="true"]):hover {
+    filter: drop-shadow(0 0 7px color-mix(in srgb, var(--hw-orange) 70%, transparent));
+  }
+  /* La capa de estado del botón tonal vira a naranja. */
+  html[data-halloween] .md-button:enabled:hover::after,
+  html[data-halloween] a.md-button:hover::after,
+  html[data-halloween] .t-btn:hover::after {
+    background: var(--hw-orange);
+    opacity: 0.2;
+  }
+}
+
+/* Al presionar, un temblor "embrujado" (propiedades individuales para no
+   pisar el transform que cada módulo ya usa). */
+html[data-halloween] :is(button, [role="button"], .md-button, .t-btn, a.md-button, a[class*="btn" i], a[class*="cta" i]):not(:disabled):active {
+  animation: hw-jitter 0.28s linear;
+}
+
+@keyframes hw-jitter {
+  0%, 100% { translate: 0 0; rotate: 0deg; }
+  25% { translate: -1.5px 0; rotate: -1.2deg; }
+  50% { translate: 1.5px 0; rotate: 1.2deg; }
+  75% { translate: -1px 0; rotate: -0.6deg; }
+}
+
+/* ── Tarjetas de plan (landing y alta) ───────────────────────── */
+html[data-halloween] :is([class*="planCard"]) {
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease;
+}
+html[data-halloween] :is([class*="planCard"]):hover {
+  border-color: color-mix(in srgb, var(--hw-orange) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--hw-orange) 25%, transparent), 0 10px 34px -12px color-mix(in srgb, var(--hw-orange) 45%, transparent);
+}
+html[data-halloween] [class*="highlightCard"] {
+  border-color: color-mix(in srgb, var(--hw-orange) 60%, transparent);
+}
+
+/* ── Telarañas ────────────────────────────────────────────────── */
+.hw-web {
+  position: absolute;
+  pointer-events: none;
+  color: var(--hw-web-color, #e4daf5);
+  opacity: 0.5;
+  max-width: 45%;
+  height: auto;
+}
+/* La esquina exterior sigue el radio de la tarjeta (el svg se espeja, así que
+   el vértice "top-left" local siempre es el de la esquina). */
+.auth-surface .hw-web { border-top-left-radius: 32px; }
+.hw-web-tl { top: 0; left: 0; }
+.hw-web-tr { top: 0; right: 0; transform: scaleX(-1); }
+.hw-web-bl { bottom: 0; left: 0; transform: scaleY(-1); }
+.hw-web-br { bottom: 0; right: 0; transform: scale(-1, -1); }
+
+/* Temas claros: la tela se oscurece para que se vea sobre fondo claro. */
+:is([data-theme="light"], [data-auth-theme="light"]) .hw-web {
+  color: #5b4a78;
+  opacity: 0.4;
+}
+
+/* ── Araña colgante ───────────────────────────────────────────── */
+.hw-spider {
+  position: absolute;
+  top: 0;
+  right: 14%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  color: #3a2a52;
+  transform-origin: top center;
+  animation: hw-drop 1.1s cubic-bezier(0.3, 1.4, 0.5, 1) both, hw-sway 3.6s ease-in-out 1.1s infinite;
+}
+.hw-spider-thread {
+  width: 1px;
+  height: var(--hw-thread, 44px);
+  background: #cfc4e6;
+  opacity: 0.65;
+}
+.hw-spider-body {
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--hw-violet) 60%, transparent));
+}
+:is([data-theme="light"], [data-auth-theme="light"]) .hw-spider {
+  color: #1b1226;
+}
+:is([data-theme="light"], [data-auth-theme="light"]) .hw-spider-thread {
+  background: #5b4a78;
+}
+@keyframes hw-drop {
+  from { translate: 0 -70px; }
+  to { translate: 0 0; }
+}
+@keyframes hw-sway {
+  0%, 100% { rotate: -4deg; }
+  50% { rotate: 4deg; }
+}
+
+/* ── Murciélagos e interruptor ────────────────────────────────── */
+.hw-bats {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: calc(var(--z-toast, 300) + 5);
+}
+
+.hw-toggle {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: calc(var(--z-toast, 300) + 10);
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, #ff7518 50%, transparent);
+  border-radius: 50%;
+  background: #17101f;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.6);
+  transition: opacity 0.2s ease, filter 0.2s ease, transform 0.15s ease;
+}
+/* En los paneles el pie izquierdo es de la barra lateral (cerrar sesión). */
+.hw-toggle[data-level="low"] { left: auto; right: 14px; }
+.hw-toggle:hover { transform: scale(1.08); }
+.hw-toggle:focus-visible { outline: 3px solid #ff7518; outline-offset: 2px; }
+.hw-toggle[data-on="false"] { filter: grayscale(1); opacity: 0.55; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hw-spider { animation: none; }
+  html[data-halloween] :is(button, [role="button"], .md-button, .t-btn, a):active { animation: none; }
+}

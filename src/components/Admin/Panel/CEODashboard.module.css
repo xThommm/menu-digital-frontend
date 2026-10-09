@@ -79,6 +79,8 @@
 }
 
 .kpiCard {
+  position: relative;
+  overflow: hidden;
   min-height: 0;
   padding: 14px 16px 16px;
   border: 1px solid var(--admin-border-subtle);
