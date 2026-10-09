@@ -8,6 +8,8 @@ import { usePlans } from "../../hooks/usePlans";
 import { getPlanFeatureLabels } from "../../lib/plans";
 import Spinner from "../Common/Spinner";
 import styles from "./RegisterPlans.module.css";
+import Cobweb from "../Halloween/Cobweb";
+import Spider from "../Halloween/Spider";
 
 type PlanId = "free" | "basic" | "pro";
 
@@ -364,6 +366,9 @@ export default function RegisterPlansPage() {
       data-auth-theme={theme}
     >
       <div className={`auth-surface ${styles.card}`}>
+        <Cobweb corner="tl" size={110} />
+        <Cobweb corner="br" size={90} />
+        <Spider thread={36} />
         <div className={styles.header}>
           <span className={styles.eyebrow}>Menú Digital App · Alta de cuenta</span>
           <h1>Elegí tu plan</h1>

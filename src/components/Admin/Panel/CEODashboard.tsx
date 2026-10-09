@@ -1,3 +1,4 @@
+import Cobweb from "../../Halloween/Cobweb";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import apiClient from "../../../api/client";
@@ -306,6 +307,7 @@ interface KpiCardProps {
 function KpiCard({ icon, label, value, detail, tone = "neutral" }: KpiCardProps) {
   return (
     <article className={`${s.kpiCard} ${s[`kpi_${tone}`]}`}>
+      <Cobweb corner="br" size={58} />
       <div className={s.kpiHeader}>
         <span>{label}</span>
         <span className={s.kpiIcon}>{icon}</span>

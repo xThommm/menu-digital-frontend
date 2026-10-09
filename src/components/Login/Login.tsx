@@ -7,6 +7,8 @@ import BrandMark from "../Common/BrandMark";
 import BrandWordmark from "../Common/BrandWordmark";
 import { useAuthTheme } from "../../hooks/useAuthTheme";
 import styles from "./Login.module.css";
+import Cobweb from "../Halloween/Cobweb";
+import Spider from "../Halloween/Spider";
 import type { AuthUser } from "../../types";
 
 export default function LoginPage() {
@@ -99,6 +101,9 @@ const getRedirectPath = (user: AuthUser | null) => {
       data-auth-theme={theme}
     >
       <div className={`${styles.card} auth-surface`}>
+        <Cobweb corner="tl" size={110} />
+        <Cobweb corner="br" size={90} />
+        <Spider thread={36} />
 
         {/* Brand */}
         <div className={styles.brand}>

@@ -876,6 +876,7 @@
 
 /* ── PRICING ── */
 .pricing {
+  position: relative;
   background: var(--auth-bg-card);
   border-top: 1px solid color-mix(in srgb, var(--auth-amber) 10%, transparent);
   border-bottom: 1px solid color-mix(in srgb, var(--auth-amber) 10%, transparent);

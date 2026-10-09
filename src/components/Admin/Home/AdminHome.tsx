@@ -29,6 +29,8 @@ import BrandMark from "../../Common/BrandMark";
 import BrandWordmark from "../../Common/BrandWordmark";
 import styles from "./AdminHome.module.css";
 import { usePlans } from "../../../hooks/usePlans";
+import Cobweb from "../../Halloween/Cobweb";
+import Spider from "../../Halloween/Spider";
 import { useAuthTheme } from "../../../hooks/useAuthTheme";
 import { getPlanFeatureLabels } from "../../../lib/plans";
 import type { BooleanPlanFeature } from "../../../types";
@@ -833,6 +835,8 @@ useEffect(() => {
 
         {/* ── PLANS ── */}
         <section className={styles.pricing} id="plans">
+          <Cobweb corner="tl" size={170} />
+          <Cobweb corner="tr" size={170} />
           <div className={styles.pricingInner}>
             <div className={`${styles.pricingHeader} ${styles.reveal}`}>
               {/* <div className={styles.eyebrow}>Planes y precios</div> */}
@@ -859,6 +863,8 @@ useEffect(() => {
                     data-hover
                   >
                     {plan.name === "pro" && <div className={styles.planBadge}>Recomendado</div>}
+                    <Cobweb corner="tr" size={88} />
+                    {plan.name === "pro" && <Spider thread={54} />}
                     <div className={styles.planName}>{plan.label}</div>
                     <div className={styles.planPrice}>
                       <span>$</span>{plan.effectivePrice.toLocaleString("es-AR")}
