@@ -1,13 +1,9 @@
-import { useLocation } from "react-router-dom";
-import { useHalloween } from "../../hooks/useHalloween";
-import { halloweenLevelFor } from "../../lib/halloween";
+import { useHalloweenActive } from "../../hooks/useHalloween";
 
 // Araña colgada de un hilo que se balancea. El padre debe ser position:
 // relative; `thread` es el largo del hilo en px.
 export default function Spider({ thread = 44, className = "" }: { thread?: number; className?: string }) {
-  const { enabled } = useHalloween();
-  const { pathname } = useLocation();
-  if (!enabled || !halloweenLevelFor(pathname)) return null;
+  if (!useHalloweenActive()) return null;
   return (
     <div className={`hw-spider ${className}`} style={{ ["--hw-thread" as string]: `${thread}px` }} aria-hidden="true">
       <span className="hw-spider-thread" />

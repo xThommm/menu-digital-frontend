@@ -9,6 +9,7 @@ import { useAuthTheme } from "../../hooks/useAuthTheme";
 import styles from "./Login.module.css";
 import Cobweb from "../Halloween/Cobweb";
 import Spider from "../Halloween/Spider";
+import Ghost from "../Halloween/Ghost";
 import type { AuthUser } from "../../types";
 
 export default function LoginPage() {
@@ -30,6 +31,8 @@ export default function LoginPage() {
     () => !!localStorage.getItem("md_remembered_user")
   );
   const [isShaking, setIsShaking] = useState(false);
+  // Halloween: el fantasma se asoma un rato más que el temblor del form.
+  const [ghostBoo, setGhostBoo] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({ username: false, password: false });
 
   const usernameRef = useRef<HTMLInputElement>(null);
@@ -49,6 +52,8 @@ const getRedirectPath = (user: AuthUser | null) => {
   const triggerShake = () => {
     setIsShaking(true);
     setTimeout(() => setIsShaking(false), 500);
+    setGhostBoo(true);
+    setTimeout(() => setGhostBoo(false), 2200);
   };
 
   const handleCapsLock = (e: React.KeyboardEvent) => {
@@ -100,6 +105,7 @@ const getRedirectPath = (user: AuthUser | null) => {
       className={`${styles.lp} auth-page-shell`}
       data-auth-theme={theme}
     >
+      <Ghost boo={ghostBoo} />
       <div className={`${styles.card} auth-surface`}>
         <Cobweb corner="tl" size={110} />
         <Cobweb corner="br" size={90} />

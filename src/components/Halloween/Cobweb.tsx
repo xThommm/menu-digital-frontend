@@ -1,6 +1,4 @@
-import { useHalloween } from "../../hooks/useHalloween";
-import { halloweenLevelFor } from "../../lib/halloween";
-import { useLocation } from "react-router-dom";
+import { useHalloweenActive } from "../../hooks/useHalloween";
 
 // Telaraña de esquina: radios desde (0,0) y arcos que se hunden hacia el
 // centro. Se dibuja una sola vez; las otras esquinas se espejan con CSS.
@@ -35,9 +33,7 @@ type Props = {
 
 // El padre debe ser position: relative (y suele convenirle overflow: hidden).
 export default function Cobweb({ corner = "tr", size = 96, className = "" }: Props) {
-  const { enabled } = useHalloween();
-  const { pathname } = useLocation();
-  if (!enabled || !halloweenLevelFor(pathname)) return null;
+  if (!useHalloweenActive()) return null;
   return (
     <svg
       className={`hw-web hw-web-${corner} ${className}`}

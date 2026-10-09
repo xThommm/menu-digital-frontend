@@ -1,4 +1,5 @@
 import Cobweb from "../../../Halloween/Cobweb";
+import { useSpooky } from "../../../../hooks/useHalloween";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -32,6 +33,7 @@ function useSpotlight(ref: React.RefObject<HTMLElement>) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function UserDashboard() {
+  const spooky = useSpooky();
   const { token, user, isLoading, refreshUser, logout } = useAuth();
   const catalog = usePlans();
   const {
@@ -301,7 +303,7 @@ export default function UserDashboard() {
         >
           <div className={s.heroOverlay} />
           <div className={s.heroContent}>
-            <p className={s.welcomeEyebrow}>Bienvenido!</p>
+            <p className={s.welcomeEyebrow}>{spooky("Bienvenido!", "¡Feliz Halloween! 🎃")}</p>
             <h1 className={s.welcomeTitle}>{displayName}</h1>
           </div>
         </div>

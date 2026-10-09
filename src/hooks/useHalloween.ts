@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { isHalloweenSeason } from "../lib/halloween";
+import { halloweenLevelFor, isHalloweenSeason } from "../lib/halloween";
 
 // Preferencia del visitante: encendido por defecto durante la temporada.
 // Guarda solo el "apagado" para que la decisión de la fecha mande sobre un
@@ -40,4 +40,18 @@ export function useHalloween() {
     enabled: season && !isOff,
     toggle: () => setHalloweenEnabled(isOff),
   };
+}
+
+// ¿Hay adorno en ESTA pantalla? Lee la ruta de window.location (no del
+// router) para poder usarse también en piezas comunes como Spinner, que se
+// montan fuera de un <Router> en algún caso (ErrorBoundary, Suspense raíz).
+export function useHalloweenActive(): boolean {
+  const { enabled } = useHalloween();
+  return enabled && halloweenLevelFor(window.location.pathname) !== null;
+}
+
+// Devuelve el texto de temporada si hay adorno, y si no el de siempre.
+export function useSpooky() {
+  const active = useHalloweenActive();
+  return <T>(normal: T, spooky: T): T => (active ? spooky : normal);
 }

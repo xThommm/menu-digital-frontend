@@ -158,7 +158,7 @@ html[data-halloween] [class*="highlightCard"] {
 
 .hw-toggle {
   position: fixed;
-  left: 14px;
+  right: 14px;
   bottom: 14px;
   z-index: calc(var(--z-toast, 300) + 10);
   display: grid;
@@ -175,8 +175,9 @@ html[data-halloween] [class*="highlightCard"] {
   box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.6);
   transition: opacity 0.2s ease, filter 0.2s ease, transform 0.15s ease;
 }
-/* En los paneles el pie izquierdo es de la barra lateral (cerrar sesión). */
-.hw-toggle[data-level="low"] { left: auto; right: 14px; }
+/* Abajo a la derecha: a la izquierda están los avisos (toasts) y, en los
+   paneles, el cierre de sesión. En la landing se apila sobre el botón de chat. */
+.hw-toggle[data-lift="true"] { right: 32px; bottom: 92px; }
 .hw-toggle:hover { transform: scale(1.08); }
 .hw-toggle:focus-visible { outline: 3px solid #ff7518; outline-offset: 2px; }
 .hw-toggle[data-on="false"] { filter: grayscale(1); opacity: 0.55; }
@@ -184,4 +185,181 @@ html[data-halloween] [class*="highlightCard"] {
 @media (prefers-reduced-motion: reduce) {
   .hw-spider { animation: none; }
   html[data-halloween] :is(button, [role="button"], .md-button, .t-btn, a):active { animation: none; }
+}
+
+/* ── Fantasma del login ───────────────────────────────────────── */
+/* Anclado al centro del shell: la tarjeta mide 400px, así que asoma unos
+   40px por su borde derecho. `translate` lo ubica (y hace el susto);
+   `transform` queda para el flotar. */
+.hw-ghost {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 0;
+  pointer-events: none;
+  translate: 162px -230px;
+  rotate: 8deg;
+  filter: drop-shadow(0 0 12px color-mix(in srgb, #8e5bff 55%, transparent));
+  transition: translate 0.4s cubic-bezier(0.3, 1.5, 0.5, 1), rotate 0.4s ease;
+  animation: hw-float 4.2s ease-in-out infinite;
+}
+.hw-ghost[data-boo="true"] {
+  translate: 214px -250px;
+  rotate: -6deg;
+}
+.hw-ghost-mouth {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.25s ease;
+}
+.hw-ghost[data-boo="true"] .hw-ghost-mouth { transform: scale(1.4, 2.6); }
+.hw-ghost-say {
+  position: absolute;
+  left: 58px;
+  top: -26px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #f4f0ff;
+  color: #231320;
+  font: 700 0.8rem var(--font-sans, sans-serif);
+  white-space: nowrap;
+  opacity: 0;
+  scale: 0.6;
+  transition: opacity 0.2s ease, scale 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.hw-ghost[data-boo="true"] .hw-ghost-say { opacity: 1; scale: 1; }
+@keyframes hw-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@media (max-width: 720px) {
+  .hw-ghost { display: none; }
+}
+
+/* ── Cielo del hero: luna, nubes, murciélagos, relámpago ──────── */
+.hw-sky {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+.hw-moon {
+  position: absolute;
+  top: 96px;
+  right: 6%;
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 68% 30%, rgba(190, 160, 90, 0.35) 0 9%, transparent 10%),
+    radial-gradient(circle at 40% 62%, rgba(190, 160, 90, 0.3) 0 13%, transparent 14%),
+    radial-gradient(circle at 72% 70%, rgba(190, 160, 90, 0.25) 0 6%, transparent 7%),
+    radial-gradient(circle at 35% 32%, #fff8de, #f3dfa0 62%, #d6b96c);
+  box-shadow: 0 0 70px 20px rgba(255, 226, 150, 0.2);
+  opacity: 0.92;
+}
+.hw-cloud {
+  position: absolute;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(22, 14, 34, 0.82);
+  filter: blur(7px);
+  animation: hw-drift 40s ease-in-out infinite alternate;
+}
+.hw-cloud-a { top: 132px; right: 1%; width: 200px; }
+.hw-cloud-b { top: 178px; right: 11%; width: 130px; animation-duration: 56s; animation-direction: alternate-reverse; }
+[data-auth-theme="light"] .hw-cloud { background: rgba(150, 135, 175, 0.55); }
+[data-auth-theme="light"] .hw-moon { box-shadow: 0 0 0 1px rgba(170, 130, 50, 0.4), 0 0 50px 14px rgba(255, 190, 90, 0.3); }
+@keyframes hw-drift {
+  from { translate: 70px 0; }
+  to { translate: -110px 0; }
+}
+
+/* Bandada que cruza por delante de la luna cada ~24 s. */
+.hw-skybat {
+  position: absolute;
+  left: 0;
+  color: #0c0712;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, #8e5bff 70%, transparent));
+  translate: -80px 0;
+  animation: hw-cross 24s linear infinite, hw-skyflap 0.24s ease-in-out infinite alternate;
+}
+.hw-skybat-0 { top: 150px; }
+.hw-skybat-1 { top: 190px; animation-delay: 0.7s, 0s; scale: 0.75; }
+.hw-skybat-2 { top: 122px; animation-delay: 1.3s, 0.1s; scale: 0.6; }
+[data-auth-theme="light"] .hw-skybat { color: #2a1d3d; }
+@keyframes hw-cross {
+  0%, 62% { translate: -80px 0; }
+  100% { translate: calc(100vw + 80px) -70px; }
+}
+@keyframes hw-skyflap {
+  from { transform: scaleY(1); }
+  to { transform: scaleY(0.35); }
+}
+
+/* Relámpago: dos destellos cortos y tenues cada 14 s. */
+.hw-lightning {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 85% 65% at 72% 0%, rgba(205, 195, 255, 0.5), transparent 70%);
+  opacity: 0;
+  animation: hw-flash 14s linear 5s infinite;
+}
+@keyframes hw-flash {
+  0%, 90.5%, 100% { opacity: 0; }
+  91% { opacity: 0.55; }
+  92% { opacity: 0.05; }
+  93.2% { opacity: 0.32; }
+  95% { opacity: 0; }
+}
+
+/* ── Calabazas con vela ───────────────────────────────────────── */
+.hw-pumpkin {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 0 14px rgba(255, 150, 40, 0.45));
+}
+.hw-pumpkin-bl { left: 20px; bottom: 16px; rotate: -6deg; }
+/* La derecha esquiva al botón de chat flotante de la landing. */
+.hw-pumpkin-br { right: 104px; bottom: 16px; rotate: 7deg; }
+.hw-pumpkin-face { animation: hw-flicker 2.7s linear infinite; }
+@keyframes hw-flicker {
+  0%, 100% { opacity: 1; }
+  12% { opacity: 0.72; }
+  20% { opacity: 0.96; }
+  46% { opacity: 0.6; }
+  52% { opacity: 0.9; }
+  78% { opacity: 0.78; }
+}
+
+/* ── Spinner murciélago y cartel de carga ─────────────────────── */
+.hw-batspin { flex-shrink: 0; color: currentColor; animation: hw-float 0.9s ease-in-out infinite; }
+.hw-batspin-wing {
+  transform-box: fill-box;
+  transform-origin: 100% 55%;
+  animation: hw-wing-l 0.26s ease-in-out infinite alternate;
+}
+.hw-batspin-wing-r { transform-origin: 0% 55%; animation-name: hw-wing-r; }
+@keyframes hw-wing-l { from { transform: rotate(-22deg); } to { transform: rotate(26deg) scaleX(0.8); } }
+@keyframes hw-wing-r { from { transform: rotate(22deg); } to { transform: rotate(-26deg) scaleX(0.8); } }
+
+.pageLoaderScreen:has(.hw-loader-text) { flex-direction: column; gap: 16px; color: #ff7518; }
+.hw-loader-text {
+  margin: 0;
+  font: 500 0.9rem var(--font-sans, sans-serif);
+  letter-spacing: 0.04em;
+  color: var(--admin-text-muted, #a89cb8);
+}
+
+@media (max-width: 900px) {
+  .hw-moon { width: 78px; height: 78px; top: 84px; }
+  .hw-cloud-a { width: 130px; top: 106px; }
+  .hw-cloud-b { width: 90px; top: 136px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hw-ghost, .hw-cloud, .hw-pumpkin-face, .hw-batspin, .hw-batspin-wing { animation: none; }
+  .hw-lightning, .hw-skybat { display: none; }
 }
