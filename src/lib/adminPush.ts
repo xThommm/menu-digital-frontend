@@ -1,6 +1,7 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app"
 import { deleteToken, getMessaging, getToken, isSupported } from "firebase/messaging"
 import { registerAdminPushToken, removeAdminPushToken } from "../api/adminPush"
+import { detectPushBlocker, type PushBlocker } from "./pushDevices"
 
 // Notificaciones push del panel admin (Firebase Cloud Messaging). La config
 // web de Firebase es pública por diseño (va en el bundle), la clave privada
@@ -29,12 +30,24 @@ export const isAdminPushConfigured = () => Boolean(
   && VAPID_KEY
 )
 
-export const isAdminPushSupported = async () => (
-  isAdminPushConfigured()
-  && "Notification" in window
-  && "serviceWorker" in navigator
-  && (await isSupported())
-)
+/**
+ * Qué le impide a ESTE navegador recibir push, mirando solo el dispositivo
+ * (no la config de Firebase ni el backend). En iPhone/iPad distingue "falta
+ * instalar el panel en la pantalla de inicio" de "no soportado".
+ */
+export const getAdminPushBlocker = async (): Promise<PushBlocker> => {
+  const blocker = detectPushBlocker({
+    userAgent: navigator.userAgent,
+    maxTouchPoints: navigator.maxTouchPoints ?? 0,
+    standalone: window.matchMedia("(display-mode: standalone)").matches
+      // Safari de iOS anterior a display-mode.
+      || (navigator as Navigator & { standalone?: boolean }).standalone === true,
+    hasPushApi: "Notification" in window && "serviceWorker" in navigator && "PushManager" in window,
+  })
+  if (blocker !== "ready") return blocker
+  // Última palabra del SDK (IndexedDB, cookies, etc.).
+  return (await isSupported().catch(() => false)) ? "ready" : "unsupported"
+}
 
 const getFirebaseApp = (): FirebaseApp => getApps()[0] ?? initializeApp(firebaseConfig)
 
@@ -58,6 +71,29 @@ const storeToken = (token: string | null) => {
 }
 
 export const hasStoredAdminPushToken = () => Boolean(readStoredToken())
+
+/**
+ * Huella (SHA-256 en hex) del token de este navegador, para reconocerlo en
+ * la lista de dispositivos que devuelve el backend. null si no hay token.
+ */
+export const getAdminPushFingerprint = async (): Promise<string | null> => {
+  const token = readStoredToken()
+  if (!token || !globalThis.crypto?.subtle) return null
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token))
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("")
+}
+
+/**
+ * Olvida el token en este navegador sin avisarle al backend: se usa cuando
+ * el dispositivo ya fue quitado desde otro lado (lista de dispositivos).
+ */
+export const forgetAdminPushToken = () => {
+  if (!readStoredToken()) return
+  storeToken(null)
+  if (isAdminPushConfigured()) {
+    void deleteToken(getMessaging(getFirebaseApp())).catch(() => undefined)
+  }
+}
 
 /**
  * Pide permiso (si hace falta), obtiene el token FCM de este navegador y lo

@@ -1,6 +1,13 @@
 import apiClient from "./client"
 
-export type AdminNotificationType = "registration" | "payment" | "test" | "other"
+export type AdminNotificationType =
+  | "registration"
+  | "payment"
+  | "payment_failed"
+  | "refund"
+  | "subscription"
+  | "test"
+  | "other"
 export type AdminNotificationBox = "inbox" | "archived"
 export type AdminNotificationStatus = "all" | "unread" | "read"
 export type AdminNotificationBulkAction = "read" | "unread" | "archive" | "unarchive" | "delete"

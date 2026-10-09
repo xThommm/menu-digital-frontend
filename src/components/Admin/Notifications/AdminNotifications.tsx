@@ -6,12 +6,16 @@ import {
   ArchiveRestore,
   Bell,
   BellRing,
+  CalendarClock,
   CheckCheck,
+  CircleAlert,
   DollarSign,
   Inbox,
   Mail,
   MailOpen,
+  Settings2,
   Trash2,
+  Undo2,
   UserPlus,
 } from "lucide-react";
 import {
@@ -32,6 +36,7 @@ import { useNotifications } from "../../../context/useNotifications";
 import { ADMIN_NOTIFICATIONS_KEY, adminNotificationsUnreadKey } from "../../../hooks/useAdminNotifications";
 import { extractServerMessage } from "../../../lib/apiErrors";
 import { formatDateAR } from "../../../lib/dates";
+import PushSettings from "./PushSettings";
 import s from "./AdminNotifications.module.css";
 
 const PAGE_SIZE = 20;
@@ -39,6 +44,9 @@ const PAGE_SIZE = 20;
 const TYPE_META: Record<AdminNotificationType, { label: string; icon: ReactNode }> = {
   registration: { label: "Registro", icon: <UserPlus size={18} strokeWidth={1.5} /> },
   payment: { label: "Pago", icon: <DollarSign size={18} strokeWidth={1.5} /> },
+  payment_failed: { label: "Pago rechazado", icon: <CircleAlert size={18} strokeWidth={1.5} /> },
+  refund: { label: "Reembolso", icon: <Undo2 size={18} strokeWidth={1.5} /> },
+  subscription: { label: "Suscripción", icon: <CalendarClock size={18} strokeWidth={1.5} /> },
   test: { label: "Prueba", icon: <BellRing size={18} strokeWidth={1.5} /> },
   other: { label: "Aviso", icon: <Bell size={18} strokeWidth={1.5} /> },
 };
@@ -81,6 +89,7 @@ export default function AdminNotifications() {
   const [openID, setOpenID] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const listKey = [...ADMIN_NOTIFICATIONS_KEY, "list", box, status, page] as const;
   const list = useQuery({
@@ -230,7 +239,7 @@ export default function AdminNotifications() {
       ? "No tenés notificaciones sin leer."
       : status === "read"
         ? "No hay notificaciones leídas."
-        : "Todavía no hay notificaciones. Acá vas a ver los nuevos registros y los pagos aprobados.";
+        : "Todavía no hay notificaciones. Acá vas a ver los registros, los pagos y los vencimientos de planes.";
 
   return (
     <div className={s.wrap}>
@@ -253,10 +262,22 @@ export default function AdminNotifications() {
             <CheckCheck size={16} strokeWidth={1.75} aria-hidden />
             <span>Marcar todas como leídas</span>
           </button>
+          <button
+            type="button"
+            className={`${s.ghostButton} ${s.ghostButtonNext} ${settingsOpen ? s.ghostButtonActive : ""}`}
+            onClick={() => setSettingsOpen((open) => !open)}
+            aria-expanded={settingsOpen}
+            aria-controls="push-settings"
+          >
+            <Settings2 size={16} strokeWidth={1.75} aria-hidden />
+            <span>Dispositivos y avisos</span>
+          </button>
         </div>
       </header>
 
       <main className={s.content}>
+        {settingsOpen && <PushSettings />}
+
         <div className={s.toolbar}>
           <div className={s.tabs} role="tablist" aria-label="Carpeta">
             <button

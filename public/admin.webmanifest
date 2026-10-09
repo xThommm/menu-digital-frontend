@@ -1,0 +1,17 @@
+{
+  "id": "/admin",
+  "name": "Menú Digital — Panel",
+  "short_name": "Panel MD",
+  "description": "Panel de administración de Menú Digital, con avisos de registros y pagos.",
+  "lang": "es-AR",
+  "start_url": "/admin",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0608",
+  "theme_color": "#0a0608",
+  "icons": [
+    { "src": "/brand/menu-digital-logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon-96x96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" }
+  ]
+}
