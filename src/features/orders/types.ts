@@ -160,14 +160,24 @@ export interface OrderOptions {
   onlineOrdering: boolean;
   // Con el pago online activo, saca «Pedir por WhatsApp» del carrito.
   hideWhatsappOrder: boolean;
+  // Tiempo estimado de preparación de los pedidos online, en minutos (0 = sin estimación).
+  prepMinMinutes: number;
+  prepMaxMinutes: number;
 }
 
 // Pedido de take away / delivery pagado online (carta pública).
 export type OnlineServiceType = "takeaway" | "delivery";
 
+// Tiempo estimado de preparación que cargó el local, en minutos.
+export interface OnlineEstimate {
+  minMinutes: number;
+  maxMinutes: number;
+}
+
 export interface OnlineOrderingConfig {
   enabled: boolean;
   modes: OnlineServiceType[];
+  estimate: OnlineEstimate | null;
   // El local sacó «Pedir por WhatsApp» del carrito (solo si el pago online funciona).
   hideWhatsapp: boolean;
 }
@@ -189,6 +199,15 @@ export interface OnlineCheckoutStatus {
   // Se completa cuando el pago se aprueba y el pedido llega al local.
   orderNumber: number | null;
   orderStatus: OrderStatus | null;
+  // Etapas del pedido, para seguirlo.
+  createdAt: string | null;
+  confirmedAt: string | null;
+  readyAt: string | null;
+  deliveredAt: string | null;
+  cancelledAt: string | null;
+  // Si ya se devolvió el dinero (el local rechazó o canceló el pedido).
+  refund: "none" | "partial" | "full";
+  estimate: OnlineEstimate | null;
 }
 
 // Cuenta de Mercado Pago del local (nunca incluye tokens).

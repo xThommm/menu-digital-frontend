@@ -13,7 +13,7 @@ export interface OnlineOrderingState {
   config: OnlineOrderingConfig;
 }
 
-const OFF: OnlineOrderingConfig = { enabled: false, modes: [], hideWhatsapp: false };
+const OFF: OnlineOrderingConfig = { enabled: false, modes: [], hideWhatsapp: false, estimate: null };
 
 // Por sesión de navegación: reabrir la carta no vuelve a esperar.
 const cache = new Map<string, OnlineOrderingConfig>();

@@ -3,6 +3,7 @@ import { useCart } from "../../../../context/useCart";
 import { createOnlineCheckout } from "../../api/publicOrdersApi";
 import { errorMessage } from "../../lib/errors";
 import { uuid } from "../../lib/storage";
+import { estimateSentence } from "../../lib/orderTracking";
 import type { OnlineOrderingConfig, OnlineServiceType } from "../../types";
 import s from "./OnlineCheckout.module.css";
 
@@ -131,6 +132,8 @@ export default function OnlineCheckout({ slug, config, className, onOpenChange }
         <span>Aclaración del pedido (opcional)</span>
         <textarea value={notes} rows={2} maxLength={200} onChange={event => setNotes(event.target.value)} />
       </label>
+
+      {estimateSentence(config.estimate) && <p className={s.eta}>{estimateSentence(config.estimate)}</p>}
 
       <p className={s.hint}>
         Total a pagar: {fmt(totalPrice)}. Te llevamos a Mercado Pago para pagar y el pedido le llega al local cuando

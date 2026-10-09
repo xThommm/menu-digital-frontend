@@ -190,6 +190,42 @@ export default function OrdersSettingsPage() {
               aria-label="Sacar el botón Pedir por WhatsApp del carrito"
             />
           </div>
+          <div className={p.field} style={{ marginTop: "0.85rem" }}>
+            <span className={p.label}>Tiempo estimado de preparación (minutos)</span>
+            <div className={p.row}>
+              <label className={p.field}>
+                <span className={p.switchHint}>Mínimo</span>
+                <input
+                  className={p.input}
+                  type="number"
+                  min={0}
+                  max={600}
+                  inputMode="numeric"
+                  value={draft.options.prepMinMinutes}
+                  disabled={draft.options.onlineOrdering !== true}
+                  onChange={e => update({ options: { ...draft.options, prepMinMinutes: Math.max(0, Math.min(600, Math.round(Number(e.target.value) || 0))) } })}
+                />
+              </label>
+              <label className={p.field}>
+                <span className={p.switchHint}>Máximo</span>
+                <input
+                  className={p.input}
+                  type="number"
+                  min={0}
+                  max={600}
+                  inputMode="numeric"
+                  value={draft.options.prepMaxMinutes}
+                  disabled={draft.options.onlineOrdering !== true}
+                  onChange={e => update({ options: { ...draft.options, prepMaxMinutes: Math.max(0, Math.min(600, Math.round(Number(e.target.value) || 0))) } })}
+                />
+              </label>
+            </div>
+            <span className={p.switchHint}>
+              {draft.options.prepMinMinutes > 0 && draft.options.prepMaxMinutes >= draft.options.prepMinMinutes
+                ? `El cliente ve: «Tu pedido estará listo entre ${draft.options.prepMinMinutes} y ${draft.options.prepMaxMinutes} minutos».`
+                : "Cargá los dos para mostrarle al cliente cuánto tarda su pedido. Con 0 y 0 no se muestra ninguna estimación."}
+            </span>
+          </div>
           <p className={p.cardDesc} style={{ marginTop: "0.75rem" }}>
             Los pedidos pagados quedan sin confirmar hasta que los aceptes: el pago aprobado no acepta el pedido. Si lo rechazás,
             podés devolver el dinero desde el pedido.

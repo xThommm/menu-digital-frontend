@@ -9,6 +9,7 @@ import type { CartLine } from "../../../../context/CartContext";
 import CartDrawer from "./CartDrawer";
 import OnlineCheckout, { CheckoutSkeleton } from "../../../../features/orders/components/customer/OnlineCheckout";
 import OnlinePaymentReturn from "../../../../features/orders/components/customer/OnlinePaymentReturn";
+import { TrackedOrderBanner } from "../../../../features/orders/components/customer/OrderTracking";
 import { useOnlineOrdering, type OnlineOrderingState } from "../../../../features/orders/hooks/useOnlineOrdering";
 import ClearCartDialog from "./ClearCartDialog";
 import ItemPreviewModal from "./ItemPreviewModal";
@@ -677,6 +678,9 @@ export default function MenuPage() {
 
           {/* Vuelta desde Mercado Pago (?pago=): el resultado lo confirma el servidor. */}
           {ordersEnabled && !venueContext && slug && <OnlinePaymentReturn slug={slug} />}
+
+          {/* Aviso para seguir un pedido pagado online que sigue en marcha. */}
+          {ordersEnabled && !venueContext && slug && <TrackedOrderBanner slug={slug} />}
 
           {/* También dentro de .mp (tokens del template), después del drawer
               para quedar encima cuando se abre desde ahí. */}
