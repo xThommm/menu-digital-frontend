@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useCart } from "../../../../context/useCart";
 import type { CartLine } from "../../../../context/CartContext";
 import { buildOrderChoices, type OrderExtraTexts, type OrderMode, type WaTarget } from "../../../../lib/whatsapp";
-import OnlineCheckout from "../../../../features/orders/components/customer/OnlineCheckout";
+import OnlineCheckout, { CheckoutSkeleton } from "../../../../features/orders/components/customer/OnlineCheckout";
+import type { OnlineOrderingState } from "../../../../features/orders/hooks/useOnlineOrdering";
 import WaTargetPicker from "../WaTargetPicker/WaTargetPicker";
 import styles from "./CartDrawer.module.css";
 
@@ -14,6 +16,8 @@ interface CartDrawerProps {
   businessName: string;
   // Slug del local: con él se consulta si cobra pedidos online (Mercado Pago).
   slug?: string;
+  // Si el local cobra online (ya consultado al entrar a la carta).
+  online: OnlineOrderingState;
   // Un destino por sucursal (ver getWaTargets); con más de uno el cliente
   // elige a cuál mandar el pedido.
   waTargets: WaTarget[];
@@ -38,6 +42,7 @@ export default function CartDrawer({
   onClose,
   businessName,
   slug,
+  online,
   waTargets,
   orderTexts,
   orderModes,
@@ -46,6 +51,7 @@ export default function CartDrawer({
   onOrderSent,
 }: CartDrawerProps) {
   const { items, updateQuantity, removeItem, totalPrice } = useCart();
+  const [payFormOpen, setPayFormOpen] = useState(false);
 
   if (!open) return null;
 
@@ -53,7 +59,7 @@ export default function CartDrawer({
 
   return (
     <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true" aria-label="Tu pedido">
-      <div className={styles.drawer} onClick={(e) => e.stopPropagation()}>
+      <div className={`${styles.drawer} ${payFormOpen ? styles.formOpen : ""}`} onClick={(e) => e.stopPropagation()}>
         <header className={styles.header}>
           <h2 className={`${styles.title} t-family-heading`}>Tu pedido</h2>
           <button className={styles.close} onClick={onClose} aria-label="Cerrar" type="button">
@@ -119,19 +125,30 @@ export default function CartDrawer({
             {/* Zona de acciones de checkout. Pagar online (Mercado Pago) solo
                 aparece si el local lo habilita y los precios están visibles. */}
             <div className={styles.checkoutActions}>
-              {slug && !hidePrices && <OnlineCheckout slug={slug} />}
-              {waTargets.length > 0 ? (
-                <WaTargetPicker
-                  targets={waTargets}
-                  choices={orderChoices}
-                  className={styles.waBtn}
-                  prompt="¿A qué sucursal querés mandar el pedido?"
-                  onSend={() => onOrderSent?.(items)}
-                >
-                  <WhatsAppIcon /> Pedir por WhatsApp
-                </WaTargetPicker>
+              {!online.ready ? (
+                <CheckoutSkeleton />
               ) : (
-                <p className={styles.noWa}>Este local todavía no cargó un WhatsApp para pedidos.</p>
+                <>
+                  {slug && !hidePrices && (
+                    <OnlineCheckout slug={slug} config={online.config} onOpenChange={setPayFormOpen} />
+                  )}
+                  {/* El local puede sacar WhatsApp cuando cobra online (solo con precios visibles). */}
+                  {!(online.config.hideWhatsapp && online.config.enabled && !hidePrices) && !payFormOpen && (
+                    waTargets.length > 0 ? (
+                      <WaTargetPicker
+                        targets={waTargets}
+                        choices={orderChoices}
+                        className={styles.waBtn}
+                        prompt="¿A qué sucursal querés mandar el pedido?"
+                        onSend={() => onOrderSent?.(items)}
+                      >
+                        <WhatsAppIcon /> Pedir por WhatsApp
+                      </WaTargetPicker>
+                    ) : (
+                      <p className={styles.noWa}>Este local todavía no cargó un WhatsApp para pedidos.</p>
+                    )
+                  )}
+                </>
               )}
               <button
                 className={styles.clearBtn}

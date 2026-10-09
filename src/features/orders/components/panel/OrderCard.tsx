@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ChefHat, HandPlatter, MapPin, MessageSquareText, Phone, QrCode, Smartphone, Undo2, UserRound, X } from "lucide-react";
+import { Bike, Check, ChefHat, HandPlatter, MapPin, MessageSquareText, Phone, QrCode, Smartphone, Undo2, UserRound, X } from "lucide-react";
 import { elapsedLabel, formatMoney, formatTime, placeLabel, STATUS_LABEL } from "../../lib/format";
 import type { Order, OrderStatus, TicketStatus, Waiter } from "../../types";
 import { isRefundable } from "../../lib/payment";
@@ -19,6 +19,8 @@ interface Props {
   busy?: boolean;
   onStatus: (order: Order, status: OrderStatus) => void;
   onWaiter: (order: Order, waiterId: number | null) => void;
+  // Delivery listo: salió del local (queda «En camino» hasta entregarlo).
+  onDispatch?: (order: Order) => void;
   // Devolución de un pedido pagado online; cancel = rechazarlo devolviendo el dinero.
   onRefund?: (order: Order, cancel: boolean) => void;
 }
@@ -75,12 +77,15 @@ function SectorProgress({ order }: { order: Order }) {
   );
 }
 
-export default function OrderCard({ order, waiters, now, highlight = false, busy = false, onStatus, onWaiter, onRefund }: Props) {
+export default function OrderCard({ order, waiters, now, highlight = false, busy = false, onStatus, onWaiter, onDispatch, onRefund }: Props) {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const minutes = Math.floor((now - new Date(order.createdAt).getTime()) / 60_000);
   const late = order.status !== "ready" && minutes >= 20;
   // Pedido ya cobrado online: cancelarlo implica decidir la devolución.
   const paid = onRefund !== undefined && isRefundable(order);
+  // Delivery listo que todavía no salió: el siguiente paso es «Salió el pedido», no «Entregado».
+  const toDispatch = order.status === "ready" && order.serviceType === "delivery" && !order.dispatchedAt && onDispatch !== undefined;
+  const statusLabel = order.status === "ready" && order.dispatchedAt ? "En camino" : STATUS_LABEL[order.status];
 
   return (
     <article className={`${s.card} ${highlight ? s.cardNew : ""} ${late ? s.cardLate : ""}`} aria-label={`Pedido ${order.number}`}>
@@ -89,7 +94,7 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
           <span className={s.cardNumber}>#{order.number}</span>
           <span className={s.table}>{placeLabel(order)}</span>
         </div>
-        <span className={`${p.status} ${p[`status_${order.status}`]}`}>{STATUS_LABEL[order.status]}</span>
+        <span className={`${p.status} ${p[`status_${order.status}`]}`}>{statusLabel}</span>
       </header>
 
       <div className={s.cardMeta}>
@@ -163,10 +168,15 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
                 <ChefHat size={16} aria-hidden /> Listo
               </button>
             )}
+            {toDispatch && (
+              <button type="button" className={p.btnPrimary} disabled={busy} onClick={() => onDispatch(order)}>
+                <Bike size={16} aria-hidden /> Salió el pedido
+              </button>
+            )}
             {(order.status === "confirmed" || order.status === "ready") && (
               <button
                 type="button"
-                className={order.status === "ready" ? p.btnPrimary : p.btn}
+                className={order.status === "ready" && !toDispatch ? p.btnPrimary : p.btn}
                 disabled={busy}
                 onClick={() => onStatus(order, "delivered")}
               >

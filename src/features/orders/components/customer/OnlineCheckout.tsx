@@ -1,25 +1,41 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useCart } from "../../../../context/useCart";
-import { createOnlineCheckout, getOnlineOrdering } from "../../api/publicOrdersApi";
+import { createOnlineCheckout } from "../../api/publicOrdersApi";
 import { errorMessage } from "../../lib/errors";
 import { uuid } from "../../lib/storage";
+import { estimateSentence } from "../../lib/orderTracking";
 import type { OnlineOrderingConfig, OnlineServiceType } from "../../types";
 import s from "./OnlineCheckout.module.css";
 
 // "Pagar con Mercado Pago" en el carrito de la carta pública (take away y
 // delivery). El precio y el total los calcula el servidor; acá solo se
-// mandan productos y datos de contacto. Si el local no cobra online, o la
-// consulta falla, no se muestra nada y la carta sigue pidiendo por WhatsApp.
+// mandan productos y datos de contacto. La configuración (si el local cobra
+// online) llega ya resuelta desde useOnlineOrdering; sin ella no se muestra
+// nada y la carta sigue pidiendo por WhatsApp.
 
 const SERVICE_LABEL: Record<OnlineServiceType, string> = { takeaway: "Retiro en el local", delivery: "Delivery" };
 const fmt = (n: number) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
 
-export default function OnlineCheckout({ slug }: { slug: string }) {
+interface Props {
+  slug: string;
+  config: OnlineOrderingConfig;
+  // Estilo del botón que abre el formulario (el panel de escritorio usa el suyo).
+  className?: string;
+  // El formulario abierto es alto: el carrito lo usa para dejarle todo el lugar.
+  onOpenChange?: (open: boolean) => void;
+}
+
+// Lugar reservado mientras se sabe si el local cobra online: evita que los
+// botones aparezcan de a uno.
+export function CheckoutSkeleton({ className }: { className?: string }) {
+  return <div className={`${s.skeleton} ${className ?? ""}`} aria-hidden />;
+}
+
+export default function OnlineCheckout({ slug, config, className, onOpenChange }: Props) {
   const { items, totalPrice } = useCart();
-  const [config, setConfig] = useState<OnlineOrderingConfig | null>(null);
-  const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<OnlineServiceType>("takeaway");
+  const [open, setOpenState] = useState(false);
+  const [mode, setMode] = useState<OnlineServiceType>(config.modes[0] ?? "takeaway");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -29,18 +45,12 @@ export default function OnlineCheckout({ slug }: { slug: string }) {
   // Mismo contenido = mismo id de envío: un doble toque no crea dos checkouts.
   const request = useRef<{ key: string; id: string } | null>(null);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    getOnlineOrdering(slug, controller.signal)
-      .then(data => {
-        setConfig(data);
-        if (data.modes.length > 0) setMode(data.modes[0]);
-      })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [slug]);
+  const setOpen = (value: boolean) => {
+    setOpenState(value);
+    onOpenChange?.(value);
+  };
 
-  if (!config?.enabled || config.modes.length === 0 || items.length === 0) return null;
+  if (!config.enabled || config.modes.length === 0 || items.length === 0) return null;
 
   const needsAddress = mode === "delivery";
   const ready = name.trim().length > 0 && phone.trim().length > 0 && (!needsAddress || address.trim().length > 0);
@@ -76,7 +86,7 @@ export default function OnlineCheckout({ slug }: { slug: string }) {
 
   if (!open) {
     return (
-      <button type="button" className={s.mpBtn} onClick={() => setOpen(true)}>
+      <button type="button" className={className ?? s.mpBtn} onClick={() => setOpen(true)}>
         Pagar con Mercado Pago
       </button>
     );
@@ -123,12 +133,16 @@ export default function OnlineCheckout({ slug }: { slug: string }) {
         <textarea value={notes} rows={2} maxLength={200} onChange={event => setNotes(event.target.value)} />
       </label>
 
+      {estimateSentence(config.estimate) && <p className={s.eta}>{estimateSentence(config.estimate)}</p>}
+
       <p className={s.hint}>
         Total a pagar: {fmt(totalPrice)}. Te llevamos a Mercado Pago para pagar y el pedido le llega al local cuando
         el pago se aprueba. Si el local no puede cumplirlo, te devuelve el dinero.
       </p>
       {error && <p className={s.error} role="alert">{error}</p>}
 
+      {/* Pegado al borde de abajo del área que scrollea: el botón siempre se ve,
+          sin importar la altura de la pantalla ni el teclado. */}
       <div className={s.actions}>
         <button type="button" className={s.back} disabled={busy} onClick={() => setOpen(false)}>Volver</button>
         <button type="submit" className={s.mpBtn} style={{ flex: 1 }} disabled={!ready || busy}>

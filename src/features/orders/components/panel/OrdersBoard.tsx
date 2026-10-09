@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, BellOff, Plus } from "lucide-react";
-import { assignOrderWaiter, getBoard, openShift, updateOrderStatus } from "../../api/ordersApi";
+import { assignOrderWaiter, dispatchOrder, getBoard, openShift, updateOrderStatus } from "../../api/ordersApi";
 import { useOrderSettings, useWaiters } from "../../hooks/usePanelData";
 import { beep } from "../../lib/beep";
 import { errorMessage } from "../../lib/errors";
@@ -115,6 +115,19 @@ export default function OrdersBoard() {
     }
   };
 
+  const dispatch = async (order: Order) => {
+    setBusyId(order.id);
+    setActionError(null);
+    try {
+      replaceOrder(await dispatchOrder(order.id));
+    } catch (err) {
+      setActionError(errorMessage(err, "No se pudo marcar que el pedido salió."));
+      refresh();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const changeWaiter = async (order: Order, waiterId: number | null) => {
     setBusyId(order.id);
     setActionError(null);
@@ -223,6 +236,7 @@ export default function OrdersBoard() {
                         busy={busyId === order.id}
                         onStatus={changeStatus}
                         onWaiter={changeWaiter}
+                        onDispatch={dispatch}
                         onRefund={(target, cancel) => setRefunding({ order: target, cancel })}
                       />
                     ))

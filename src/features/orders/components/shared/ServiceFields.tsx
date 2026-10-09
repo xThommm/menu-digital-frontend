@@ -19,18 +19,22 @@ interface Props {
   value: ServiceDraft;
   onChange: (value: ServiceDraft) => void;
   tableCount: number;
+  // Tipos que se pueden elegir (por defecto todos). Con uno solo no se muestra el selector.
+  allowed?: ServiceType[];
 }
 
-export default function ServiceFields({ value, onChange, tableCount }: Props) {
+export default function ServiceFields({ value, onChange, tableCount, allowed }: Props) {
   const set = (patch: Partial<ServiceDraft>) => onChange({ ...value, ...patch });
   const withCustomer = value.serviceType === "takeaway" || value.serviceType === "delivery";
+  const options = allowed ? OPTIONS.filter(option => allowed.includes(option.value)) : OPTIONS;
 
   return (
     <div className={p.stack} style={{ gap: "0.75rem" }}>
+      {options.length > 1 && (
       <div className={p.field}>
         <span className={p.label}>Tipo de pedido</span>
         <div className={p.segmented} role="radiogroup" aria-label="Tipo de pedido">
-          {OPTIONS.map(option => (
+          {options.map(option => (
             <button
               key={option.value}
               type="button"
@@ -44,6 +48,7 @@ export default function ServiceFields({ value, onChange, tableCount }: Props) {
           ))}
         </div>
       </div>
+      )}
 
       {value.serviceType === "table" && (
         <label className={p.field}>

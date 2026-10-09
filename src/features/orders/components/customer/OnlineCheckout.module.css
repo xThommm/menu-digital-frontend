@@ -80,7 +80,109 @@
   background: color-mix(in srgb, var(--t-offer) 14%, var(--tone-float));
 }
 
-.actions { display: flex; gap: 0.5rem; }
+/* Pegado abajo del área que scrollea (.checkoutActions): el botón de pagar queda
+   siempre a la vista aunque el formulario sea más alto que la pantalla. */
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  position: sticky;
+  bottom: 0;
+  padding-top: 0.5rem;
+  background: var(--tone-high);
+}
+
+/* Lugar reservado mientras se consulta si el local cobra online. */
+@keyframes skeletonPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+.skeleton {
+  min-height: 52px;
+  border-radius: var(--control-radius, 16px);
+  background: var(--tone-high);
+  animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+
+/* Tiempo estimado y etapas del pedido (seguimiento). */
+.eta {
+  margin: 0.2rem 0 0;
+  padding: 0.6rem 0.9rem;
+  border-radius: 16px;
+  background: var(--tone-primary-container);
+  color: var(--tone-on-primary-container);
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.etaWindow { display: block; margin-top: 0.15rem; font-size: 0.76rem; font-weight: 500; opacity: 0.85; }
+
+.steps {
+  list-style: none;
+  margin: 0.4rem 0 0.2rem;
+  padding: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-align: left;
+}
+
+.stepItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 14px;
+  background: var(--tone-high);
+  color: var(--t-muted);
+  font-size: 0.85rem;
+}
+
+.stepItem::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+
+.stepDone { color: var(--t-title); }
+.stepDone::before { background: var(--t-accent); border-color: var(--t-accent); }
+.stepCurrent { background: var(--tone-primary-container); color: var(--tone-on-primary-container); font-weight: 700; }
+.stepCurrent::before { background: var(--t-accent); border-color: var(--t-accent); }
+
+/* Aviso para volver al pedido en curso. */
+.trackPill {
+  composes: md-button from global;
+  position: fixed;
+  left: 1rem;
+  bottom: calc(5.75rem + env(safe-area-inset-bottom));
+  z-index: var(--z-overlay, 900);
+  max-width: min(320px, calc(100vw - 2rem));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  padding: 0.6rem 1rem;
+  border: none;
+  background: var(--t-accent);
+  color: var(--t-btn-text);
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.trackPill strong { font-size: 0.85rem; }
+
+@media (min-width: 1024px) {
+  .trackPill { bottom: 1.25rem; }
+}
 
 .back {
   composes: md-button from global;

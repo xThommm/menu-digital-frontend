@@ -7,7 +7,10 @@ import { CartProvider } from "../../../../context/CartProvider";
 import { useCart } from "../../../../context/useCart";
 import type { CartLine } from "../../../../context/CartContext";
 import CartDrawer from "./CartDrawer";
+import OnlineCheckout, { CheckoutSkeleton } from "../../../../features/orders/components/customer/OnlineCheckout";
 import OnlinePaymentReturn from "../../../../features/orders/components/customer/OnlinePaymentReturn";
+import { TrackedOrderBanner } from "../../../../features/orders/components/customer/OrderTracking";
+import { useOnlineOrdering, type OnlineOrderingState } from "../../../../features/orders/hooks/useOnlineOrdering";
 import ClearCartDialog from "./ClearCartDialog";
 import ItemPreviewModal from "./ItemPreviewModal";
 import styles from "./UserMenu.module.css";
@@ -301,6 +304,10 @@ export default function MenuPage() {
     },
     [tabs.length, handleTabChange]
   );
+
+  // Si el local cobra online se consulta al entrar a la carta (no al abrir el carrito):
+  // así los botones de pedido aparecen todos juntos. Fuera del local (sin QR válido).
+  const online = useOnlineOrdering(slug, user?.features?.pedido_whatsapp === true && !(venue.token && venue.context));
 
   if (loading) return <MenuSkeleton />;
   if (loadError) return <NotFound unavailable />;
@@ -614,6 +621,8 @@ export default function MenuPage() {
 
             {ordersEnabled && !venueContext && (
               <OrderSummary
+                slug={slug}
+                online={online}
                 businessName={info.businessName || "el local"}
                 waTargets={waTargets}
                 orderTexts={info}
@@ -657,6 +666,7 @@ export default function MenuPage() {
               onClose={() => setCartOpen(false)}
               businessName={info.businessName || "el local"}
               slug={slug}
+              online={online}
               waTargets={waTargets}
               orderTexts={info}
               orderModes={orderModes}
@@ -668,6 +678,9 @@ export default function MenuPage() {
 
           {/* Vuelta desde Mercado Pago (?pago=): el resultado lo confirma el servidor. */}
           {ordersEnabled && !venueContext && slug && <OnlinePaymentReturn slug={slug} />}
+
+          {/* Aviso para seguir un pedido pagado online que sigue en marcha. */}
+          {ordersEnabled && !venueContext && slug && <TrackedOrderBanner slug={slug} />}
 
           {/* También dentro de .mp (tokens del template), después del drawer
               para quedar encima cuando se abre desde ahí. */}
@@ -735,6 +748,8 @@ function CartBar({ onClick, hidePrices }: { onClick: () => void; hidePrices: boo
 // Con los precios ocultos las líneas van sin monto y no hay fila de total
 // (las líneas del carrito valen 0: mostrarlas diría "$0").
 function OrderSummary({
+  slug,
+  online,
   businessName,
   waTargets,
   orderTexts,
@@ -743,6 +758,8 @@ function OrderSummary({
   onRequestClear,
   onOrderSent,
 }: {
+  slug?: string;
+  online: OnlineOrderingState;
   businessName: string;
   waTargets: WaTarget[];
   orderTexts: OrderExtraTexts;
@@ -788,18 +805,30 @@ function OrderSummary({
       {!hidePrices && (
         <div className={styles.orderTotal}><span>Total</span><strong>{fmt(totalPrice)}</strong></div>
       )}
-      {waTargets.length > 0 ? (
-        <WaTargetPicker
-          targets={waTargets}
-          choices={orderChoices}
-          className={styles.orderWhatsapp}
-          prompt="¿A qué sucursal querés mandar el pedido?"
-          onSend={() => onOrderSent(items)}
-        >
-          Pedir por WhatsApp <span aria-hidden>{opensPanel ? "▾" : "↗"}</span>
-        </WaTargetPicker>
+      {!online.ready ? (
+        <CheckoutSkeleton />
       ) : (
-        <p className={styles.orderNoWhatsapp}>Este local todavía no cargó un WhatsApp para pedidos.</p>
+        <>
+          {slug && !hidePrices && (
+            <OnlineCheckout slug={slug} config={online.config} className={styles.orderWhatsapp} />
+          )}
+          {/* El local puede sacar WhatsApp cuando cobra online (solo con precios visibles). */}
+          {!(online.config.hideWhatsapp && online.config.enabled && !hidePrices) && (
+            waTargets.length > 0 ? (
+              <WaTargetPicker
+                targets={waTargets}
+                choices={orderChoices}
+                className={styles.orderWhatsapp}
+                prompt="¿A qué sucursal querés mandar el pedido?"
+                onSend={() => onOrderSent(items)}
+              >
+                Pedir por WhatsApp <span aria-hidden>{opensPanel ? "▾" : "↗"}</span>
+              </WaTargetPicker>
+            ) : (
+              <p className={styles.orderNoWhatsapp}>Este local todavía no cargó un WhatsApp para pedidos.</p>
+            )
+          )}
+        </>
       )}
       <button
         type="button"
