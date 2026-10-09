@@ -7,7 +7,7 @@ import {
   revokeCourierSessions, updateCourier,
 } from "../../api/ordersApi";
 import { useCouriers } from "../../hooks/usePanelData";
-import { useOrdersSocket } from "../../hooks/useOrdersSocket";
+import { ownerHello, useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { errorCode, errorMessage } from "../../lib/errors";
 import { durationLabel, elapsedLabel, formatDateTime } from "../../lib/format";
 import { courierManualUrl, courierQrUrl } from "../../lib/qrUrls";
@@ -47,22 +47,13 @@ export default function CouriersPage() {
   const [now, setNow] = useState(() => Date.now());
   const { reload } = couriers;
 
-  // Disponibilidad y dispositivos se mantienen al día solos.
+  // "Conectado hace…" avanza con el reloj local; disponibilidad y dispositivos llegan
+  // con el aviso del servidor (sin conexión en vivo, cada REFRESH_LIST_MS).
   useEffect(() => {
-    const timer = setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      setNow(Date.now());
-      reload();
-    }, REFRESH_LIST_MS);
+    const timer = setInterval(() => setNow(Date.now()), REFRESH_LIST_MS);
     return () => clearInterval(timer);
-  }, [reload]);
-
-  const token = (() => { try { return localStorage.getItem("token"); } catch { return null; } })();
-  useOrdersSocket({
-    enabled: !!token,
-    hello: token ? { type: "auth", token } : null,
-    onMessage: message => { if (message.type === "delivery") reload(); },
-  });
+  }, []);
+  useLiveRefresh({ hello: ownerHello(), refresh: reload, offlineMs: REFRESH_LIST_MS, initial: false });
 
   const list = couriers.data ?? [];
   const replace = (updated: Courier) => couriers.setData(list.map(item => (item.id === updated.id ? updated : item)));

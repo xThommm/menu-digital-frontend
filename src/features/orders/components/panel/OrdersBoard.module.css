@@ -156,6 +156,101 @@
   background: var(--tone-primary-container);
 }
 
+/* ── Acciones por producto (quitar, restaurar, entregar en partes) ── */
+.itemRow { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.itemRow .itemText { flex: 1; }
+
+.itemActions { display: flex; gap: 0.25rem; flex-shrink: 0; }
+
+/* Botón chico de ícono: discreto hasta que se lo necesita. */
+.itemBtn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 9999px;
+  background: var(--tone-highest);
+  color: var(--admin-text-secondary);
+  cursor: pointer;
+}
+
+.itemBtn:hover:not(:disabled) { color: var(--admin-text-primary); }
+.itemBtn:disabled { opacity: 0.45; cursor: default; }
+.itemBtnOn { background: var(--tone-primary-container); color: var(--tone-on-primary-container); }
+
+.itemState {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--admin-text-warm);
+}
+
+.itemDelivered .itemTitle, .itemDelivered .qty { opacity: 0.6; }
+
+.itemRemoved .itemTitle, .itemRemoved .qty { text-decoration: line-through; opacity: 0.6; }
+.itemRemoved .itemState { color: var(--admin-red-text); }
+
+.removeBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 14px;
+  background: var(--tone-highest);
+}
+
+.removeQty { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; color: var(--admin-text-secondary); }
+.removeQty strong { color: var(--admin-text-primary); font-variant-numeric: tabular-nums; }
+.removeQty .itemBtn { background: var(--tone-high); }
+
+.reasons { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+
+.reasonChip {
+  padding: 0.25rem 0.65rem;
+  border: none;
+  border-radius: 9999px;
+  background: var(--tone-high);
+  color: var(--admin-text-secondary);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reasonChipOn { background: var(--tone-secondary); color: var(--tone-on-secondary); }
+
+.removeActions { display: flex; gap: 0.4rem; }
+
+.deliveryProgress {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: flex-start;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--admin-gold);
+}
+
+/* Productos quitados de un pedido pagado: lo que falta devolver y el aviso al cliente. */
+.itemsNotice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 14px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--admin-text-primary);
+  background: var(--tone-highest);
+}
+
+.itemsNoticeActions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.cancelReasons { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 0.3rem; }
+
 /* Avance de cada sector (comandas): píldoras tonales; la lista se llena. */
 .sectors { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
 

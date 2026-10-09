@@ -180,6 +180,12 @@ export default function OrdersHistory({ deliveryOnly = false, tabs = null }: { d
               {item.notes && <em> ({item.notes})</em>}
             </li>
           ))}
+          {(order.removedItems ?? []).map(item => (
+            <li key={item.id} style={{ opacity: 0.7 }}>
+              <s>{item.quantity}× {item.title}{item.option ? ` · ${item.option}` : ""}</s>
+              {" "}— quitado{item.reason ? ` (${item.reason})` : ""}
+            </li>
+          ))}
         </ul>
         {order.notes && <span>Nota: {order.notes}</span>}
         <CustomerInfo order={order} />

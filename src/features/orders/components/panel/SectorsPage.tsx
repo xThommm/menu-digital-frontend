@@ -4,6 +4,7 @@ import { ExternalLink, KeyRound, Monitor, Pencil, Star, Trash2, X } from "lucide
 import {
   createSector, deleteSector, issueSectorPairingCode, listSectors, revokeSectorSession, updateSector,
 } from "../../api/ordersApi";
+import { ownerHello, useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { errorMessage } from "../../lib/errors";
 import { durationLabel, elapsedLabel } from "../../lib/format";
 import type { PaperWidth, PrintMode, Sector } from "../../types";
@@ -56,16 +57,13 @@ export default function SectorsPage() {
     }
   }, []);
 
+  // "Conectado hace…" avanza con el reloj local; los equipos que se vinculan o se
+  // desvinculan llegan con el aviso del servidor (sin conexión en vivo, cada REFRESH_LIST_MS).
   useEffect(() => {
-    const first = setTimeout(load, 0);
-    // Equipos conectados y su última actividad, al día.
-    const timer = setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      setNow(Date.now());
-      load();
-    }, REFRESH_LIST_MS);
-    return () => { clearTimeout(first); clearInterval(timer); };
-  }, [load]);
+    const timer = setInterval(() => setNow(Date.now()), REFRESH_LIST_MS);
+    return () => clearInterval(timer);
+  }, []);
+  useLiveRefresh({ hello: ownerHello(), refresh: load, offlineMs: REFRESH_LIST_MS });
 
   const list = sectors ?? [];
   const replace = (updated: Sector) => setSectors(list.map(sector => (sector.id === updated.id ? updated : sector)));

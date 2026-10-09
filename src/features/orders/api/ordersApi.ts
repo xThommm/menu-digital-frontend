@@ -59,6 +59,22 @@ export const dispatchOrder = async (id: number): Promise<Order> =>
 export const assignOrderWaiter = async (id: number, waiterId: number | null): Promise<Order> =>
   (await apiClient.patch<{ order: Order }>(`/orders/orders/${id}/waiter`, { waiterId })).data.order;
 
+// ── Un producto del pedido ──
+// Quitarlo (falta de stock, error de carga). Sin quantity: la línea entera.
+export const removeOrderItem = async (
+  orderId: number,
+  itemId: number,
+  data: { quantity?: number; reason?: string } = {},
+): Promise<Order> =>
+  (await apiClient.post<{ order: Order }>(`/orders/orders/${orderId}/items/${itemId}/remove`, data)).data.order;
+
+export const restoreOrderItem = async (orderId: number, itemId: number): Promise<Order> =>
+  (await apiClient.post<{ order: Order }>(`/orders/orders/${orderId}/items/${itemId}/restore`)).data.order;
+
+// Entrega en partes. Con el último producto el pedido vuelve ya como «entregado».
+export const setOrderItemDelivered = async (orderId: number, itemId: number, delivered: boolean): Promise<Order> =>
+  (await apiClient.patch<{ order: Order }>(`/orders/orders/${orderId}/items/${itemId}/delivered`, { delivered })).data.order;
+
 // ── Pagos con Mercado Pago ──
 export const getMpConnection = async (): Promise<MpConnection> =>
   (await apiClient.get<MpConnection>("/orders/payments/connection")).data;

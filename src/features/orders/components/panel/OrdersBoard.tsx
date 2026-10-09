@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, BellOff, Plus } from "lucide-react";
-import { assignOrderWaiter, dispatchOrder, getBoard, openShift, updateOrderStatus } from "../../api/ordersApi";
+import {
+  assignOrderWaiter, dispatchOrder, getBoard, openShift, removeOrderItem, restoreOrderItem, setOrderItemDelivered, updateOrderStatus,
+} from "../../api/ordersApi";
+import { ownerHello, useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { useOrderSettings, useWaiters } from "../../hooks/usePanelData";
 import { beep } from "../../lib/beep";
 import { errorMessage } from "../../lib/errors";
@@ -9,12 +12,13 @@ import { readJson, writeJson } from "../../lib/storage";
 import type { Order, OrderStatus, Shift } from "../../types";
 import ManualOrderModal from "./ManualOrderModal";
 import OrderCard from "./OrderCard";
+import type { ItemActions } from "./OrderItemsList";
 import RefundModal from "./RefundModal";
 import p from "./panel.module.css";
 import s from "./OrdersBoard.module.css";
 
 // Panel de pedidos: lo que llega y lo que está en curso, del turno/día.
-// Se actualiza solo cada pocos segundos. Al entregar o cancelar un pedido
+// Se actualiza solo, en tiempo real. Al entregar o cancelar un pedido
 // sale de acá (queda en el Historial).
 
 const POLL_MS = 5_000;
@@ -40,7 +44,7 @@ export default function OrdersBoard() {
   const [manualOpen, setManualOpen] = useState(false);
   const [mobileColumn, setMobileColumn] = useState<OrderStatus>("pending");
   const [sound, setSound] = useState(() => readJson(SOUND_KEY, (v): v is boolean => typeof v === "boolean") ?? true);
-  const [refunding, setRefunding] = useState<{ order: Order; cancel: boolean } | null>(null);
+  const [refunding, setRefunding] = useState<{ order: Order; cancel: boolean; amount?: number } | null>(null);
   const knownIds = useRef<Set<number> | null>(null);
   const soundRef = useRef(sound);
   useEffect(() => { soundRef.current = sound; }, [sound]);
@@ -66,20 +70,9 @@ export default function OrdersBoard() {
     }
   }, []);
 
-  useEffect(() => {
-    // Primera carga inmediata y después cada POLL_MS mientras la pestaña esté visible.
-    const first = setTimeout(refresh, 0);
-    const timer = setInterval(() => {
-      if (document.visibilityState === "visible") refresh();
-    }, POLL_MS);
-    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearTimeout(first);
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [refresh]);
+  // Se actualiza con los avisos del servidor (pedido nuevo, cambio de estado, avance de
+  // un sector…). La consulta cada POLL_MS queda solo para cuando no hay conexión en vivo.
+  useLiveRefresh({ hello: ownerHello(), refresh, offlineMs: POLL_MS });
 
   // El resaltado de "nuevo" dura un rato y se va solo.
   useEffect(() => {
@@ -102,17 +95,38 @@ export default function OrdersBoard() {
       .filter(order => ["pending", "confirmed", "ready"].includes(order.status)));
   };
 
-  const changeStatus = async (order: Order, status: OrderStatus) => {
+  const changeStatus = async (order: Order, status: OrderStatus, reason?: string) => {
     setBusyId(order.id);
     setActionError(null);
     try {
-      replaceOrder(await updateOrderStatus(order.id, status));
+      replaceOrder(await updateOrderStatus(order.id, status, reason));
     } catch (err) {
       setActionError(errorMessage(err, "No se pudo actualizar el pedido."));
       refresh();
     } finally {
       setBusyId(null);
     }
+  };
+
+  // Un producto del pedido: quitarlo, restaurarlo o entregarlo antes que el resto.
+  const changeItem = async (order: Order, action: () => Promise<Order>, fallback: string) => {
+    setBusyId(order.id);
+    setActionError(null);
+    try {
+      replaceOrder(await action());
+    } catch (err) {
+      setActionError(errorMessage(err, fallback));
+      refresh();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const itemActions: ItemActions = {
+    onRemove: (order, item, data) => changeItem(order, () => removeOrderItem(order.id, item.id, data), "No se pudo quitar el producto."),
+    onRestore: (order, item) => changeItem(order, () => restoreOrderItem(order.id, item.id), "No se pudo restaurar el producto."),
+    onDelivered: (order, item, delivered) =>
+      changeItem(order, () => setOrderItemDelivered(order.id, item.id, delivered), "No se pudo marcar el producto."),
   };
 
   const dispatch = async (order: Order) => {
@@ -237,7 +251,8 @@ export default function OrdersBoard() {
                         onStatus={changeStatus}
                         onWaiter={changeWaiter}
                         onDispatch={dispatch}
-                        onRefund={(target, cancel) => setRefunding({ order: target, cancel })}
+                        onRefund={(target, cancel, amount) => setRefunding({ order: target, cancel, amount })}
+                        itemActions={itemActions}
                       />
                     ))
                   )}
@@ -252,6 +267,7 @@ export default function OrdersBoard() {
         <RefundModal
           order={refunding.order}
           cancelOrder={refunding.cancel}
+          suggestedAmount={refunding.amount}
           onClose={() => setRefunding(null)}
           onChanged={refresh}
         />

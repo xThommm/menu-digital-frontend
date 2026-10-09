@@ -5,7 +5,7 @@ import {
   claimCourierOrder, deliverCourierOrder, getCourierHistory, getCourierPanel, getCourierSession, logoutCourier,
   pairCourierDevice, pickupCourierOrder, setCourierAvailability,
 } from "../../api/publicOrdersApi";
-import { useOrdersSocket } from "../../hooks/useOrdersSocket";
+import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { clearCourierSession, readCourierSession, saveCourierSession } from "../../lib/courierSession";
 import { errorMessage, errorStatus } from "../../lib/errors";
 import { durationLabel } from "../../lib/format";
@@ -214,20 +214,8 @@ function CourierWorkspace({ token, info, onLocked }: {
     return run;
   }, [token, handleAuthError]);
 
-  const connected = useOrdersSocket({
-    enabled: true,
-    hello: { type: "auth", role: "courier", token },
-    onMessage: message => { if (message.type === "delivery") void refresh(); },
-    onOpen: () => { void refresh(); },
-  });
-
-  useEffect(() => {
-    const first = setTimeout(() => void refresh(), 0);
-    const timer = setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, POLL_MS);
-    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => { clearTimeout(first); clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); };
-  }, [refresh]);
+  // Pedidos al día con los avisos del servidor; sin conexión en vivo, cada POLL_MS.
+  const connected = useLiveRefresh({ hello: { type: "auth", role: "courier", token }, refresh, offlineMs: POLL_MS });
 
   // Los minutos que se muestran se mantienen al día.
   useEffect(() => {

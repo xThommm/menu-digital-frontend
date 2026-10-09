@@ -4,7 +4,7 @@ import { Eye, MapPin, PackageCheck, UserPlus, X } from "lucide-react";
 import {
   assignDelivery, completeDelivery, getDeliveryActive, getDeliveryTrail, listCouriers, revealDeliveryCode, unassignDelivery,
 } from "../../api/ordersApi";
-import { useOrdersSocket } from "../../hooks/useOrdersSocket";
+import { ownerHello, useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { ASSIGNMENT_LABEL, confirmByLabel, deliveryStageLabel, minutesFrom, minutesLabel } from "../../lib/delivery";
 import { errorCode, errorMessage } from "../../lib/errors";
 import { formatDateTime, formatTime } from "../../lib/format";
@@ -37,10 +37,6 @@ const EVENT_LABEL: Record<string, string> = {
   code_viewed: "Código consultado por el administrador",
 };
 
-const ownerToken = () => {
-  try { return localStorage.getItem("token"); } catch { return null; }
-};
-
 export default function DeliveryPage() {
   const [data, setData] = useState<DeliveryActiveResponse | null>(null);
   const [couriers, setCouriers] = useState<Courier[]>([]);
@@ -64,19 +60,8 @@ export default function DeliveryPage() {
     }
   }, []);
 
-  const token = ownerToken();
-  useOrdersSocket({
-    enabled: !!token,
-    hello: token ? { type: "auth", token } : null,
-    onMessage: message => { if (message.type === "delivery") void refresh(); },
-    onOpen: () => { void refresh(); },
-  });
-
-  useEffect(() => {
-    const first = setTimeout(() => void refresh(), 0);
-    const timer = setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, POLL_MS);
-    return () => { clearTimeout(first); clearInterval(timer); };
-  }, [refresh]);
+  // Entregas al día con los avisos del servidor; sin conexión en vivo, cada POLL_MS.
+  useLiveRefresh({ hello: ownerHello(), refresh, offlineMs: POLL_MS });
 
   const run = async (orderId: number, action: () => Promise<unknown>, fallback: string) => {
     setBusyId(orderId);

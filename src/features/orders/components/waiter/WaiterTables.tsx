@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { closeWaiterTable, getWaiterTables, setWaiterTableGuests } from "../../api/publicOrdersApi";
+import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { errorCode, errorMessage } from "../../lib/errors";
 import { elapsedLabel, formatMoney, formatTime } from "../../lib/format";
 import type { TableSession } from "../../types";
@@ -42,11 +43,8 @@ export default function WaiterTables({ token, waiterId, onAuthError, onNewOrder,
     }
   }, [token, waiterId, onAuthError, onCountChange]);
 
-  useEffect(() => {
-    const first = setTimeout(load, 0);
-    const timer = setInterval(() => { if (document.visibilityState === "visible") load(); }, POLL_MS);
-    return () => { clearTimeout(first); clearInterval(timer); };
-  }, [load]);
+  // Las mesas se actualizan con los avisos del servidor; sin conexión en vivo, cada POLL_MS.
+  useLiveRefresh({ hello: { type: "auth", role: "waiter", token }, refresh: load, offlineMs: POLL_MS });
 
   if (sessions === null && !error) return <p className={p.loading}>Cargando…</p>;
 
