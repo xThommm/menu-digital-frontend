@@ -173,6 +173,23 @@ export default function OrdersSettingsPage() {
               aria-label="Cobrar pedidos de take away y delivery desde la carta"
             />
           </div>
+          <div className={p.switchRow}>
+            <div className={p.switchText}>
+              <span className={p.switchTitle}>Sacar el botón «Pedir por WhatsApp» del carrito</span>
+              <span className={p.switchHint}>
+                Los clientes solo pueden pagar con Mercado Pago. Solo tiene efecto mientras el pago online esté activo y
+                funcionando; si no, el botón de WhatsApp se sigue mostrando para que nadie se quede sin poder pedir.
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              className={p.switch}
+              checked={draft.options.hideWhatsappOrder === true}
+              disabled={draft.options.onlineOrdering !== true}
+              onChange={e => update({ options: { ...draft.options, hideWhatsappOrder: e.target.checked } })}
+              aria-label="Sacar el botón Pedir por WhatsApp del carrito"
+            />
+          </div>
           <p className={p.cardDesc} style={{ marginTop: "0.75rem" }}>
             Los pedidos pagados quedan sin confirmar hasta que los aceptes: el pago aprobado no acepta el pedido. Si lo rechazás,
             podés devolver el dinero desde el pedido.

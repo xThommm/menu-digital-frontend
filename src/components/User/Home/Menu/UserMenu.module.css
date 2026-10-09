@@ -820,6 +820,10 @@
   border: 1px solid transparent;
   border-radius: 28px;
   box-shadow: 0 12px 32px color-mix(in srgb, var(--t-bg) 22%, transparent);
+  /* En ventanas bajas el resumen (con el formulario de pago abierto) scrollea
+     adentro en vez de quedar cortado. */
+  max-height: calc(100dvh - 8rem);
+  overflow-y: auto;
 }
 
 .orderSummaryHeader {

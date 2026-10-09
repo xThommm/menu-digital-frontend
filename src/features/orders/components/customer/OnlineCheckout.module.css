@@ -80,7 +80,30 @@
   background: color-mix(in srgb, var(--t-offer) 14%, var(--tone-float));
 }
 
-.actions { display: flex; gap: 0.5rem; }
+/* Pegado abajo del área que scrollea (.checkoutActions): el botón de pagar queda
+   siempre a la vista aunque el formulario sea más alto que la pantalla. */
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  position: sticky;
+  bottom: 0;
+  padding-top: 0.5rem;
+  background: var(--tone-high);
+}
+
+/* Lugar reservado mientras se consulta si el local cobra online. */
+@keyframes skeletonPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+.skeleton {
+  min-height: 52px;
+  border-radius: var(--control-radius, 16px);
+  background: var(--tone-high);
+  animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
 
 .back {
   composes: md-button from global;

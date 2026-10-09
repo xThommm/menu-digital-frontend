@@ -158,6 +158,8 @@ export interface OrderOptions {
   customerOrderCooldownSeconds: number;
   // Take away / delivery pagados online con Mercado Pago desde la carta.
   onlineOrdering: boolean;
+  // Con el pago online activo, saca «Pedir por WhatsApp» del carrito.
+  hideWhatsappOrder: boolean;
 }
 
 // Pedido de take away / delivery pagado online (carta pública).
@@ -166,6 +168,8 @@ export type OnlineServiceType = "takeaway" | "delivery";
 export interface OnlineOrderingConfig {
   enabled: boolean;
   modes: OnlineServiceType[];
+  // El local sacó «Pedir por WhatsApp» del carrito (solo si el pago online funciona).
+  hideWhatsapp: boolean;
 }
 
 export interface OnlineCheckout {
