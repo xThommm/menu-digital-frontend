@@ -20,6 +20,22 @@ export interface OrderItem {
   notes: string | null;
   // Sector de la comanda a la que fue la línea (sin sectores: null o ausente).
   sectorName?: string | null;
+  // Entrega en partes: cuándo se entregó este producto (ausente con un backend anterior).
+  deliveredAt?: string | null;
+}
+
+// Producto quitado del pedido (falta de stock, error de carga…). No suma al total.
+export interface RemovedOrderItem extends OrderItem {
+  reason: string | null;
+  removedAt: string | null;
+}
+
+// Línea de una comanda o del seguimiento del cliente (sin precios).
+export interface PlainOrderLine {
+  title: string;
+  option: string | null;
+  quantity: number;
+  notes?: string | null;
 }
 
 // ── Sectores y comandas ──
@@ -82,6 +98,8 @@ export interface Ticket {
     createdAt: string;
   };
   items: { title: string; option: string | null; quantity: number; notes: string | null }[];
+  // Productos que el local quitó del pedido: ya no se preparan (ausente con un backend anterior).
+  removedItems?: PlainOrderLine[];
 }
 
 export interface SectorTicketsResponse {
@@ -132,6 +150,10 @@ export interface Order {
   cancelledAt: string | null;
   returnedAt: string | null;
   items: OrderItem[];
+  // Productos quitados del pedido: no están en `items` ni en el total (ausente con un backend anterior).
+  removedItems?: RemovedOrderItem[];
+  // Pagado online y con productos quitados: lo que falta devolverle al cliente.
+  refundDue?: number;
   // Una por sector (vacío sin sectores; ausente con un backend anterior).
   tickets?: OrderTicketSummary[];
   // Delivery con repartidor: quién lo lleva y cómo va (solo con Delivery activo o en el historial de envíos).
@@ -362,6 +384,9 @@ export interface OnlineCheckoutStatus {
   // Si ya se devolvió el dinero (el local rechazó o canceló el pedido).
   refund: "none" | "partial" | "full";
   estimate: OnlineEstimate | null;
+  // Solo si el local quitó productos (falta de stock): cuáles y cuánto vale ahora el pedido.
+  removedItems?: PlainOrderLine[];
+  orderTotal?: number;
 }
 
 // Cuenta de Mercado Pago del local (nunca incluye tokens).

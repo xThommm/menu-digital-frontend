@@ -10,6 +10,8 @@ import {
 import {
   getStationSession, getStationTickets, logoutStation, markStationTicketPrinted, pairStation, updateStationTicketStatus,
 } from "../../api/publicOrdersApi";
+import { ownerHello, useLiveRefresh } from "../../hooks/useLiveRefresh";
+import type { SocketHello } from "../../hooks/useOrdersSocket";
 import { beep } from "../../lib/beep";
 import { errorMessage, errorStatus } from "../../lib/errors";
 import { elapsedLabel, formatTime, minutesSince, placeLabel } from "../../lib/format";
@@ -42,6 +44,8 @@ interface StationApi {
   setStatus: (ticketId: number, status: TicketStatus) => Promise<Ticket>;
   markPrinted: (ticketId: number) => Promise<Ticket>;
   logout?: () => Promise<void>;
+  // Con qué se identifica esta pantalla en el WebSocket de pedidos.
+  hello: SocketHello | null;
 }
 
 type Phase =
@@ -60,12 +64,14 @@ const deviceApi = (token: string): StationApi => ({
   setStatus: async (id, status) => (await updateStationTicketStatus(token, id, status)).ticket,
   markPrinted: async id => (await markStationTicketPrinted(token, id)).ticket,
   logout: () => logoutStation(token),
+  hello: { type: "auth", role: "station", token },
 });
 
 const ownerApi = (sectorId: number): StationApi => ({
   load: () => getOwnerSectorTickets(sectorId),
   setStatus: (id, status) => updateOwnerTicketStatus(sectorId, id, status),
   markPrinted: id => markOwnerTicketPrinted(sectorId, id),
+  hello: ownerHello(),
 });
 
 export default function StationApp() {
@@ -334,17 +340,9 @@ function StationBoard({ api, initialSectorName, businessName, owner, onUnpaired 
     }
   }, [api, doPrint, owner, onUnpaired]);
 
-  useEffect(() => {
-    const first = setTimeout(refresh, 0);
-    // En la cocina la pantalla queda siempre a la vista: se consulta aunque
-    // la pestaña no tenga el foco, salvo que esté oculta.
-    const timer = setInterval(() => {
-      if (document.visibilityState === "visible") refresh();
-    }, POLL_MS);
-    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => { clearTimeout(first); clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); };
-  }, [refresh]);
+  // Las comandas llegan con el aviso del servidor (también con la pestaña en segundo
+  // plano, así suena e imprime igual). Sin conexión en vivo se consulta cada POLL_MS.
+  useLiveRefresh({ hello: api.hello, refresh, offlineMs: POLL_MS });
 
   useEffect(() => {
     if (freshIds.size === 0) return;
@@ -601,6 +599,16 @@ function TicketCard({ ticket, now, fresh, busy, canPrint, onStatus, onPrint }: {
             <div className={s.itemText}>
               <span className={s.itemTitle}>{item.title}{item.option && <em> · {item.option}</em>}</span>
               {item.notes && <span className={s.itemNotes}>{item.notes}</span>}
+            </div>
+          </li>
+        ))}
+        {/* Lo que el local quitó del pedido (sin stock, error): ya no se prepara. */}
+        {(ticket.removedItems ?? []).map((item, index) => (
+          <li key={`removed-${index}`} className={`${s.item} ${s.itemRemoved}`}>
+            <span className={s.qty}>{item.quantity}</span>
+            <div className={s.itemText}>
+              <span className={s.itemTitle}>{item.title}{item.option && <em> · {item.option}</em>}</span>
+              <span className={s.itemRemovedTag}>Quitado del pedido: no preparar</span>
             </div>
           </li>
         ))}

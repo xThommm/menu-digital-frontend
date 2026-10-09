@@ -275,6 +275,19 @@
 
 .recentCancelled .recentItems { text-decoration: line-through; }
 
+/* Producto que el local quitó del pedido: tachado y con aviso, para que nadie lo prepare. */
+.itemRemoved .qty, .itemRemoved .itemTitle { text-decoration: line-through; opacity: 0.55; }
+
+.itemRemovedTag {
+  align-self: flex-start;
+  padding: 0.1rem 0.5rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--admin-red-text) 18%, transparent);
+  color: var(--admin-red-text);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 @media (max-width: 767px) {
   .columns { grid-template-columns: 1fr; }
   .cards { grid-template-columns: 1fr; }

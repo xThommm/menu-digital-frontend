@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Bike, Check, ChefHat, HandPlatter, MapPin, MessageSquareText, Phone, QrCode, Smartphone, Undo2, UserRound, X } from "lucide-react";
+import { Bike, Check, ChefHat, HandPlatter, MapPin, MessageCircle, MessageSquareText, Phone, QrCode, Smartphone, Undo2, UserRound, X } from "lucide-react";
+import { buildWaLink } from "../../../../lib/whatsapp";
 import { elapsedLabel, formatMoney, formatTime, placeLabel, STATUS_LABEL } from "../../lib/format";
+import { CANCEL_REASONS, stockNoticeMessage } from "../../lib/orderItems";
 import type { Order, OrderStatus, TicketStatus, Waiter } from "../../types";
 import { isRefundable } from "../../lib/payment";
+import OrderItemsList, { type ItemActions } from "./OrderItemsList";
 import PaymentBadge from "./PaymentBadge";
 import p from "./panel.module.css";
 import s from "./OrdersBoard.module.css";
@@ -18,12 +21,16 @@ interface Props {
   now: number;
   highlight?: boolean;
   busy?: boolean;
-  onStatus: (order: Order, status: OrderStatus) => void;
+  // reason: motivo de la cancelación (opcional).
+  onStatus: (order: Order, status: OrderStatus, reason?: string) => void;
   onWaiter: (order: Order, waiterId: number | null) => void;
   // Delivery listo: salió del local (queda «En camino» hasta entregarlo).
   onDispatch?: (order: Order) => void;
   // Devolución de un pedido pagado online; cancel = rechazarlo devolviendo el dinero.
-  onRefund?: (order: Order, cancel: boolean) => void;
+  // amount: importe sugerido (lo que quedó cobrado de más al quitar productos).
+  onRefund?: (order: Order, cancel: boolean, amount?: number) => void;
+  // Quitar, restaurar o entregar productos sueltos del pedido.
+  itemActions?: ItemActions;
 }
 
 const SOURCE_ICON = {
@@ -78,8 +85,13 @@ function SectorProgress({ order }: { order: Order }) {
   );
 }
 
-export default function OrderCard({ order, waiters, now, highlight = false, busy = false, onStatus, onWaiter, onDispatch, onRefund }: Props) {
+export default function OrderCard({ order, waiters, now, highlight = false, busy = false, onStatus, onWaiter, onDispatch, onRefund, itemActions }: Props) {
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState<string | null>(null);
+  // Productos quitados: lo que falta devolver (si se pagó online) y el aviso al cliente por WhatsApp.
+  const removedCount = order.removedItems?.length ?? 0;
+  const refundDue = order.refundDue ?? 0;
+  const noticeHref = removedCount > 0 && order.customerPhone ? buildWaLink(order.customerPhone, stockNoticeMessage(order)) : null;
   const minutes = Math.floor((now - new Date(order.createdAt).getTime()) / 60_000);
   const late = order.status !== "ready" && minutes >= 20;
   // Pedido ya cobrado online: cancelarlo implica decidir la devolución.
@@ -108,17 +120,29 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
         <span className={s.cardTime} title={formatTime(order.createdAt)}>{formatTime(order.createdAt)} · {elapsedLabel(order.createdAt, now)}</span>
       </div>
 
-      <ul className={s.items}>
-        {order.items.map(item => (
-          <li key={item.id} className={s.item}>
-            <span className={s.qty}>{item.quantity}×</span>
-            <div className={s.itemText}>
-              <span className={s.itemTitle}>{item.title}{item.option && <em> · {item.option}</em>}</span>
-              {item.notes && <span className={s.itemNotes}>{item.notes}</span>}
-            </div>
-          </li>
-        ))}
-      </ul>
+      <OrderItemsList order={order} busy={busy} actions={itemActions} />
+
+      {removedCount > 0 && (refundDue > 0 || noticeHref) && (
+        <div className={s.itemsNotice}>
+          {refundDue > 0 && (
+            <span>
+              Este pedido se pagó online: por lo que quitaste hay que devolverle <strong>{formatMoney(refundDue)}</strong> al cliente.
+            </span>
+          )}
+          <div className={s.itemsNoticeActions}>
+            {refundDue > 0 && onRefund && (
+              <button type="button" className={`${p.btnPrimary} ${p.small}`} disabled={busy} onClick={() => onRefund(order, false, refundDue)}>
+                <Undo2 size={14} aria-hidden /> Devolver {formatMoney(refundDue)}
+              </button>
+            )}
+            {noticeHref && (
+              <a className={`${p.btn} ${p.small}`} href={noticeHref} target="_blank" rel="noreferrer">
+                <MessageCircle size={14} aria-hidden /> Avisar al cliente
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       <SectorProgress order={order} />
 
@@ -163,8 +187,22 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
       <div className={s.actions}>
         {confirmCancel && !paid ? (
           <>
+            <div className={s.cancelReasons} role="radiogroup" aria-label="Motivo de la cancelación">
+              {CANCEL_REASONS.map(reason => (
+                <button
+                  key={reason}
+                  type="button"
+                  role="radio"
+                  aria-checked={cancelReason === reason}
+                  className={`${s.reasonChip} ${cancelReason === reason ? s.reasonChipOn : ""}`}
+                  onClick={() => setCancelReason(cancelReason === reason ? null : reason)}
+                >
+                  {reason}
+                </button>
+              ))}
+            </div>
             <span className={s.confirmText}>¿Cancelar el pedido?</span>
-            <button type="button" className={`${p.btnDanger} ${p.small}`} disabled={busy} onClick={() => onStatus(order, "cancelled")}>
+            <button type="button" className={`${p.btnDanger} ${p.small}`} disabled={busy} onClick={() => onStatus(order, "cancelled", cancelReason ?? undefined)}>
               Sí, cancelar
             </button>
             <button type="button" className={`${p.btn} ${p.small}`} onClick={() => setConfirmCancel(false)}>No</button>

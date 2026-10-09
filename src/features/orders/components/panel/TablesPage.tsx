@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import DataTable, { type DataTableColumn } from "../../../../components/Common/DataTable/DataTable";
 import { closeTableSession, listTableSessions, setTableGuests } from "../../api/ordersApi";
+import { ownerHello, useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { errorCode, errorMessage } from "../../lib/errors";
 import { durationLabel, elapsedLabel, formatDateTime, formatMoney, formatTime, STATUS_LABEL } from "../../lib/format";
 import type { TableSession } from "../../types";
@@ -32,11 +33,8 @@ export default function TablesPage() {
     }
   }, []);
 
-  useEffect(() => {
-    const first = setTimeout(refresh, 0);
-    const timer = setInterval(() => { if (document.visibilityState === "visible") refresh(); }, POLL_MS);
-    return () => { clearTimeout(first); clearInterval(timer); };
-  }, [refresh]);
+  // Mesas abiertas al día con los avisos del servidor; sin conexión en vivo, cada POLL_MS.
+  useLiveRefresh({ hello: ownerHello(), refresh, offlineMs: POLL_MS });
 
   const replace = (updated: TableSession) =>
     setOpen(prev => (prev ?? []).map(session => (session.id === updated.id ? { ...session, ...updated } : session)));

@@ -258,3 +258,20 @@
 }
 
 .deliveryCodeHint { font-size: 0.74rem; opacity: 0.8; line-height: 1.4; }
+
+/* El local quitó productos del pedido (sin stock): qué falta y qué pasa con la plata. */
+.removedNotice {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 16px;
+  background: var(--tone-highest);
+  color: var(--t-title);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.removedNotice strong { font-size: 0.9rem; }

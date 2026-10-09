@@ -1,5 +1,15 @@
 # MenuDigital — Arquitectura de la aplicación
-> **Revisión vigente — 29-09-2026:** Gestión de pedidos (plan Pro), rama
+> **Revisión vigente — 09-10-2026:** manejo de pedidos que no siguen su curso
+> natural, rama `feature/manejo-pedidos` en ambos repos: quitar o restaurar un
+> producto de un pedido en curso (falta de stock), devolución parcial sugerida si
+> estaba pagado online y entrega en partes. Además, todas las pantallas de pedidos
+> pasaron de consulta periódica a avisos por WebSocket (la consulta queda de
+> respaldo). Migración `008_manejo_pedidos.sql` **sin aplicar**. Backend 756/756 y
+> frontend 121/121, typecheck, lint y build; no se probó en vivo ni se desplegó. Ver
+> [Pedidos que no siguen su curso natural](#pedidos-que-no-siguen-su-curso-natural-productos-sueltos)
+> y [Tiempo real de pedidos](#tiempo-real-de-pedidos-todas-las-pantallas).
+>
+> **Revisión anterior — 29-09-2026:** Gestión de pedidos (plan Pro), rama
 > `rama-neon` en ambos repos. Se suma una segunda base, **Postgres en Neon**, que
 > convive con MongoDB: Mongo sigue guardando todo lo que ya existía y Postgres solo
 > la operación de pedidos (configuración, mesas y QR, mozos, turnos/caja, pedidos y
@@ -2476,7 +2486,7 @@ acceso "Gestión de pedidos" (barra lateral y menú "Más" en el celular).
   administrar desde el panel de planes, sumar `gestion_pedidos` a
   `BOOLEAN_FEATURES`/`INITIAL_PLANS` (con su backfill) y cambiar `requireProPlan`
   por `requireFeature("gestion_pedidos")`.
-- Tiempo real del panel por consulta periódica (5 s). Delivery y el seguimiento del cliente suman un WebSocket de avisos (ver «Delivery con repartidores»); Reservas tiene el suyo.
+- Tiempo real por WebSocket de avisos en todas las pantallas de pedidos (ver «Tiempo real de pedidos»); la consulta periódica quedó solo como respaldo. Reservas tiene su propio socket.
 - Para producción: correr `npm run orders:migrate` contra la branch `production`
   de Neon y cargar `DATABASE_URL` en Koyeb. Sin eso la sección responde 503.
 - Sin tests, por indicación de la tarjeta.
@@ -2576,6 +2586,77 @@ de la API, igual que Reservas). `closeUnknownUpgrades` corta los upgrade a paths
 - **Pendiente**: aplicar la migración 006 y probar en vivo (vincular un celular, retirar, entregar, modo abierto con dos
   repartidores, apagar el módulo con entregas en curso); definir si hace falta un límite de entregas simultáneas por
   repartidor y notificaciones push al repartidor (hoy solo ve el aviso con la app abierta).
+
+## Pedidos que no siguen su curso natural (productos sueltos)
+
+Hasta acá un pedido era todo o nada. Ahora se puede actuar sobre **un producto** de un pedido en curso, desde el
+panel: quitarlo (falta de stock, error de carga, lo pidió el cliente), restaurarlo y entregarlo antes que el resto.
+Rama `feature/manejo-pedidos`; tarjeta «Manejo de pedidos».
+
+- **Esquema** (`008_manejo_pedidos.sql`, aditiva): `order_items` suma `status` (`active` / `cancelled`),
+  `status_reason`, `cancelled_at` y `delivered_at`; `order_item_events` audita cada acción (`removed`, `restored`,
+  `delivered`, `undelivered`, con cantidad, importe, motivo y autor). Correr `npm run orders:migrate` **antes** de
+  desplegar. Las lecturas leen la columna con `to_jsonb(...) ->> 'status'`, así que siguen andando sin la migración;
+  las acciones nuevas no.
+- **Backend** `services/orderItemService.js` y rutas del panel `POST /orders/:id/items/:itemId/remove`
+  (`quantity`, `reason` opcionales), `POST .../restore` y `PATCH .../delivered` (`{ delivered }`).
+  - *Quitar*: solo pedidos `pending` / `confirmed` / `ready` que no salieron del local. No se quita lo último que queda
+    (`LAST_ITEM`: eso es cancelar el pedido) ni un producto ya entregado. Quitar parte de la cantidad **parte la línea
+    en dos** (la original con lo que sigue y otra `cancelled` con lo quitado). La línea nunca se borra.
+  - *Total*: `orders.subtotal` / `total` se recalculan con las líneas activas. Caja, turno y cuenta de la mesa suman
+    `orders.total`, así que quedan bien sin cambios; el top de productos del turno ignora lo quitado.
+  - *Pago online*: el DTO del pedido trae `refundDue` = cobrado − devuelto − devoluciones en curso − total actual
+    (`orderDTO.refundDueByOrder`, que solo consulta pagos de pedidos online con algo quitado). No hay devolución
+    automática: el panel la ofrece con el importe cargado y la confirma el local (`/orders/:id/refund`, sin cambios).
+    Con plata ya devuelta no se puede restaurar (`ORDER_REFUNDED`).
+  - *Entrega en partes*: `delivered_at` por línea, solo pedidos confirmados que no son delivery. Al entregar la última
+    línea activa el pedido pasa a `delivered` en la misma transacción (`applyStatusChange`).
+  - *Comandas*: `ticketService` no reparte líneas quitadas, anula la comanda que se quedó sin productos
+    (`cancelEmptyTickets`) y no la revive al reconfirmar; la pantalla del sector recibe `removedItems` aparte de `items`.
+  - *DTO*: `items` trae solo lo activo (el repartidor, el mozo, la cuenta y la impresión no cambian) y `removedItems`
+    lo quitado. El seguimiento público suma `removedItems` y `orderTotal` solo cuando se quitó algo.
+- **Frontend**: `lib/orderItems.ts` (reglas y textos puros), `components/panel/OrderItemsList` (acciones por producto
+  dentro de `OrderCard`: quitar con motivo y cantidad, restaurar, entregar, «Entregado 2 de 5»), aviso «Devolver $X»
+  que abre `RefundModal` con el importe sugerido, «Avisar al cliente» (WhatsApp con el mensaje armado para que decida
+  si sigue o cancela), motivos rápidos al cancelar un pedido, producto tachado en `StationApp` y aviso en
+  `TrackingModal`. Con un backend anterior (pedidos sin `removedItems`) las acciones por producto no se ofrecen.
+  Orden de despliegue: migración, backend y después frontend.
+- **Límite conocido**: si la caja del pedido ya estaba cerrada, su cierre guardado no se recalcula al quitar un producto.
+- **Propuesto, sin hacer**: que el sector avise la falta desde su pantalla, agregar o cambiar productos de un pedido
+  en curso, devolución parcial de un pedido ya entregado, «no entregado» (cliente ausente), mover de mesa, descuentos y
+  entrega por producto desde el tomador del mozo. Detalle en la tarjeta.
+- **Tests**: backend `test/ordersItemExceptions.test.js`; frontend `test/orderItems.test.ts`.
+
+## Tiempo real de pedidos (todas las pantallas)
+
+Las pantallas de pedidos dejaron de consultar a intervalos fijos: se actualizan con los avisos del WebSocket que ya
+usaba Delivery (`/api/orders/ws`, `src/orders/delivery/realtime.js`). Misma rama `feature/manejo-pedidos`. Sin
+migración ni variables nuevas.
+
+- **Sigue siendo un canal de avisos, no de datos**: el mensaje dice «algo cambió» y la pantalla vuelve a pedir su estado
+  por HTTP, que es la fuente de verdad y donde se valida el permiso. Por el socket no viaja ningún dato del pedido.
+- **Quién se conecta** (primer mensaje): panel `{type:"auth",token}`, repartidor `role:"courier"`, **mozo
+  `role:"waiter"`** y **pantalla de sector `role:"station"`** (nuevos; validan la sesión del dispositivo igual que
+  `protectWaiter` / `protectStation`) y cliente `{type:"watch",slug,ref}`. Mozos y sectores comparten una sala por
+  local y reciben `{type:"orders",event}` sin ids.
+- **Qué avisa** (`realtime.emit`, siempre después del COMMIT; con `staff: true` llega también a mozos y sectores):
+  pedido nuevo de cualquier origen (`order_created`), cambio de estado, productos quitados / restaurados / entregados,
+  operador asignado, avance o impresión de una comanda (`ticket`), mesa cerrada o comensales (`table`), turno abierto o
+  cerrado (`shift`), dispositivos de operadores y sectores vinculados o cerrados y cambios de un sector (`devices`), y
+  pago o devolución confirmados (`payment`). `realtime.emitToCustomer(ownerId, ref, event)` le avisa al cliente por la
+  referencia de su pago cuando el webhook de Mercado Pago lo aplica (antes de que exista el pedido).
+- **Frontend** `hooks/useLiveRefresh.ts`: junta el socket (`useOrdersSocket`) con la consulta de respaldo. Varios avisos
+  seguidos se agrupan en una consulta (150 ms); un aviso se atiende aunque la pestaña esté en segundo plano (suena el
+  pedido nuevo y la cocina imprime igual). Respaldo: con el socket conectado, una consulta cada 60 s; **sin socket**
+  (red caída, backend anterior, que rechaza los roles nuevos con 1008), al ritmo de antes. Lo usan `OrdersBoard`
+  (antes 5 s), `StationApp` (4 s), `WaiterTables` y `WaiterHistory` (15 s), `TablesPage` (15 s), `WaitersPage`,
+  `SectorsPage` y `CouriersPage` (30 s), `DeliveryPage` (15 s) y `CourierApp` (20 s). `useOrderTracking` espacia su
+  respaldo con el socket conectado (15 s esperando el pago, 60 s después; sin socket, 3 s / 15 s).
+- **Lo que sigue con temporizador a propósito**: el QR de acceso de operadores y repartidores se regenera cada minuto
+  (es una rotación de códigos que vencen, no una consulta de cambios) y los relojes locales («hace 3 min»).
+- **Límite**: las salas viven en memoria de una sola instancia de la API (igual que antes). Con más de una instancia
+  hace falta un canal compartido (`LISTEN/NOTIFY` de Postgres o Redis).
+- **Tests**: backend `test/ordersRealtime.test.js`.
 
 ---
 

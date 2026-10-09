@@ -14,6 +14,8 @@ interface Props {
   order: Order;
   // Anular el pedido junto con la devolución (rechazar un pedido ya pagado).
   cancelOrder?: boolean;
+  // Importe parcial ya cargado: lo que quedó cobrado de más al quitar productos del pedido.
+  suggestedAmount?: number;
   onClose: () => void;
   // Algo cambió en el pedido o en el pago: que la pantalla de atrás se actualice.
   onChanged: () => void;
@@ -27,11 +29,12 @@ const REFUND_LABEL: Record<RefundStatus, string> = {
 
 const CANCELLABLE = ["pending", "confirmed", "ready"];
 
-export default function RefundModal({ order, cancelOrder = false, onClose, onChanged }: Props) {
+export default function RefundModal({ order, cancelOrder = false, suggestedAmount, onClose, onChanged }: Props) {
   const [info, setInfo] = useState<OrderPaymentResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"total" | "partial">("total");
-  const [amount, setAmount] = useState("");
+  const suggested = suggestedAmount !== undefined && suggestedAmount > 0;
+  const [mode, setMode] = useState<"total" | "partial">(suggested ? "partial" : "total");
+  const [amount, setAmount] = useState(suggested ? String(suggestedAmount) : "");
   const [reason, setReason] = useState("");
   const [alsoCancel, setAlsoCancel] = useState(cancelOrder);
   const [busy, setBusy] = useState(false);
@@ -158,7 +161,7 @@ export default function RefundModal({ order, cancelOrder = false, onClose, onCha
                       value={reason}
                       maxLength={200}
                       onChange={event => setReason(event.target.value)}
-                      placeholder="Ej: sin stock, no llegamos a entregar"
+                      placeholder={suggested ? "Ej: productos sin stock" : "Ej: sin stock, no llegamos a entregar"}
                     />
                   </label>
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { getWaiterHistory, getWaiterOrders } from "../../api/publicOrdersApi";
+import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { errorMessage } from "../../lib/errors";
 import { durationLabel, formatDateTime, formatMoney } from "../../lib/format";
 import type { Order, TableSession } from "../../types";
@@ -98,11 +99,7 @@ function ShiftOrders({ token, onAuthError }: { token: string; onAuthError: (err:
     }
   }, [token, onAuthError]);
 
-  useEffect(() => {
-    const first = setTimeout(load, 0);
-    const timer = setInterval(load, 15_000);
-    return () => { clearTimeout(first); clearInterval(timer); };
-  }, [load]);
+  useLiveRefresh({ hello: { type: "auth", role: "waiter", token }, refresh: load, offlineMs: 15_000 });
 
   if (orders === null) return <p className={p.loading}>Cargando…</p>;
   if (orders.length === 0) return <p className={p.empty}>Todavía no tomaste pedidos en este turno.</p>;

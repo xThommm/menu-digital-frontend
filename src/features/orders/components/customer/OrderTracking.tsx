@@ -5,6 +5,7 @@ import { useOrderTracking, type OrderTrackingState } from "../../hooks/useOrderT
 import {
   estimateSentence, estimateWindow, forgetTrackedOrder, isTrackingActive, readTrackedOrder, TRACKING_STEPS, trackingView,
 } from "../../lib/orderTracking";
+import { removedNotice } from "../../lib/orderItems";
 import s from "./OnlineCheckout.module.css";
 
 // Seguimiento del pedido que el cliente pagó online: estado actual, etapas y
@@ -22,6 +23,7 @@ export function TrackingModal({ state, onClose }: ModalProps) {
   const view = trackingView(status, gaveUp);
   const approved = status !== null && ["APPROVED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(status.status);
   const steps = status?.serviceType ? TRACKING_STEPS[status.serviceType] : null;
+  const removed = approved ? removedNotice(status) : null;
 
   // La frase del tiempo estimado se muestra hasta que el pedido está listo.
   const waitingFood = approved && (status.orderStatus === null || status.orderStatus === "pending" || status.orderStatus === "confirmed");
@@ -42,6 +44,14 @@ export function TrackingModal({ state, onClose }: ModalProps) {
             {sentence}
             {windowText && <span className={s.etaWindow}>Aproximadamente entre las {windowText}</span>}
           </p>
+        )}
+
+        {removed && (
+          <div className={s.removedNotice} role="status">
+            <strong>{removed.title}</strong>
+            <span>{removed.items}</span>
+            <span>{removed.text}</span>
+          </div>
         )}
 
         {delivery?.code && status?.orderStatus === "ready" && (

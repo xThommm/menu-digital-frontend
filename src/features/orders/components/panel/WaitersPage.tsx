@@ -5,6 +5,7 @@ import { useAuth } from "../../../../context/useAuth";
 import {
   createWaiter, deleteWaiter, issuePairingCode, listWaiterSessions, revokeWaiterSession, revokeWaiterSessions, updateWaiter,
 } from "../../api/ordersApi";
+import { ownerHello, useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { useWaiters } from "../../hooks/usePanelData";
 import { errorMessage } from "../../lib/errors";
 import { durationLabel, elapsedLabel, formatDateTime } from "../../lib/format";
@@ -40,15 +41,13 @@ export default function WaitersPage() {
   const [now, setNow] = useState(() => Date.now());
   const { reload } = waiters;
 
-  // "Conectado hace…" y la última actividad se mantienen al día solos.
+  // "Conectado hace…" avanza con el reloj local; los dispositivos que se vinculan o
+  // se cierran llegan con el aviso del servidor (sin conexión en vivo, cada REFRESH_LIST_MS).
   useEffect(() => {
-    const timer = setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      setNow(Date.now());
-      reload();
-    }, REFRESH_LIST_MS);
+    const timer = setInterval(() => setNow(Date.now()), REFRESH_LIST_MS);
     return () => clearInterval(timer);
-  }, [reload]);
+  }, []);
+  useLiveRefresh({ hello: ownerHello(), refresh: reload, offlineMs: REFRESH_LIST_MS, initial: false });
 
   const list = waiters.data ?? [];
   const replace = (updated: Waiter) => waiters.setData(list.map(w => (w.id === updated.id ? updated : w)));

@@ -5,14 +5,18 @@ import { reservationsSocketUrl } from "../../reservations/hooks/useReservationSo
 // datos: al recibirlos la pantalla vuelve a pedir el estado por HTTP, que sigue
 // siendo la fuente de verdad. Por eso la pantalla que lo usa debe tener además
 // una consulta periódica de respaldo: si el socket no abre, todo sigue andando.
+// Las pantallas no lo usan directo: ver useLiveRefresh, que junta las dos cosas.
 
 export type SocketHello =
   | { type: "auth"; token: string }                          // panel del local (JWT)
   | { type: "auth"; role: "courier"; token: string }         // repartidor
+  | { type: "auth"; role: "waiter"; token: string }          // mozo (tomador de pedidos)
+  | { type: "auth"; role: "station"; token: string }         // pantalla de un sector
   | { type: "watch"; slug: string; ref: string };            // cliente
 
 export interface OrdersSocketMessage {
-  type: "ready" | "error" | "delivery" | "order";
+  // delivery: avisos al panel y al repartidor · order: al cliente · orders: a mozos y sectores.
+  type: "ready" | "error" | "delivery" | "order" | "orders";
   event?: string;
   orderId?: number | null;
   orderNumber?: number | null;
