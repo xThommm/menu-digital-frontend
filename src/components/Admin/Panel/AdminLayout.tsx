@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/useAuth";
 import { useTheme } from "../../../hooks/useTheme";
-import { useAdminPush } from "../../../hooks/useAdminPush";
+import { useAdminPush, useAdminPushBootstrap } from "../../../hooks/useAdminPush";
 import { useAdminNotifications } from "../../../hooks/useAdminNotifications";
 import BrandMark from "../../Common/BrandMark";
 import BrandWordmark from "../../Common/BrandWordmark";
@@ -28,6 +28,11 @@ const SELLERS_SUB_ITEMS = [
 // Bandeja de notificaciones: el único ítem con badge (no leídas).
 const NOTIFICATIONS_PATH = "/admin/notifications";
 
+// Manifest del panel: permite instalarlo en la pantalla de inicio, que es el
+// único modo en que iPhone y iPad entregan notificaciones push. Se enlaza
+// solo dentro del panel para que las cartas públicas no ofrezcan instalarse.
+const MANIFEST_URL = "/admin.webmanifest";
+
 const SELLERS_PATH = "/admin/sellers";
 const isSellersArea = (pathname: string) => pathname === SELLERS_PATH || pathname.startsWith("/sellers");
 
@@ -44,6 +49,7 @@ const NAV_ITEMS = [
 export default function AdminLayout() {
   const { logout } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
+  useAdminPushBootstrap();
   const push = useAdminPush();
   const { unreadCount } = useAdminNotifications();
   const badgeFor = (path: string) => (path === NOTIFICATIONS_PATH ? unreadCount : 0);
@@ -74,6 +80,14 @@ export default function AdminLayout() {
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.rel = "manifest";
+    link.href = MANIFEST_URL;
+    document.head.appendChild(link);
+    return () => link.remove();
+  }, []);
 
   useEffect(() => {
     if (!mobileMoreOpen) return;
@@ -206,13 +220,14 @@ export default function AdminLayout() {
             <span className={s.navLabel}>{theme === "dark" ? "Tema claro" : "Tema oscuro"}</span>
           </button>
 
-          {push.available && (
+          {push.status !== "loading" && (
             <button
               className={s.navItem}
               onClick={push.toggle}
               disabled={push.busy}
               aria-pressed={push.active}
               aria-label={push.active ? "Desactivar notificaciones en este dispositivo" : "Activar notificaciones en este dispositivo"}
+              title={push.help ?? undefined}
             >
               <span className={s.navIcon}>{push.active ? <Bell size={20} strokeWidth={1.5} /> : <BellOff size={20} strokeWidth={1.5} />}</span>
               <span className={s.navLabel}>{push.active ? "Notificaciones activas" : "Activar notificaciones"}</span>
@@ -344,7 +359,7 @@ export default function AdminLayout() {
               {theme === "dark" ? <SunIcon /> : <MoonIcon />}
               {theme === "dark" ? "Usar tema claro" : "Usar tema oscuro"}
             </button>
-            {push.available && (
+            {push.status !== "loading" && (
               <button
                 type="button"
                 className="admin-mobile-more__item"

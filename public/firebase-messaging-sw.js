@@ -52,9 +52,21 @@ const postToWindows = async (message) => {
   windows.forEach((client) => client.postMessage(message));
 };
 
+// El backend manda la ruta relativa ("/admin/payments"); las push viejas
+// traían la URL completa. En los dos casos solo se abre este mismo sitio.
+const resolveTarget = (url) => {
+  try {
+    const target = new URL(url || "/admin", self.location.origin);
+    if (target.origin === self.location.origin) return target;
+  } catch {
+    // URL mal formada: se abre el panel.
+  }
+  return new URL("/admin", self.location.origin);
+};
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = new URL(event.notification.data?.url || "/admin", self.location.origin);
+  const target = resolveTarget(event.notification.data?.url);
   // El panel lee este parámetro, marca el aviso como leído y lo saca de la URL
   // (ver src/hooks/useAdminNotifications.ts).
   const eventID = event.notification.data?.eventID;
@@ -72,12 +84,17 @@ self.addEventListener("notificationclick", (event) => {
         return url.origin === target.origin && url.pathname.startsWith("/admin");
       });
       if (existing) {
-        await existing.focus();
-        existing.postMessage({
-          type: "admin-notification-open",
-          path: `${target.pathname}${target.search}`,
-        });
-        return undefined;
+        try {
+          await existing.focus();
+          existing.postMessage({
+            type: "admin-notification-open",
+            path: `${target.pathname}${target.search}`,
+          });
+          return undefined;
+        } catch {
+          // Algunos navegadores (iOS) no dejan traer al frente una ventana
+          // que este service worker no controla: se abre una nueva.
+        }
       }
       return self.clients.openWindow(target.href);
     })()

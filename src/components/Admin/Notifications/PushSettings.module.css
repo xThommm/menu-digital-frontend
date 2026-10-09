@@ -1,0 +1,162 @@
+/* Avisos en los dispositivos del admin (dentro de la pantalla de
+   Notificaciones). Tres bloques lado a lado en desktop, apilados en mobile. */
+.settings {
+  margin-bottom: var(--space-4);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-lg);
+  background: var(--admin-bg-raised);
+  overflow: hidden;
+  animation: pushSettingsIn 0.24s var(--ease-out) both;
+}
+
+.block {
+  min-width: 0;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.block + .block { border-left: 0.5px solid var(--admin-border-default); }
+
+.blockTitle {
+  margin: 0;
+  color: var(--admin-text-faint);
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.muted { margin: 0; color: var(--admin-text-muted); font-size: var(--text-xs); line-height: 1.5; }
+.help { margin: 0; color: var(--admin-text-secondary); font-size: var(--text-sm); line-height: 1.5; }
+
+.stateLine {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--admin-text-primary);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+.stateIcon {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-bg-raised-2);
+  color: var(--admin-text-muted);
+}
+.stateIconOn { background: var(--admin-success-bg); color: var(--admin-success-text); }
+
+.steps {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--admin-text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+.steps strong { color: var(--admin-text-primary); font-weight: 600; }
+
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+.primaryButton,
+.secondaryButton {
+  min-height: var(--control-min-size);
+  padding: 0.5rem 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: var(--control-radius);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.primaryButton {
+  composes: md-button from global;
+  border: 0;
+  background: var(--admin-gold);
+  color: var(--admin-gold-ink);
+}
+.secondaryButton {
+  border: 0.5px solid var(--admin-border-default);
+  background: var(--admin-bg-raised);
+  color: var(--admin-text-secondary);
+  transition: border-color var(--transition), color var(--transition);
+}
+.secondaryButton:hover:not(:disabled) { color: var(--admin-text-primary); border-color: var(--admin-border-warm); }
+.primaryButton:disabled,
+.secondaryButton:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.deviceList,
+.typeList { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+
+.device { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.deviceIcon { flex-shrink: 0; color: var(--admin-text-muted); display: grid; place-items: center; }
+.deviceText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.deviceName {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--admin-text-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.deviceMeta { color: var(--admin-text-faint); font-size: var(--text-xs); }
+.currentTag {
+  padding: 1px var(--space-2);
+  border: 0.5px solid var(--admin-border-gold-mid);
+  border-radius: var(--radius-full);
+  background: var(--admin-gold-glow);
+  color: var(--admin-gold);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+.removeButton {
+  flex-shrink: 0;
+  width: var(--control-min-size);
+  height: var(--control-min-size);
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--admin-radius-sm);
+  background: transparent;
+  color: var(--admin-text-muted);
+  cursor: pointer;
+  transition: background-color var(--transition), color var(--transition);
+}
+.removeButton:hover:not(:disabled) { background: var(--admin-red-bg); color: var(--admin-red-text); }
+.removeButton:disabled { opacity: 0.45; cursor: not-allowed; }
+.removeButton:focus-visible { outline: 2px solid var(--admin-gold); outline-offset: 1px; }
+
+.typeOption { display: flex; align-items: flex-start; gap: var(--space-3); cursor: pointer; }
+.typeOption input { margin-top: 2px; flex-shrink: 0; }
+.typeText { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.typeLabel { color: var(--admin-text-primary); font-size: var(--text-sm); font-weight: 600; }
+.typeHint { color: var(--admin-text-faint); font-size: var(--text-xs); line-height: 1.4; }
+
+@keyframes pushSettingsIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings { animation: none; }
+}
+
+/* Con la barra lateral abierta, tres columnas recién entran cómodas en
+   pantallas anchas. */
+@media (max-width: 1180px) {
+  .settings { grid-template-columns: 1fr; }
+  .block + .block { border-left: 0; border-top: 0.5px solid var(--admin-border-default); }
+}
