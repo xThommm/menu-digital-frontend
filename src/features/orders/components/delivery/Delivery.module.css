@@ -1,0 +1,74 @@
+/* Delivery en el panel del local: entregas en curso. Usa los estilos del panel
+   (panel.module.css) y suma lo propio. */
+
+.columns { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); align-items: start; }
+
+.column { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+
+.columnTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: var(--admin-text-primary);
+}
+
+.count {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 0.4rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  background: var(--tone-high);
+  color: var(--admin-text-secondary);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1rem 1.1rem;
+  border-radius: 24px;
+  background: var(--tone);
+  color: var(--admin-text-primary);
+}
+
+.cardHead { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.number { font-family: var(--font-serif); font-size: 1.3rem; }
+.hint { font-size: 0.75rem; color: var(--admin-text-warm); }
+
+.badge {
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  background: var(--tone-high);
+  color: var(--admin-text-secondary);
+}
+
+.facts { margin: 0; display: grid; gap: 0.35rem; font-size: 0.84rem; }
+.facts > div { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 0.5rem; }
+.facts dt { color: var(--admin-text-warm); }
+.facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.assign { display: flex; flex-direction: column; gap: 0.5rem; }
+.assignField { display: flex; flex: 1; min-width: 0; }
+
+.empty { margin: 0; padding: 1.5rem 1rem; border-radius: 20px; text-align: center; font-size: 0.85rem; color: var(--admin-text-warm); background: var(--tone); }
+.muted { margin: 0; font-size: 0.8rem; color: var(--admin-text-warm); }
+
+.warn { margin: 0; padding: 0.55rem 0.8rem; border-radius: 14px; font-size: 0.8rem; background: color-mix(in srgb, var(--admin-red-text) 14%, var(--tone)); color: var(--admin-red-text); }
+
+.codeBox { margin: 0; padding: 0.7rem 0.9rem; border-radius: 14px; font-size: 0.85rem; background: var(--tone-high); }
+.codeBox strong { font-size: 1.3rem; letter-spacing: 0.2em; font-variant-numeric: tabular-nums; }
+
+/* Repartidores */
+.deviceList { display: flex; flex-direction: column; gap: 0.35rem; margin: 0.35rem 0 0; padding: 0; list-style: none; }

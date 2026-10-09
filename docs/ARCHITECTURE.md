@@ -2476,7 +2476,7 @@ acceso "Gestión de pedidos" (barra lateral y menú "Más" en el celular).
   administrar desde el panel de planes, sumar `gestion_pedidos` a
   `BOOLEAN_FEATURES`/`INITIAL_PLANS` (con su backfill) y cambiar `requireProPlan`
   por `requireFeature("gestion_pedidos")`.
-- Tiempo real por consulta periódica (5 s), sin websockets.
+- Tiempo real del panel por consulta periódica (5 s). Delivery y el seguimiento del cliente suman un WebSocket de avisos (ver «Delivery con repartidores»); Reservas tiene el suyo.
 - Para producción: correr `npm run orders:migrate` contra la branch `production`
   de Neon y cargar `DATABASE_URL` en Koyeb. Sin eso la sección responde 503.
 - Sin tests, por indicación de la tarjeta.
@@ -2506,6 +2506,76 @@ variables `MP_ORDERS_*` / `ORDERS_CREDENTIALS_KEY` solo estos pagos responden 50
   `OnlineCheckout`, `OnlinePaymentReturn` (carta, vía `CartDrawer` y `UserMenu`).
 - **Pendiente**: aplicar la migración, crear la app de MP de pedidos y probar en vivo; confirmar
   `user_id` en el body del webhook con tokens OAuth y el secret que firma las notificaciones.
+
+## Delivery con repartidores (app del repartidor)
+
+Los pedidos de delivery se pueden entregar con repartidores vinculados al local: un panel para su celular,
+asignación manual o abierta, retiro, entrega con un código de 6 dígitos que recibe el cliente, historial y
+tiempo real. **Apagado por defecto** (`order_settings.options.deliveryEnabled`): sin activarlo, el flujo de
+pedidos no cambia y el local gestiona sus envíos por fuera.
+
+- **Backend** `src/orders/delivery/`: `secrets` (código), `courierService` (repartidores, QR, sesiones),
+  `deliveryService` (asignación, retiro, entrega, auditoría, DTOs de cada panel), `realtime` (WebSocket),
+  `courierController` (app del repartidor) y `deliveryController` (panel del local). Rutas en `src/orders/routes.js`:
+  `/courier/*` (autenticación `Authorization: Courier <token>`) y `/delivery/*` (JWT + Pro).
+- **Esquema** (`006_delivery_repartidores.sql`, aditiva): `couriers`, `courier_sessions`, `delivery_assignments` y
+  `delivery_events` (auditoría). Un índice único parcial garantiza **una sola asignación activa por pedido**.
+  `order_status_events.actor_type` suma `courier`. Correr `npm run orders:migrate` **antes** de desplegar.
+- **Reutiliza lo que ya había**: la vinculación es la de los operadores (código de un solo uso, vence a los 2 min,
+  solo se guarda su hash; ahora también se puede revocar, y suma un código corto «ABCD-EFGH» para quien no puede escanear: se tipea en `/repartidor`, comparte vencimiento y uso único con el QR); «Despachado» no es un estado nuevo: es el pedido `ready`
+  con `dispatched_at` (migración 005), que ahora registra el repartidor al retirar; el historial de envíos es el
+  historial general filtrado a delivery (`GET /orders?serviceType=delivery&courier=`), enriquecido con `delivery`.
+- **Configuración** (en `options`, sin migrar): `deliveryEnabled`, `deliveryAssignMode` (`manual` / `open`),
+  `deliveryConfirmBy` (`courier` / `courier_admin`) y `deliveryAdminOverride` (el administrador resuelve
+  incidencias marcando la entrega con motivo obligatorio).
+
+**Flujo.** Asignado (manual, o lo toma un repartidor disponible en modo abierto) → el pedido está listo → el
+repartidor toca «Retirar pedido» (genera el código y registra la salida) → el cliente ve su código en el seguimiento
+→ el repartidor lo tipea y «Confirmar entrega» pasa el pedido a `delivered`.
+
+**Reglas que aplica el servidor** (siempre, venga de la pantalla que venga):
+- Solo pedidos `delivery` del propio local (todo se filtra por `owner_id`); asignables solo `confirmed` / `ready`;
+  retirar exige `ready` y asignación propia.
+- Modo abierto atómico: el pedido se bloquea `FOR UPDATE` y el índice único parcial cierra la carrera; el segundo
+  repartidor recibe `ALREADY_TAKEN`. Cambiar de modo no libera lo ya asignado. «Vinculado» no es «disponible»:
+  `couriers.available` lo cambia el propio repartidor y es lo que cuenta para tomar pedidos.
+- **Código de entrega**: `crypto.randomInt`, 6 dígitos; en la base solo un HMAC-SHA256 (clave
+  `DELIVERY_CODE_KEY` → `ORDERS_CREDENTIALS_KEY` → `JWT_SECRET`) y una copia AES-256-GCM para mostrárselo al
+  cliente (se borra al entregar). Retirar es idempotente (no regenera el código). 5 errores bloquean el código de ese
+  pedido 15 min, más un tope por IP; un código usado no se reutiliza; un reintento de una entrega ya confirmada
+  devuelve el mismo resultado. El mensaje de error no revela nada del código.
+- El panel general **no** marca entregado un pedido que lleva un repartidor (`DELIVERY_REQUIRES_COURIER`), anularlo
+  libera al repartidor y no se puede volver atrás un pedido que ya salió sin quitárselo antes.
+- Reasignar un pedido ya retirado exige motivo y conserva el código (pertenece al pedido); las asignaciones anteriores
+  quedan en `delivery_assignments` (`released`) y en `delivery_events`.
+- Pausar o eliminar a un repartidor con entregas sin resolver se rechaza (`COURIER_HAS_ACTIVE_DELIVERIES`) salvo que
+  se indique `reassignTo`: se pasan todas a otro repartidor activo en la misma transacción.
+- **Al apagar Delivery**: lo asignado que no se retiró vuelve a «sin asignar» (`delivery_disabled`); lo que ya salió
+  se termina de entregar (el repartidor con el código, o el administrador con motivo). No se cancela ni se borra nada,
+  y se deja de mostrar a los clientes el seguimiento del repartidor salvo para pedidos ya en la calle.
+- Privacidad: el repartidor ve ítems, dirección, referencias, nombre y teléfono **solo de sus pedidos**; en la lista
+  compartida solo ve destino y cantidad de productos. Nunca datos de pago ni administrativos.
+
+**Tiempo real** (`/api/orders/ws`, mismo servidor HTTP que Reservas): el primer mensaje identifica la pantalla —
+`{type:"auth",token}` (panel, JWT), `{type:"auth",role:"courier",token}` o `{type:"watch",slug,ref}` (cliente, con
+la referencia del pago). Los mensajes son **avisos sin datos personales** (`{type:"delivery",event,orderId}`): la pantalla
+vuelve a pedir el estado por HTTP, que sigue siendo la fuente de verdad, y todas tienen además una consulta de respaldo
+(panel 15 s, repartidor 20 s). Los avisos salen después del COMMIT. Cada repartidor recibe solo los de sus entregas y
+«cambió la lista disponible»; el cliente solo los de su pedido. El estado de las salas vive en memoria (una instancia
+de la API, igual que Reservas). `closeUnknownUpgrades` corta los upgrade a paths que ningún módulo atiende.
+
+- **Frontend** `src/features/orders/`: `components/courier/` (`CourierApp` en `/:slug/repartidor`, pública),
+  `components/delivery/` (`DeliveryPage`, `CouriersPage`, `DeliveryHistory` → `OrdersHistory deliveryOnly`),
+  sección «Delivery con repartidores» en `OrdersSettingsPage`, `hooks/useOrdersSocket`, `lib/delivery` y
+  `lib/courierSession`. `OrdersLayout` muestra una sola entrada «Delivery» (solo si el local activó Delivery) con tres
+  pestañas (`DeliveryTabs`): `/pedidos/delivery`, `/pedidos/delivery/repartidores` y `/pedidos/delivery/historial`. El seguimiento del cliente (`useOrderTracking`)
+  escucha el WebSocket y muestra el código en `TrackingModal`.
+- **Decisiones**: no se agregó un estado de pedido; el repartidor no ve el importe ni el medio de pago (aunque el
+  pedido sea contra entrega, no se maneja cobro en mano); los pedidos cargados a mano (sin seguimiento online) le
+  pasan el código al cliente desde Entregas en curso («Ver código», queda registrado).
+- **Pendiente**: aplicar la migración 006 y probar en vivo (vincular un celular, retirar, entregar, modo abierto con dos
+  repartidores, apagar el módulo con entregas en curso); definir si hace falta un límite de entregas simultáneas por
+  repartidor y notificaciones push al repartidor (hoy solo ve el aviso con la app abierta).
 
 ---
 

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChefHat, ClipboardList, MoreHorizontal, History, LayoutGrid, PanelLeft, Settings, Users, Wallet } from "lucide-react";
+import { ArrowLeft, ChefHat, ClipboardList, MoreHorizontal, History, LayoutGrid, PanelLeft, Settings, Truck, Users, Wallet } from "lucide-react";
 import { useAuth } from "../../../../context/useAuth";
 import { isSubscriptionExpired } from "../../../../lib/plans";
 import { OWNER_SIDEBAR_COLLAPSED_KEY } from "../../../../lib/ownerSidebar";
+import { useOrderSettings } from "../../hooks/usePanelData";
+import { ORDERS_SETTINGS_CHANGED } from "../../lib/delivery";
 import BrandMark from "../../../../components/Common/BrandMark";
 import BrandWordmark from "../../../../components/Common/BrandWordmark";
 // Mismo sidebar que el panel principal (DashboardLayout): se reusan sus estilos.
@@ -13,7 +15,7 @@ import p from "./panel.module.css";
 // Sección "Gestión de pedidos" del panel del dueño, con su propia barra
 // lateral. Exclusiva del plan Pro (el backend también lo exige).
 
-const NAV_ITEMS = [
+const BASE_NAV_ITEMS = [
   { path: "/pedidos", label: "Panel de pedidos", short: "Pedidos", icon: <ClipboardList size={20} strokeWidth={1.5} aria-hidden /> },
   { path: "/pedidos/mesas", label: "Mesas", short: "Mesas", icon: <LayoutGrid size={20} strokeWidth={1.5} aria-hidden /> },
   { path: "/pedidos/historial", label: "Historial", short: "Historial", icon: <History size={20} strokeWidth={1.5} aria-hidden /> },
@@ -24,15 +26,39 @@ const NAV_ITEMS = [
   { path: "/pedidos/configuracion", label: "Configuración de pedidos", short: "Config", icon: <Settings size={20} strokeWidth={1.5} aria-hidden /> },
 ];
 
-const DOCK_ITEMS = NAV_ITEMS.slice(0, 4);
-const MORE_ITEMS = NAV_ITEMS.slice(4);
+// Delivery con repartidores: una sola entrada (con pestañas adentro) y solo si el local lo activó.
+const DELIVERY_NAV_ITEMS = [
+  { path: "/pedidos/delivery", label: "Delivery", short: "Delivery", icon: <Truck size={20} strokeWidth={1.5} aria-hidden /> },
+];
+
+// Delivery agrupa varias vistas: la entrada queda activa en todas.
+const isActivePath = (pathname: string, itemPath: string) =>
+  itemPath === "/pedidos/delivery" ? pathname.startsWith("/pedidos/delivery") : pathname === itemPath;
+
+// Los primeros 4 van en el dock del celular; el resto en «Más».
+const withDelivery = (enabled: boolean) => {
+  if (!enabled) return BASE_NAV_ITEMS;
+  const config = BASE_NAV_ITEMS[BASE_NAV_ITEMS.length - 1];
+  return [...BASE_NAV_ITEMS.slice(0, -1), ...DELIVERY_NAV_ITEMS, config];
+};
 
 export default function OrdersLayout() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
-  const moreActive = MORE_ITEMS.some(item => item.path === location.pathname);
+  const orderSettings = useOrderSettings();
+  const { reload: reloadSettings } = orderSettings;
+  const NAV_ITEMS = withDelivery(orderSettings.data?.settings.options.deliveryEnabled === true);
+  const DOCK_ITEMS = NAV_ITEMS.slice(0, 4);
+  const MORE_ITEMS = NAV_ITEMS.slice(4);
+  const moreActive = MORE_ITEMS.some(item => isActivePath(location.pathname, item.path));
+
+  // Al guardar la configuración se actualiza la barra lateral sin recargar.
+  useEffect(() => {
+    window.addEventListener(ORDERS_SETTINGS_CHANGED, reloadSettings);
+    return () => window.removeEventListener(ORDERS_SETTINGS_CHANGED, reloadSettings);
+  }, [reloadSettings]);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => localStorage.getItem(OWNER_SIDEBAR_COLLAPSED_KEY) === "true"
@@ -65,7 +91,7 @@ export default function OrdersLayout() {
 
         <nav className={s.sideNav}>
           {NAV_ITEMS.map(item => {
-            const active = location.pathname === item.path;
+            const active = isActivePath(location.pathname, item.path);
             return (
               <button
                 key={item.path}
@@ -109,7 +135,7 @@ export default function OrdersLayout() {
       {/* En el celular entran 4 accesos + "Más" (con 8 celdas los textos se pisaban). */}
       <nav className="admin-mobile-dock md-surface" aria-label="Gestión de pedidos">
         {DOCK_ITEMS.map(item => {
-          const active = location.pathname === item.path;
+          const active = isActivePath(location.pathname, item.path);
           return (
             <button
               type="button"
@@ -152,7 +178,7 @@ export default function OrdersLayout() {
                 key={item.path}
                 type="button"
                 className="admin-mobile-more__item"
-                aria-current={location.pathname === item.path ? "page" : undefined}
+                aria-current={isActivePath(location.pathname, item.path) ? "page" : undefined}
                 onClick={() => { setMoreOpen(false); navigate(item.path); }}
               >
                 {item.icon}

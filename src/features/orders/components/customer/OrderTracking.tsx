@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { formatCode } from "../../lib/delivery";
 import { useOrderTracking, type OrderTrackingState } from "../../hooks/useOrderTracking";
 import {
   estimateSentence, estimateWindow, forgetTrackedOrder, isTrackingActive, readTrackedOrder, TRACKING_STEPS, trackingView,
@@ -17,7 +18,7 @@ interface ModalProps {
 }
 
 export function TrackingModal({ state, onClose }: ModalProps) {
-  const { status, gaveUp } = state;
+  const { status, gaveUp, delivery } = state;
   const view = trackingView(status, gaveUp);
   const approved = status !== null && ["APPROVED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(status.status);
   const steps = status?.serviceType ? TRACKING_STEPS[status.serviceType] : null;
@@ -41,6 +42,16 @@ export function TrackingModal({ state, onClose }: ModalProps) {
             {sentence}
             {windowText && <span className={s.etaWindow}>Aproximadamente entre las {windowText}</span>}
           </p>
+        )}
+
+        {delivery?.code && status?.orderStatus === "ready" && (
+          <div className={s.deliveryCode} role="status">
+            <span className={s.deliveryCodeLabel}>
+              Tu código de entrega{delivery.courierName ? ` (lo lleva ${delivery.courierName})` : ""}
+            </span>
+            <strong className={s.deliveryCodeValue} aria-label={`Código de entrega: ${delivery.code.split("").join(" ")}`}>{formatCode(delivery.code)}</strong>
+            <span className={s.deliveryCodeHint}>Dáselo al repartidor cuando te entregue el pedido. No lo compartas con nadie más.</span>
+          </div>
         )}
 
         {approved && steps && view.step >= 0 && (

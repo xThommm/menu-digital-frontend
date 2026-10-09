@@ -1,5 +1,6 @@
 import apiClient from "../../../api/client";
 import type {
+  Courier, DeliveryActiveResponse, DeliveryTrail, DeliveryAssignment,
   BoardResponse, MpConnection, OrderPaymentResponse, RefundResult, CashRegister, CashSession, Order, OrderLineInput, OrderOptions, OrderSettings, OrderStatus,
   PaperWidth, PrintMode, Sector, SectorAssignment, SectorTargetType, SectorTicketsResponse, ServiceInput,
   ServiceType, SettingsResponse, Shift, ShiftSummary, TableSession, Ticket, TicketStatus, Waiter,
@@ -32,6 +33,8 @@ export interface OrdersQuery {
   from?: string;
   to?: string;
   table?: number;
+  // Delivery: pedidos que pasaron por ese repartidor.
+  courier?: number;
   page?: number;
 }
 
@@ -212,3 +215,62 @@ export const updateOwnerTicketStatus = async (sectorId: number, ticketId: number
 
 export const markOwnerTicketPrinted = async (sectorId: number, ticketId: number): Promise<Ticket> =>
   (await apiClient.post<{ ticket: Ticket }>(`/orders/sectors/${sectorId}/tickets/${ticketId}/printed`)).data.ticket;
+
+// ── Delivery / repartidores ──
+export const getDeliveryActive = async (): Promise<DeliveryActiveResponse> =>
+  (await apiClient.get<DeliveryActiveResponse>("/orders/delivery/active")).data;
+
+export const assignDelivery = async (
+  orderId: number,
+  data: { courierId: number; force?: boolean; reason?: string },
+): Promise<DeliveryAssignment> =>
+  (await apiClient.post<{ assignment: DeliveryAssignment }>(`/orders/delivery/orders/${orderId}/assign`, data)).data.assignment;
+
+export const unassignDelivery = async (orderId: number, reason?: string): Promise<void> => {
+  await apiClient.post(`/orders/delivery/orders/${orderId}/unassign`, { reason });
+};
+
+// El administrador marca la entrega sin el código del cliente (según la configuración del local).
+export const completeDelivery = async (orderId: number, reason?: string): Promise<Order> =>
+  (await apiClient.post<{ order: Order }>(`/orders/delivery/orders/${orderId}/complete`, { reason })).data.order;
+
+export const getDeliveryTrail = async (orderId: number): Promise<DeliveryTrail> =>
+  (await apiClient.get<DeliveryTrail>(`/orders/delivery/orders/${orderId}/trail`)).data;
+
+// Pedidos cargados a mano (el cliente no tiene seguimiento online): el local le dice el código.
+export const revealDeliveryCode = async (orderId: number): Promise<string> =>
+  (await apiClient.post<{ code: string }>(`/orders/delivery/orders/${orderId}/code`)).data.code;
+
+export const listCouriers = async (): Promise<Courier[]> =>
+  (await apiClient.get<{ couriers: Courier[] }>("/orders/delivery/couriers")).data.couriers;
+
+export const createCourier = async (data: { name: string; phone?: string; notes?: string }): Promise<Courier> =>
+  (await apiClient.post<{ courier: Courier }>("/orders/delivery/couriers", data)).data.courier;
+
+// reassignTo: al pausarlo con entregas sin resolver, a quién pasárselas.
+export const updateCourier = async (
+  id: number,
+  data: Partial<{ name: string; phone: string; notes: string; active: boolean; reassignTo: number }>,
+): Promise<Courier> => (await apiClient.put<{ courier: Courier }>(`/orders/delivery/couriers/${id}`, data)).data.courier;
+
+export const deleteCourier = async (id: number, reassignTo?: number): Promise<void> => {
+  await apiClient.delete(`/orders/delivery/couriers/${id}`, { params: reassignTo ? { reassignTo } : undefined });
+};
+
+export const issueCourierPairingCode = async (id: number) =>
+  (await apiClient.post<{ code: string; manualCode: string; expiresAt: string }>(`/orders/delivery/couriers/${id}/pairing-code`)).data;
+
+export const revokeCourierPairingCode = async (id: number): Promise<void> => {
+  await apiClient.delete(`/orders/delivery/couriers/${id}/pairing-code`);
+};
+
+export const listCourierSessions = async (id: number) =>
+  (await apiClient.get<{ sessions: Courier["sessions"] }>(`/orders/delivery/couriers/${id}/sessions`)).data.sessions;
+
+export const revokeCourierSessions = async (id: number): Promise<void> => {
+  await apiClient.delete(`/orders/delivery/couriers/${id}/sessions`);
+};
+
+export const revokeCourierSession = async (id: number, sessionId: number): Promise<void> => {
+  await apiClient.delete(`/orders/delivery/couriers/${id}/sessions/${sessionId}`);
+};

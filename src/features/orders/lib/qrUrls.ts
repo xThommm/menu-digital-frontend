@@ -13,3 +13,10 @@ export const venueQrUrl = (slug: string, token: string) =>
 
 export const waiterQrUrl = (slug: string, code: string) =>
   `${origin()}/${slug}/operador?code=${encodeURIComponent(code)}`;
+
+// Repartidor: /<slug>/repartidor?code=<código> (el código rota desde el panel y sirve una sola vez).
+export const courierQrUrl = (slug: string, code: string) =>
+  `${origin()}/${slug}/repartidor?code=${encodeURIComponent(code)}`;
+
+// Página donde el repartidor tipea el código corto (sin escanear ni conocer el slug del local).
+export const courierManualUrl = () => `${origin()}/repartidor`;

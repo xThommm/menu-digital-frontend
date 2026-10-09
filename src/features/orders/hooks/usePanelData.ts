@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { getOrderSettings, listWaiters } from "../api/ordersApi";
+import { getOrderSettings, listCouriers, listWaiters } from "../api/ordersApi";
 import { fetchMenuForOrdering } from "../api/publicOrdersApi";
 import { errorMessage } from "../lib/errors";
-import type { SettingsResponse, Waiter } from "../types";
+import type { Courier, SettingsResponse, Waiter } from "../types";
 import type { PublicMenuPayload } from "../../../types";
 
 // Datos que comparten varias páginas del panel de pedidos. Sin caché global
@@ -41,6 +41,9 @@ export const useOrderSettings = () =>
 
 export const useWaiters = () =>
   useLoadable<Waiter[]>(listWaiters, "No se pudieron cargar los operadores.");
+
+export const useCouriers = () =>
+  useLoadable<Courier[]>(listCouriers, "No se pudieron cargar los repartidores.");
 
 export function useOrderingMenu(slug: string | undefined) {
   const load = useCallback(() => {

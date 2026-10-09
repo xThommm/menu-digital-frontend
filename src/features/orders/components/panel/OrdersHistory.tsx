@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import DataTable, { type DataTableColumn } from "../../../../components/Common/DataTable/DataTable";
-import { listOrders, listShifts, updateOrderStatus, type OrdersQuery } from "../../api/ordersApi";
+import { listCouriers, listOrders, listShifts, updateOrderStatus, type OrdersQuery } from "../../api/ordersApi";
 import { errorMessage } from "../../lib/errors";
 import {
-  formatDateTime, formatMoney, placeLabel, SERVICE_LABEL, SOURCE_LABEL, STATUS_LABEL,
+  formatDateTime, formatMoney, formatTime, placeLabel, SERVICE_LABEL, SOURCE_LABEL, STATUS_LABEL,
 } from "../../lib/format";
-import type { Order, OrderStatus, ServiceType, Shift } from "../../types";
+import { ASSIGNMENT_LABEL, minutesLabel } from "../../lib/delivery";
+import type { Courier, Order, OrderStatus, ServiceType, Shift } from "../../types";
 import { CustomerInfo } from "./OrderCard";
 import { isRefundable } from "../../lib/payment";
 import PaymentBadge from "./PaymentBadge";
@@ -47,16 +48,35 @@ const COLUMNS: DataTableColumn<Order>[] = [
   { id: "total", header: "Total", width: "120px", align: "right", render: order => formatMoney(order.total) },
 ];
 
+// Historial de envíos: el mismo historial, filtrado a delivery, con el repartidor y los tiempos reales.
+const DELIVERY_COLUMNS: DataTableColumn<Order>[] = [
+  { id: "number", header: "Pedido", width: "96px", render: order => `#${order.number}` },
+  { id: "date", header: "Fecha", width: "170px", render: order => formatDateTime(order.createdAt) },
+  { id: "address", header: "Destino", width: "220px", render: order => order.deliveryAddress ?? "—" },
+  { id: "courier", header: "Repartidor", width: "150px", render: order => order.delivery?.courierName ?? "—" },
+  { id: "pickup", header: "Retiro", width: "90px", render: order => (order.delivery?.pickedUpAt ? formatTime(order.delivery.pickedUpAt) : "—") },
+  { id: "delivered", header: "Entrega", width: "90px", render: order => (order.delivery?.deliveredAt ? formatTime(order.delivery.deliveredAt) : "—") },
+  { id: "duration", header: "Duración", width: "100px", render: order => (order.delivery?.durationMinutes != null ? minutesLabel(order.delivery.durationMinutes) : "—") },
+  {
+    id: "status",
+    header: "Estado",
+    width: "150px",
+    render: order => <span className={`${p.status} ${p[`status_${order.status}`]}`}>{STATUS_LABEL[order.status]}</span>,
+  },
+];
+
 type Scope = "shift" | "all";
 
-export default function OrdersHistory() {
+export default function OrdersHistory({ deliveryOnly = false, tabs = null }: { deliveryOnly?: boolean; tabs?: React.ReactNode }) {
   const [params, setParams] = useSearchParams();
   const paramShift = params.get("turno");
   const [scope, setScope] = useState<Scope>("shift");
   // Turno actual o, si no hay uno abierto, el último (undefined: cargando).
   const [latestShift, setLatestShift] = useState<Shift | null | undefined>(undefined);
   const [status, setStatus] = useState<OrderStatus | "">("");
-  const [serviceType, setServiceType] = useState<ServiceType | "">("");
+  const [serviceType, setServiceType] = useState<ServiceType | "">(deliveryOnly ? "delivery" : "");
+  const [courier, setCourier] = useState("");
+  const [couriers, setCouriers] = useState<Courier[]>([]);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [table, setTable] = useState("");
@@ -66,6 +86,15 @@ export default function OrdersHistory() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [returning, setReturning] = useState<{ id: number; reason: string } | null>(null);
   const [refunding, setRefunding] = useState<Order | null>(null);
+
+  useEffect(() => {
+    if (!deliveryOnly) return;
+    let cancelled = false;
+    listCouriers()
+      .then(result => { if (!cancelled) setCouriers(result); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [deliveryOnly]);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,13 +117,14 @@ export default function OrdersHistory() {
     if (from) query.from = dayStart(from);
     if (to) query.to = dayEnd(to);
     if (table) query.table = Number(table);
+    if (courier) query.courier = Number(courier);
     try {
       setData(await listOrders(query));
       setError(null);
     } catch (err) {
       setError(errorMessage(err, "No se pudo cargar el historial."));
     }
-  }, [waitingShift, page, shiftId, status, serviceType, from, to, table]);
+  }, [waitingShift, page, shiftId, status, serviceType, from, to, table, courier]);
 
   useEffect(() => {
     const timer = setTimeout(load, 0);
@@ -117,7 +147,8 @@ export default function OrdersHistory() {
   const resetPage = () => setPage(1);
   const clearFilters = () => {
     setStatus("");
-    setServiceType("");
+    setServiceType(deliveryOnly ? "delivery" : "");
+    setCourier("");
     setFrom("");
     setTo("");
     setTable("");
@@ -152,6 +183,25 @@ export default function OrdersHistory() {
         </ul>
         {order.notes && <span>Nota: {order.notes}</span>}
         <CustomerInfo order={order} />
+        {order.delivery && (
+          <div className={p.stack} style={{ gap: "0.25rem" }}>
+            <span className={p.label}>
+              Repartidor: {order.delivery.courierName} · {ASSIGNMENT_LABEL[order.delivery.status]}
+              {order.delivery.deliveredBy === "admin" && " (marcado por el administrador)"}
+            </span>
+            <span className={p.switchHint}>
+              Asignado {formatDateTime(order.delivery.assignedAt)}
+              {order.delivery.pickedUpAt && ` · retirado ${formatDateTime(order.delivery.pickedUpAt)}`}
+              {order.delivery.deliveredAt && ` · entregado ${formatDateTime(order.delivery.deliveredAt)}`}
+              {order.delivery.durationMinutes != null && ` · ${minutesLabel(order.delivery.durationMinutes)} de viaje`}
+            </span>
+            {order.delivery.previousCouriers.length > 0 && (
+              <span className={p.switchHint}>
+                Responsables anteriores: {order.delivery.previousCouriers.map(previous => previous.courierName).join(", ")}
+              </span>
+            )}
+          </div>
+        )}
         {order.paymentMode === "mercadopago" && (
           <div className={p.headerActions}>
             <PaymentBadge order={order} />
@@ -226,12 +276,13 @@ export default function OrdersHistory() {
     <div className={p.page}>
       <header className={p.header}>
         <div className={p.titleBlock}>
-          <h1 className={p.title}>Historial de pedidos</h1>
+          <h1 className={p.title}>{deliveryOnly ? "Historial de envíos" : "Historial de pedidos"}</h1>
           <p className={p.subtitle}>
             {subtitle}
             {data && ` ${data.total} ${data.total === 1 ? "pedido" : "pedidos"}.`}
           </p>
         </div>
+        {tabs}
         <div className={p.headerActions}>
           <div className={p.segmented} role="radiogroup" aria-label="Qué pedidos ver">
             <button
@@ -261,11 +312,11 @@ export default function OrdersHistory() {
       {error && data && <p className={p.error} role="alert" style={{ marginBottom: "1rem" }}>{error}</p>}
 
       <DataTable<Order>
-        caption="Historial de pedidos"
+        caption={deliveryOnly ? "Historial de envíos" : "Historial de pedidos"}
         rows={data?.orders ?? []}
-        columns={COLUMNS}
+        columns={deliveryOnly ? DELIVERY_COLUMNS : COLUMNS}
         getRowId={order => String(order.id)}
-        minWidth={760}
+        minWidth={deliveryOnly ? 1000 : 760}
         filters={(
           <>
             <label>
@@ -275,13 +326,24 @@ export default function OrdersHistory() {
                 {STATUSES.map(value => <option key={value} value={value}>{STATUS_LABEL[value]}</option>)}
               </select>
             </label>
-            <label>
-              Tipo
-              <select value={serviceType} onChange={event => { setServiceType(event.target.value as ServiceType | ""); resetPage(); }}>
-                <option value="">Todos</option>
-                {SERVICES.map(value => <option key={value} value={value}>{SERVICE_LABEL[value]}</option>)}
-              </select>
-            </label>
+            {!deliveryOnly && (
+              <label>
+                Tipo
+                <select value={serviceType} onChange={event => { setServiceType(event.target.value as ServiceType | ""); resetPage(); }}>
+                  <option value="">Todos</option>
+                  {SERVICES.map(value => <option key={value} value={value}>{SERVICE_LABEL[value]}</option>)}
+                </select>
+              </label>
+            )}
+            {deliveryOnly && (
+              <label>
+                Repartidor
+                <select value={courier} onChange={event => { setCourier(event.target.value); resetPage(); }}>
+                  <option value="">Todos</option>
+                  {couriers.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </label>
+            )}
             <label>
               Desde
               <input type="date" value={from} onChange={event => { setFrom(event.target.value); resetPage(); }} />
@@ -290,13 +352,15 @@ export default function OrdersHistory() {
               Hasta
               <input type="date" value={to} onChange={event => { setTo(event.target.value); resetPage(); }} />
             </label>
-            <label>
-              Mesa
-              <input type="number" min={1} inputMode="numeric" value={table} onChange={event => { setTable(event.target.value); resetPage(); }} placeholder="Todas" />
-            </label>
+            {!deliveryOnly && (
+              <label>
+                Mesa
+                <input type="number" min={1} inputMode="numeric" value={table} onChange={event => { setTable(event.target.value); resetPage(); }} placeholder="Todas" />
+              </label>
+            )}
           </>
         )}
-        activeFilterCount={[status, serviceType, from, to, table].filter(Boolean).length}
+        activeFilterCount={[status, deliveryOnly ? "" : serviceType, courier, from, to, table].filter(Boolean).length}
         onClearFilters={clearFilters}
         expandable={expandable}
         loading={!data && !error}
