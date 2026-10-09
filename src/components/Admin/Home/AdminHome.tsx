@@ -31,6 +31,9 @@ import styles from "./AdminHome.module.css";
 import { usePlans } from "../../../hooks/usePlans";
 import Cobweb from "../../Halloween/Cobweb";
 import Spider from "../../Halloween/Spider";
+import HalloweenSky from "../../Halloween/HalloweenSky";
+import Pumpkin from "../../Halloween/Pumpkin";
+import { useSpooky } from "../../../hooks/useHalloween";
 import { useAuthTheme } from "../../../hooks/useAuthTheme";
 import { getPlanFeatureLabels } from "../../../lib/plans";
 import type { BooleanPlanFeature } from "../../../types";
@@ -498,6 +501,7 @@ export default function HomePage() {
   const [visible, setVisible] = useState(false);
   const { theme, toggle: toggleTheme } = useAuthTheme();
   const themeLabel = theme === "dark" ? "Activar tema claro" : "Activar tema oscuro";
+  const spooky = useSpooky();
 
   useParallax();
   useReveal();
@@ -658,6 +662,7 @@ useEffect(() => {
           {/* parallax layers */}
           <div id="heroBg" className={styles.heroBg} />
           <div id="heroGrid" className={styles.heroGrid} />
+          <HalloweenSky />
           <div id="steamContainer" className={styles.steam} />
 
           <div className={styles.heroInner}>
@@ -837,11 +842,13 @@ useEffect(() => {
         <section className={styles.pricing} id="plans">
           <Cobweb corner="tl" size={170} />
           <Cobweb corner="tr" size={170} />
+          <Pumpkin size={56} className="hw-pumpkin-bl" />
+          <Pumpkin size={42} className="hw-pumpkin-br" />
           <div className={styles.pricingInner}>
             <div className={`${styles.pricingHeader} ${styles.reveal}`}>
               {/* <div className={styles.eyebrow}>Planes y precios</div> */}
               <h2 className={styles.sectionH2}>
-                Elegí cómo empezar.<br /><em>Sin sorpresas.</em>
+                Elegí cómo empezar.<br /><em>{spooky("Sin sorpresas.", "Sin sustos.")}</em>
               </h2>
               <p className={styles.pricingSub}>
                 Todos incluyen tu menú digital. Podés cambiar de plan cuando quieras.

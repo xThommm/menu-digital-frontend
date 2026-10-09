@@ -39,7 +39,8 @@ export default function HalloweenEffects() {
           <Bats level={level} />
         </Suspense>
       )}
-      <HalloweenToggle level={level} />
+      {/* En la landing hay un botón de chat en esa esquina. */}
+      <HalloweenToggle lift={pathname === "/"} />
     </>
   );
 }

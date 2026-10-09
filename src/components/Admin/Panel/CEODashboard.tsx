@@ -1,4 +1,5 @@
 import Cobweb from "../../Halloween/Cobweb";
+import { useSpooky } from "../../../hooks/useHalloween";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import apiClient from "../../../api/client";
@@ -52,6 +53,7 @@ function timeAgo(dateStr: string) {
 
 export default function CEODashboard() {
   const { user } = useAuth();
+  const spooky = useSpooky();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [crmSummary, setCrmSummary] = useState<CrmSummary | null>(null);
   const [paymentsData, setPaymentsData] = useState<AdminPaymentsResponse | null>(null);
@@ -287,7 +289,7 @@ export default function CEODashboard() {
             </div>
           ) : (
             <p className={s.emptyState}>
-              {crmSummary ? "Todavía no hay clientes registrados." : "No se pudo cargar la actividad reciente."}
+              {crmSummary ? spooky("Todavía no hay clientes registrados.", "Acá no hay nadie… todavía 👻") : "No se pudo cargar la actividad reciente."}
             </p>
           )}
         </section>

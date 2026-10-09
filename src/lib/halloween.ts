@@ -26,3 +26,8 @@ export function halloweenLevelFor(pathname: string): HalloweenLevel | null {
   }
   return null;
 }
+
+// Huevo de pascua: 5 clics seguidos en el interruptor sueltan una lluvia de
+// murciélagos. El interruptor lo emite en window y el canvas lo escucha.
+export const SWARM_EVENT = "hw:swarm";
+export const SWARM_CLICKS = 5;
