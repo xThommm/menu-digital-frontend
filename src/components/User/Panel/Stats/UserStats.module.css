@@ -29,9 +29,18 @@
   gap: var(--space-2);
   flex-wrap: wrap;
 }
-.periodPicker legend { margin-bottom: var(--space-2); color: var(--admin-text-secondary); }
-/* Mismo patrón que las pestañas de Mi negocio: secundario tonal, y el
-   período elegido en primario lleno. */
+/* El texto de cada botón ya dice qué elige: la leyenda queda para lectores de pantalla. */
+.periodPicker legend,
+.segmented legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Secundario tonal; el elegido se marca con la píldora de indicador para no
+   competir con la pestaña activa, que es el primario lleno. */
 .periodPicker button {
   min-height: var(--control-min-size);
   padding: var(--space-2) var(--space-4);
@@ -43,8 +52,8 @@
   font: inherit;
 }
 .periodPicker button[aria-pressed="true"] {
-  color: var(--admin-gold-ink);
-  background: var(--admin-gold);
+  color: var(--admin-text-primary);
+  background: var(--tone-indicator);
   font-weight: 600;
 }
 .periodDates { grid-column: 1 / -1; color: var(--admin-text-secondary); margin: 0; font-size: var(--text-sm); }
@@ -266,12 +275,47 @@
   position: relative;
 }
 
+/* Eje a la izquierda, barras a la derecha y las fechas debajo de las barras. */
+.chartFrame {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-2);
+}
+
+.yAxis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-size: 0.62rem;
+  color: var(--admin-text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Cada marca centrada sobre su línea. */
+.yAxis span { line-height: 1; }
+.yAxis span:first-child { transform: translateY(-50%); }
+.yAxis span:last-child { transform: translateY(50%); }
+
 .chart {
   position: relative;
   display: flex;
   align-items: flex-end;
   gap: 3px;
   height: 160px;
+  border-bottom: 1px solid var(--admin-border-subtle);
+}
+
+.chartFrame .chartAxis { grid-column: 2; }
+
+.gridLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px solid var(--admin-border-subtle);
+  opacity: 0.7;
+  pointer-events: none;
 }
 
 /* Referencia horizontal: sin ella cada barra solo se compara con la de al
@@ -467,6 +511,7 @@
    criterio que la semana típica).
    ═══════════════════════════════════════════════════════════════ */
 .hourChart {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(24, minmax(0, 1fr));
   gap: 2px;
@@ -474,7 +519,24 @@
   height: 96px;
 }
 
+.hourCol {
+  display: flex;
+  align-items: flex-end;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.hourCol:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 3px;
+}
+.hourCol.barWrapActive .hourBar { filter: brightness(1.15); }
+
 .hourBar {
+  width: 100%;
   min-height: 3px;
   border-radius: 2px 2px 0 0;
   background: color-mix(in srgb, var(--admin-gold) 32%, transparent);
@@ -886,7 +948,10 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-content: start;
-    max-width: 1080px;
+    /* Todo el ancho que deja la barra lateral, esté abierta o plegada. */
+    max-width: none;
+    margin: 0;
+    padding-inline: var(--space-8);
     gap: var(--space-4);
   }
 
@@ -894,6 +959,7 @@
      con :first-of-type porque .summaryRow también es un <section>, así que
      "el primero de su tipo" sería la fila de resumen, no el gráfico. */
   .welcome,
+  .toolbar,
   .summaryRow,
   .emptyCard,
   .lockCard,
@@ -901,7 +967,13 @@
     grid-column: 1 / -1;
   }
 
-  .chart { height: 200px; }
+  .chart { height: 240px; }
+  .hourChart { height: 120px; }
+  .weekBarWrap { height: 108px; }
+
+  .summaryRow { gap: var(--space-3); }
+  .summaryCard { padding: var(--space-5) var(--space-4); }
+  .card { padding: var(--space-6); }
 
   /* Embudo a la izquierda, origen y recurrencia a la derecha. */
   .audienceGrid {
@@ -924,6 +996,13 @@
   .chart { gap: 2px; height: 140px; }
 
   .topItemRow { gap: var(--space-2); }
+
+  .exportBtn { width: 100%; justify-content: center; }
+  .toolbar { align-items: stretch; }
+  .tabs { flex: 1 1 100%; }
+  .tabs button { flex: 1; padding-inline: var(--space-3); }
+  .periodPicker { flex: 1 1 100%; }
+  .periodPicker button { flex: 1; }
 }
 
 @media (max-width: 420px) {
@@ -945,6 +1024,660 @@
 /* Respeta preferencia de movimiento reducido */
 @media (prefers-reduced-motion: reduce) {
   .welcome, .summaryRow, .card, .lockCard, .emptyCard { animation: none; }
-  .bar, .weekBar, .hourBar, .funnelFill { animation: none; }
+  .bar, .weekBar, .hourBar, .funnelFill, .diffBar { animation: none; }
   .liveDot { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ENCABEZADO, PESTAÑAS Y EXPORTAR
+   ═══════════════════════════════════════════════════════════════ */
+.welcomeSplit {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.exportBtn {
+  composes: md-button from global;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-min-size);
+  padding: 0.6rem var(--space-5);
+  border: none;
+  border-radius: var(--control-radius);
+  color: var(--tone-on-secondary);
+  background: var(--tone-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-2);
+}
+.tabs button {
+  min-height: var(--control-min-size);
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--control-radius);
+  color: var(--tone-on-secondary);
+  background: var(--tone-secondary);
+  cursor: pointer;
+  font: inherit;
+}
+.tabs button[aria-pressed="true"] {
+  color: var(--admin-gold-ink);
+  background: var(--admin-gold);
+  font-weight: 600;
+}
+
+.tabs button:focus-visible,
+.exportBtn:focus-visible,
+.segmented button:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 3px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VENTAS Y CAJA
+   ═══════════════════════════════════════════════════════════════ */
+.cardHeadSplit {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* Qué mide el gráfico (importe o pedidos): control chico, dentro de la tarjeta. */
+.segmented {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 2px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--tone-low);
+}
+.segmented button {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-full);
+  color: var(--admin-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-xs);
+}
+.segmented button[aria-pressed="true"] {
+  color: var(--admin-text-primary);
+  background: var(--tone-indicator);
+  font-weight: 600;
+}
+
+.barList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+}
+.barListRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+.barListRanked .barListRow { grid-template-columns: 1rem minmax(0, 1fr) auto; }
+
+.barListLabel {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.barListLabel small {
+  flex: none;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  color: var(--admin-text-secondary);
+}
+
+.subLabel {
+  margin: var(--space-5) 0 var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--admin-text-secondary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.factGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+
+/* Diferencia de caja: la barra sale de la línea de cero, hacia arriba si
+   sobró y hacia abajo si faltó. */
+.diffChart { align-items: stretch; }
+.zeroLine {
+  border-top-color: var(--admin-text-secondary);
+  opacity: 0.6;
+}
+.diffBar {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  min-height: 2px;
+}
+/* Neutro y no el acento de marca: el acento es rojizo y se confundiría con el faltante. */
+.diffBarOver {
+  border-radius: 4px 4px 0 0;
+  background: color-mix(in srgb, var(--admin-text-primary) 55%, transparent);
+}
+.diffBarShort {
+  border-radius: 0 0 4px 4px;
+  background: var(--admin-red-text);
+}
+.diffBarExact {
+  margin-bottom: -1px;
+  background: var(--admin-text-secondary);
+}
+.barWrapActive .diffBar { filter: brightness(1.15); }
+
+.legendSwatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-left: var(--space-2);
+  border-radius: 2px;
+}
+.legendSwatch:first-child { margin-left: 0; }
+
+.diffShort { color: var(--admin-red-text); font-weight: 600; }
+
+/* La tabla hereda el color del texto: dentro de la tarjeta hay que dárselo. */
+.tableWrap { color: var(--admin-text-primary); }
+
+.tooltip small.tooltipLine {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   IDENTIDAD: CIFRA PRINCIPAL, DONUTS Y ANILLOS
+   Formas redondas y una pieza grande por pestaña, para que el panel no sea
+   una grilla de recuadros iguales.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Paleta de los donuts: cuatro tonos que se distinguen entre vecinos también
+   con daltonismo (validados contra la superficie de cada tema) y un gris para
+   "Otras". El primero es el naranja de la marca. */
+.root {
+  --viz-1: #d95926;
+  --viz-2: #3987e5;
+  --viz-3: #199e70;
+  --viz-4: #9085e9;
+  --viz-rest: color-mix(in srgb, var(--admin-text-secondary) 38%, transparent);
+}
+:global(:root[data-theme="light"]) .root {
+  --viz-1: #eb6834;
+  --viz-2: #2a78d6;
+  --viz-3: #1baf7a;
+  --viz-4: #4a3aa7;
+}
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-6) var(--space-5);
+  border-radius: 36px;
+  background:
+    radial-gradient(120% 150% at 0% 0%, color-mix(in srgb, var(--admin-gold) 24%, var(--tone)) 0%, var(--tone) 60%);
+  animation: fadeUp 0.45s var(--ease-out) both;
+  animation-delay: 0.1s;
+}
+
+/* La serie del período como forma de fondo. Se desvanece hacia la izquierda
+   para no pasar por detrás de la cifra. */
+.heroSpark {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: -1;
+  width: 100%;
+  height: 60%;
+  mask-image: linear-gradient(to right, transparent 5%, black 55%);
+  pointer-events: none;
+}
+.heroSparkArea { fill: color-mix(in srgb, var(--admin-gold) 13%, transparent); }
+.heroSparkLine {
+  fill: none;
+  stroke: color-mix(in srgb, var(--admin-gold) 60%, transparent);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.heroMain { min-width: 0; }
+
+.heroLabel {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--admin-text-secondary);
+}
+
+.heroValue {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-serif);
+  font-size: clamp(2.5rem, 5.4vw, 4.5rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--admin-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.heroFoot {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--admin-text-secondary);
+}
+
+.heroStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-6);
+  margin: var(--space-5) 0 0;
+}
+.heroStats div {
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--admin-border-gold-mid);
+}
+.heroStats dt {
+  font-size: var(--text-xs);
+  color: var(--admin-text-secondary);
+}
+.heroStats dd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0.1rem 0 0;
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  color: var(--admin-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.heroAside {
+  display: grid;
+  place-items: center;
+}
+
+.trendPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.trendPillSmall {
+  padding: 0.15rem 0.5rem;
+  font-size: var(--text-xs);
+}
+
+/* ── Anillo ── */
+.ring {
+  position: relative;
+  flex: none;
+  width: 76px;
+  aspect-ratio: 1;
+}
+.ring svg {
+  display: block;
+  transform: rotate(-90deg);
+}
+.ringTrack,
+.ringFill {
+  fill: none;
+  stroke-width: 9;
+}
+.ringTrack { stroke: color-mix(in srgb, var(--admin-gold) 16%, transparent); }
+.ringFill {
+  stroke: var(--admin-gold);
+  stroke-linecap: round;
+}
+.ringCenter {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.15rem;
+  padding: 16%;
+  text-align: center;
+}
+.ringCenter strong {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  color: var(--admin-text-primary);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.ringCenter small,
+.ringCenter span {
+  font-size: var(--text-xs);
+  color: var(--admin-text-secondary);
+  line-height: 1.3;
+}
+
+.ringLg { width: 216px; }
+.ringLg .ringTrack,
+.ringLg .ringFill { stroke-width: 5; }
+.ringLg .ringCenter strong { font-size: var(--text-2xl); }
+
+.ringRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.ringRow p {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--admin-text-secondary);
+  line-height: 1.45;
+}
+.ringRow p strong {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--admin-text-primary);
+}
+.statList + .ringRow {
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 0.5px solid var(--admin-border-subtle);
+}
+
+/* ── Donut ── */
+.donut {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-5);
+}
+.donutFigure {
+  position: relative;
+  width: min(100%, 216px);
+  aspect-ratio: 1;
+}
+.donutFigure svg {
+  display: block;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+.donutSlice {
+  fill: none;
+  stroke-width: 13;
+  transition: stroke-width var(--admin-transition), opacity var(--admin-transition);
+}
+.donutSlice:hover { stroke-width: 15; }
+.donutSliceDim { opacity: 0.35; }
+.donutSliceLink { cursor: pointer; }
+
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 0.2rem;
+  padding: 20%;
+  text-align: center;
+  pointer-events: none;
+}
+.donutCenter strong {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  color: var(--admin-text-primary);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.donutCenter span {
+  font-size: var(--text-xs);
+  color: var(--admin-text-secondary);
+}
+
+.donutLegend {
+  list-style: none;
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+.donutLegend li { transition: opacity var(--admin-transition); }
+.donutRowDim { opacity: 0.55; }
+.donutLegend li > div,
+.donutLegend li > button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: 16px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+.donutLegend li > button { cursor: pointer; }
+.donutLegend li > button:hover { background: var(--tone-high); }
+.donutLegend li > button[aria-pressed="true"] { background: var(--tone-indicator); }
+.donutLegend li > button:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
+}
+.donutLegend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.donutName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  color: var(--admin-text-primary);
+}
+.donutValue {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--admin-text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+.donutValue small {
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--admin-text-secondary);
+}
+
+/* ── Filtro por tipo de pedido ── */
+.filterBar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  transition: opacity var(--admin-transition);
+}
+.filterBar legend {
+  float: left;
+  margin-right: var(--space-2);
+  padding: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--admin-text-secondary);
+}
+.filterBar button {
+  min-height: 36px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--tone-outline);
+  border-radius: var(--radius-full);
+  color: var(--admin-text-primary);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-sm);
+}
+.filterBar button[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--tone-indicator);
+  font-weight: 600;
+}
+.filterBar button:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 3px;
+}
+.filterStatus {
+  font-size: var(--text-xs);
+  color: var(--admin-text-secondary);
+}
+
+/* ── Datos sueltos sin recuadro ── */
+.cardAccent {
+  background: linear-gradient(160deg, var(--tone-primary-container) 0%, var(--tone) 72%);
+}
+
+.statList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-5) var(--space-4);
+  margin: 0;
+}
+.statList div {
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--admin-border-gold-mid);
+}
+.statList dt {
+  font-size: var(--text-xs);
+  color: var(--admin-text-secondary);
+}
+.statList dd {
+  margin: 0.1rem 0 0;
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  color: var(--admin-text-primary);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.statList dd small {
+  display: block;
+  margin-top: 0.15rem;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--admin-text-secondary);
+}
+
+.audienceFacts { gap: var(--space-5); }
+
+@media (min-width: 1024px) {
+  /* Doce columnas: las tarjetas dejan de ser todas mitades iguales. */
+  .main { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .card { grid-column: span 6; border-radius: 32px; }
+  .span4 { grid-column: span 4; }
+  .span5 { grid-column: span 5; }
+  .span7 { grid-column: span 7; }
+  .span8 { grid-column: span 8; }
+  .cardWide { grid-column: 1 / -1; }
+
+  .welcomeTitle { font-size: 2.5rem; }
+
+  /* Títulos de tarjeta en la serif de la marca en vez de la etiqueta en mayúsculas. */
+  .cardLabel {
+    font-family: var(--font-serif);
+    font-size: var(--text-lg);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    text-transform: none;
+    opacity: 1;
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-10);
+    border-radius: 44px;
+  }
+
+  /* Al lado de una tarjeta alta (donut, semana típica), el gráfico ocupa el alto que sobra. */
+  .span8 { display: flex; flex-direction: column; }
+  .span8 > .chartBlock { flex: 1; display: flex; flex-direction: column; }
+  .span8 .chartFrame { flex: 1; grid-template-rows: minmax(280px, 1fr) auto; }
+  .span8 .chart { height: auto; }
+  .span8 .yAxis { grid-row: 1; }
+
+  /* Barras con la punta redonda. */
+  .bar,
+  .hourBar { border-radius: 999px 999px 0 0; }
+  .weekBar { border-radius: 18px 18px 0 0; }
+}
+
+@media (max-width: 599px) {
+  .ringLg { width: 190px; }
+  .filterBar legend { float: none; width: 100%; margin-bottom: var(--space-1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero { animation: none; }
+  .donutSlice, .donutLegend li, .filterBar { transition: none; }
 }
