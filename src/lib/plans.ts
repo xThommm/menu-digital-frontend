@@ -96,6 +96,7 @@ export const PRO_EXTRA_LABELS = [
   "Gestión de pedidos: mesas, mozos, comandas y caja",
   "Delivery y take away con cobro por Mercado Pago",
   "Reservas online",
+  "Estadísticas y reportes de ventas, productos y caja",
 ];
 
 // ¿El plan trae todo lo del otro? El catálogo no lo garantiza (cada plan se

@@ -152,7 +152,7 @@ const ORDER_FEATURES: IconCard[] = [
   { icon: ChefHat, title: "Comandas por sector", desc: "Cocina, barra o parrilla ven solo lo que les toca en su pantalla, con impresión directa en la comandera." },
   { icon: CreditCard, title: "Delivery y take away con Mercado Pago", desc: "Cobrá online con tu propia cuenta. El cliente ve el tiempo estimado y sigue su pedido en vivo hasta que lo recibe." },
   { icon: Bike, title: "App del repartidor", desc: "Tus repartidores toman los envíos desde el celular y confirman cada entrega con el código del cliente." },
-  { icon: Receipt, title: "Caja y turnos", desc: "Cerrá la caja por turno o por día con el efectivo contado, el ticket promedio, lo más vendido y los tiempos de preparación." },
+  { icon: Receipt, title: "Caja y reportes de ventas", desc: "Cerrá la caja por turno o por día y mirá tus ventas, los productos más vendidos y el ticket promedio. Exportás todo a Excel." },
 ];
 
 const ABOUT_CARDS: IconCard[] = [
