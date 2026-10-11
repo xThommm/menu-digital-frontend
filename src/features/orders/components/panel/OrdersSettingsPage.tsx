@@ -99,7 +99,7 @@ export default function OrdersSettingsPage() {
       {saved && !dirty && <p className={p.success} role="status">Cambios guardados.</p>}
 
       <div className={p.grid} style={{ marginTop: "1rem" }}>
-        <OwnerAlertsCard />
+        <OwnerAlertsCard feature="orders" />
         <section className={p.card}>
           <h2 className={p.cardTitle}>Pedidos desde la mesa</h2>
           <div className={p.switchRow}>

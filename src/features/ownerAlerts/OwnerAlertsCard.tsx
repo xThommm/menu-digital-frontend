@@ -1,27 +1,38 @@
 import type { CSSProperties } from "react";
 import { useOwnerAlerts } from "./useOwnerAlerts";
+import type { OwnerAlertKind } from "./OwnerAlertsContext";
+import { playAlert, unlockAudio } from "../orders/lib/beep";
 import p from "../orders/components/panel/panel.module.css";
 
-// Configuración de los avisos en ESTE dispositivo: sonido con el panel
-// abierto y push (notificación del sistema) con el panel cerrado.
-export default function OwnerAlertsCard({ style }: { style?: CSSProperties }) {
-  const { soundOn, setSoundOn, push } = useOwnerAlerts();
-  const pushReady = push.status === "ready";
+type Feature = "orders" | "reservations";
+
+const COPY: Record<Feature, { what: string; sound: OwnerAlertKind }> = {
+  orders: { what: "Cuando llega un pedido o se abre una mesa", sound: "order" },
+  reservations: { what: "Cuando entra una reserva desde la web", sound: "reservation" },
+};
+
+// Avisos del panel en ESTE dispositivo. Son propios del panel (no push): con
+// el panel abierto suenan y aparecen en cualquier pantalla, aunque la pestaña
+// esté en segundo plano. El sonido es uno solo para todo el panel.
+export default function OwnerAlertsCard({ feature, style }: { feature: Feature; style?: CSSProperties }) {
+  const { soundOn, setSoundOn } = useOwnerAlerts();
+  const copy = COPY[feature];
+
+  const test = () => { void unlockAudio().then(() => playAlert(copy.sound)); };
 
   return (
     <section className={p.card} style={style}>
-      <h2 className={p.cardTitle}>Avisos en este dispositivo</h2>
+      <h2 className={p.cardTitle}>Avisos en el panel</h2>
       <p className={p.cardDesc}>
-        Cuando llega un pedido, se abre una mesa o entra una reserva desde la web. Se configura en cada
-        dispositivo (computadora del mostrador, tu celular…).
+        {copy.what}, el panel muestra un aviso en cualquier pantalla. Dejá el panel abierto en la computadora o el
+        celular del local (puede quedar en otra pestaña).
       </p>
 
       <div className={p.switchRow}>
         <div className={p.switchText}>
-          <span className={p.switchTitle}>Sonido con el panel abierto</span>
+          <span className={p.switchTitle}>Sonido en este dispositivo</span>
           <span className={p.switchHint}>
-            Suena en cualquier pantalla del panel, aunque esté en otra pestaña. Si el navegador lo pide, tocá una vez la página
-            para habilitar el sonido.
+            Si el navegador lo pide, tocá una vez la página para habilitar el sonido.
           </span>
         </div>
         <input
@@ -29,36 +40,13 @@ export default function OwnerAlertsCard({ style }: { style?: CSSProperties }) {
           className={p.switch}
           checked={soundOn}
           onChange={e => setSoundOn(e.target.checked)}
-          aria-label="Sonido con el panel abierto"
+          aria-label="Sonido de los avisos en este dispositivo"
         />
       </div>
 
-      <div className={p.switchRow}>
-        <div className={p.switchText}>
-          <span className={p.switchTitle}>Notificaciones con el panel cerrado</span>
-          <span className={p.switchHint}>
-            {push.status === "loading"
-              ? "Consultando…"
-              : push.help ?? (push.active
-                ? "Activadas: te llegan como notificación del sistema, con el panel cerrado o el celular bloqueado."
-                : "Recibí los avisos como notificación del sistema aunque no tengas el panel abierto.")}
-          </span>
-        </div>
-        <input
-          type="checkbox"
-          className={p.switch}
-          checked={push.active}
-          disabled={!pushReady || push.busy}
-          onChange={() => void push.toggle()}
-          aria-label="Notificaciones con el panel cerrado"
-        />
-      </div>
-
-      {push.active && (
-        <button type="button" className={`${p.btn} ${p.small}`} onClick={() => void push.sendTest()} style={{ marginTop: "0.75rem" }}>
-          Enviar aviso de prueba
-        </button>
-      )}
+      <button type="button" className={`${p.btn} ${p.small}`} onClick={test} style={{ marginTop: "0.75rem" }}>
+        Probar sonido
+      </button>
     </section>
   );
 }

@@ -384,7 +384,7 @@ export default function ReservationsPage() {
       {tab === "settings" ? (
         settings ? (
           <>
-            <OwnerAlertsCard style={{ marginBottom: "1rem" }} />
+            <OwnerAlertsCard feature="reservations" style={{ marginBottom: "1rem" }} />
             <ReservationsSettings key={JSON.stringify(settings.settings)} initial={settings} onSaved={(next: ReservationSettings) => setSettings({ ...settings, settings: next })} />
           </>
         ) : !error && <div className={p.loading}>Cargando…</div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, BellOff, BellRing, Plus } from "lucide-react";
+import { Bell, BellOff, Plus } from "lucide-react";
 import {
   assignOrderWaiter, dispatchOrder, getBoard, openShift, removeOrderItem, restoreOrderItem, setOrderItemDelivered, updateOrderStatus,
 } from "../../api/ordersApi";
@@ -51,7 +51,7 @@ export default function OrdersBoard() {
   const [newIds, setNewIds] = useState<Set<number>>(() => new Set());
   const [manualOpen, setManualOpen] = useState(false);
   const [mobileColumn, setMobileColumn] = useState<OrderStatus>("pending");
-  const { soundOn: sound, setSoundOn, announce, push } = useOwnerAlerts();
+  const { soundOn: sound, setSoundOn, announce } = useOwnerAlerts();
   const [refunding, setRefunding] = useState<{ order: Order; cancel: boolean; amount?: number } | null>(null);
   const knownIds = useRef<Set<number> | null>(null);
   const announceRef = useRef(announce);
@@ -195,18 +195,6 @@ export default function OrdersBoard() {
             {sound ? <Bell size={16} aria-hidden /> : <BellOff size={16} aria-hidden />}
             {sound ? "Sonido" : "Silencio"}
           </button>
-          {/* Push en este dispositivo: avisa con el panel cerrado o el celular bloqueado. */}
-          {push.status !== "loading" && push.status !== "not-configured" && !push.active && (
-            <button
-              type="button"
-              className={p.btn}
-              onClick={() => void push.toggle()}
-              disabled={push.busy}
-              title="Recibir los pedidos, mesas y reservas nuevas como notificación, aunque el panel esté cerrado"
-            >
-              <BellRing size={16} aria-hidden /> Activar avisos
-            </button>
-          )}
           {!shift && <button type="button" className={p.btn} onClick={startShift}>Abrir turno</button>}
           <button type="button" className={p.btnPrimary} onClick={() => setManualOpen(true)} disabled={!settings.data}>
             <Plus size={16} aria-hidden /> Nuevo pedido
