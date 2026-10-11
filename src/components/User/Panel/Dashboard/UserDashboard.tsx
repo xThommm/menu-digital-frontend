@@ -1,4 +1,3 @@
-import Cobweb from "../../../Halloween/Cobweb";
 import { useSpooky } from "../../../../hooks/useHalloween";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -13,9 +12,13 @@ import { usePlans } from "../../../../hooks/usePlans";
 import { formatDateAR } from "../../../../lib/dates";
 import { formatReservationDate, todayBuenosAires } from "../../../../features/reservations/lib/format";
 import UpgradeModal from "../../../Common/UpgradeModal";
-import { ArrowRight, CalendarCheck, ChartColumn, ClipboardList } from "lucide-react";
-import { daysUntil, sparklinePoints, type OrdersSummary, type ReservationsSummary } from "./todayActivity";
+import { CalendarCheck, ChartColumn, ClipboardList, Eye, LayoutGrid, Sparkles, UtensilsCrossed } from "lucide-react";
+import { daysUntil, formatCount } from "./todayActivity";
 import { useTodayActivity } from "./useTodayActivity";
+import {
+  AgendaCard, Gauge, KpiStat, LockedChartCard, OrdersBarsCard, OrdersTable, QuickTile, VisitsChartCard,
+  type Kpi,
+} from "./DashboardWidgets";
 import s from "./UserDashboard.module.css";
 
 // Con menos de estos días de vigencia, el plan vuelve a destacarse en el inicio.
@@ -25,52 +28,6 @@ function greeting(hour: number) {
   if (hour >= 5 && hour < 12) return "Buen día";
   if (hour >= 12 && hour < 20) return "Buenas tardes";
   return "Buenas noches";
-}
-
-// ── Hook: luz que sigue al cursor en las cards ────────────────────────────────
-
-function useSpotlight(ref: React.RefObject<HTMLElement>) {
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const onMove = (e: MouseEvent) => {
-      const rect = el.getBoundingClientRect();
-      el.style.setProperty("--mx", `${e.clientX - rect.left}px`);
-      el.style.setProperty("--my", `${e.clientY - rect.top}px`);
-    };
-    el.addEventListener("mousemove", onMove);
-    return () => el.removeEventListener("mousemove", onMove);
-  }, [ref]);
-}
-
-// ── Hook: número que sube hasta su valor ──────────────────────────────────────
-// Arranca desde lo último que se mostró (0 la primera vez), así un refresco
-// de "Hoy" anima solo la diferencia. Todo el setState pasa dentro de
-// requestAnimationFrame; con movimiento reducido salta directo al valor.
-
-function useCountUp(value: number | undefined, duration = 900) {
-  const [display, setDisplay] = useState(0);
-  const shownRef = useRef(0);
-  useEffect(() => {
-    if (value === undefined) return;
-    const from = shownRef.current;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const total = reduce || from === value ? 0 : duration;
-    let start: number | null = null;
-    let raf = 0;
-    const tick = (time: number) => {
-      start ??= time;
-      const progress = total === 0 ? 1 : Math.min((time - start) / total, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const next = Math.round(from + (value - from) * eased);
-      shownRef.current = next;
-      setDisplay(next);
-      if (progress < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [value, duration]);
-  return display;
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
@@ -126,7 +83,6 @@ export default function UserDashboard() {
     orders: isPro,
     reservations: isPro,
   });
-  const showToday = activity.visits !== null || activity.orders !== null || activity.reservations !== null;
 
   const [data, setData]     = useState<DashData | null>(null);
   const [copied, setCopied] = useState(false);
@@ -136,8 +92,6 @@ export default function UserDashboard() {
   const [qrMenuPos, setQrMenuPos] = useState<{ top: number; left: number } | null>(null);
   const qrMenuWrapRef = useRef<HTMLDivElement>(null);
   const qrMenuPortalRef = useRef<HTMLDivElement>(null);
-  const storefrontRef = useRef<HTMLDivElement>(null);
-  useSpotlight(storefrontRef as React.RefObject<HTMLElement>);
 
   // MercadoPago puede redirigir antes de que llegue su webhook. Al volver de
   // un pago aprobado refrescamos el usuario y reintentamos unos segundos si
@@ -357,6 +311,7 @@ export default function UserDashboard() {
   ]);
 
   const displayName = data?.businessName;
+  const todayLabel = formatReservationDate(todayBuenosAires(now));
 
   const planActionLabel = subscriptionExpired
     ? "Renovar plan"
@@ -365,133 +320,254 @@ export default function UserDashboard() {
       : user?.subscription === "basic"
         ? "Renovar o pasar a Pro"
         : "Renovar plan";
+  const planName = user ? currentPlan?.label ?? PLAN_LABEL[user.subscription] : "";
+  const openUpgrade = () => setUpgradeOpen(true);
 
-  // Plan actual + acceso explícito al flujo de upgrade.
-  const planCard = user && (
-    <div className={`${s.planCard} ${effectiveSubscription === "pro" ? s.planCardPro : ""}`}>
-      <div className={s.planInfo}>
-        <span className={s.planLabel}>Tu plan</span>
-        <strong className={s.planName}>{currentPlan?.label ?? PLAN_LABEL[user.subscription]}</strong>
-        <span className={s.planDescription}>
-          {subscriptionExpired
-            ? `Tu ${previousPlanText} venció. Ahora tenés las funciones del plan Gratis.`
-            : planExpiringSoon
-              ? "Renovalo antes del vencimiento para no perder sus funciones."
-              : currentPlan
-                ? getPlanFeatureLabels(currentPlan.features).join(" · ")
-                : "No se pudo consultar la configuración del plan."}
-        </span>
-        {subscriptionExpired ? (
-          <span className={s.planExpiry}>
-            {downgradeDateLabel
-              ? `${previousPlanText} venció el ${downgradeDateLabel}. Tu cuenta fue degradada a Gratis.`
-              : `Tu ${previousPlanText} venció y tu cuenta fue degradada a Gratis.`}
-          </span>
-        ) : planExpiringSoon && planDaysLeft !== null && (
-          <span className={`${s.planExpiry} ${s.planExpirySoon}`}>
-            {planDaysLeft <= 0 ? "Vence hoy" : planDaysLeft === 1 ? "Vence mañana" : `Vence en ${planDaysLeft} días`}
-            {` · ${formatDateAR(user.subscriptionExpiresAt)}`}
-          </span>
-        )}
-      </div>
-      <button className={s.planUpgradeBtn} type="button" onClick={() => setUpgradeOpen(true)}>
-        {planActionLabel}
-      </button>
-    </div>
-  );
+  // ── Cifras del encabezado ──
+  // Primero lo que pasa hoy (pedidos, reservas, visitas) según el plan;
+  // después la carta, hasta completar cuatro.
+  const kpis: Kpi[] = [];
+  if (activity.orders !== null) {
+    kpis.push({
+      key: "orders", icon: <ClipboardList size={13} strokeWidth={1.75} />, label: "Pedidos en curso",
+      value: activity.orders === undefined ? undefined : activity.orders.shiftOpen ? activity.orders.active : null,
+      onClick: () => navigate("/pedidos"),
+    });
+  }
+  if (activity.reservations !== null) {
+    kpis.push({
+      key: "reservations", icon: <CalendarCheck size={13} strokeWidth={1.75} />, label: "Reservas hoy",
+      value: activity.reservations?.today, onClick: () => navigate("/reservas"),
+    });
+  }
+  if (activity.visits !== null) {
+    kpis.push({
+      key: "visits", icon: <Eye size={13} strokeWidth={1.75} />, label: "Visitas hoy",
+      value: activity.visits?.today, onClick: () => navigate("/estadisticas"),
+    });
+  }
+  kpis.push({
+    key: "items", icon: <UtensilsCrossed size={13} strokeWidth={1.75} />, label: "Productos",
+    value: data?.itemCount, onClick: () => navigate("/menu/editor"),
+  });
+  if (kpis.length < 4) {
+    kpis.push({
+      key: "categories", icon: <LayoutGrid size={13} strokeWidth={1.75} />, label: "Categorías",
+      value: data?.categoryCount, onClick: () => navigate("/menu/editor"),
+    });
+  }
+  if (kpis.length < 4 && activity.visits !== null) {
+    kpis.push({
+      key: "week", icon: <ChartColumn size={13} strokeWidth={1.75} />, label: "Visitas en 7 días",
+      value: activity.visits?.week, onClick: () => navigate("/estadisticas"),
+    });
+  }
 
-  // Plan pago y al día: una línea, sin competir con lo que se usa todos los días.
-  const planLine = user && (
-    <div className={s.planLine}>
-      <span className={s.planLineText}>
-        Plan <strong>{currentPlan?.label ?? PLAN_LABEL[user.subscription]}</strong>
-        <span className={s.planLineExpiry}>
-          {user.subscriptionExpiresAt
-            ? ` · Vigente hasta el ${formatDateAR(user.subscriptionExpiresAt)}`
-            : " · Sin vencimiento registrado"}
-        </span>
-      </span>
-      <button className={s.planLineBtn} type="button" onClick={() => setUpgradeOpen(true)}>
-        {planActionLabel}
-      </button>
-    </div>
-  );
+  const planAlert = subscriptionExpired
+    ? downgradeDateLabel
+      ? `Tu ${previousPlanText} venció el ${downgradeDateLabel}. Tu cuenta pasó al plan Gratis.`
+      : `Tu ${previousPlanText} venció y tu cuenta pasó al plan Gratis.`
+    : planExpiringSoon && planDaysLeft !== null
+      ? `Tu plan ${planName} ${planDaysLeft <= 0 ? "vence hoy" : planDaysLeft === 1 ? "vence mañana" : `vence en ${planDaysLeft} días`}. Renovalo para no perder sus funciones.`
+      : null;
+
+  const ordersModes = data
+    ? data.hasDelivery && data.hasTakeAway
+      ? "Delivery y take away"
+      : data.hasDelivery ? "Solo delivery" : data.hasTakeAway ? "Solo take away" : "Sin delivery ni take away"
+    : "—";
+  // Versión corta para la tarjeta de acceso, donde el valor va en grande.
+  const ordersModesShort = data
+    ? data.hasDelivery && data.hasTakeAway
+      ? "Activos"
+      : data.hasDelivery ? "Solo delivery" : data.hasTakeAway ? "Solo take away" : "Apagados"
+    : "—";
 
   return (
     <div className={s.root}>
-
-      {/* ── Contenido principal ───────────────────────────────────────────── */}
       <main className={s.main}>
-      <div className={s.leftCol}>
 
-        {/* Bienvenida — con la foto de portada real del negocio si existe,
-            mismo patrón de overlay que usa la landing pública (UserHome).
-            Sin foto, cae al fondo con degradé que ya usaba .planCard. */}
-        <div className={`${s.hero} ${data?.backgroundPicture ? s.heroWithPhoto : ""}`}>
-          {/* La foto va en su propia capa para poder acercarla al pasar el
-              mouse sin mover el chip con el nombre. */}
-          <div
-            className={s.heroMedia}
-            style={data?.backgroundPicture ? { backgroundImage: `url(${data.backgroundPicture})` } : undefined}
-            aria-hidden
-          />
-          <div className={s.heroOverlay} />
-          <div className={s.heroContent}>
-            <p className={s.welcomeEyebrow}>{spooky(greeting(now.getHours()), "¡Feliz Halloween! 🎃")}</p>
-            <h1 className={s.welcomeTitle}>{displayName}</h1>
-          </div>
-        </div>
+        {/* ── Encabezado: saludo, cifras del día y medidor ───────────────── */}
+        <section className={s.header} aria-label="Resumen">
+          {data?.backgroundPicture && (
+            <div className={s.headerPhoto} style={{ backgroundImage: `url(${data.backgroundPicture})` }} aria-hidden />
+          )}
+          <div className={s.headerGlow} aria-hidden />
 
-        {planNeedsAttention && planCard}
-
-        {showToday && (
-          <section className={s.today} aria-label="Resumen de hoy">
-            <h2 className={s.sectionLabel}>Hoy <span>· {formatReservationDate(todayBuenosAires(now))}</span></h2>
-            <div className={s.todayTiles}>
-              {activity.visits !== null && (
-                <TodayTile
-                  icon={<ChartColumn size={15} strokeWidth={1.75} />}
-                  label="Visitas a la carta"
-                  loading={activity.visits === undefined}
-                  value={activity.visits?.today}
-                  detail={activity.visits && (
-                    <>
-                      {formatCount(activity.visits.week)} en 7 días
-                      {activity.visits.delta !== null && activity.visits.delta !== 0 && (
-                        <span className={activity.visits.delta > 0 ? s.trendUp : s.trendDown}>
-                          {activity.visits.delta > 0 ? "▲" : "▼"} {Math.abs(activity.visits.delta)}%
-                        </span>
-                      )}
-                    </>
-                  )}
-                  chart={activity.visits && <Sparkline series={activity.visits.series} />}
-                  onClick={() => navigate("/estadisticas")}
-                />
-              )}
-              {activity.orders !== null && (
-                <TodayTile
-                  icon={<ClipboardList size={15} strokeWidth={1.75} />}
-                  label="Pedidos en curso"
-                  loading={activity.orders === undefined}
-                  value={activity.orders?.shiftOpen ? activity.orders.active : undefined}
-                  alert={!!activity.orders && activity.orders.pending > 0}
-                  detail={activity.orders && ordersDetail(activity.orders)}
-                  onClick={() => navigate("/pedidos")}
-                />
-              )}
-              {activity.reservations !== null && (
-                <TodayTile
-                  icon={<CalendarCheck size={15} strokeWidth={1.75} />}
-                  label="Reservas para hoy"
-                  loading={activity.reservations === undefined}
-                  value={activity.reservations?.today}
-                  alert={!!activity.reservations && activity.reservations.pending > 0}
-                  detail={activity.reservations && reservationsDetail(activity.reservations)}
-                  onClick={() => navigate("/reservas")}
-                />
+          <div className={s.headerMain}>
+            <div className={s.headerTop}>
+              <nav className={s.breadcrumb} aria-label="Ubicación">
+                <span>Inicio</span>
+                <span aria-hidden>/</span>
+                <span className={s.breadcrumbCurrent}>Panel</span>
+              </nav>
+              {publicUrl && (
+                <div className={s.headerActions}>
+                  <button type="button" className={s.iconBtn} onClick={handleCopy} aria-label="Copiar el link de tu carta" title={copied ? "¡Copiado!" : "Copiar link"}>
+                    <span key={copied ? "done" : "idle"} className={s.iconSwap}>{copied ? <CheckIcon /> : <CopyIcon />}</span>
+                  </button>
+                  <div className={s.qrMenuWrap} ref={qrMenuWrapRef}>
+                    <button
+                      type="button"
+                      className={s.iconBtn}
+                      onClick={e => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setQrMenuPos({ top: rect.bottom + 8, left: Math.max(8, rect.right - 200) });
+                        setQrMenuOpen(o => !o);
+                      }}
+                      disabled={generatingQr || !canDownloadQr}
+                      aria-haspopup="menu"
+                      aria-expanded={qrMenuOpen}
+                      aria-label={canDownloadQr ? "Descargar el QR de tu carta" : "Descargar QR (no incluido en tu plan)"}
+                      title={generatingQr ? "Generando..." : "Descargar QR"}
+                    >
+                      <QrIcon />
+                    </button>
+                    {canDownloadQr && qrMenuOpen && qrMenuPos && createPortal(
+                      <div
+                        className={s.qrMenu}
+                        role="menu"
+                        ref={qrMenuPortalRef}
+                        style={{ position: "fixed", top: qrMenuPos.top, left: qrMenuPos.left }}
+                      >
+                        <button className={s.qrMenuItem} role="menuitem" onClick={() => handleDownloadQr("png")}>
+                          <span className={s.qrMenuItemTitle}>PNG</span>
+                          <span className={s.qrMenuItemDesc}>Imagen simple</span>
+                        </button>
+                        <button className={s.qrMenuItem} role="menuitem" onClick={() => handleDownloadQr("pdf")}>
+                          <span className={s.qrMenuItemTitle}>PDF</span>
+                          <span className={s.qrMenuItemDesc}>Lista para imprimir</span>
+                        </button>
+                      </div>,
+                      document.body
+                    )}
+                  </div>
+                  <button type="button" className={`${s.iconBtn} ${s.iconBtnPrimary}`} onClick={handleOpen}>
+                    <ExternalIcon />
+                    <span>Ver carta</span>
+                  </button>
+                </div>
               )}
             </div>
-          </section>
+
+            <h1 className={s.greeting}>
+              {spooky(greeting(now.getHours()), "¡Feliz Halloween!")}
+              {displayName && <>, <span className={s.greetingName}>{displayName}</span></>}
+            </h1>
+            <p className={s.subtitle}>
+              {todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)}
+              {publicUrl && <span className={s.subtitleUrl}> · {publicUrl.replace(/^https?:\/\//, "")}</span>}
+            </p>
+
+            <div className={s.kpis}>
+              {kpis.slice(0, 4).map(({ key, ...kpi }) => <KpiStat key={key} {...kpi} />)}
+            </div>
+          </div>
+
+          <div className={s.headerSide}>
+            {activity.visits !== null ? (
+              <Gauge
+                value={activity.visits?.engagement ?? 0}
+                title="Interés en la carta"
+                caption={activity.visits === undefined
+                  ? "Cargando…"
+                  : activity.visits.engagement === null
+                    ? "Todavía no hay visitas esta semana."
+                    : "de las visitas de la semana abrió un producto."}
+              />
+            ) : user && (
+              <div className={s.planPromo}>
+                <span className={s.planPromoIcon}><Sparkles size={18} strokeWidth={1.75} /></span>
+                <span className={s.planPromoLabel}>Tu plan</span>
+                <strong className={s.planPromoName}>{planName}</strong>
+                <p className={s.planPromoText}>
+                  {currentPlan ? getPlanFeatureLabels(currentPlan.features).slice(0, 3).join(" · ") : "Sumá estadísticas, pedidos y reservas."}
+                </p>
+                <button type="button" className={s.primaryBtn} onClick={openUpgrade}>{planActionLabel}</button>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {planAlert && (
+          <div className={s.planAlert} role="status">
+            <span>{planAlert}</span>
+            <button type="button" className={s.primaryBtn} onClick={openUpgrade}>{planActionLabel}</button>
+          </div>
+        )}
+
+        {/* ── Agenda, visitas y estado de pedidos ────────────────────────── */}
+        <div className={`${s.row} ${isPro ? s.rowThree : s.rowTwo}`}>
+          {isPro ? (
+            <AgendaCard
+              dateLabel="Hoy"
+              reservations={activity.reservations}
+              orders={activity.orders}
+              onOpenReservations={() => navigate("/reservas")}
+              onOpenOrders={() => navigate("/pedidos")}
+            />
+          ) : (
+            <StorefrontCard
+              url={publicUrl}
+              copied={copied}
+              onCopy={handleCopy}
+              onOpen={handleOpen}
+              data={data}
+              ordersModes={ordersModes}
+            />
+          )}
+
+          {activity.visits !== null
+            ? <VisitsChartCard visits={activity.visits} onOpen={() => navigate("/estadisticas")} />
+            : <LockedChartCard onUpgrade={openUpgrade} />}
+
+          {isPro && <OrdersBarsCard orders={activity.orders ?? undefined} onOpen={() => navigate("/pedidos")} />}
+        </div>
+
+        {/* ── Accesos rápidos ────────────────────────────────────────────── */}
+        <nav className={s.quickRow} aria-label="Accesos rápidos">
+          <QuickTile
+            label="Productos en la carta"
+            value={data ? formatCount(data.itemCount) : "—"}
+            action="Editar menú"
+            onClick={() => navigate("/menu/editor")}
+          />
+          <QuickTile
+            label="Categorías"
+            value={data ? formatCount(data.categoryCount) : "—"}
+            action="Ordenar"
+            onClick={() => navigate("/menu/editor")}
+          />
+          <QuickTile
+            label="Delivery y take away"
+            value={ordersModesShort}
+            action="Configurar"
+            onClick={() => navigate("/user/editor")}
+          />
+          <QuickTile
+            label="Mi negocio"
+            value="Datos y fotos"
+            action="Editar"
+            onClick={() => navigate("/user/editor")}
+          />
+          <QuickTile
+            label="Tu plan"
+            value={planName || "—"}
+            action={planActionLabel}
+            alert={planNeedsAttention && effectiveSubscription !== "free"}
+            onClick={openUpgrade}
+          />
+        </nav>
+
+        {isPro && <OrdersTable orders={activity.orders ?? undefined} onOpen={() => navigate("/pedidos")} />}
+
+        {!planNeedsAttention && user && (
+          <p className={s.planLine}>
+            Plan <strong>{planName}</strong>
+            {user.subscriptionExpiresAt
+              ? ` · Vigente hasta el ${formatDateAR(user.subscriptionExpiresAt)}`
+              : " · Sin vencimiento registrado"}
+          </p>
         )}
 
         {upgradeOpen && user && (
@@ -510,377 +586,69 @@ export default function UserDashboard() {
             onClose={() => setUpgradeOpen(false)}
           />
         )}
-
-        {/* Tarjeta storefront */}
-        <div className={s.storefrontCard} ref={storefrontRef}>
-          <div className={s.storefrontTop}>
-            <div className={s.storefrontIcon} aria-hidden>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="2" y1="12" x2="22" y2="12" />
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-              </svg>
-            </div>
-            <span className={s.storefrontLabel}>Tu carta en línea</span>
-          </div>
-
-          <div className={s.urlRow}>
-            <span className={s.urlText}>
-              {publicUrl
-                ? publicUrl.replace(/^https?:\/\//, "")
-                : <span className={s.urlPlaceholder}>Configurá tu negocio para obtener tu link</span>
-              }
-            </span>
-            {publicUrl && (
-              <button
-                type="button"
-                className={`${s.urlCopyBtn} ${copied ? s.urlCopyBtnDone : ""}`}
-                onClick={handleCopy}
-              >
-                <span key={copied ? "done" : "idle"} className={s.urlCopyIcon}>
-                  {copied ? <CheckIcon /> : <CopyIcon />}
-                </span>
-                {copied ? "¡Copiado!" : "Copiar"}
-              </button>
-            )}
-          </div>
-
-          {publicUrl && (
-            <div className={s.storefrontActions}>
-              <button className={s.actionBtn} onClick={handleOpen}>
-                <ExternalIcon />
-                Ver página
-              </button>
-              <div className={s.qrMenuWrap} ref={qrMenuWrapRef}>
-                <button
-                  className={`${s.actionBtn} ${s.actionBtnOutline}`}
-                  onClick={e => {
-                    // display:contents en .qrMenuWrap no genera caja propia, así que
-                    // la posición se toma del botón (currentTarget), no del wrapper.
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    setQrMenuPos({ top: rect.bottom + 8, left: rect.left });
-                    setQrMenuOpen(o => !o);
-                  }}
-                  disabled={generatingQr || !canDownloadQr}
-                  aria-haspopup="menu"
-                  aria-expanded={qrMenuOpen}
-                >
-                  <QrIcon />
-                  {generatingQr ? "Generando..." : "Descargar QR"}
-                </button>
-                {canDownloadQr && qrMenuOpen && qrMenuPos && createPortal(
-                  <div
-                    className={s.qrMenu}
-                    role="menu"
-                    ref={qrMenuPortalRef}
-                    style={{ position: "fixed", top: qrMenuPos.top, left: qrMenuPos.left }}
-                  >
-                    <button className={s.qrMenuItem} role="menuitem" onClick={() => handleDownloadQr("png")}>
-                      <span className={s.qrMenuItemTitle}>PNG</span>
-                      <span className={s.qrMenuItemDesc}>Imagen simple</span>
-                    </button>
-                    <button className={s.qrMenuItem} role="menuitem" onClick={() => handleDownloadQr("pdf")}>
-                      <span className={s.qrMenuItemTitle}>PDF</span>
-                      <span className={s.qrMenuItemDesc}>Lista para imprimir</span>
-                    </button>
-                  </div>,
-                  document.body
-                )}
-              </div>
-            </div>
-          )}
-
-          {data && (
-            <div className={s.statsPills}>
-              <StatPill icon={<MenuIcon />} value={data.itemCount}
-                label={data.itemCount === 1 ? "producto" : "productos"} />
-              <StatPill icon={<GridIcon />} value={data.categoryCount}
-                label={data.categoryCount === 1 ? "categoría" : "categorías"} />
-              <span className={`${s.deliveryPill} ${data.hasDelivery || data.hasTakeAway ? s.deliveryOn : s.deliveryOff}`}>
-                <span className={s.deliveryDot} />
-                {orderModesLabel(data)}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Cards de navegación */}
-        <div className={s.cards}>
-          <SpotlightCard
-            onClick={() => navigate("/menu/editor")}
-            icon={<DocIcon />}
-            title="Editor de menú"
-            desc="Platos, precios, categorías y disponibilidad."
-            primary
-          />
-          <SpotlightCard
-            onClick={() => navigate("/user/editor")}
-            icon={<StoreIcon />}
-            title="Mi negocio"
-            desc="Datos de contacto, fotos y apariencia."
-          />
-        </div>
-
-        {!planNeedsAttention && planLine}
-
-      </div>
-
-      {/* Vista previa en vivo — una sola instancia (no se duplica el
-          iframe). En mobile/tablet, .rightCol no tiene estilos propios y
-          esto queda apilado abajo del resto por el flex-column de .main;
-          en desktop (ver UserDashboard.module.css, min-width: 1200px)
-          .main pasa a fila y esta columna queda al lado, más grande. */}
-      <div className={s.rightCol}>
-        <PreviewCard url={publicUrl} />
-      </div>
       </main>
     </div>
   );
 }
 
-// ── SpotlightCard ─────────────────────────────────────────────────────────────
+// ── Tu carta en línea (planes sin agenda) ─────────────────────────────────────
 
-interface NavCardProps {
-  onClick: () => void;
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-  primary?: boolean;
-}
-
-function SpotlightCard({ onClick, icon, title, desc, primary }: NavCardProps) {
-  const ref = useRef<HTMLButtonElement>(null);
-  useSpotlight(ref as React.RefObject<HTMLElement>);
-
-  return (
-    <button
-      ref={ref}
-      className={`${s.navCard} ${primary ? s.navCardPrimary : ""}`}
-      onClick={onClick}
-    >
-      <Cobweb corner="tr" size={64} />
-      <div className={`${s.cardIcon} ${primary ? s.cardIconPrimary : ""}`}>
-        {icon}
-      </div>
-      <div className={s.cardBody}>
-        <p className={s.cardTitle}>{title}</p>
-        <p className={s.cardDesc}>{desc}</p>
-      </div>
-      <ArrowRight className={s.cardArrow} size={17} strokeWidth={1.5} aria-hidden />
-    </button>
-  );
-}
-
-// ── Hoy ───────────────────────────────────────────────────────────────────────
-
-const formatCount = (value: number) => value.toLocaleString("es-AR");
-
-function ordersDetail({ shiftOpen, pending, ready }: OrdersSummary) {
-  if (!shiftOpen) return "Sin turno abierto";
-  if (pending > 0) return `${pending} por confirmar`;
-  if (ready > 0) return `${ready} ${ready === 1 ? "listo" : "listos"} para entregar`;
-  return "Todo al día";
-}
-
-function reservationsDetail({ pending, next }: ReservationsSummary) {
-  if (pending > 0) return `${pending} ${pending === 1 ? "espera" : "esperan"} respuesta`;
-  if (next) return `Próxima a las ${next} hs`;
-  return "Sin pendientes";
-}
-
-interface TodayTileProps {
-  icon: React.ReactNode;
-  label: string;
-  // Sin valor y sin estar cargando: no aplica (se muestra "—").
-  value: number | undefined;
-  loading: boolean;
-  detail: React.ReactNode;
-  // Hay algo esperando una acción del local.
-  alert?: boolean;
-  chart?: React.ReactNode;
-  onClick: () => void;
-}
-
-function TodayTile({ icon, label, value, loading, detail, alert, chart, onClick }: TodayTileProps) {
-  const ref = useRef<HTMLButtonElement>(null);
-  useSpotlight(ref as React.RefObject<HTMLElement>);
-  const shown = useCountUp(value);
-
-  return (
-    <button
-      ref={ref}
-      type="button"
-      className={`${s.todayTile} ${alert ? s.todayTileAlert : ""}`}
-      onClick={onClick}
-      aria-busy={loading}
-    >
-      <span className={s.todayTileLabel}>
-        <span className={s.todayTileIcon}>{icon}</span>
-        {label}
-      </span>
-      {loading ? (
-        <span className={s.todayTileSkeleton} aria-hidden />
-      ) : (
-        <>
-          <strong className={s.todayTileValue}>{value === undefined ? "—" : formatCount(shown)}</strong>
-          <span className={s.todayTileDetail}>{detail}</span>
-        </>
-      )}
-      {chart}
-    </button>
-  );
-}
-
-const SPARK = { w: 100, h: 28 };
-
-function Sparkline({ series }: { series: number[] }) {
-  const points = sparklinePoints(series, SPARK.w, SPARK.h);
-  if (!points) return null;
-  return (
-    <svg className={s.sparkline} viewBox={`0 -2 ${SPARK.w} ${SPARK.h + 4}`} preserveAspectRatio="none" aria-hidden>
-      <polygon className={s.sparklineArea} points={`0,${SPARK.h + 2} ${points} ${SPARK.w},${SPARK.h + 2}`} />
-      <polyline
-        points={points}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
-  );
-}
-
-// ── PreviewCard ────────────────────────────────────────────────────────────────
-
-interface PreviewCardProps {
+interface StorefrontCardProps {
   url: string | null;
+  copied: boolean;
+  onCopy: () => void;
+  onOpen: () => void;
+  data: DashData | null;
+  ordersModes: string;
 }
 
-const DEVICE = { w: 390, h: 844 };
-
-function PreviewCard({ url }: PreviewCardProps) {
-  const [scale, setScale] = useState(1);
-  const [loaded, setLoaded] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
-  const wrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    // No llamamos a setScale directamente acá: el ResizeObserver dispara su
-    // callback en cuanto lo suscribimos con observe(), de forma asíncrona.
-    // Así el setState queda dentro de la suscripción a un sistema externo,
-    // en vez de ser una llamada síncrona en el cuerpo del efecto.
-    const ro = new ResizeObserver((entries) => {
-      const rect   = entries[0]?.contentRect;
-      const width  = rect?.width  ?? el.clientWidth;
-      const height = rect?.height ?? el.clientHeight;
-
-      // El alto del viewport SOLO es una restricción confiable en el layout de
-      // dos columnas (desktop ≥1200px, ver el media query de .rightCol en el
-      // .module.css): ahí .previewCard tiene "height" FIJO (no max-height —
-      // eso importa, ver el comentario en el CSS) y .previewViewport es
-      // flex:1 dentro de esa altura ya definida, así que su alto es estable
-      // e independiente del contenido, igual que su ancho.
-      //
-      // En el layout apilado (mobile/tablet) el viewport NO tiene alto propio
-      // a propósito: lo determina su contenido (el frame escalado), para que
-      // la card se ajuste al tamaño del dispositivo simulado en vez de dejar
-      // espacio vacío. Si ahí metemos el alto en el cálculo, se arma un
-      // bucle — scale más chico → frame más chico → viewport más bajo →
-      // scale aún más chico — y la preview colapsaba a un tamaño diminuto.
-      // Por eso ahí escalamos solo por ancho (el ancho lo fija la columna,
-      // es estable).
-      const twoColumn = window.matchMedia("(min-width: 1200px)").matches;
-      const byWidth  = width / DEVICE.w;
-      const scaleNext = twoColumn
-        ? Math.min(byWidth, height / DEVICE.h, 1)
-        : Math.min(byWidth, 1);
-      setScale(scaleNext);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-    // `url` está en las dependencias aunque no se lea acá adentro: en el
-    // primer render `url` todavía es null (data no cargó), este componente
-    // devuelve null y wrapRef.current es null, así que ese primer efecto no
-    // hace nada. Cuando `url` pasa a tener valor recién ahí se monta el div
-    // con el ref — sin `url` en las deps, el efecto no se repetiría (DEVICE
-    // es constante) y la vista previa quedaba pegada en scale:1.
-  }, [url]);
-
-  // Reseteamos `loaded` cuando cambia la url o se fuerza un reload.
-  // En vez de un useEffect que llame a setLoaded de forma síncrona (lo que
-  // dispara un render en cascada evitable), lo resolvemos durante el propio
-  // render comparando contra la key anterior, tal como recomienda React para
-  // "ajustar estado cuando cambia algo" sin pasar por un efecto.
-  const frameKey = `${url}|${reloadKey}`;
-  const [prevFrameKey, setPrevFrameKey] = useState(frameKey);
-  if (frameKey !== prevFrameKey) {
-    setPrevFrameKey(frameKey);
-    setLoaded(false);
-  }
-
-  if (!url) return null;
-
+function StorefrontCard({ url, copied, onCopy, onOpen, data, ordersModes }: StorefrontCardProps) {
   return (
-    <div className={s.previewCard}>
-      <div className={s.previewHeader}>
-        <span className={s.previewLabel}>Vista previa</span>
-        <div className={s.previewControls}>
-          <button
-            className={s.previewRefreshBtn}
-            onClick={() => setReloadKey((k) => k + 1)}
-            aria-label="Actualizar vista previa"
-            title="Actualizar"
-          >
-            <RefreshIcon />
+    <section className={`${s.card} ${s.storefrontCard}`} aria-label="Tu carta en línea">
+      <header className={s.storefrontHeader}>
+        <span className={s.storefrontIcon} aria-hidden><GlobeIcon /></span>
+        <h2 className={s.cardTitle}>Tu carta en línea</h2>
+      </header>
+      <div className={s.urlRow}>
+        <span className={s.urlText}>
+          {url ? url.replace(/^https?:\/\//, "") : <span className={s.urlPlaceholder}>Configurá tu negocio para obtener tu link</span>}
+        </span>
+        {url && (
+          <button type="button" className={`${s.urlCopyBtn} ${copied ? s.urlCopyBtnDone : ""}`} onClick={onCopy}>
+            <span key={copied ? "done" : "idle"} className={s.iconSwap}>{copied ? <CheckIcon /> : <CopyIcon />}</span>
+            {copied ? "¡Copiado!" : "Copiar"}
           </button>
-        </div>
+        )}
       </div>
-
-      <div ref={wrapRef} className={s.previewViewport}>
-        <div
-          className={s.previewFrameWrap}
-          style={{ width: DEVICE.w * scale, height: DEVICE.h * scale }}
-        >
-          {!loaded && <div className={s.previewSkeleton} />}
-          <iframe
-            key={reloadKey}
-            src={url}
-            title="Vista previa de tu carta"
-            className={s.previewIframe}
-            style={{ width: DEVICE.w, height: DEVICE.h, transform: `scale(${scale})` }}
-            onLoad={() => setLoaded(true)}
-          />
+      {url && (
+        <button type="button" className={s.primaryBtn} onClick={onOpen}>
+          <ExternalIcon />
+          Ver mi carta
+        </button>
+      )}
+      {data && (
+        <div className={s.storefrontFacts}>
+          <span><strong>{formatCount(data.itemCount)}</strong> {data.itemCount === 1 ? "producto" : "productos"}</span>
+          <span><strong>{formatCount(data.categoryCount)}</strong> {data.categoryCount === 1 ? "categoría" : "categorías"}</span>
+          <span className={data.hasDelivery || data.hasTakeAway ? s.factOn : undefined}>{ordersModes}</span>
         </div>
-      </div>
-    </div>
+      )}
+    </section>
   );
-}
-
-// ── Sub-componentes ───────────────────────────────────────────────────────────
-
-function StatPill({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
-  return (
-    <span className={s.statPill}>
-      <span className={s.statPillIcon}>{icon}</span>
-      <strong>{value}</strong> {label}
-    </span>
-  );
-}
-
-// Modalidades de pedido que ofrece el local (Mi negocio → Delivery / Take away).
-function orderModesLabel({ hasDelivery, hasTakeAway }: Pick<DashData, "hasDelivery" | "hasTakeAway">) {
-  if (hasDelivery && hasTakeAway) return "Delivery y take away";
-  if (hasDelivery) return "Delivery activo";
-  if (hasTakeAway) return "Take away activo";
-  return "Sin delivery ni take away";
 }
 
 // ── Íconos ────────────────────────────────────────────────────────────────────
+
+function GlobeIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  );
+}
 
 function CopyIcon() {
   return (
@@ -925,66 +693,6 @@ function ExternalIcon() {
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
       <polyline points="15 3 21 3 21 9" />
       <line x1="10" y1="14" x2="21" y2="3" />
-    </svg>
-  );
-}
-
-function DocIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
-      <polyline points="10 9 9 9 8 9" />
-    </svg>
-  );
-}
-
-function StoreIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
-    </svg>
-  );
-}
-
-function MenuIcon() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <line x1="8" y1="6" x2="21" y2="6" />
-      <line x1="8" y1="12" x2="21" y2="12" />
-      <line x1="8" y1="18" x2="21" y2="18" />
-      <line x1="3" y1="6" x2="3.01" y2="6" />
-      <line x1="3" y1="12" x2="3.01" y2="12" />
-      <line x1="3" y1="18" x2="3.01" y2="18" />
-    </svg>
-  );
-}
-
-function GridIcon() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3" y="3" width="7" height="7" />
-      <rect x="14" y="3" width="7" height="7" />
-      <rect x="14" y="14" width="7" height="7" />
-      <rect x="3" y="14" width="7" height="7" />
-    </svg>
-  );
-}
-
-function RefreshIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <polyline points="23 4 23 10 17 10" />
-      <polyline points="1 20 1 14 7 14" />
-      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
     </svg>
   );
 }
