@@ -92,7 +92,7 @@ const CONTACT_CHANNELS = [
 // const REVIEWS = [
 //   {
 //     name: "Martina Sosa",
-//     business: "La Pérgola Café",
+//     business: "La Perla",
 //     location: "Palermo, CABA",
 //     text: "Antes imprimíamos el menú cada semana porque cambiábamos los precios. Ahora en dos minutos lo tenemos actualizado y los clientes lo escanean con el celular.",
 //     stars: 5,
@@ -323,7 +323,7 @@ function PhoneMockup() {
         <div className={styles.phoneNotch} />
         <div className={styles.mockScreen}>
           <div className={styles.mockBar} />
-          <div className={styles.mockBiz}>La Pérgola Café</div>
+          <div className={styles.mockBiz}>La Perla</div>
           <div className={styles.mockLoc}><MapPin className={styles.mockIcon} />Palermo, CABA</div>
           <div className={styles.mockSection}><Pizza className={styles.mockIcon} />Pizzas</div>
           {[
@@ -418,7 +418,7 @@ function ReservationMockup() {
   return (
     <div className={styles.resMock} aria-hidden>
       <div className={styles.resStatus}><CalendarCheck className={styles.mockIcon} />Reserva confirmada</div>
-      <div className={styles.resBiz}>La Pérgola Café</div>
+      <div className={styles.resBiz}>La Perla</div>
       <dl className={styles.resRows}>
         <div><dt>Día</dt><dd>Sábado 24</dd></div>
         <div><dt>Hora</dt><dd>21:30</dd></div>
