@@ -995,6 +995,7 @@
 /* El ahorro va pegado al período: le saca su margen inferior y lo lleva él. */
 .planPeriod:has(+ .planSave) { margin-bottom: .5rem; }
 .planSave { font-size: .78rem; color: var(--auth-amber-text); margin-bottom: 1.5rem; }
+.planBase { font-size: .85rem; font-weight: 700; color: var(--auth-cream); margin-bottom: .6rem; }
 .planFeat { flex: 1; font-size: .85rem; color: var(--auth-cream-mid); line-height: 1.9; list-style: none; margin-bottom: 1.75rem; }
 .planFeat li { padding-left: 1.4rem; position: relative; }
 .planFeat li::before { content: '→'; position: absolute; left: 0; color: var(--auth-amber-text); font-size: .75rem; }

@@ -41,7 +41,7 @@ import HalloweenSky from "../../Halloween/HalloweenSky";
 import Pumpkin from "../../Halloween/Pumpkin";
 import { useSpooky } from "../../../hooks/useHalloween";
 import { useAuthTheme } from "../../../hooks/useAuthTheme";
-import { getPlanFeatureLabels } from "../../../lib/plans";
+import { getPlanCardSummary, PRO_EXTRA_LABELS } from "../../../lib/plans";
 import type { BooleanPlanFeature } from "../../../types";
 import Spinner from "../../Common/Spinner";
 import { BLOG_PATH, MENU_QR_GUIDE } from "../../../pages/Blog/blogContent";
@@ -153,13 +153,6 @@ const ORDER_FEATURES: IconCard[] = [
   { icon: CreditCard, title: "Delivery y take away con Mercado Pago", desc: "Cobrá online con tu propia cuenta. El cliente ve el tiempo estimado y sigue su pedido en vivo hasta que lo recibe." },
   { icon: Bike, title: "App del repartidor", desc: "Tus repartidores toman los envíos desde el celular y confirman cada entrega con el código del cliente." },
   { icon: Receipt, title: "Caja y turnos", desc: "Cerrá la caja por turno o por día con el efectivo contado, el ticket promedio, lo más vendido y los tiempos de preparación." },
-];
-
-// Lo que el plan Pro suma por fuera del catálogo de la API (ver ORDER_FEATURES).
-const PRO_EXTRA_LABELS = [
-  "Gestión de pedidos: mesas, mozos, comandas y caja",
-  "Delivery y take away con cobro por Mercado Pago",
-  "Reservas online",
 ];
 
 const ABOUT_CARDS: IconCard[] = [
@@ -1049,6 +1042,8 @@ useEffect(() => {
                 // juntos baja (billingOptions trae el ahorro ya calculado).
                 const bestOption = plan.billingOptions.reduce((best, option) =>
                   option.savings > best.savings ? option : best);
+                const summary = getPlanCardSummary(plan, catalog.data);
+                const labels = plan.name === "pro" ? [...PRO_EXTRA_LABELS, ...summary.labels] : summary.labels;
                 return (
                   <article
                     key={plan.name}
@@ -1068,9 +1063,9 @@ useEffect(() => {
                         Pagando {bestOption.months} meses ahorrás ${bestOption.savings.toLocaleString("es-AR")}
                       </div>
                     )}
+                    {summary.base && <div className={styles.planBase}>Todo lo del plan {summary.base}, más:</div>}
                     <ul className={styles.planFeat}>
-                      {getPlanFeatureLabels(plan.features).map((feature) => <li key={feature}>{feature}</li>)}
-                      {plan.name === "pro" && PRO_EXTRA_LABELS.map((feature) => <li key={feature}>{feature}</li>)}
+                      {labels.map((feature) => <li key={feature}>{feature}</li>)}
                     </ul>
                     <Link className={styles.planCta} to={`/register?plan=${plan.name}`}>
                       {plan.name === "free" ? "Crear cuenta gratis" : `Empezar con ${plan.label}`} →

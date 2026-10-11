@@ -89,3 +89,33 @@ export function getPlanUpgradeLabels(features: PlanFeatures, previousFeatures: P
 
   return added.length > 0 ? added : getPlanFeatureLabels(features);
 }
+
+// Lo que el plan Pro suma por fuera del catálogo: el backend habilita pedidos
+// y reservas con el plan Pro vigente (requireProPlan), no con una feature.
+export const PRO_EXTRA_LABELS = [
+  "Gestión de pedidos: mesas, mozos, comandas y caja",
+  "Delivery y take away con cobro por Mercado Pago",
+  "Reservas online",
+];
+
+// ¿El plan trae todo lo del otro? El catálogo no lo garantiza (cada plan se
+// edita por separado en el panel), así que se comprueba antes de resumir.
+function includesAllOf(features: PlanFeatures, previous: PlanFeatures): boolean {
+  return BOOLEAN_FEATURES.every(key => !previous[key] || features[key])
+    && (features.item_limit === null || (previous.item_limit !== null && features.item_limit >= previous.item_limit))
+    && previous.templateIds.every(id => features.templateIds.includes(id));
+}
+
+type CatalogPlan = { name: Subscription; label: string; features: PlanFeatures };
+
+// Tarjeta de plan resumida: "Todo lo del plan <base>, más:" y solo lo que
+// agrega. Si el plan anterior en PLAN_ORDER no está en el catálogo o tiene
+// algo que este no trae, base es null y va la lista completa.
+export function getPlanCardSummary(plan: CatalogPlan, catalog: CatalogPlan[]): { base: string | null; labels: string[] } {
+  const previousName = PLAN_ORDER[PLAN_ORDER.indexOf(plan.name) - 1];
+  const previous = catalog.find(p => p.name === previousName);
+  if (!previous || !includesAllOf(plan.features, previous.features)) {
+    return { base: null, labels: getPlanFeatureLabels(plan.features) };
+  }
+  return { base: previous.label, labels: getPlanUpgradeLabels(plan.features, previous.features) };
+}
