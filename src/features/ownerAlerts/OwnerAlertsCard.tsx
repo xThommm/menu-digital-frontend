@@ -1,19 +1,27 @@
 import type { CSSProperties } from "react";
 import { useOwnerAlerts } from "./useOwnerAlerts";
+import type { OwnerPushFeature } from "./OwnerAlertsContext";
 import p from "../orders/components/panel/panel.module.css";
 
+const COPY: Record<OwnerPushFeature, { what: string; label: string }> = {
+  orders: { what: "Cuando llega un pedido o se abre una mesa.", label: "pedidos y mesas" },
+  reservations: { what: "Cuando entra una reserva desde la web.", label: "reservas" },
+};
+
 // Configuración de los avisos en ESTE dispositivo: sonido con el panel
-// abierto y push (notificación del sistema) con el panel cerrado.
-export default function OwnerAlertsCard({ style }: { style?: CSSProperties }) {
+// abierto (compartido por todo el panel) y push del feature de esta pantalla,
+// que viene desactivada hasta que el dueño la activa.
+export default function OwnerAlertsCard({ feature, style }: { feature: OwnerPushFeature; style?: CSSProperties }) {
   const { soundOn, setSoundOn, push } = useOwnerAlerts();
   const pushReady = push.status === "ready";
+  const active = push.features.includes(feature);
+  const copy = COPY[feature];
 
   return (
     <section className={p.card} style={style}>
       <h2 className={p.cardTitle}>Avisos en este dispositivo</h2>
       <p className={p.cardDesc}>
-        Cuando llega un pedido, se abre una mesa o entra una reserva desde la web. Se configura en cada
-        dispositivo (computadora del mostrador, tu celular…).
+        {copy.what} Se configura en cada dispositivo (computadora del mostrador, tu celular…).
       </p>
 
       <div className={p.switchRow}>
@@ -39,22 +47,22 @@ export default function OwnerAlertsCard({ style }: { style?: CSSProperties }) {
           <span className={p.switchHint}>
             {push.status === "loading"
               ? "Consultando…"
-              : push.help ?? (push.active
-                ? "Activadas: te llegan como notificación del sistema, con el panel cerrado o el celular bloqueado."
-                : "Recibí los avisos como notificación del sistema aunque no tengas el panel abierto.")}
+              : push.help ?? (active
+                ? `Activadas: los avisos de ${copy.label} te llegan como notificación del sistema, con el panel cerrado o el celular bloqueado.`
+                : `Desactivadas. Activalas para recibir los avisos de ${copy.label} aunque no tengas el panel abierto.`)}
           </span>
         </div>
         <input
           type="checkbox"
           className={p.switch}
-          checked={push.active}
+          checked={active}
           disabled={!pushReady || push.busy}
-          onChange={() => void push.toggle()}
+          onChange={() => void push.toggle(feature)}
           aria-label="Notificaciones con el panel cerrado"
         />
       </div>
 
-      {push.active && (
+      {active && (
         <button type="button" className={`${p.btn} ${p.small}`} onClick={() => void push.sendTest()} style={{ marginTop: "0.75rem" }}>
           Enviar aviso de prueba
         </button>

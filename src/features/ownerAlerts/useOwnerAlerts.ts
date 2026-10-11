@@ -8,7 +8,7 @@ const FALLBACK: OwnerAlertsValue = {
   soundOn: false,
   setSoundOn: () => undefined,
   announce: () => undefined,
-  push: { status: "unsupported", active: false, busy: false, help: null, toggle: noop, sendTest: noop },
+  push: { status: "unsupported", features: [], busy: false, help: null, toggle: noop, sendTest: noop },
 };
 
 export function useOwnerAlerts(): OwnerAlertsValue {

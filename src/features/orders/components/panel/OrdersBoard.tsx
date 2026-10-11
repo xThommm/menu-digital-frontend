@@ -195,14 +195,15 @@ export default function OrdersBoard() {
             {sound ? <Bell size={16} aria-hidden /> : <BellOff size={16} aria-hidden />}
             {sound ? "Sonido" : "Silencio"}
           </button>
-          {/* Push en este dispositivo: avisa con el panel cerrado o el celular bloqueado. */}
-          {push.status !== "loading" && push.status !== "not-configured" && !push.active && (
+          {/* Push de pedidos en este dispositivo (vienen desactivadas): avisa con el
+              panel cerrado o el celular bloqueado. */}
+          {push.status !== "loading" && push.status !== "not-configured" && !push.features.includes("orders") && (
             <button
               type="button"
               className={p.btn}
-              onClick={() => void push.toggle()}
+              onClick={() => void push.toggle("orders")}
               disabled={push.busy}
-              title="Recibir los pedidos, mesas y reservas nuevas como notificación, aunque el panel esté cerrado"
+              title="Recibir los pedidos y mesas nuevas como notificación, aunque el panel esté cerrado"
             >
               <BellRing size={16} aria-hidden /> Activar avisos
             </button>

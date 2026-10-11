@@ -15,8 +15,9 @@ export const getOwnerPushStatus = async (): Promise<OwnerPushStatus> => {
   return res.data
 }
 
-export const registerOwnerPushToken = async (token: string): Promise<void> => {
-  await apiClient.post("/push/tokens", { token })
+/** `features`: qué avisos recibe este dispositivo ("orders", "reservations"). */
+export const registerOwnerPushToken = async (token: string, features: string[]): Promise<void> => {
+  await apiClient.post("/push/tokens", { token, features })
 }
 
 export const removeOwnerPushToken = async (token: string): Promise<void> => {

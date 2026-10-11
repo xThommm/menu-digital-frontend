@@ -19,27 +19,41 @@ const VAPID_KEY = import.meta.env.FIREBASE_VAPID_KEY
 const SW_URL = "/firebase-messaging-sw.js"
 const SW_SCOPE = "/firebase-cloud-messaging-push-scope"
 
-// Último token registrado por el local en este navegador (para darlo de baja).
-const TOKEN_KEY = "owner-push-token"
+// Token y features activados por el local en este navegador. Nada guardado =
+// push desactivadas (es el estado por defecto: se activan a mano por feature).
+const STORAGE_KEY = "owner-push"
+
+/** Features cuyos avisos pueden llegar como push. */
+export type OwnerPushFeature = "orders" | "reservations"
+
+interface Stored {
+  token: string
+  features: OwnerPushFeature[]
+}
 
 const getFirebaseApp = (): FirebaseApp => getApps()[0] ?? initializeApp(firebaseConfig)
 
 const getRegistration = () => navigator.serviceWorker.register(SW_URL, { scope: SW_SCOPE })
 
-const readStoredToken = () => {
+const isFeature = (value: unknown): value is OwnerPushFeature => value === "orders" || value === "reservations"
+
+const readStored = (): Stored | null => {
   try {
-    return localStorage.getItem(TOKEN_KEY)
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as Partial<Stored> | null
+    if (!parsed || typeof parsed.token !== "string" || !Array.isArray(parsed.features)) return null
+    const features = parsed.features.filter(isFeature)
+    return features.length > 0 ? { token: parsed.token, features } : null
   } catch {
     return null
   }
 }
 
-const storeToken = (token: string | null) => {
+const writeStored = (value: Stored | null) => {
   try {
-    if (token) localStorage.setItem(TOKEN_KEY, token)
-    else localStorage.removeItem(TOKEN_KEY)
+    if (value) localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
+    else localStorage.removeItem(STORAGE_KEY)
   } catch {
-    // Sin storage igual funciona; solo no se podrá dar de baja después.
+    // Sin storage igual funciona; solo no se recuerda en este navegador.
   }
 }
 
@@ -48,39 +62,35 @@ const currentToken = async () => getToken(getMessaging(getFirebaseApp()), {
   serviceWorkerRegistration: await getRegistration(),
 })
 
-/** Las push del local están activas en este navegador. */
-export const isOwnerPushActive = () =>
-  typeof Notification !== "undefined" && Notification.permission === "granted" && Boolean(readStoredToken())
+/** Features con push activadas en este navegador (vacío = desactivadas). */
+export const getOwnerPushFeatures = (): OwnerPushFeature[] => {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return []
+  return readStored()?.features ?? []
+}
 
 /**
- * Pide permiso, obtiene el token de este navegador y lo registra para el
- * local. Tiene que llamarse desde un click (el navegador lo exige).
+ * Deja este navegador recibiendo las push de esos features (vacío = ninguna).
+ * Si hace falta pide permiso: tiene que llamarse desde un click.
  */
-export const enableOwnerPush = async (): Promise<NotificationPermission> => {
-  const permission = await Notification.requestPermission()
+export const setOwnerPushFeatures = async (features: OwnerPushFeature[]): Promise<NotificationPermission> => {
+  const stored = readStored()
+  if (features.length === 0) {
+    writeStored(null)
+    if (stored) await removeOwnerPushToken(stored.token).catch(() => undefined)
+    return Notification.permission
+  }
+
+  const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission()
   if (permission !== "granted") return permission
   const token = await currentToken()
-  await registerOwnerPushToken(token)
-  storeToken(token)
+  if (stored && stored.token !== token) await removeOwnerPushToken(stored.token).catch(() => undefined)
+  await registerOwnerPushToken(token, features)
+  writeStored({ token, features })
   return permission
 }
 
 /** Vuelve a mandar el token vigente (Firebase los rota cada tanto). */
 export const refreshOwnerPushToken = async () => {
-  if (!isOwnerPushActive()) return
-  const token = await currentToken()
-  const previous = readStoredToken()
-  if (previous && previous !== token) await removeOwnerPushToken(previous).catch(() => undefined)
-  await registerOwnerPushToken(token)
-  storeToken(token)
-}
-
-/**
- * Deja de recibir los avisos del local en este navegador. No borra el token
- * de Firebase: el mismo navegador puede seguir recibiendo otras push.
- */
-export const disableOwnerPush = async () => {
-  const token = readStoredToken()
-  storeToken(null)
-  if (token) await removeOwnerPushToken(token).catch(() => undefined)
+  const features = getOwnerPushFeatures()
+  if (features.length > 0) await setOwnerPushFeatures(features)
 }

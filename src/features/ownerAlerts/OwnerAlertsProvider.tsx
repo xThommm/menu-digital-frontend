@@ -11,7 +11,7 @@ import { readJson, writeJson } from "../orders/lib/storage";
 import { ownerHello } from "../orders/hooks/useLiveRefresh";
 import { useOrdersSocket } from "../orders/hooks/useOrdersSocket";
 import { useReservationSocket } from "../reservations/hooks/useReservationSocket";
-import { OwnerAlertsContext, type OwnerAlert, type OwnerAlertsValue } from "./OwnerAlertsContext";
+import { OwnerAlertsContext, type OwnerAlert, type OwnerAlertsValue, type OwnerPushFeature } from "./OwnerAlertsContext";
 import s from "./OwnerAlerts.module.css";
 
 // Avisos del panel del dueño, en TODAS sus pantallas (no solo en Pedidos o
@@ -23,7 +23,8 @@ import s from "./OwnerAlerts.module.css";
 // - Las pantallas de Pedidos y Reservas también avisan lo nuevo que ven al
 //   consultar (por si el socket estaba caído): el mismo hecho suena una vez.
 // - Push (Firebase): con el panel cerrado o el celular bloqueado avisa el
-//   sistema. Se activa por dispositivo.
+//   sistema. Vienen desactivadas: se activan por dispositivo y por feature
+//   (Pedidos y mesas / Reservas).
 
 const SOUND_KEY = "md:orders:sound";
 // Un hecho ya avisado no se repite durante este tiempo.
@@ -137,65 +138,64 @@ export default function OwnerAlertsProvider({ children }: { children: ReactNode 
   // ── Audio bloqueado por el navegador (nadie tocó la página todavía) ──
   const audioLocked = useSyncExternalStore(onAudioStateChange, audioLockedSnapshot, () => false);
 
-  // ── Push en este dispositivo ──
+  // ── Push en este dispositivo (por feature; por defecto, desactivadas) ──
   const [pushStatus, setPushStatus] = useState<AdminPushStatus>("loading");
-  const [pushActive, setPushActive] = useState(false);
+  const [pushFeatures, setPushFeatures] = useState<OwnerPushFeature[]>([]);
   const [pushBusy, setPushBusy] = useState(false);
 
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
-    const load = async (): Promise<{ status: AdminPushStatus; active: boolean }> => {
+    const load = async (): Promise<{ status: AdminPushStatus; features: OwnerPushFeature[] }> => {
       const lib = await loadPushLib();
-      if (!lib.isPushConfigured()) return { status: "not-configured", active: false };
+      if (!lib.isPushConfigured()) return { status: "not-configured", features: [] };
       const blocker = await lib.getPushBlocker();
-      if (blocker !== "ready") return { status: blocker, active: false };
+      if (blocker !== "ready") return { status: blocker, features: [] };
       const server = await getOwnerPushStatus();
-      if (!server.enabled) return { status: "server-off", active: false };
-      const active = lib.isOwnerPushActive();
+      if (!server.enabled) return { status: "server-off", features: [] };
       // Firebase rota los tokens: se vuelve a mandar el vigente.
-      if (active) void lib.refreshOwnerPushToken().catch(() => undefined);
-      return { status: "ready", active };
+      void lib.refreshOwnerPushToken().catch(() => undefined);
+      return { status: "ready", features: lib.getOwnerPushFeatures() };
     };
     load()
       .then(next => {
         if (cancelled) return;
         setPushStatus(next.status);
-        setPushActive(next.active);
+        setPushFeatures(next.features);
       })
       .catch(() => { if (!cancelled) setPushStatus("error"); });
     return () => { cancelled = true; };
   }, [enabled, user?.id]);
 
-  const togglePush = useCallback(async () => {
+  const togglePush = useCallback(async (feature: OwnerPushFeature) => {
     if (pushBusy) return;
     if (pushStatus !== "ready") {
       if (pushStatus !== "loading") info(PUSH_STATUS_HELP[pushStatus]);
       return;
     }
+    const turningOn = !pushFeatures.includes(feature);
+    const next = turningOn ? [...pushFeatures, feature] : pushFeatures.filter(item => item !== feature);
+    const label = feature === "orders" ? "pedidos y mesas" : "reservas";
     setPushBusy(true);
     try {
       const lib = await loadPushLib();
-      if (pushActive) {
-        await lib.disableOwnerPush();
-        setPushActive(false);
-        info("Avisos desactivados en este dispositivo");
-        return;
-      }
-      const permission = await lib.enableOwnerPush();
-      if (permission === "granted") {
-        setPushActive(true);
-        success("Listo: este dispositivo va a recibir los avisos aunque el panel esté cerrado");
+      const permission = await lib.setOwnerPushFeatures(next);
+      if (!turningOn) {
+        setPushFeatures(next);
+        info(`Notificaciones de ${label} desactivadas en este dispositivo`);
+      } else if (permission === "granted") {
+        setPushFeatures(next);
+        success(`Listo: este dispositivo va a recibir las notificaciones de ${label} aunque el panel esté cerrado`);
       } else if (permission === "denied") {
         error("El navegador bloqueó las notificaciones. Habilitalas desde la configuración del sitio.");
       }
     } catch (err) {
-      console.error("No se pudieron activar los avisos push:", err);
-      error(`No se pudieron activar los avisos: ${describePushError(err)}`);
+      console.error("No se pudieron cambiar las notificaciones push:", err);
+      error(`No se pudieron activar las notificaciones: ${describePushError(err)}`);
     } finally {
       setPushBusy(false);
     }
-  }, [error, info, pushActive, pushBusy, pushStatus, success]);
+  }, [error, info, pushBusy, pushFeatures, pushStatus, success]);
 
   const sendTest = useCallback(async () => {
     try {
@@ -213,13 +213,13 @@ export default function OwnerAlertsProvider({ children }: { children: ReactNode 
     announce,
     push: {
       status: pushStatus,
-      active: pushActive,
+      features: pushFeatures,
       busy: pushBusy,
       help: pushStatus === "ready" || pushStatus === "loading" ? null : PUSH_STATUS_HELP[pushStatus],
       toggle: togglePush,
       sendTest,
     },
-  }), [announce, pushActive, pushBusy, pushStatus, sendTest, setSoundOn, soundOn, togglePush]);
+  }), [announce, pushBusy, pushFeatures, pushStatus, sendTest, setSoundOn, soundOn, togglePush]);
 
   return (
     <OwnerAlertsContext.Provider value={value}>

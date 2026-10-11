@@ -1,5 +1,8 @@
 import { createContext } from "react";
 import type { AdminPushStatus } from "../../lib/pushDevices";
+import type { OwnerPushFeature } from "../../lib/ownerPush";
+
+export type { OwnerPushFeature };
 
 // Avisos del panel del dueño: pedido nuevo, mesa abierta, reserva nueva.
 // Ver OwnerAlertsProvider.
@@ -21,12 +24,13 @@ export interface OwnerAlert {
 export interface OwnerPushState {
   /** Si este dispositivo puede recibir push y, si no, por qué. */
   status: AdminPushStatus;
-  /** Push activas en ESTE dispositivo. */
-  active: boolean;
+  /** Features con push activadas en ESTE dispositivo (por defecto, ninguno). */
+  features: OwnerPushFeature[];
   busy: boolean;
   /** Explicación cuando no se pueden activar. */
   help: string | null;
-  toggle: () => Promise<void>;
+  /** Activa o desactiva las push de un feature en este dispositivo. */
+  toggle: (feature: OwnerPushFeature) => Promise<void>;
   sendTest: () => Promise<void>;
 }
 
