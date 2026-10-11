@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, BellOff, Plus } from "lucide-react";
+import { Bell, BellOff, BellRing, Plus } from "lucide-react";
 import {
   assignOrderWaiter, dispatchOrder, getBoard, openShift, removeOrderItem, restoreOrderItem, setOrderItemDelivered, updateOrderStatus,
 } from "../../api/ordersApi";
 import { ownerHello, useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { useOrderSettings, useWaiters } from "../../hooks/usePanelData";
-import { beep } from "../../lib/beep";
 import { errorMessage } from "../../lib/errors";
-import { formatTime } from "../../lib/format";
-import { readJson, writeJson } from "../../lib/storage";
+import { formatTime, placeLabel } from "../../lib/format";
 import type { Order, OrderStatus, Shift } from "../../types";
+import { useOwnerAlerts } from "../../../ownerAlerts/useOwnerAlerts";
 import ManualOrderModal from "./ManualOrderModal";
 import OrderCard from "./OrderCard";
 import type { ItemActions } from "./OrderItemsList";
@@ -29,7 +28,16 @@ const COLUMNS: { status: OrderStatus; title: string; empty: string }[] = [
   { status: "ready", title: "Listos para entregar", empty: "No hay pedidos listos." },
 ];
 
-const SOUND_KEY = "md:orders:sound";
+// Aviso de un pedido sin confirmar que vio la consulta (por si el aviso en vivo
+// no llegó). Si ya sonó por el socket, el proveedor de avisos no lo repite.
+const pendingAlert = (order: Order) => ({
+  key: `order:${order.id}`,
+  orderId: order.id,
+  kind: "order" as const,
+  title: `🛎️ Nuevo pedido #${order.number}`,
+  body: placeLabel(order),
+  url: "/pedidos",
+});
 
 export default function OrdersBoard() {
   const settings = useOrderSettings();
@@ -43,11 +51,11 @@ export default function OrdersBoard() {
   const [newIds, setNewIds] = useState<Set<number>>(() => new Set());
   const [manualOpen, setManualOpen] = useState(false);
   const [mobileColumn, setMobileColumn] = useState<OrderStatus>("pending");
-  const [sound, setSound] = useState(() => readJson(SOUND_KEY, (v): v is boolean => typeof v === "boolean") ?? true);
+  const { soundOn: sound, setSoundOn, announce, push } = useOwnerAlerts();
   const [refunding, setRefunding] = useState<{ order: Order; cancel: boolean; amount?: number } | null>(null);
   const knownIds = useRef<Set<number> | null>(null);
-  const soundRef = useRef(sound);
-  useEffect(() => { soundRef.current = sound; }, [sound]);
+  const announceRef = useRef(announce);
+  useEffect(() => { announceRef.current = announce; }, [announce]);
 
   const refresh = useCallback(async () => {
     try {
@@ -57,7 +65,7 @@ export default function OrdersBoard() {
         const fresh = board.orders.filter(order => !knownIds.current!.has(order.id));
         if (fresh.length > 0) {
           setNewIds(prev => new Set([...prev, ...fresh.map(order => order.id)]));
-          if (soundRef.current && fresh.some(order => order.status === "pending")) beep();
+          fresh.filter(order => order.status === "pending").forEach(order => announceRef.current(pendingAlert(order)));
         }
       }
       knownIds.current = ids;
@@ -163,13 +171,7 @@ export default function OrdersBoard() {
     }
   };
 
-  const toggleSound = () => {
-    setSound(prev => {
-      writeJson(SOUND_KEY, !prev);
-      if (!prev) beep();
-      return !prev;
-    });
-  };
+  const toggleSound = () => setSoundOn(!sound);
 
   const tableCount = settings.data?.settings.tableCount ?? 0;
 
@@ -193,6 +195,18 @@ export default function OrdersBoard() {
             {sound ? <Bell size={16} aria-hidden /> : <BellOff size={16} aria-hidden />}
             {sound ? "Sonido" : "Silencio"}
           </button>
+          {/* Push en este dispositivo: avisa con el panel cerrado o el celular bloqueado. */}
+          {push.status !== "loading" && push.status !== "not-configured" && !push.active && (
+            <button
+              type="button"
+              className={p.btn}
+              onClick={() => void push.toggle()}
+              disabled={push.busy}
+              title="Recibir los pedidos, mesas y reservas nuevas como notificación, aunque el panel esté cerrado"
+            >
+              <BellRing size={16} aria-hidden /> Activar avisos
+            </button>
+          )}
           {!shift && <button type="button" className={p.btn} onClick={startShift}>Abrir turno</button>}
           <button type="button" className={p.btnPrimary} onClick={() => setManualOpen(true)} disabled={!settings.data}>
             <Plus size={16} aria-hidden /> Nuevo pedido

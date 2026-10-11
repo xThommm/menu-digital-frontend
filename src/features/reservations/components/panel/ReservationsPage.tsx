@@ -6,17 +6,18 @@ import { isSubscriptionExpired } from "../../../../lib/plans";
 import { buildWaHref, sanitizePhoneForWa } from "../../../../lib/whatsapp";
 import DataTable, { type DataTableColumn } from "../../../../components/Common/DataTable/DataTable";
 import { KanbanIcon, ListIcon } from "../../../../components/Seller/Crm/crmIcons";
-import { beep } from "../../../orders/lib/beep";
 import { errorCode, errorMessage } from "../../../orders/lib/errors";
 import { readJson, writeJson } from "../../../orders/lib/storage";
 import {
   getReservationSettings, listReservations, runReservationAction, type ReservationList, type SettingsResponse,
 } from "../../api/reservationsApi";
 import { useReservationSocket } from "../../hooks/useReservationSocket";
-import { codeMessage, formatPeople, formatReservationDate, STATUS_LABEL, todayBuenosAires } from "../../lib/format";
+import { codeMessage, formatPeople, formatReservationDate, reservationWhen, STATUS_LABEL, todayBuenosAires } from "../../lib/format";
 import type { OwnerAction, OwnerReservation, ReservationSettings, ReservationStatus, SocketMessage } from "../../types";
 import { CancelModal, ConfirmDialog, ConfirmModal, ManualReservationModal, RejectModal } from "./ReservationModals";
 import ReservationsSettings from "./ReservationsSettings";
+import { useOwnerAlerts } from "../../../ownerAlerts/useOwnerAlerts";
+import OwnerAlertsCard from "../../../ownerAlerts/OwnerAlertsCard";
 import p from "../../../orders/components/panel/panel.module.css";
 import r from "./Reservations.module.css";
 
@@ -83,6 +84,9 @@ export default function ReservationsPage() {
   const [manualOpen, setManualOpen] = useState(false);
   const [created, setCreated] = useState<OwnerReservation | null>(null);
   const known = useRef<Set<number> | null>(null);
+  const { announce } = useOwnerAlerts();
+  const announceRef = useRef(announce);
+  useEffect(() => { announceRef.current = announce; }, [announce]);
   const fromRef = useRef(fetchFrom);
   useEffect(() => { fromRef.current = fetchFrom; });
 
@@ -94,10 +98,19 @@ export default function ReservationsPage() {
   const refresh = useCallback(async () => {
     try {
       const result = await listReservations(fromRef.current);
-      // Reservas web nuevas desde la última consulta: aviso sonoro.
+      // Reservas web nuevas desde la última consulta: aviso (si ya sonó por el
+      // socket, no se repite).
       const ids = new Set(result.reservations.map(item => item.id));
-      if (known.current && result.reservations.some(item => !known.current!.has(item.id) && item.status === "pending" && item.source === "web")) {
-        beep();
+      if (known.current) {
+        result.reservations
+          .filter(item => !known.current!.has(item.id) && item.status === "pending" && item.source === "web")
+          .forEach(item => announceRef.current({
+            key: `reservation:${item.id}`,
+            kind: "reservation",
+            title: "📅 Nueva reserva",
+            body: `${item.name} · ${formatPeople(item.partySize)} · ${reservationWhen(item.date, item.time)}`,
+            url: "/reservas",
+          }));
       }
       known.current = ids;
       setList(result);
@@ -370,7 +383,10 @@ export default function ReservationsPage() {
 
       {tab === "settings" ? (
         settings ? (
-          <ReservationsSettings key={JSON.stringify(settings.settings)} initial={settings} onSaved={(next: ReservationSettings) => setSettings({ ...settings, settings: next })} />
+          <>
+            <OwnerAlertsCard style={{ marginBottom: "1rem" }} />
+            <ReservationsSettings key={JSON.stringify(settings.settings)} initial={settings} onSaved={(next: ReservationSettings) => setSettings({ ...settings, settings: next })} />
+          </>
         ) : !error && <div className={p.loading}>Cargando…</div>
       ) : view === "table" ? (
         <DataTable<OwnerReservation>

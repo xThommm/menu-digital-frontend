@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { reservationsSocketUrl } from "../../reservations/hooks/useReservationSocket";
+import type { OwnerAlert } from "../../ownerAlerts/OwnerAlertsContext";
 
 // WebSocket de pedidos y Delivery (/api/orders/ws). Los mensajes son AVISOS sin
 // datos: al recibirlos la pantalla vuelve a pedir el estado por HTTP, que sigue
@@ -22,6 +23,8 @@ export interface OrdersSocketMessage {
   orderNumber?: number | null;
   code?: string;
   role?: string;
+  // Solo al panel del local: pedido nuevo o mesa abierta que tiene que sonar.
+  alert?: OwnerAlert;
 }
 
 const MIN_DELAY_MS = 1_000;

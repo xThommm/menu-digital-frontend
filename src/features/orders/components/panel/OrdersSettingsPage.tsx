@@ -9,6 +9,7 @@ import { venueQrUrl } from "../../lib/qrUrls";
 import type { DeliveryAssignMode, DeliveryConfirmBy, MpConnection, OrderSettings, PeriodMode, QrMode, SettingsResponse, ShiftScheduleEntry } from "../../types";
 import PaymentsSection from "./PaymentsSection";
 import p from "./panel.module.css";
+import OwnerAlertsCard from "../../../ownerAlerts/OwnerAlertsCard";
 
 // Configuración de Gestión de pedidos: QR general o por mesa, cantidad de
 // mesas, si los comensales pueden pedir solos, historial en su navegador y
@@ -98,6 +99,7 @@ export default function OrdersSettingsPage() {
       {saved && !dirty && <p className={p.success} role="status">Cambios guardados.</p>}
 
       <div className={p.grid} style={{ marginTop: "1rem" }}>
+        <OwnerAlertsCard />
         <section className={p.card}>
           <h2 className={p.cardTitle}>Pedidos desde la mesa</h2>
           <div className={p.switchRow}>
