@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { isEmailNotVerified, redirectToEmailVerification } from '../lib/emailNotVerified'
 
 // Lee la URL base desde .env  →  VITE_API_URL=http://localhost:3000/api
 //
@@ -39,6 +40,9 @@ apiClient.interceptors.response.use(
       // No hay sincronización entre pestañas (no se escucha el evento
       // `storage`): esta redirección solo limpia la sesión de esta pestaña.
       window.location.href = '/login'
+    }
+    if (isEmailNotVerified(error.response?.status, error.response?.data)) {
+      redirectToEmailVerification()
     }
     return Promise.reject(error)
   }

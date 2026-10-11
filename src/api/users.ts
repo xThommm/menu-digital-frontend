@@ -48,6 +48,27 @@ export const resendVerificationCode = async (): Promise<{ maskedEmail?: string }
   return res.data
 }
 
+export interface EmailVerificationStatus {
+  emailVerified: boolean
+  email?: string | null
+  // false cuando el código venció o el mail del alta no llegó a salir.
+  codeActive?: boolean
+  codeExpiresAt?: string | null
+}
+
+// GET /api/users/me/verify-email
+export const getEmailVerificationStatus = async (): Promise<EmailVerificationStatus> => {
+  const res = await apiClient.get<EmailVerificationStatus>('/users/me/verify-email')
+  return res.data
+}
+
+// PATCH /api/users/me/verify-email/email  →  corrige el email de una cuenta
+// todavía sin verificar y manda el código a la casilla nueva.
+export const changeUnverifiedEmail = async (mail: string): Promise<{ email: string }> => {
+  const res = await apiClient.patch<{ email: string }>('/users/me/verify-email/email', { mail })
+  return res.data
+}
+
 // PUT /api/users/me
 export const updateMe = async (
   data: Partial<Pick<User, 'contactInfo' | 'hasDelivery' | 'hasTakeAway' | 'media' | 'template'>>
