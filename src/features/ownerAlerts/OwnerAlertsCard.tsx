@@ -1,35 +1,38 @@
 import type { CSSProperties } from "react";
 import { useOwnerAlerts } from "./useOwnerAlerts";
-import type { OwnerPushFeature } from "./OwnerAlertsContext";
+import type { OwnerAlertKind } from "./OwnerAlertsContext";
+import { playAlert, unlockAudio } from "../orders/lib/beep";
 import p from "../orders/components/panel/panel.module.css";
 
-const COPY: Record<OwnerPushFeature, { what: string; label: string }> = {
-  orders: { what: "Cuando llega un pedido o se abre una mesa.", label: "pedidos y mesas" },
-  reservations: { what: "Cuando entra una reserva desde la web.", label: "reservas" },
+type Feature = "orders" | "reservations";
+
+const COPY: Record<Feature, { what: string; sound: OwnerAlertKind }> = {
+  orders: { what: "Cuando llega un pedido o se abre una mesa", sound: "order" },
+  reservations: { what: "Cuando entra una reserva desde la web", sound: "reservation" },
 };
 
-// Configuración de los avisos en ESTE dispositivo: sonido con el panel
-// abierto (compartido por todo el panel) y push del feature de esta pantalla,
-// que viene desactivada hasta que el dueño la activa.
-export default function OwnerAlertsCard({ feature, style }: { feature: OwnerPushFeature; style?: CSSProperties }) {
-  const { soundOn, setSoundOn, push } = useOwnerAlerts();
-  const pushReady = push.status === "ready";
-  const active = push.features.includes(feature);
+// Avisos del panel en ESTE dispositivo. Son propios del panel (no push): con
+// el panel abierto suenan y aparecen en cualquier pantalla, aunque la pestaña
+// esté en segundo plano. El sonido es uno solo para todo el panel.
+export default function OwnerAlertsCard({ feature, style }: { feature: Feature; style?: CSSProperties }) {
+  const { soundOn, setSoundOn } = useOwnerAlerts();
   const copy = COPY[feature];
+
+  const test = () => { void unlockAudio().then(() => playAlert(copy.sound)); };
 
   return (
     <section className={p.card} style={style}>
-      <h2 className={p.cardTitle}>Avisos en este dispositivo</h2>
+      <h2 className={p.cardTitle}>Avisos en el panel</h2>
       <p className={p.cardDesc}>
-        {copy.what} Se configura en cada dispositivo (computadora del mostrador, tu celular…).
+        {copy.what}, el panel muestra un aviso en cualquier pantalla. Dejá el panel abierto en la computadora o el
+        celular del local (puede quedar en otra pestaña).
       </p>
 
       <div className={p.switchRow}>
         <div className={p.switchText}>
-          <span className={p.switchTitle}>Sonido con el panel abierto</span>
+          <span className={p.switchTitle}>Sonido en este dispositivo</span>
           <span className={p.switchHint}>
-            Suena en cualquier pantalla del panel, aunque esté en otra pestaña. Si el navegador lo pide, tocá una vez la página
-            para habilitar el sonido.
+            Si el navegador lo pide, tocá una vez la página para habilitar el sonido.
           </span>
         </div>
         <input
@@ -37,36 +40,13 @@ export default function OwnerAlertsCard({ feature, style }: { feature: OwnerPush
           className={p.switch}
           checked={soundOn}
           onChange={e => setSoundOn(e.target.checked)}
-          aria-label="Sonido con el panel abierto"
+          aria-label="Sonido de los avisos en este dispositivo"
         />
       </div>
 
-      <div className={p.switchRow}>
-        <div className={p.switchText}>
-          <span className={p.switchTitle}>Notificaciones con el panel cerrado</span>
-          <span className={p.switchHint}>
-            {push.status === "loading"
-              ? "Consultando…"
-              : push.help ?? (active
-                ? `Activadas: los avisos de ${copy.label} te llegan como notificación del sistema, con el panel cerrado o el celular bloqueado.`
-                : `Desactivadas. Activalas para recibir los avisos de ${copy.label} aunque no tengas el panel abierto.`)}
-          </span>
-        </div>
-        <input
-          type="checkbox"
-          className={p.switch}
-          checked={active}
-          disabled={!pushReady || push.busy}
-          onChange={() => void push.toggle(feature)}
-          aria-label="Notificaciones con el panel cerrado"
-        />
-      </div>
-
-      {active && (
-        <button type="button" className={`${p.btn} ${p.small}`} onClick={() => void push.sendTest()} style={{ marginTop: "0.75rem" }}>
-          Enviar aviso de prueba
-        </button>
-      )}
+      <button type="button" className={`${p.btn} ${p.small}`} onClick={test} style={{ marginTop: "0.75rem" }}>
+        Probar sonido
+      </button>
     </section>
   );
 }
