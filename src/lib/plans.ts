@@ -25,9 +25,11 @@ export const FEATURE_LABELS: Record<BooleanPlanFeature, string> = {
   menu_pdf: "Exportar menú a PDF",
   estadisticas: "Estadísticas de visitas y productos",
   image_manager: "Gestor de imágenes",
-  menu_templates: "Plantillas de menú",
-  menu_styles: "Familias visuales",
-  premium_menu_styles: "Diseños premium de carta",
+  // Mismos nombres que en el panel: "Elegir desde plantilla" copia productos,
+  // "Diseño de carta" es el estilo y templateIds son las paletas de colores.
+  menu_templates: "Cargar productos desde plantilla",
+  menu_styles: "Diseños de carta",
+  premium_menu_styles: "Diseños de carta premium",
 };
 
 // Solo sirve para pintar el estado mientras llega el refresh del backend; los
@@ -45,11 +47,22 @@ export function isSubscriptionExpired(
 
 export const BOOLEAN_FEATURES = Object.keys(FEATURE_LABELS) as BooleanPlanFeature[];
 
+const paletteLabel = (count: number) => `${count} ${count === 1 ? "paleta de colores" : "paletas de colores"}`;
+
+// Con los diseños comunes y los premium juntos va una sola línea, para que la
+// lista del plan no repita "diseños" dos veces seguidas.
+function featureLabels(keys: BooleanPlanFeature[]): string[] {
+  const bothStyles = keys.includes("menu_styles") && keys.includes("premium_menu_styles");
+  return keys
+    .filter(key => !(bothStyles && key === "premium_menu_styles"))
+    .map(key => (bothStyles && key === "menu_styles" ? "Diseños de carta, incluidos los premium" : FEATURE_LABELS[key]));
+}
+
 export function getPlanFeatureLabels(features: PlanFeatures): string[] {
   return [
     features.item_limit === null ? "Productos ilimitados" : `Hasta ${features.item_limit} productos`,
-    ...BOOLEAN_FEATURES.filter(key => features[key]).map(key => FEATURE_LABELS[key]),
-    `${features.templateIds.length} ${features.templateIds.length === 1 ? "diseño disponible" : "diseños disponibles"}`,
+    ...featureLabels(BOOLEAN_FEATURES.filter(key => features[key])),
+    paletteLabel(features.templateIds.length),
     ...(!features.sin_publicidad ? ["Incluye publicidad de MenuDigital"] : []),
   ];
 }
@@ -67,15 +80,11 @@ export function getPlanUpgradeLabels(features: PlanFeatures, previousFeatures: P
     added.push(features.item_limit === null ? "Productos ilimitados" : `Hasta ${features.item_limit} productos`);
   }
 
-  added.push(
-    ...BOOLEAN_FEATURES
-      .filter(key => features[key] && !previousFeatures[key])
-      .map(key => FEATURE_LABELS[key]),
-  );
+  added.push(...featureLabels(BOOLEAN_FEATURES.filter(key => features[key] && !previousFeatures[key])));
 
   const newTemplates = features.templateIds.length - previousFeatures.templateIds.length;
   if (newTemplates > 0) {
-    added.push(`+${newTemplates} ${newTemplates === 1 ? "diseño nuevo" : "diseños nuevos"}`);
+    added.push(`+${newTemplates} ${newTemplates === 1 ? "paleta de colores nueva" : "paletas de colores nuevas"}`);
   }
 
   return added.length > 0 ? added : getPlanFeatureLabels(features);
