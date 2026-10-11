@@ -1,6 +1,8 @@
 // Tipos de Reservas. Espejo de los DTOs de backend/src/reservations
 // (services/reservationService.js).
 
+import type { OwnerAlert } from "../ownerAlerts/OwnerAlertsContext";
+
 export type ReservationStatus = "pending" | "confirmed" | "rejected" | "cancelled" | "completed" | "no_show";
 
 export type PhoneMode = "off" | "optional" | "required";
@@ -76,5 +78,6 @@ export interface OwnerActionBody {
 // Mensajes del WebSocket (servidor → cliente).
 export type SocketMessage =
   | { type: "ready"; role: "owner" | "customer" }
-  | { type: "reservation"; reservation: CustomerReservation | OwnerReservation }
+  // `alert`: solo al panel, cuando entra una reserva nueva desde la web.
+  | { type: "reservation"; reservation: CustomerReservation | OwnerReservation; alert?: OwnerAlert }
   | { type: "error"; code?: string; message: string };

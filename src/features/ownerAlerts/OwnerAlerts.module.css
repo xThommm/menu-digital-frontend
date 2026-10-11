@@ -1,0 +1,104 @@
+/* Avisos del panel del dueño (pedido nuevo, mesa abierta, reserva nueva).
+   Arriba a la derecha, para no pisar los toasts de abajo. */
+.stack {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: var(--z-toast);
+  width: min(380px, calc(100vw - 2 * var(--space-4)));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+.card,
+.unlock {
+  composes: md-surface from global;
+  pointer-events: auto;
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  color: var(--admin-text-primary);
+  animation: alertIn var(--transition-md) both;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-4);
+  border-left-width: 4px;
+}
+
+.order { border-left-color: var(--admin-gold); }
+.table { border-left-color: var(--admin-success-core); }
+.reservation { border-left-color: var(--tone-accent, var(--admin-gold)); }
+
+.text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.title { font-size: 0.92rem; font-weight: 700; }
+
+.body {
+  font-size: 0.8rem;
+  color: var(--admin-text-warm);
+  overflow-wrap: anywhere;
+}
+
+.actions { display: flex; align-items: center; gap: var(--space-1); }
+
+.view,
+.close {
+  font: inherit;
+  border: none;
+  cursor: pointer;
+  border-radius: 999px;
+}
+
+.view {
+  min-height: 34px;
+  padding: 0 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--admin-gold);
+  color: var(--admin-gold-ink);
+}
+
+.close {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--admin-text-warm);
+}
+
+.view:focus-visible,
+.close:focus-visible,
+.unlock:focus-visible {
+  outline: 2px solid var(--tone-focus);
+  outline-offset: 2px;
+}
+
+.unlock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  border-left: 4px solid var(--admin-gold);
+}
+
+@keyframes alertIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .unlock { animation: none; }
+}
