@@ -23,7 +23,7 @@ const NAV_ITEMS = [
 
 // Pantallas de trabajo que necesitan el ancho: ahí la barra queda como riel
 // de íconos (ver .sidebarCompact en DashboardLayout.module.css).
-const COMPACT_SIDEBAR_PATHS = ["/menu/editor"];
+const COMPACT_SIDEBAR_PATHS = ["/menu/editor", "/user/editor"];
 
 // Acceso a Gestión de pedidos (sección aparte con su propia barra, ver
 // src/features/orders). En el celular va en "Más" para no sumar un botón al dock.
