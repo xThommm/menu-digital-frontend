@@ -1,11 +1,9 @@
-import { useId, useState } from "react";
-import { ArrowUpRight, CalendarCheck, ClipboardList, Ellipsis, Lock } from "lucide-react";
+import { useId } from "react";
+import { ArrowUpRight, Ellipsis, Lock } from "lucide-react";
 import Cobweb from "../../../Halloween/Cobweb";
 import type { Order } from "../../../../features/orders/types";
-import type { OwnerReservation } from "../../../../features/reservations/types";
-import { STATUS_LABEL, elapsedLabel, formatMoney, formatTime, placeLabel } from "../../../../features/orders/lib/format";
-import { formatPeople } from "../../../../features/reservations/lib/format";
-import { formatCount, type OrdersSummary, type ReservationsSummary, type VisitsSummary } from "./todayActivity";
+import { STATUS_LABEL, formatMoney, formatTime, placeLabel } from "../../../../features/orders/lib/format";
+import { formatCount, type OrdersSummary, type VisitsSummary } from "./todayActivity";
 import { useCountUp } from "./useCountUp";
 import s from "./UserDashboard.module.css";
 
@@ -108,135 +106,6 @@ export function GoButton({ label, onClick, light }: { label: string; onClick: ()
     <button type="button" className={`${s.goBtn} ${light ? s.goBtnLight : ""}`} onClick={onClick} aria-label={label} title={label}>
       <ArrowUpRight size={16} strokeWidth={1.75} />
     </button>
-  );
-}
-
-// ── Agenda: reservas y pedidos de hoy ─────────────────────────────────────────
-
-const RESERVATION_STATUS: Partial<Record<OwnerReservation["status"], string>> = {
-  pending: "Por confirmar",
-  confirmed: "Confirmada",
-};
-
-interface AgendaCardProps {
-  dateLabel: string;
-  reservations: ReservationsSummary | null | undefined;
-  orders: OrdersSummary | null | undefined;
-  onOpenReservations: () => void;
-  onOpenOrders: () => void;
-}
-
-type AgendaTab = "reservas" | "pedidos";
-
-export function AgendaCard({ dateLabel, reservations, orders, onOpenReservations, onOpenOrders }: AgendaCardProps) {
-  const [tab, setTab] = useState<AgendaTab>("reservas");
-  const open = tab === "reservas" ? onOpenReservations : onOpenOrders;
-  const loading = tab === "reservas" ? reservations === undefined : orders === undefined;
-
-  return (
-    <section className={`${s.card} ${s.agendaCard}`} aria-label="Agenda de hoy">
-      <header className={s.agendaHeader}>
-        <span className={s.datePill}>{dateLabel}</span>
-        <h2 className={s.cardTitle}>Agenda</h2>
-        <MoreButton label={tab === "reservas" ? "Ir a reservas" : "Ir a pedidos"} onClick={open} />
-      </header>
-
-      <div className={s.tabs} role="tablist" aria-label="Qué mostrar">
-        {(["reservas", "pedidos"] as const).map(key => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={tab === key}
-            className={`${s.tab} ${tab === key ? s.tabActive : ""}`}
-            onClick={() => setTab(key)}
-          >
-            {key === "reservas" ? "Reservas" : "Pedidos"}
-            <span className={s.tabCount}>
-              {key === "reservas" ? reservations?.list.length ?? 0 : orders?.list.length ?? 0}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <div className={s.agendaList} role="tabpanel">
-        {loading ? (
-          <>
-            <span className={s.agendaSkeleton} aria-hidden />
-            <span className={s.agendaSkeleton} aria-hidden />
-          </>
-        ) : tab === "reservas" ? (
-          reservations && reservations.list.length > 0
-            ? reservations.list.map((reservation, index) => (
-              <AgendaItem
-                key={reservation.id}
-                featured={index === 0}
-                title={reservation.name}
-                subtitle={[formatPeople(reservation.partySize), reservation.tableLabel && `Mesa ${reservation.tableLabel}`]
-                  .filter(Boolean).join(" · ")}
-                chips={[`${reservation.time} hs`, RESERVATION_STATUS[reservation.status] ?? ""]}
-                alert={reservation.status === "pending"}
-                onClick={onOpenReservations}
-              />
-            ))
-            : <AgendaEmpty icon={<CalendarCheck size={18} strokeWidth={1.5} />} text="No hay reservas para hoy." />
-        ) : orders && orders.list.length > 0 ? (
-          orders.list.map((order, index) => (
-            <AgendaItem
-              key={order.id}
-              featured={index === 0}
-              title={`Pedido #${order.number}`}
-              subtitle={[placeLabel(order), order.customerName].filter(Boolean).join(" · ")}
-              chips={[STATUS_LABEL[order.status], elapsedLabel(order.createdAt)]}
-              alert={order.status === "pending"}
-              onClick={onOpenOrders}
-            />
-          ))
-        ) : (
-          <AgendaEmpty
-            icon={<ClipboardList size={18} strokeWidth={1.5} />}
-            text={orders && !orders.shiftOpen ? "No hay un turno abierto." : "No hay pedidos en curso."}
-          />
-        )}
-      </div>
-    </section>
-  );
-}
-
-interface AgendaItemProps {
-  featured: boolean;
-  title: string;
-  subtitle: string;
-  chips: string[];
-  alert: boolean;
-  onClick: () => void;
-}
-
-function AgendaItem({ featured, title, subtitle, chips, alert, onClick }: AgendaItemProps) {
-  return (
-    <article className={`${s.agendaItem} ${featured ? s.agendaItemFeatured : ""}`}>
-      <div className={s.agendaItemTop}>
-        <div className={s.agendaItemText}>
-          <h3>{title}</h3>
-          {subtitle && <p>{subtitle}</p>}
-        </div>
-        <GoButton label={`Abrir ${title}`} onClick={onClick} light={!featured} />
-      </div>
-      <div className={s.agendaChips}>
-        {chips.filter(Boolean).map((chip, index) => (
-          <span key={chip} className={`${s.chip} ${alert && index === 1 ? s.chipAlert : ""}`}>{chip}</span>
-        ))}
-      </div>
-    </article>
-  );
-}
-
-function AgendaEmpty({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <div className={s.agendaEmpty}>
-      <span className={s.agendaEmptyIcon}>{icon}</span>
-      {text}
-    </div>
   );
 }
 

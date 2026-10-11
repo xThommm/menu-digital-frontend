@@ -45,6 +45,8 @@ export interface OrdersSummary {
   ready: number;
   // Los pedidos en curso, del más viejo al más nuevo.
   list: Order[];
+  // Todos los del tablero (también entregados y cancelados), del más viejo al más nuevo.
+  all: Order[];
 }
 
 const ACTIVE_STATUSES = new Set(["pending", "confirmed", "ready"]);
@@ -63,6 +65,7 @@ export function summarizeOrders(board: BoardResponse): OrdersSummary {
     list: board.orders
       .filter(order => ACTIVE_STATUSES.has(order.status))
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    all: [...board.orders].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
   };
 }
 
@@ -75,6 +78,11 @@ export interface ReservationsSummary {
   next: string | null;
   // Las de hoy que siguen en pie, por horario.
   list: OwnerReservation[];
+  // Todas las cargadas (cualquier fecha y estado), por fecha y horario: el
+  // calendario de la agenda filtra sobre estas.
+  all: OwnerReservation[];
+  // Desde qué fecha hay datos (YYYY-MM-DD); antes de eso el calendario no muestra nada.
+  from: string;
 }
 
 export function summarizeReservations(list: ReservationList, today: string, nowTime: string): ReservationsSummary {
@@ -88,6 +96,8 @@ export function summarizeReservations(list: ReservationList, today: string, nowT
     pending: list.pendingCount,
     next: upcoming[0] ?? null,
     list: [...todays].sort((a, b) => a.time.localeCompare(b.time)),
+    all: [...list.reservations].sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time)),
+    from: list.from,
   };
 }
 

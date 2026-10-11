@@ -16,9 +16,10 @@ import { CalendarCheck, ChartColumn, ClipboardList, Eye, LayoutGrid, Sparkles, U
 import { daysUntil, formatCount } from "./todayActivity";
 import { useTodayActivity } from "./useTodayActivity";
 import {
-  AgendaCard, Gauge, KpiStat, LockedChartCard, OrdersBarsCard, OrdersTable, QuickTile, VisitsChartCard,
+  Gauge, KpiStat, LockedChartCard, OrdersBarsCard, OrdersTable, QuickTile, VisitsChartCard,
   type Kpi,
 } from "./DashboardWidgets";
+import { AgendaCard } from "./AgendaCard";
 import s from "./UserDashboard.module.css";
 
 // Con menos de estos días de vigencia, el plan vuelve a destacarse en el inicio.
@@ -500,7 +501,7 @@ export default function UserDashboard() {
         <div className={`${s.row} ${isPro ? s.rowThree : s.rowTwo}`}>
           {isPro ? (
             <AgendaCard
-              dateLabel="Hoy"
+              today={todayBuenosAires(now)}
               reservations={activity.reservations}
               orders={activity.orders}
               onOpenReservations={() => navigate("/reservas")}
