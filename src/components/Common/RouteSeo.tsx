@@ -102,7 +102,7 @@ function getSeoConfig(pathname: string): SeoConfig {
     return {
       title: "Menú Digital QR para Restaurantes | Menú Digital App",
       description:
-        "Creá un menú digital QR para tu restaurante, bar o cafetería. Actualizá productos, precios y ofertas al instante y compartí tu carta desde cualquier celular.",
+        "Creá un menú digital QR para tu restaurante, bar o cafetería. Actualizá precios al instante y recibí pedidos desde la mesa, delivery y reservas online.",
       robots: "index, follow",
       canonical: `${SITE_URL}/`,
     };

@@ -23,6 +23,12 @@ import {
   MessageCircle,
   Mail,
   X,
+  ConciergeBell,
+  ChefHat,
+  CreditCard,
+  Bike,
+  Receipt,
+  CalendarCheck,
   type LucideIcon,
 } from "lucide-react";
 import BrandMark from "../../Common/BrandMark";
@@ -135,6 +141,25 @@ const FEATURES: IconCard[] = [
   { icon: Palette, title: "Diseño a tu imagen", desc: "Elegí entre múltiples templates y personalizá con el logo y los colores de tu local. Tu menú, tu identidad." },
   { icon: Clock, title: "Ofertas programadas", desc: "Configurá un precio de oferta con fechas de inicio y fin. Se activa y desactiva solo, sin que tengas que acordarte.", feature: "programacion_productos" },
   { icon: ChartColumn, title: "Estadísticas de tu carta", desc: "Mirá cuántas personas abren tu menú, en qué horarios y qué productos miran y piden más.", feature: "estadisticas" },
+];
+
+// Gestión de pedidos y reservas: el backend las habilita solo con el plan Pro
+// vigente (requireProPlan), no con una clave del catálogo, así que acá el plan
+// va fijo en vez de salir de minPlanLabel.
+const ORDER_FEATURES: IconCard[] = [
+  { icon: QrCode, title: "Pedidos desde la mesa", desc: "Un QR general o uno por mesa. El cliente pide desde el celular y el pedido entra directo a tu panel, sin pasar por WhatsApp." },
+  { icon: ConciergeBell, title: "App del mozo", desc: "Tus mozos toman pedidos desde su propio celular escaneando un QR de acceso. Sin claves ni descargas; cada pedido queda a su nombre." },
+  { icon: ChefHat, title: "Comandas por sector", desc: "Cocina, barra o parrilla ven solo lo que les toca en su pantalla, con impresión directa en la comandera." },
+  { icon: CreditCard, title: "Delivery y take away con Mercado Pago", desc: "Cobrá online con tu propia cuenta. El cliente ve el tiempo estimado y sigue su pedido en vivo hasta que lo recibe." },
+  { icon: Bike, title: "App del repartidor", desc: "Tus repartidores toman los envíos desde el celular y confirman cada entrega con el código del cliente." },
+  { icon: Receipt, title: "Caja y turnos", desc: "Cerrá la caja por turno o por día con el efectivo contado, el ticket promedio, lo más vendido y los tiempos de preparación." },
+];
+
+// Lo que el plan Pro suma por fuera del catálogo de la API (ver ORDER_FEATURES).
+const PRO_EXTRA_LABELS = [
+  "Gestión de pedidos: mesas, mozos, comandas y caja",
+  "Delivery y take away con cobro por Mercado Pago",
+  "Reservas online",
 ];
 
 const ABOUT_CARDS: IconCard[] = [
@@ -335,6 +360,80 @@ function PhoneMockup() {
 }
 
 // ─────────────────────────────────────────────
+// SUBCOMPONENTE: MOCKUP DEL TABLERO DE PEDIDOS
+// Mismas columnas que OrdersBoard (Sin confirmar / En preparación / Listos).
+// ─────────────────────────────────────────────
+const BOARD_COLUMNS = [
+  {
+    title: "Sin confirmar",
+    orders: [{ n: "#18", where: "Mesa 4", items: "2× Napolitana · 1× Agua", tag: "Nuevo" }],
+  },
+  {
+    title: "En preparación",
+    orders: [
+      { n: "#16", where: "Delivery", items: "1× Especial · 2× Gaseosa", tag: "Pagado" },
+      { n: "#15", where: "Mesa 7 · Lucía", items: "3× Fugazza" },
+    ],
+  },
+  {
+    title: "Listos",
+    orders: [{ n: "#14", where: "Take away", items: "1× Napolitana", tag: "Retira" }],
+  },
+];
+
+function BoardMockup() {
+  return (
+    <div className={styles.boardMock} aria-hidden>
+      <div className={styles.boardBar}>
+        <span /><span /><span />
+        <div className={styles.boardBarTitle}>Gestión de pedidos · Turno noche</div>
+      </div>
+      <div className={styles.boardCols}>
+        {BOARD_COLUMNS.map((col) => (
+          <div className={styles.boardCol} key={col.title}>
+            <div className={styles.boardColTitle}>
+              {col.title}<span>{col.orders.length}</span>
+            </div>
+            {col.orders.map((o) => (
+              <div className={styles.boardCard} key={o.n}>
+                <div className={styles.boardCardHead}>
+                  <span className={styles.boardCardN}>{o.n}</span>
+                  {o.tag && <span className={styles.boardCardTag}>{o.tag}</span>}
+                </div>
+                <div className={styles.boardCardWhere}>{o.where}</div>
+                <div className={styles.boardCardItems}>{o.items}</div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SUBCOMPONENTE: MOCKUP DE RESERVA (lo que ve el cliente)
+// ─────────────────────────────────────────────
+function ReservationMockup() {
+  return (
+    <div className={styles.resMock} aria-hidden>
+      <div className={styles.resStatus}><CalendarCheck className={styles.mockIcon} />Reserva confirmada</div>
+      <div className={styles.resBiz}>La Pérgola Café</div>
+      <dl className={styles.resRows}>
+        <div><dt>Día</dt><dd>Sábado 24</dd></div>
+        <div><dt>Hora</dt><dd>21:30</dd></div>
+        <div><dt>Personas</dt><dd>4</dd></div>
+        <div><dt>Mesa</dt><dd>7</dd></div>
+      </dl>
+      <div className={styles.resCode}>
+        <span>Tu código de reserva</span>
+        <strong>K7F-2Q9</strong>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // SUBCOMPONENTE: QR FRAME
 // ─────────────────────────────────────────────
 function QRFrame({ children }: { children: React.ReactNode }) {
@@ -478,6 +577,21 @@ const FAQS = [
       "Sí. Tus clientes arman el pedido desde la carta y lo envían por WhatsApp a tu negocio, eligiendo delivery o take away según las modalidades que ofrezcas. No cobramos comisión por pedido.",
   },
   {
+    question: "¿Puedo recibir pedidos desde la mesa?",
+    answer:
+      "Sí, con el plan Pro. Imprimís un QR general o uno por mesa: el cliente pide desde el celular y el pedido entra a tu panel y a la pantalla del sector que lo prepara. Tus mozos también pueden tomar pedidos desde su celular.",
+  },
+  {
+    question: "¿Puedo cobrar los pedidos de delivery y take away online?",
+    answer:
+      "Sí, con el plan Pro conectás tu propia cuenta de Mercado Pago y el cliente paga desde la carta. La plata va directo a tu cuenta: Menú Digital App no cobra comisión, solo aplican las tarifas de Mercado Pago.",
+  },
+  {
+    question: "¿Mis clientes pueden reservar mesa online?",
+    answer:
+      "Sí, con el plan Pro tu página suma el botón «Reservar mesa». El cliente completa el formulario, recibe un código y ve en vivo cuando confirmás su reserva. Vos las manejás desde el panel y, si el horario no está disponible, podés proponerle otro.",
+  },
+  {
     question: "¿Puedo usar el mismo QR en todas las mesas?",
     answer:
       "Sí. Podés imprimir el mismo código QR y colocarlo en distintas mesas, en la barra, en la puerta o compartir el enlace del menú por WhatsApp e Instagram.",
@@ -579,6 +693,7 @@ useEffect(() => {
   <ul className={styles.navLinks}>
   <li><a href="#how">Cómo funciona</a></li>
   <li><a href="#features">Funciones</a></li>
+  <li><a href="#pedidos">Pedidos y reservas</a></li>
   <li><a href="#plans">Precios</a></li>
   <li><Link to={BLOG_PATH}>Guías y preguntas</Link></li>
   <li><a href="#about">Quiénes somos</a></li>
@@ -618,6 +733,9 @@ useEffect(() => {
     </a>
     <a href="#features" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
       Funciones
+    </a>
+    <a href="#pedidos" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
+      Pedidos y reservas
     </a>
     <a href="#plans" className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
       Precios
@@ -680,8 +798,9 @@ useEffect(() => {
                   dejaba invisibles casi un segundo. */}
               <p className={styles.heroSub}>
                 Creá la carta digital de tu negocio en minutos, actualizá precios al
-                instante y recibí pedidos por WhatsApp —con delivery o take away— sin
-                comisiones. Todo con un código QR, sin apps ni descargas.
+                instante y recibí pedidos —desde la mesa, por WhatsApp o con delivery—
+                y reservas online, sin comisiones. Todo con un código QR, sin apps ni
+                descargas.
               </p>
               <div className={`${styles.heroBtns} ${visible ? styles.vis : ""}`}>
                 <Link className={styles.btnPrimary} to="/register?plan=free">
@@ -792,6 +911,73 @@ useEffect(() => {
 {/* ── AMBER LINE ── */}
         <div className={styles.amberLine} />
 
+        {/* ── PEDIDOS Y RESERVAS (plan Pro) ── */}
+        <section className={styles.ops} id="pedidos">
+          <div className={styles.sectionInner}>
+            <div className={styles.opsSplit}>
+              <div className={styles.reveal}>
+                <div className={styles.opsTag}>Nuevo · Plan Pro</div>
+                <h2 className={styles.sectionH2}>
+                  Tu carta ahora<br /><em>también toma pedidos.</em>
+                </h2>
+                <p className={styles.opsLead}>
+                  Mesa, mostrador, delivery o take away: todos los pedidos llegan a un
+                  mismo tablero que se actualiza solo. Confirmás, preparás y entregás
+                  sin papelitos ni mensajes perdidos.
+                </p>
+                <ul className={styles.qrList}>
+                  <li>Aviso con sonido cuando entra un pedido nuevo</li>
+                  <li>Pedidos demorados marcados para que no se olvide ninguno</li>
+                  <li>¿Se agotó algo? Lo quitás del pedido y avisás al cliente por WhatsApp</li>
+                  <li>Historial con filtros por mesa, turno y estado</li>
+                </ul>
+              </div>
+              <div className={`${styles.opsVisual} ${styles.reveal}`}>
+                <BoardMockup />
+              </div>
+            </div>
+
+            <div className={styles.featGrid}>
+              {ORDER_FEATURES.map((f) => (
+                <div className={`${styles.featCard} ${styles.reveal}`} key={f.title} data-hover>
+                  <f.icon className={styles.opsIcon} />
+                  <h3 className={styles.featTitle}>{f.title}</h3>
+                  <div className={styles.featDesc}>{f.desc}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className={`${styles.opsSplit} ${styles.opsSplitReverse}`} id="reservas">
+              <div className={`${styles.opsVisual} ${styles.reveal}`}>
+                <ReservationMockup />
+              </div>
+              <div className={styles.reveal}>
+                <div className={styles.opsTag}>Nuevo · Plan Pro</div>
+                <h2 className={styles.sectionH2}>
+                  Reservas online,<br /><em>sin atender el teléfono.</em>
+                </h2>
+                <p className={styles.opsLead}>
+                  Tu página suma el botón «Reservar mesa». El cliente elige día, hora y
+                  cantidad de personas, recibe un código y ve en vivo cuando confirmás
+                  su reserva.
+                </p>
+                <ul className={styles.qrList}>
+                  <li>Panel en tabla o tablero por estado, con filtros</li>
+                  <li>Confirmás asignando mesa o proponés otro horario</li>
+                  <li>Cargás a mano las reservas que entran por teléfono</li>
+                  <li>Definís la anticipación, el máximo de personas y si pedís teléfono</li>
+                </ul>
+                <Link className={styles.btnPrimary} to="/register?plan=pro">
+                  Empezar con el plan Pro →
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── AMBER LINE ── */}
+        <div className={styles.amberLine} />
+
 
             {/* ── SEO CONTENT ── */}
             <section className={styles.seoSection} id="menu-digital-qr">
@@ -884,6 +1070,7 @@ useEffect(() => {
                     )}
                     <ul className={styles.planFeat}>
                       {getPlanFeatureLabels(plan.features).map((feature) => <li key={feature}>{feature}</li>)}
+                      {plan.name === "pro" && PRO_EXTRA_LABELS.map((feature) => <li key={feature}>{feature}</li>)}
                     </ul>
                     <Link className={styles.planCta} to={`/register?plan=${plan.name}`}>
                       {plan.name === "free" ? "Crear cuenta gratis" : `Empezar con ${plan.label}`} →
