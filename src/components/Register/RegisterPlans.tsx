@@ -5,7 +5,7 @@ import { useNotifications } from "../../context/useNotifications";
 import { useFeedbackMessage } from "../../hooks/useFeedbackMessage";
 import { useAuthTheme } from "../../hooks/useAuthTheme";
 import { usePlans } from "../../hooks/usePlans";
-import { getPlanFeatureLabels } from "../../lib/plans";
+import { getPlanCardSummary, getPlanFeatureLabels, PRO_EXTRA_LABELS } from "../../lib/plans";
 import Spinner from "../Common/Spinner";
 import styles from "./RegisterPlans.module.css";
 import Cobweb from "../Halloween/Cobweb";
@@ -394,7 +394,9 @@ export default function RegisterPlansPage() {
         {!appliedSellerCode && (
           <div className={styles.plansGrid}>
             {!catalog.isError &&
-              catalog.data?.map((plan) => (
+              catalog.data?.map((plan, _index, plans) => {
+                const summary = getPlanCardSummary(plan, plans);
+                return (
                 <button
                   key={plan.name}
                   type="button"
@@ -425,8 +427,14 @@ export default function RegisterPlansPage() {
                     )}
                   </div>
                   <p className={styles.planDesc}>{plan.description}</p>
+                  {summary.base && (
+                    <p className={styles.featuresBase}>Todo lo del plan {summary.base}, más:</p>
+                  )}
                   <ul className={styles.features}>
-                    {getPlanFeatureLabels(plan.features).map((f) => (
+                    {[
+                      ...(plan.name === "pro" ? PRO_EXTRA_LABELS : []),
+                      ...summary.labels,
+                    ].map((f) => (
                       <li key={f}>
                         <span aria-hidden>→</span>
                         {f}
@@ -434,7 +442,8 @@ export default function RegisterPlansPage() {
                     ))}
                   </ul>
                 </button>
-              ))}
+                );
+              })}
           </div>
         )}
 
