@@ -1,0 +1,223 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--admin-overlay-backdrop);
+}
+
+.dialog {
+  composes: md-surface from global;
+  width: min(100%, 560px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: var(--space-6);
+  border-radius: var(--admin-radius-lg);
+  color: var(--admin-text-primary);
+  animation: scaleIn 0.26s var(--admin-transition-spring) both;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: 400;
+}
+
+.lead {
+  margin: var(--space-2) 0 var(--space-5);
+  font-size: var(--text-sm);
+  color: var(--admin-text-secondary);
+  line-height: 1.5;
+}
+
+.presets,
+.group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.presets legend,
+.group legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--admin-text-primary);
+  opacity: 0.85;
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Mismo patrón que el selector de período del panel. */
+.presets button {
+  min-height: var(--control-min-size);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--control-radius);
+  color: var(--tone-on-secondary);
+  background: var(--tone-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-sm);
+}
+.presets button[aria-pressed="true"] {
+  color: var(--admin-gold-ink);
+  background: var(--admin-gold);
+  font-weight: 600;
+}
+
+.rangeText {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  color: var(--admin-text-secondary);
+}
+
+.dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+.dates label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--admin-text-secondary);
+}
+.dates input {
+  min-height: var(--control-min-size);
+  min-width: 0;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-md);
+  color: var(--admin-text-primary);
+  background: var(--admin-bg-base);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.group {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-5);
+}
+.group:disabled { opacity: 0.6; }
+
+.planTag {
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-full);
+  background: var(--tone-primary-container);
+  color: var(--tone-on-primary-container);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--admin-radius-md);
+  cursor: pointer;
+}
+.option:hover { background: var(--tone-low); }
+.group:disabled .option { cursor: not-allowed; }
+.option input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0.15rem 0 0;
+  accent-color: var(--admin-gold);
+}
+.option span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.option strong {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.option small {
+  font-size: var(--text-xs);
+  color: var(--admin-text-secondary);
+  line-height: 1.4;
+}
+
+.error,
+.done {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+.error { color: var(--admin-red-text); }
+.done { color: var(--admin-text-primary); }
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
+.primary,
+.secondary {
+  composes: md-button from global;
+  min-height: var(--control-min-size);
+  padding: 0.6rem var(--space-5);
+  border: none;
+  border-radius: var(--control-radius);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.primary {
+  color: var(--admin-gold-ink);
+  background: var(--admin-gold);
+}
+.primary:hover:not(:disabled) { background: var(--admin-gold-hover); }
+.secondary {
+  color: var(--tone-on-secondary);
+  background: var(--tone-secondary);
+}
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.presets button:focus-visible,
+.dates input:focus-visible,
+.option input:focus-visible,
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 3px;
+}
+
+@media (max-width: 599px) {
+  .dialog { padding: var(--space-4); }
+  .actions > * { flex: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog { animation: none; }
+}

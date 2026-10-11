@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { Download } from "lucide-react";
 import { useAuth } from "../../../../context/useAuth";
-import type { StatsData, ItemStatsData, DayCount, TopItemStat } from "../../../../types";
+import type { StatsData, ItemStatsData, TopItemStat } from "../../../../types";
+import type { ServiceType } from "../../../../features/orders/types";
 import { usePlans } from "../../../../hooks/usePlans";
 import { isSubscriptionExpired, PLAN_ORDER } from "../../../../lib/plans";
 import { formatDateAR } from "../../../../lib/dates";
@@ -8,15 +10,28 @@ import DataTable from "../../../Common/DataTable/DataTable";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import s from "./UserStats.module.css";
 import {
-  buildAudience, buildHourly, buildInsights, HOURLY_MIN_VISITS, itemTrend, lowConversionItem, parseLocalDate,
+  buildAudience, buildHourly, buildInsights, HOURLY_MIN_VISITS, itemTrend, lowConversionItem,
   type AudienceInsights, type HourlyInsights, type WeekdayStat,
 } from "./statsInsights";
 
 import {
   requestStatsData, isStatsData, isItemStatsData, sanitizeItemStatsData, sanitizeStatsData,
 } from "./statsRequests";
+import { DailyChart, Hero, HourBars, Ring } from "./StatsCharts";
+import { formatCompact, formatDay, formatDayLong, formatDecimal, formatPercent, hourRange, plural } from "./statsFormat";
+import { useSalesReport, type SalesState } from "./useSalesReport";
+import SalesView from "./SalesView";
+import CashView from "./CashView";
+import ExportDialog from "./ExportDialog";
 
 const WEEKDAY_PLURAL = ["domingos", "lunes", "martes", "miércoles", "jueves", "viernes", "sábados"];
+
+type Tab = "visits" | "sales" | "cash";
+const TABS: { id: Tab; label: string; title: string }[] = [
+  { id: "visits", label: "Visitas", title: "Visitas a tu carta" },
+  { id: "sales", label: "Ventas", title: "Ventas" },
+  { id: "cash", label: "Caja", title: "Cierres de caja" },
+];
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
@@ -38,6 +53,8 @@ function UserStatsPanel() {
   const statsPlan = catalog.isError
     ? undefined
     : catalog.data?.find(plan => plan.features.estadisticas && PLAN_ORDER.indexOf(plan.name) > PLAN_ORDER.indexOf(effectiveSubscription));
+  // Ventas y caja salen de Gestión de pedidos, que es del plan Pro.
+  const isPro = effectiveSubscription === "pro";
 
   const [stats, setStats]         = useState<StatsData | null>(null);
   const [itemStats, setItemStats] = useState<ItemStatsData | null>(null);
@@ -50,6 +67,10 @@ function UserStatsPanel() {
   const [refreshing, setRefreshing] = useState(false);
   const [retry, setRetry] = useState(0);
   const [windowDays, setWindowDays] = useState<7 | 30>(30);
+  const [tab, setTab] = useState<Tab>("visits");
+  const [exportOpen, setExportOpen] = useState(false);
+  const [serviceType, setServiceType] = useState<ServiceType | null>(null);
+  const sales = useSalesReport(windowDays, serviceType, isPro && !locked && tab !== "visits");
 
   // Una sola carga para inicio, reintento y refresco. La cancelación impide
   // aplicar respuestas de una cuenta/período anterior o de una vista desmontada.
@@ -169,301 +190,273 @@ function UserStatsPanel() {
   }
 
   const hasAnyView = insights.total > 0;
+  // "Hoy" según el servidor; si las visitas no cargaron, el del navegador en Buenos Aires.
+  const today = stats?.todayDate ?? formatDateAR(new Date(), { output: "date-input" });
 
   return (
     <div className={s.root}>
       <main className={s.main}>
-        <header className={s.welcome}>
-          <p className={s.welcomeEyebrow}>Estadísticas</p>
-          <h1 className={s.welcomeTitle}>Visitas a tu carta</h1>
-          <p className={s.welcomeSub}>
-            <span className={s.liveDot} aria-hidden />
-            Visitas y productos se actualizan automáticamente
-          </p>
+        <header className={`${s.welcome} ${s.welcomeSplit}`}>
+          <div>
+            <p className={s.welcomeEyebrow}>Estadísticas</p>
+            <h1 className={s.welcomeTitle}>{TABS.find(option => option.id === tab)?.title}</h1>
+            <p className={s.welcomeSub}>
+              <span className={s.liveDot} aria-hidden />
+              Los datos se actualizan automáticamente
+            </p>
+          </div>
+          <button className={s.exportBtn} type="button" onClick={() => setExportOpen(true)}>
+            <Download size={18} strokeWidth={1.75} aria-hidden />
+            Exportar a Excel
+          </button>
         </header>
 
-        <fieldset className={s.periodPicker}>
-          <legend>Período de estadísticas</legend>
-          {([7, 30] as const).map(value => (
-            <button key={value} type="button" aria-pressed={windowDays === value}
-              onClick={() => {
-                if (value === windowDays) return;
-                setWindowDays(value);
-                setStats(null);
-                setItemStats(null);
-                setStatsError(false);
-                setItemsError(false);
-                setLoading(true);
-              }}>
-              {value} días completos
-            </button>
-          ))}
-        </fieldset>
+        <div className={s.toolbar}>
+          <div className={s.tabs} role="group" aria-label="Secciones de estadísticas">
+            {TABS.map(option => (
+              <button key={option.id} type="button" aria-pressed={tab === option.id} onClick={() => setTab(option.id)}>
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <fieldset className={s.periodPicker}>
+            <legend>Período de estadísticas</legend>
+            {([7, 30] as const).map(value => (
+              <button key={value} type="button" aria-pressed={windowDays === value}
+                onClick={() => {
+                  if (value === windowDays) return;
+                  setWindowDays(value);
+                  setStats(null);
+                  setItemStats(null);
+                  setStatsError(false);
+                  setItemsError(false);
+                  setLoading(true);
+                }}>
+                {value} días completos
+              </button>
+            ))}
+          </fieldset>
+        </div>
         {loading && <p className={s.periodDates} role="status">Cargando período…</p>}
         {stats && <p className={s.periodDates}>
           {formatDayLong(stats.periodStart)} al {formatDayLong(stats.periodEnd)} · Comparación: {formatDayLong(stats.previousStart)} al {formatDayLong(stats.previousEnd)}
         </p>}
-        {(statsError || itemsError) && (
-          <section className={s.notice} role="status">
-            {statsError && <p>{stats ? "No pudimos actualizar las visitas. Mostramos los últimos datos recibidos." : "No pudimos cargar las visitas."}</p>}
-            {itemsError && <p>{itemStats ? "No pudimos actualizar los productos. Mostramos el último ranking recibido." : "No pudimos cargar los productos más vistos."}</p>}
-            <button className={s.lockBtn} type="button" disabled={refreshing} onClick={() => setRetry(value => value + 1)}>
-              {refreshing ? "Reintentando…" : "Reintentar"}
-            </button>
-          </section>
+
+        {tab !== "visits" && (
+          <SalesTab
+            tab={tab}
+            isPro={isPro}
+            sales={sales}
+            serviceType={serviceType}
+            onServiceType={setServiceType}
+            onUpgrade={() => setUpgradeOpen(true)}
+          />
         )}
-        {stats && (
+        {tab === "visits" && (
           <>
-            <section className={s.summaryRow} aria-label="Resumen de visitas">
-              <SummaryCard
-                label={`Últimos ${windowDays} días completos`}
-                value={insights.total}
-                trend={insights.trend}
-                foot={insights.trend === null ? "Sin base completa para calcular una variación" : `${insights.previous.toLocaleString("es-AR")} visitas en el período anterior`}
-              />
-              <SummaryCard
-                label="Promedio diario"
-                value={insights.dailyAverage}
-                foot={insights.averageDays ? `Sobre ${insights.averageDays} días completos desde el alta` : "Sin días completos desde el alta"}
-              />
-              {/* "Hoy" va sin comparación a propósito: el día está a medio
-                  transcurrir y compararlo contra días completos mostraría
-                  siempre una caída que no existe. */}
-              <SummaryCard
-                label="Hoy"
-                value={insights.today}
-                foot={`Día en curso · ${formatDay(stats.todayDate)}`}
-                accent
-              />
-            </section>
-
-            {!hasAnyView && <EmptyState slug={user?.slug} />}
-            <section className={`${s.card} ${s.cardWide}`}>
-              <div className={s.cardHead}>
-                <p className={s.cardLabel}>Visitas por día</p>
-                {insights.best && (
-                  <p className={s.cardNote}>
-                    Tu mejor día fue el <strong>{formatDayLong(insights.best.date)}</strong>, con{" "}
-                    {insights.best.count.toLocaleString("es-AR")}{" "}
-                    {insights.best.count === 1 ? "visita" : "visitas"}
-                  </p>
-                )}
-              </div>
-              <DailyChart
-                key={windowDays}
-                days={days}
-                previousDays={stats.comparisonAvailable ? stats.previousDays : null}
-                average={insights.dailyAverage}
-              />
-            </section>
-
-            {insights.bestWeekday && insights.hasWeekdayPattern && (
-              <section className={s.card}>
-                <div className={s.cardHead}>
-                  <p className={s.cardLabel}>Tu semana típica</p>
-                  <p className={s.cardNote}>
-                    Promedio de los días completos desde el alta, dentro del período seleccionado
-                  </p>
-                </div>
-                <WeekdayChart
-                  weekdays={insights.weekdays}
-                  best={insights.bestWeekday}
-                  dailyAverage={insights.dailyAverage}
-                />
+            {(statsError || itemsError) && (
+              <section className={s.notice} role="status">
+                {statsError && <p>{stats ? "No pudimos actualizar las visitas. Mostramos los últimos datos recibidos." : "No pudimos cargar las visitas."}</p>}
+                {itemsError && <p>{itemStats ? "No pudimos actualizar los productos. Mostramos el último ranking recibido." : "No pudimos cargar los productos más vistos."}</p>}
+                <button className={s.lockBtn} type="button" disabled={refreshing} onClick={() => setRetry(value => value + 1)}>
+                  {refreshing ? "Reintentando…" : "Reintentar"}
+                </button>
               </section>
             )}
+            {stats && (
+              <>
+                <Hero
+                  label={`Visitas en ${windowDays} días completos`}
+                  value={insights.total.toLocaleString("es-AR")}
+                  trend={insights.trend}
+                  foot={insights.trend === null ? "Sin base completa para calcular una variación" : `${insights.previous.toLocaleString("es-AR")} visitas en el período anterior`}
+                  series={days.map(day => day.count)}
+                  stats={[
+                    { label: "Promedio diario", value: formatDecimal(insights.dailyAverage) },
+                    ...(insights.best ? [{ label: "Mejor día", value: `${insights.best.count.toLocaleString("es-AR")} · ${formatDay(insights.best.date)}` }] : []),
+                    ...(audience?.qrShare ? [{ label: "Llegan por el QR", value: formatPercent(audience.qrShare) }] : []),
+                  ]}
+                  aside={(
+                    // "Hoy" contra un día promedio, sin variación: el día está a
+                    // medio transcurrir y compararlo contra días completos
+                    // mostraría siempre una caída que no existe.
+                    <Ring
+                      size="lg"
+                      value={insights.dailyAverage > 0 ? insights.today / insights.dailyAverage : 0}
+                      label={`Hoy: ${insights.today} ${plural(insights.today, "visita", "visitas")}`}
+                    >
+                      <small>Hoy · {formatDay(stats.todayDate)}</small>
+                      <strong>{insights.today.toLocaleString("es-AR")}</strong>
+                      <span>{plural(insights.today, "visita", "visitas")}</span>
+                      {insights.dailyAverage > 0 && (
+                        <span>{formatPercent(insights.today / insights.dailyAverage)} de un día promedio</span>
+                      )}
+                    </Ring>
+                  )}
+                />
 
-            {/* Sin semana típica al lado, a lo ancho en vez de media fila vacía. */}
-            {hourly && (
-              <HourlyCard
-                hourly={hourly}
-                periodStart={stats.periodStart}
-                wide={!(insights.bestWeekday && insights.hasWeekdayPattern)}
-              />
+                {!hasAnyView && <EmptyState slug={user?.slug} />}
+                <section className={`${s.card} ${insights.bestWeekday && insights.hasWeekdayPattern ? s.span8 : s.cardWide}`}>
+                  <div className={s.cardHead}>
+                    <p className={s.cardLabel}>Visitas por día</p>
+                    {insights.best && (
+                      <p className={s.cardNote}>
+                        Tu mejor día fue el <strong>{formatDayLong(insights.best.date)}</strong>, con{" "}
+                        {insights.best.count.toLocaleString("es-AR")}{" "}
+                        {plural(insights.best.count, "visita", "visitas")}
+                      </p>
+                    )}
+                  </div>
+                  <DailyChart
+                    key={windowDays}
+                    days={days.map(day => ({ date: day.date, value: day.count }))}
+                    previousDays={stats.comparisonAvailable ? stats.previousDays.map(day => ({ date: day.date, value: day.count })) : null}
+                    average={insights.dailyAverage}
+                    format={formatDecimal}
+                    formatAxis={formatCompact}
+                    noun={count => plural(count, "visita", "visitas")}
+                    valueHeader="Visitas"
+                    detailLabel="Ver detalle de visitas por día"
+                  />
+                </section>
+
+                {insights.bestWeekday && insights.hasWeekdayPattern && (
+                  <section className={`${s.card} ${s.span4}`}>
+                    <div className={s.cardHead}>
+                      <p className={s.cardLabel}>Tu semana típica</p>
+                      <p className={s.cardNote}>
+                        Promedio de los días completos desde el alta, dentro del período seleccionado
+                      </p>
+                    </div>
+                    <WeekdayChart
+                      weekdays={insights.weekdays}
+                      best={insights.bestWeekday}
+                      dailyAverage={insights.dailyAverage}
+                    />
+                  </section>
+                )}
+
+                {/* Sin semana típica al lado, a lo ancho en vez de media fila vacía. */}
+                {hourly && (
+                  <HourlyCard
+                    hourly={hourly}
+                    periodStart={stats.periodStart}
+                    wide={!audience}
+                  />
+                )}
+
+                {!insights.hasWeekdayPattern && <p className={s.measurementNote}>El patrón semanal necesita al menos dos días completos de cada día de la semana desde el alta y alguna visita. Seleccioná 30 días para verlo cuando haya datos suficientes.</p>}
+
+                {audience && <AudienceCard audience={audience} periodStart={stats.periodStart} wide={!hourly} />}
+              </>
             )}
-
-            {!insights.hasWeekdayPattern && <p className={s.measurementNote}>El patrón semanal necesita al menos dos días completos de cada día de la semana desde el alta y alguna visita. Seleccioná 30 días para verlo cuando haya datos suficientes.</p>}
-
-            {audience && <AudienceCard audience={audience} periodStart={stats.periodStart} />}
+            {itemStats && (
+              <section className={s.card}>
+                <div className={s.cardHead}>
+                  <p className={s.cardLabel}>Productos más vistos</p>
+                  <p className={s.cardNote}>
+                    Veces que abrieron el detalle, una por visita · {formatDay(itemStats.periodStart)} al {formatDay(itemStats.periodEnd)}
+                    {itemStats.comparisonAvailable && ` · Comparado con ${formatDay(itemStats.previousStart)} al ${formatDay(itemStats.previousEnd)}`}
+                  </p>
+                </div>
+                {itemStats.topItems.length === 0
+                  ? <p className={s.cardNote}>Todavía no abrieron productos en este período.</p>
+                  : <ItemRanking items={itemStats.topItems} metric="views" comparisonAvailable={itemStats.comparisonAvailable} showOrders={showOrders} />}
+              </section>
+            )}
+            {itemStats?.topOrdered && (showOrders || itemStats.topOrdered.length > 0) && (
+              <section className={s.card}>
+                <div className={s.cardHead}>
+                  <p className={s.cardLabel}>Productos más pedidos</p>
+                  <p className={s.cardNote}>
+                    Pedidos por WhatsApp que los incluían · {formatDay(itemStats.periodStart)} al {formatDay(itemStats.periodEnd)}
+                  </p>
+                </div>
+                {itemStats.topOrdered.length === 0
+                  ? <p className={s.cardNote}>Todavía no llegaron pedidos por WhatsApp en este período.</p>
+                  : <ItemRanking items={itemStats.topOrdered} metric="orders" comparisonAvailable={false} showOrders />}
+              </section>
+            )}
+            <MeasurementNote audienceFrom={stats?.audience?.from ?? null} periodStart={stats?.periodStart} hasViews={insights.total > 0} />
           </>
         )}
-        {itemStats && (
-          <section className={s.card}>
-            <div className={s.cardHead}>
-              <p className={s.cardLabel}>Productos más vistos</p>
-              <p className={s.cardNote}>
-                Veces que abrieron el detalle, una por visita · {formatDay(itemStats.periodStart)} al {formatDay(itemStats.periodEnd)}
-                {itemStats.comparisonAvailable && ` · Comparado con ${formatDay(itemStats.previousStart)} al ${formatDay(itemStats.previousEnd)}`}
-              </p>
-            </div>
-            {itemStats.topItems.length === 0
-              ? <p className={s.cardNote}>Todavía no abrieron productos en este período.</p>
-              : <ItemRanking items={itemStats.topItems} metric="views" comparisonAvailable={itemStats.comparisonAvailable} showOrders={showOrders} />}
-          </section>
+
+        {exportOpen && (
+          <ExportDialog
+            today={today}
+            initialPreset={windowDays === 7 ? "period7" : "period30"}
+            salesAvailable={isPro}
+            slug={user?.slug}
+            onClose={() => setExportOpen(false)}
+          />
         )}
-        {itemStats?.topOrdered && (showOrders || itemStats.topOrdered.length > 0) && (
-          <section className={s.card}>
-            <div className={s.cardHead}>
-              <p className={s.cardLabel}>Productos más pedidos</p>
-              <p className={s.cardNote}>
-                Pedidos por WhatsApp que los incluían · {formatDay(itemStats.periodStart)} al {formatDay(itemStats.periodEnd)}
-              </p>
-            </div>
-            {itemStats.topOrdered.length === 0
-              ? <p className={s.cardNote}>Todavía no llegaron pedidos por WhatsApp en este período.</p>
-              : <ItemRanking items={itemStats.topOrdered} metric="orders" comparisonAvailable={false} showOrders />}
-          </section>
+        {upgradeOpen && (
+          <UpgradeModal
+            currentPlan={effectiveSubscription}
+            minPlan="pro"
+            title="Sumá ventas y caja a tus estadísticas"
+            description="Con Gestión de pedidos del plan Pro ves lo vendido por día, los productos que más salen y cada cierre de caja."
+            onClose={() => setUpgradeOpen(false)}
+          />
         )}
-        <MeasurementNote audienceFrom={stats?.audience?.from ?? null} periodStart={stats?.periodStart} hasViews={insights.total > 0} />
       </main>
     </div>
   );
 }
 
-// ── Gráfico de visitas por día ────────────────────────────────────────────────
+// ── Ventas y caja (plan Pro) ──────────────────────────────────────────────────
 
-function DailyChart({ days, previousDays, average }: {
-  days: DayCount[];
-  // Mismo largo que `days`, día por día (el 1.º con el 1.º). null sin base
-  // de comparación: antes del alta serían ceros que no son datos.
-  previousDays: DayCount[] | null;
-  average: number;
+function SalesTab({ tab, isPro, sales, serviceType, onServiceType, onUpgrade }: {
+  tab: "sales" | "cash";
+  isPro: boolean;
+  sales: SalesState;
+  serviceType: ServiceType | null;
+  onServiceType: (value: ServiceType | null) => void;
+  onUpgrade: () => void;
 }) {
-  // Un índice activo en vez del atributo `title` nativo: `title` no existe en
-  // touch, así que en el celular —que es donde el dueño mira esto— el detalle
-  // de cada día no se podía ver. Con estado, el mismo tooltip sirve para
-  // mouse y para tap.
-  const [active, setActive] = useState<number | null>(null);
-  const previous = previousDays && previousDays.length === days.length ? previousDays : null;
-  const maxCount = Math.max(1, ...days.map(d => d.count), ...(previous ?? []).map(d => d.count));
-  const shown = active !== null ? days[active] : null;
-  const shownPrevious = active !== null ? previous?.[active] : undefined;
-
+  if (!isPro || sales.result?.kind === "locked") {
+    return (
+      <div className={s.lockCard}>
+        <div className={s.lockIcon}><LockIcon /></div>
+        <p className={s.lockTitle}>{tab === "sales" ? "Ventas" : "Cierres de caja"} con el plan Pro</p>
+        <p className={s.lockDesc}>
+          {tab === "sales"
+            ? "Mirá cuánto vendiste cada día, el ticket promedio, los productos que más salen y en qué horarios."
+            : "Revisá cada cierre de caja: lo vendido, el efectivo esperado, lo contado y la diferencia."}
+          {" "}Los datos salen de Gestión de pedidos.
+        </p>
+        <button className={s.lockBtn} onClick={onUpgrade} type="button">Consultar planes disponibles</button>
+      </div>
+    );
+  }
+  if (sales.result?.kind === "unavailable") {
+    return (
+      <section className={s.notice} role="status">
+        <p>Los reportes de ventas no están disponibles en este momento. Probá de nuevo en unos minutos.</p>
+        <button className={s.lockBtn} type="button" disabled={sales.refreshing} onClick={sales.retry}>
+          {sales.refreshing ? "Reintentando…" : "Reintentar"}
+        </button>
+      </section>
+    );
+  }
+  if (!sales.report && !sales.result) return <p className={s.periodDates} role="status">Cargando ventas…</p>;
   return (
-    <div className={s.chartBlock}>
-      <div
-        className={s.chart}
-        role="group"
-        aria-label={`Visitas diarias de los últimos ${days.length} días. El detalle está en la tabla siguiente.`}
-        onMouseLeave={() => setActive(null)}
-      >
-        {/* Línea de promedio: da una referencia para leer cada barra como
-            "arriba" o "abajo" de lo normal, en vez de solo alta o baja. */}
-        {average > 0 && (
-          <span
-            className={s.averageLine}
-            style={{ bottom: `${Math.min((average / maxCount) * 100, 100)}%` }}
-            aria-hidden
-          >
-            <small>prom. {formatDecimal(average)}</small>
-          </span>
-        )}
-
-        {days.map((d, i) => {
-          const weekday = parseLocalDate(d.date)?.getUTCDay();
-          const isWeekend = weekday === 0 || weekday === 6;
-          const height = d.count > 0 ? Math.max((d.count / maxCount) * 100, 6) : 3;
-          const before = previous?.[i];
-          return (
-            <button
-              type="button"
-              key={d.date}
-              aria-label={`${formatDayLong(d.date)}: ${d.count} ${d.count === 1 ? "visita" : "visitas"}${
-                before ? `; ${before.count} el ${formatDayLong(before.date)}` : ""}`}
-              aria-pressed={active === i}
-              className={[
-                s.barWrap,
-                active === i ? s.barWrapActive : "",
-              ].join(" ").trim()}
-              onMouseEnter={() => setActive(i)}
-              onFocus={() => setActive(i)}
-              onBlur={() => setActive(null)}
-              onKeyDown={(event) => { if (event.key === "Escape") setActive(null); }}
-              onClick={() => setActive(i)}
-            >
-              <span
-                className={[
-                  s.bar,
-                  d.count === 0 ? s.barEmpty : "",
-                  isWeekend ? s.barWeekend : "",
-                ].join(" ").trim()}
-                style={{ height: `${height}%`, animationDelay: `${i * 14}ms` }}
-              />
-              {/* Marca del mismo día del período anterior: una raya en vez
-                  de otra barra, para que 30 pares entren en un celular y la
-                  lectura sea "arriba o abajo de la raya". */}
-              {before && before.count > 0 && (
-                <span
-                  className={s.barPrevious}
-                  style={{ bottom: `${Math.min((before.count / maxCount) * 100, 100)}%` }}
-                  aria-hidden
-                />
-              )}
-            </button>
-          );
-        })}
-
-        {shown && active !== null && (
-          <div
-            className={s.tooltip}
-            aria-hidden="true"
-            // Se ancla en la barra y se corre en la misma proporción: centrado
-            // en el medio, pegado al borde en los extremos. Nunca se sale de
-            // la tarjeta, sea cual sea su ancho.
-            style={{
-              left: `${((active + 0.5) / days.length) * 100}%`,
-              transform: `translateX(-${((active + 0.5) / days.length) * 100}%)`,
-            }}
-          >
-            <span className={s.tooltipMain}>
-              <strong>{shown.count.toLocaleString("es-AR")}</strong>
-              <span>{shown.count === 1 ? "visita" : "visitas"}</span>
-              <small>{formatDayLong(shown.date)}</small>
-            </span>
-            {shownPrevious && (
-              <small className={s.tooltipPrevious}>
-                {shownPrevious.count.toLocaleString("es-AR")} el {formatDay(shownPrevious.date)}
-              </small>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className={s.chartAxis}>
-        <span>{formatDay(days[0]?.date)}</span>
-        {previous && (
-          <span className={s.chartLegend}>
-            <i className={s.legendPrevious} aria-hidden /> Mismo día del período anterior
-          </span>
-        )}
-        <span>{formatDay(days.at(-1)?.date)}</span>
-      </div>
-
-      <details className={s.dailyDetails}>
-        <summary>Ver detalle de visitas por día</summary>
-        <DataTable<{ day: DayCount; previous?: DayCount }>
-          caption={`Visitas por día de los últimos ${days.length} días`}
-          rows={days.map((day, i) => ({ day, previous: previous?.[i] }))}
-          columns={[
-            { id: "day", header: "Día", resizable: false, sortValue: row => row.day.date, render: row => <span className={s.nowrap}>{formatDayLong(row.day.date)}</span> },
-            { id: "visits", header: "Visitas", align: "right", resizable: false, initialDirection: "desc", sortValue: row => row.day.count, render: row => row.day.count },
-            ...(previous ? [{
-              id: "previous",
-              // Corto: en el celular el encabezado (sin cortes) le robaba el ancho al día.
-              header: "Anterior",
-              align: "right" as const,
-              resizable: false,
-              initialDirection: "desc" as const,
-              sortValue: (row: { previous?: DayCount }) => row.previous?.count,
-              render: (row: { previous?: DayCount }) => (row.previous ? `${row.previous.count} (${formatDay(row.previous.date)})` : "—"),
-            }] : []),
-          ]}
-          getRowId={row => row.day.date}
-        />
-      </details>
-    </div>
+    <>
+      {sales.result?.kind === "error" && (
+        <section className={s.notice} role="status">
+          <p>{sales.report ? "No pudimos actualizar las ventas. Mostramos los últimos datos recibidos." : "No pudimos cargar las ventas."}</p>
+          <button className={s.lockBtn} type="button" disabled={sales.refreshing} onClick={sales.retry}>
+            {sales.refreshing ? "Reintentando…" : "Reintentar"}
+          </button>
+        </section>
+      )}
+      {sales.report && (tab === "sales"
+        ? <SalesView report={sales.report} serviceType={serviceType} onServiceType={onServiceType} pending={sales.pending} />
+        : <CashView report={sales.report} />)}
+    </>
   );
 }
+
 
 // ── Patrón por día de la semana ───────────────────────────────────────────────
 
@@ -514,16 +507,12 @@ function WeekdayChart({
 
 // ── Horarios de más visitas ───────────────────────────────────────────────────
 
-const HOUR_TICKS = [0, 6, 12, 18, 23];
-
 function HourlyCard({ hourly, periodStart, wide }: { hourly: HourlyInsights; periodStart: string; wide: boolean }) {
-  const max = Math.max(1, ...hourly.hours);
   const { peak } = hourly;
-  const inPeak = (hour: number) => !!peak && hourly.enough && (hour - peak.start + 24) % 24 < 3;
   const partial = hourly.from !== null && hourly.from > periodStart;
 
   return (
-    <section className={`${s.card} ${wide ? s.cardWide : ""}`}>
+    <section className={`${s.card} ${wide ? s.cardWide : s.span5}`}>
       <div className={s.cardHead}>
         <p className={s.cardLabel}>Horarios de más visitas</p>
         <p className={s.cardNote}>
@@ -537,20 +526,12 @@ function HourlyCard({ hourly, periodStart, wide }: { hourly: HourlyInsights; per
       </div>
       {hourly.total > 0 && (
         <>
-          <div className={s.hourChart} aria-hidden>
-            {hourly.hours.map((value, hour) => (
-              <span
-                key={hour}
-                className={`${s.hourBar} ${inPeak(hour) ? s.hourBarPeak : ""} ${value === 0 ? s.barEmpty : ""}`}
-                style={{ height: `${value > 0 ? Math.max((value / max) * 100, 6) : 3}%` }}
-              />
-            ))}
-          </div>
-          <div className={s.hourAxis} aria-hidden>
-            {HOUR_TICKS.map(hour => (
-              <span key={hour} style={{ gridColumn: hour + 1 }}>{hour} h</span>
-            ))}
-          </div>
+          <HourBars
+            values={hourly.hours}
+            peakStart={hourly.enough && peak ? peak.start : null}
+            format={value => `${value.toLocaleString("es-AR")} ${plural(value, "visita", "visitas")}`}
+            label="Visitas por hora del día, sumadas en el período"
+          />
           <details className={s.dailyDetails}>
             <summary>Ver visitas por hora</summary>
             <DataTable<{ hour: number; visits: number }>
@@ -571,10 +552,10 @@ function HourlyCard({ hourly, periodStart, wide }: { hourly: HourlyInsights; per
 
 // ── Cómo llegan y qué hacen ───────────────────────────────────────────────────
 
-function AudienceCard({ audience, periodStart }: { audience: AudienceInsights; periodStart: string }) {
+function AudienceCard({ audience, periodStart, wide }: { audience: AudienceInsights; periodStart: string; wide: boolean }) {
   const partial = audience.from !== null && audience.from > periodStart;
   return (
-    <section className={`${s.card} ${s.cardWide}`}>
+    <section className={`${s.card} ${wide ? s.cardWide : s.span7}`}>
       <div className={s.cardHead}>
         <p className={s.cardLabel}>Cómo llegan y qué hacen</p>
         <p className={s.cardNote}>
@@ -601,20 +582,26 @@ function AudienceCard({ audience, periodStart }: { audience: AudienceInsights; p
           ))}
         </ol>
         <div className={s.audienceFacts}>
-          <div className={s.fact}>
-            <p className={s.summaryLabel}>Llegaron por el QR</p>
-            <p className={s.factValue}>{formatPercent(audience.qrShare ?? 0)}</p>
-            <p className={s.summaryFoot}>
+          <div className={s.ringRow}>
+            <Ring value={audience.qrShare ?? 0} label={`${formatPercent(audience.qrShare ?? 0)} de las visitas llegó por el QR`}>
+              <strong>{formatPercent(audience.qrShare ?? 0)}</strong>
+            </Ring>
+            <p>
+              <strong>Llegaron por el QR</strong>
               {audience.qrShare
                 ? "El resto entró por un link compartido, redes o buscadores."
                 : "Los QR impresos antes de esta actualización cuentan como link: descargalo de nuevo desde Inicio para medirlo."}
             </p>
           </div>
           {audience.returningShare !== null && (
-            <div className={s.fact}>
-              <p className={s.summaryLabel}>Vuelven</p>
-              <p className={s.factValue}>{formatPercent(audience.returningShare)}</p>
-              <p className={s.summaryFoot}>de los visitantes de cada día ya habían abierto la carta otro día desde el mismo dispositivo</p>
+            <div className={s.ringRow}>
+              <Ring value={audience.returningShare} label={`${formatPercent(audience.returningShare)} de los visitantes ya había abierto la carta`}>
+                <strong>{formatPercent(audience.returningShare)}</strong>
+              </Ring>
+              <p>
+                <strong>Vuelven</strong>
+                de los visitantes de cada día ya habían abierto la carta otro día desde el mismo dispositivo
+              </p>
             </div>
           )}
         </div>
@@ -709,61 +696,7 @@ function MeasurementNote({ audienceFrom, periodStart, hasViews }: {
   );
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-function formatPercent(value: number) {
-  return `${Math.round(value * 100)}%`;
-}
-
-// "entre las 20 y las 23 h", "entre las 23 y la 1 h", "entre las 21 h y la medianoche".
-function hourRange(start: number, end: number) {
-  if (end === 0) return `entre las ${start} h y la medianoche`;
-  return `entre ${start === 1 ? "la 1" : `las ${start}`} y ${end === 1 ? "la 1" : `las ${end}`} h`;
-}
-
-function formatDay(dateStr?: string) {
-  return formatDateAR(dateStr, { day: "numeric", month: "short", fallback: "" });
-}
-
-function formatDayLong(dateStr?: string) {
-  return formatDateAR(dateStr, { weekday: "short", day: "numeric", month: "short", fallback: "" });
-}
-
-// Un decimal solo cuando aporta: "53" se lee mejor que "53,0".
-function formatDecimal(value: number) {
-  return value.toLocaleString("es-AR", { maximumFractionDigits: 1 });
-}
-
 // ── Sub-componentes ───────────────────────────────────────────────────────────
-
-function SummaryCard({
-  label,
-  value,
-  foot,
-  trend,
-  accent,
-}: {
-  label: string;
-  value: number;
-  foot?: string;
-  trend?: number | null;
-  accent?: boolean;
-}) {
-  return (
-    <div className={`${s.summaryCard} ${accent ? s.summaryCardAccent : ""}`}>
-      <p className={s.summaryLabel}>{label}</p>
-      <p className={s.summaryValue}>
-        {formatDecimal(value)}
-        {typeof trend === "number" && (
-          <span className={`${s.trend} ${trend > 0 ? s.trendUp : trend < 0 ? s.trendDown : ""}`}>
-            {trend > 0 ? "↑" : trend < 0 ? "↓" : "→"} {Math.abs(trend)}%
-          </span>
-        )}
-      </p>
-      {foot && <p className={s.summaryFoot}>{foot}</p>}
-    </div>
-  );
-}
 
 function ItemThumb({ image, title }: { image: string; title: string }) {
   // La foto ya venía en la respuesta del backend y no se estaba usando. Ver el
