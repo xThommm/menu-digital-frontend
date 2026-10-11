@@ -1572,6 +1572,16 @@
     grid-template-columns: minmax(0, 1fr);
     padding: var(--space-5);
   }
+  /* En una sola columna la tarjeta es alta y angosta: la foto a la derecha
+     quedaba recortada y ampliada. Pasa a una franja superior a todo el
+     ancho que se desvanece hacia abajo, detrás del saludo. */
+  .headerPhoto {
+    inset: 0 0 auto 0;
+    height: min(320px, 60%);
+    background-position: center 35%;
+    -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent);
+    mask-image: linear-gradient(to bottom, black 30%, transparent);
+  }
   .headerSide { width: 100%; max-width: 250px; justify-self: center; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--space-5); }
   .rowThree,
