@@ -197,7 +197,9 @@
 /* H1 y bajada se pintan de entrada (sin fade): son el LCP de la página. */
 .heroH1 {
   font-family: var(--font-auth-display); font-weight: 900;
-  font-size: clamp(2.8rem, 5vw, 5.2rem); line-height: .95;
+  /* Más chico que antes: el título suma pedidos y reservas y tiene que
+     entrar en tres líneas ("pedidos y reservas" es la más larga). */
+  font-size: clamp(2.2rem, 3.9vw, 3.6rem); line-height: .95;
   letter-spacing: -.02em; margin-bottom: 1.2rem; color: var(--auth-cream);
 }
 .heroH1 em {

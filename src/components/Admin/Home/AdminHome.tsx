@@ -131,7 +131,7 @@ type IconCard = { icon: LucideIcon; title: string; desc: string; n?: string; fea
 const STEPS: IconCard[] = [
   { icon: ClipboardCheck, title: "Elegís tu plan", desc: "Seleccionás el plan que mejor se ajusta a tu negocio. Sin contratos, sin letras chicas.", n: "1" },
   { icon: UtensilsCrossed, title: "Cargás tu menú", desc: "Usás nuestra interfaz sencilla o subís un Excel con todos tus productos de una. Agregás fotos, precios y categorías.", n: "2" },
-  { icon: QrCode, title: "Tus clientes lo ven", desc: "Tu menú queda disponible en menudigitalapp.com.ar/tu-local/menu. Lo compartís por WhatsApp, Instagram o imprimís el QR.", n: "3" },
+  { icon: QrCode, title: "Abrís las puertas", desc: "Tu carta queda en menudigitalapp.com.ar/tu-local/menu. La compartís por QR, WhatsApp o Instagram y, según tu plan, empezás a recibir pedidos y reservas.", n: "3" },
 ];
 
 const FEATURES: IconCard[] = [
@@ -619,7 +619,7 @@ export default function HomePage() {
 
   useParallax();
   useReveal();
-  useDocumentTitle("Menú Digital QR para Restaurantes | Menú Digital App");
+  useDocumentTitle("Menú Digital QR, Pedidos y Reservas | Menú Digital App");
   useFaqSchema();
 
   // Plan más barato que incluye la función (el catálogo viene ordenado
@@ -789,18 +789,18 @@ useEffect(() => {
                 🇦🇷 Hecho para gastronomía argentina
               </div> */}
               <h1 className={styles.heroH1}>
-                Menú digital QR<br />
-                para <em>restaurantes</em>,<br />
-                bares y cafeterías.
+                Menú digital QR,<br />
+                pedidos y reservas<br />
+                para tu <em>restaurante.</em>
               </h1>
               {/* H1 y bajada sin animación de entrada: son el contenido más
                   grande de la primera pantalla (el LCP) y el fade los
                   dejaba invisibles casi un segundo. */}
               <p className={styles.heroSub}>
-                Creá la carta digital de tu negocio en minutos, actualizá precios al
-                instante y recibí pedidos —desde la mesa, por WhatsApp o con delivery—
-                y reservas online, sin comisiones. Todo con un código QR, sin apps ni
-                descargas.
+                Publicá tu carta con un QR, recibí pedidos desde la mesa, por WhatsApp
+                o delivery, tomá reservas online y cerrá la caja de cada turno. Todo
+                desde un mismo panel, para restaurantes, bares y cafeterías. Sin apps
+                ni comisiones por venta.
               </p>
               <div className={`${styles.heroBtns} ${visible ? styles.vis : ""}`}>
                 <Link className={styles.btnPrimary} to="/register?plan=free">
@@ -834,10 +834,10 @@ useEffect(() => {
         {/* ── STATS ── */}
         <div className={styles.stats}>
           {[
-            { n: "QR", l: "acceso directo desde la mesa" },
-            { n: "0%", l: "comisión en tus pedidos" },
-            { n: "Sin app", l: "se abre desde el navegador" },
-            { n: "En vivo", l: "precios y productos actualizados" },
+            { n: "Carta QR", l: "acceso directo desde la mesa" },
+            { n: "Pedidos", l: "mesa, delivery y take away" },
+            { n: "Reservas", l: "online y confirmadas en vivo" },
+            { n: "0%", l: "comisión en tus ventas" },
           ].map((s) => (
             <div className={styles.stat} key={s.n}>
               <div className={styles.statN}>{s.n}</div>
@@ -855,7 +855,7 @@ useEffect(() => {
             <div className={styles.reveal}>
               {/* <div className={styles.eyebrow}>¿Cómo funciona?</div> */}
               <h2 className={styles.sectionH2}>
-                De cero a menú publicado<br />en <em>tres pasos.</em>
+                De cero a funcionando<br />en <em>tres pasos.</em>
               </h2>
             </div>
             <div className={styles.steps}>
@@ -890,7 +890,7 @@ useEffect(() => {
             <div className={styles.reveal}>
               {/* <div className={styles.eyebrow}>Funcionalidades</div> */}
               <h2 className={styles.sectionH2}>
-                Todo lo que necesitás.<br /><em>Nada que sobre.</em>
+                Tu carta digital,<br /><em>siempre al día.</em>
               </h2>
             </div>
             <div className={styles.featGrid}>
@@ -1127,13 +1127,13 @@ useEffect(() => {
             <div className={styles.faqInner}>
               <div className={`${styles.faqHeader} ${styles.reveal}`}>
                 <h2 className={styles.sectionH2}>
-                  Preguntas frecuentes sobre<br />
-                  <em>menús digitales QR.</em>
+                  Preguntas<br />
+                  <em>frecuentes.</em>
                 </h2>
 
                 <p className={styles.faqIntro}>
-                  Todo lo que necesitás saber antes de crear la carta digital de tu
-                  restaurante, bar o cafetería.
+                  Todo lo que necesitás saber sobre la carta digital, los pedidos y
+                  las reservas de tu restaurante, bar o cafetería.
                 </p>
               </div>
 
@@ -1174,7 +1174,7 @@ useEffect(() => {
                 Somos un equipo argentino que creció entre mesas, cocinas y cartas laminadas. Sabemos lo que cuesta imprimir el menú cada vez que cambia un precio, y la cara que pone el mozo cuando el cliente pide algo que ya no hay.
               </p>
               <p className={styles.aboutP}>
-                Menú Digital App nació para resolver eso: una herramienta simple, pensada para dueños de locales reales, no para técnicos. Si podés mandar un WhatsApp, podés manejar tu menú digital.
+                Menú Digital App nació para resolver eso, y hoy también ordena los pedidos, las reservas, el delivery y la caja del local. Una herramienta simple, pensada para dueños de locales reales, no para técnicos: si podés mandar un WhatsApp, podés manejarla.
               </p>
               {/* <div className={styles.aboutPills}>
                 <span className={styles.pill}>🇦🇷 100% argentino</span>
@@ -1198,7 +1198,7 @@ useEffect(() => {
         <section className={styles.finalCta}>
           <div className={styles.reveal}>
             <h2 className={styles.finalCtaH2}>
-              Tu menú digital,<br /><em>hoy mismo.</em>
+              Tu local en orden,<br /><em>desde hoy.</em>
             </h2>
             <p className={styles.finalCtaSub}>Sin contratos. Sin instalaciones. Listo en minutos.</p>
             <Link
@@ -1206,7 +1206,7 @@ useEffect(() => {
               style={{ fontSize: 18, padding: "18px 48px" }}
               to="/register?plan=free"
             >
-              Crear mi menú gratis →
+              Empezar gratis →
             </Link>
           </div>
         </section>
