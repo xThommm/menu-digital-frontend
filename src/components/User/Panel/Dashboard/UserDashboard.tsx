@@ -11,8 +11,21 @@ import { getPlanFeatureLabels, isSubscriptionExpired, PLAN_LABEL } from "../../.
 import type { DashData } from "../../../../types";
 import { usePlans } from "../../../../hooks/usePlans";
 import { formatDateAR } from "../../../../lib/dates";
+import { formatReservationDate, todayBuenosAires } from "../../../../features/reservations/lib/format";
 import UpgradeModal from "../../../Common/UpgradeModal";
+import { ArrowRight, CalendarCheck, ChartColumn, ClipboardList } from "lucide-react";
+import { daysUntil, sparklinePoints, type OrdersSummary, type ReservationsSummary } from "./todayActivity";
+import { useTodayActivity } from "./useTodayActivity";
 import s from "./UserDashboard.module.css";
+
+// Con menos de estos días de vigencia, el plan vuelve a destacarse en el inicio.
+const PLAN_WARNING_DAYS = 14;
+
+function greeting(hour: number) {
+  if (hour >= 5 && hour < 12) return "Buen día";
+  if (hour >= 12 && hour < 20) return "Buenas tardes";
+  return "Buenas noches";
+}
 
 // ── Hook: luz que sigue al cursor en las cards ────────────────────────────────
 
@@ -58,6 +71,23 @@ export default function UserDashboard() {
     ? undefined
     : catalog.data?.find(plan => plan.name === effectiveSubscription);
   const canDownloadQr = currentPlan?.features.qr === true;
+
+  // Momento en que se abrió el inicio: saludo, fecha y días que le quedan al plan.
+  const [now] = useState(() => new Date());
+  const planDaysLeft = subscriptionExpired ? null : daysUntil(user?.subscriptionExpiresAt, now.getTime());
+  const planExpiringSoon = effectiveSubscription !== "free" && planDaysLeft !== null && planDaysLeft <= PLAN_WARNING_DAYS;
+  // Un plan pago y al día no necesita una tarjeta entera: queda como una
+  // línea al final. La tarjeta grande es para cuando hay algo que hacer.
+  const planNeedsAttention = subscriptionExpired || effectiveSubscription === "free" || planExpiringSoon;
+
+  const isPro = effectiveSubscription === "pro";
+  const activity = useTodayActivity({
+    token: isLoading ? null : token,
+    visits: currentPlan?.features.estadisticas === true,
+    orders: isPro,
+    reservations: isPro,
+  });
+  const showToday = activity.visits !== null || activity.orders !== null || activity.reservations !== null;
 
   const [data, setData]     = useState<DashData | null>(null);
   const [copied, setCopied] = useState(false);
@@ -287,6 +317,65 @@ export default function UserDashboard() {
 
   const displayName = data?.businessName;
 
+  const planActionLabel = subscriptionExpired
+    ? "Renovar plan"
+    : user?.subscription === "free"
+      ? "Mejorar plan"
+      : user?.subscription === "basic"
+        ? "Renovar o pasar a Pro"
+        : "Renovar plan";
+
+  // Plan actual + acceso explícito al flujo de upgrade.
+  const planCard = user && (
+    <div className={`${s.planCard} ${effectiveSubscription === "pro" ? s.planCardPro : ""}`}>
+      <div className={s.planInfo}>
+        <span className={s.planLabel}>Tu plan</span>
+        <strong className={s.planName}>{currentPlan?.label ?? PLAN_LABEL[user.subscription]}</strong>
+        <span className={s.planDescription}>
+          {subscriptionExpired
+            ? `Tu ${previousPlanText} venció. Ahora tenés las funciones del plan Gratis.`
+            : planExpiringSoon
+              ? "Renovalo antes del vencimiento para no perder sus funciones."
+              : currentPlan
+                ? getPlanFeatureLabels(currentPlan.features).join(" · ")
+                : "No se pudo consultar la configuración del plan."}
+        </span>
+        {subscriptionExpired ? (
+          <span className={s.planExpiry}>
+            {downgradeDateLabel
+              ? `${previousPlanText} venció el ${downgradeDateLabel}. Tu cuenta fue degradada a Gratis.`
+              : `Tu ${previousPlanText} venció y tu cuenta fue degradada a Gratis.`}
+          </span>
+        ) : planExpiringSoon && planDaysLeft !== null && (
+          <span className={`${s.planExpiry} ${s.planExpirySoon}`}>
+            {planDaysLeft <= 0 ? "Vence hoy" : planDaysLeft === 1 ? "Vence mañana" : `Vence en ${planDaysLeft} días`}
+            {` · ${formatDateAR(user.subscriptionExpiresAt)}`}
+          </span>
+        )}
+      </div>
+      <button className={s.planUpgradeBtn} type="button" onClick={() => setUpgradeOpen(true)}>
+        {planActionLabel}
+      </button>
+    </div>
+  );
+
+  // Plan pago y al día: una línea, sin competir con lo que se usa todos los días.
+  const planLine = user && (
+    <div className={s.planLine}>
+      <span className={s.planLineText}>
+        Plan <strong>{currentPlan?.label ?? PLAN_LABEL[user.subscription]}</strong>
+        <span className={s.planLineExpiry}>
+          {user.subscriptionExpiresAt
+            ? ` · Vigente hasta el ${formatDateAR(user.subscriptionExpiresAt)}`
+            : " · Sin vencimiento registrado"}
+        </span>
+      </span>
+      <button className={s.planLineBtn} type="button" onClick={() => setUpgradeOpen(true)}>
+        {planActionLabel}
+      </button>
+    </div>
+  );
+
   return (
     <div className={s.root}>
 
@@ -303,53 +392,61 @@ export default function UserDashboard() {
         >
           <div className={s.heroOverlay} />
           <div className={s.heroContent}>
-            <p className={s.welcomeEyebrow}>{spooky("Bienvenido!", "¡Feliz Halloween! 🎃")}</p>
+            <p className={s.welcomeEyebrow}>{spooky(greeting(now.getHours()), "¡Feliz Halloween! 🎃")}</p>
             <h1 className={s.welcomeTitle}>{displayName}</h1>
           </div>
         </div>
 
-        {/* Plan actual + acceso explícito al flujo de upgrade. */}
-        {user && (
-          <div className={`${s.planCard} ${effectiveSubscription === "pro" ? s.planCardPro : ""}`}>
-            <div className={s.planInfo}>
-              <span className={s.planLabel}>Tu plan</span>
-              <strong className={s.planName}>{currentPlan?.label ?? PLAN_LABEL[user.subscription]}</strong>
-              <span className={s.planDescription}>
-                {subscriptionExpired
-                  ? `Tu ${previousPlanText} venció. Ahora tenés las funciones del plan Gratis.`
-                  : currentPlan
-                    ? currentPlan.name === "pro"
-                      // Pro es el tope: listar las 11 funciones que ya tiene no vende
-                      // nada (no hay a qué upgradear) y satura la pantalla que más se
-                      // usa día a día — alcanza con confirmar que no le falta nada.
-                      ? "Tenés acceso a todas las funciones de Menú Digital App."
-                      : getPlanFeatureLabels(currentPlan.features).join(" · ")
-                    : "No se pudo consultar la configuración del plan."}
-              </span>
-              {subscriptionExpired ? (
-                <span className={s.planExpiry}>
-                  {downgradeDateLabel
-                    ? `${previousPlanText} venció el ${downgradeDateLabel}. Tu cuenta fue degradada a Gratis.`
-                    : `Tu ${previousPlanText} venció y tu cuenta fue degradada a Gratis.`}
-                </span>
-              ) : user.subscription !== "free" && (
-                <span className={s.planExpiry}>
-                  {user.subscriptionExpiresAt
-                    ? `Vigente hasta el ${formatDateAR(user.subscriptionExpiresAt)}`
-                    : "Sin vencimiento registrado"}
-                </span>
+        {planNeedsAttention && planCard}
+
+        {showToday && (
+          <section className={s.today} aria-label="Resumen de hoy">
+            <h2 className={s.sectionLabel}>Hoy <span>· {formatReservationDate(todayBuenosAires(now))}</span></h2>
+            <div className={s.todayTiles}>
+              {activity.visits !== null && (
+                <TodayTile
+                  icon={<ChartColumn size={15} strokeWidth={1.75} />}
+                  label="Visitas a la carta"
+                  loading={activity.visits === undefined}
+                  value={activity.visits?.today}
+                  detail={activity.visits && (
+                    <>
+                      {formatCount(activity.visits.week)} en 7 días
+                      {activity.visits.delta !== null && activity.visits.delta !== 0 && (
+                        <span className={activity.visits.delta > 0 ? s.trendUp : s.trendDown}>
+                          {activity.visits.delta > 0 ? "▲" : "▼"} {Math.abs(activity.visits.delta)}%
+                        </span>
+                      )}
+                    </>
+                  )}
+                  chart={activity.visits && <Sparkline series={activity.visits.series} />}
+                  onClick={() => navigate("/estadisticas")}
+                />
+              )}
+              {activity.orders !== null && (
+                <TodayTile
+                  icon={<ClipboardList size={15} strokeWidth={1.75} />}
+                  label="Pedidos en curso"
+                  loading={activity.orders === undefined}
+                  value={activity.orders?.shiftOpen ? activity.orders.active : undefined}
+                  alert={!!activity.orders && activity.orders.pending > 0}
+                  detail={activity.orders && ordersDetail(activity.orders)}
+                  onClick={() => navigate("/pedidos")}
+                />
+              )}
+              {activity.reservations !== null && (
+                <TodayTile
+                  icon={<CalendarCheck size={15} strokeWidth={1.75} />}
+                  label="Reservas para hoy"
+                  loading={activity.reservations === undefined}
+                  value={activity.reservations?.today}
+                  alert={!!activity.reservations && activity.reservations.pending > 0}
+                  detail={activity.reservations && reservationsDetail(activity.reservations)}
+                  onClick={() => navigate("/reservas")}
+                />
               )}
             </div>
-            <button className={s.planUpgradeBtn} type="button" onClick={() => setUpgradeOpen(true)}>
-              {subscriptionExpired
-                ? "Renovar plan"
-                : user.subscription === "free"
-                ? "Mejorar plan"
-                : user.subscription === "basic"
-                  ? "Renovar o pasar a Pro"
-                  : "Renovar plan"}
-            </button>
-          </div>
+          </section>
         )}
 
         {upgradeOpen && user && (
@@ -390,18 +487,21 @@ export default function UserDashboard() {
                 : <span className={s.urlPlaceholder}>Configurá tu negocio para obtener tu link</span>
               }
             </span>
+            {publicUrl && (
+              <button
+                type="button"
+                className={`${s.urlCopyBtn} ${copied ? s.urlCopyBtnDone : ""}`}
+                onClick={handleCopy}
+              >
+                {copied ? <CheckIcon /> : <CopyIcon />}
+                {copied ? "¡Copiado!" : "Copiar"}
+              </button>
+            )}
           </div>
 
           {publicUrl && (
             <div className={s.storefrontActions}>
-              <button
-                className={`${s.actionBtn} ${copied ? s.actionBtnSuccess : ""}`}
-                onClick={handleCopy}
-              >
-                {copied ? <CheckIcon /> : <CopyIcon />}
-                {copied ? "¡Copiado!" : "Copiar link"}
-              </button>
-              <button className={`${s.actionBtn} ${s.actionBtnOutline}`} onClick={handleOpen}>
+              <button className={s.actionBtn} onClick={handleOpen}>
                 <ExternalIcon />
                 Ver página
               </button>
@@ -475,6 +575,8 @@ export default function UserDashboard() {
           />
         </div>
 
+        {!planNeedsAttention && planLine}
+
       </div>
 
       {/* Vista previa en vivo — una sola instancia (no se duplica el
@@ -518,13 +620,80 @@ function SpotlightCard({ onClick, icon, title, desc, primary }: NavCardProps) {
         <p className={s.cardTitle}>{title}</p>
         <p className={s.cardDesc}>{desc}</p>
       </div>
-      <svg className={s.cardArrow} width="17" height="17" viewBox="0 0 24 24"
-        fill="none" stroke="currentColor" strokeWidth="1.5"
-        strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <line x1="5" y1="12" x2="19" y2="12" />
-        <polyline points="12 5 19 12 12 19" />
-      </svg>
+      <ArrowRight className={s.cardArrow} size={17} strokeWidth={1.5} aria-hidden />
     </button>
+  );
+}
+
+// ── Hoy ───────────────────────────────────────────────────────────────────────
+
+const formatCount = (value: number) => value.toLocaleString("es-AR");
+
+function ordersDetail({ shiftOpen, pending, ready }: OrdersSummary) {
+  if (!shiftOpen) return "Sin turno abierto";
+  if (pending > 0) return `${pending} por confirmar`;
+  if (ready > 0) return `${ready} ${ready === 1 ? "listo" : "listos"} para entregar`;
+  return "Todo al día";
+}
+
+function reservationsDetail({ pending, next }: ReservationsSummary) {
+  if (pending > 0) return `${pending} ${pending === 1 ? "espera" : "esperan"} respuesta`;
+  if (next) return `Próxima a las ${next} hs`;
+  return "Sin pendientes";
+}
+
+interface TodayTileProps {
+  icon: React.ReactNode;
+  label: string;
+  // Sin valor y sin estar cargando: no aplica (se muestra "—").
+  value: number | undefined;
+  loading: boolean;
+  detail: React.ReactNode;
+  // Hay algo esperando una acción del local.
+  alert?: boolean;
+  chart?: React.ReactNode;
+  onClick: () => void;
+}
+
+function TodayTile({ icon, label, value, loading, detail, alert, chart, onClick }: TodayTileProps) {
+  return (
+    <button
+      type="button"
+      className={`${s.todayTile} ${alert ? s.todayTileAlert : ""}`}
+      onClick={onClick}
+      aria-busy={loading}
+    >
+      <span className={s.todayTileLabel}>{icon}{label}</span>
+      {loading ? (
+        <span className={s.todayTileSkeleton} aria-hidden />
+      ) : (
+        <>
+          <strong className={s.todayTileValue}>{value === undefined ? "—" : formatCount(value)}</strong>
+          <span className={s.todayTileDetail}>{detail}</span>
+        </>
+      )}
+      {chart}
+    </button>
+  );
+}
+
+const SPARK = { w: 100, h: 28 };
+
+function Sparkline({ series }: { series: number[] }) {
+  const points = sparklinePoints(series, SPARK.w, SPARK.h);
+  if (!points) return null;
+  return (
+    <svg className={s.sparkline} viewBox={`0 -2 ${SPARK.w} ${SPARK.h + 4}`} preserveAspectRatio="none" aria-hidden>
+      <polyline
+        points={points}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
   );
 }
 
