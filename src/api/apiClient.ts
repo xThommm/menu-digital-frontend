@@ -21,7 +21,8 @@
  * optimista, redirigir a login, etc.) usando `err.type`.
  */
 
-import type { ApiErrorType } from '../types'  // ✅ importar en lugar de definir el tipo aquí, para que toda la app lo importe desde un solo lugar
+import { isEmailNotVerified, redirectToEmailVerification } from '../lib/emailNotVerified'
+import type { ApiErrorType } from '../types'// ✅ importar en lugar de definir el tipo aquí, para que toda la app lo importe desde un solo lugar
 
 const DEFAULT_MESSAGES: Record<ApiErrorType, string> = {
   network:    "No hay conexión con el servidor. Revisá tu internet e intentá de nuevo.",
@@ -127,6 +128,7 @@ if (parseJson) {
 }
 
 if (!res.ok) {
+  if (isEmailNotVerified(res.status, body)) redirectToEmailVerification();
   const type = classifyStatus(res.status);
   const bodyObj = body as Record<string, unknown> | null;
   const serverMessage = typeof bodyObj?.message === "string" ? bodyObj.message : undefined;
