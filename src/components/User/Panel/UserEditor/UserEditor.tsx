@@ -1,23 +1,38 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from "react";
+import { Check, ExternalLink, Link2, Save, Undo2 } from "lucide-react";
 import { useAuth } from "../../../../context/useAuth";
 import { useFeedbackMessage } from "../../../../hooks/useFeedbackMessage";
 import type { Subscription, DayKey, DayHours, Schedule } from "../../../../types/index";
 import { usePlans } from "../../../../hooks/usePlans";
-import { BUSINESS_TIME_PATTERN, getDayRanges } from "../../../../Utils/businessSchedule";
+import { useMediaQuery } from "../../../../hooks/useMediaQuery";
+import { BUSINESS_TIME_PATTERN, getDayRanges, getOpenStatus } from "../../../../Utils/businessSchedule";
 import WeeklySchedule from "../../../Common/WeeklySchedule/WeeklySchedule";
 import { WEEK_DAYS } from "../../../Common/WeeklySchedule/weekSchedule";
 import type { WeekRanges } from "../../../Common/WeeklySchedule/weekSchedule";
 import Spinner from "../../../Common/Spinner";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import MenuStylePicker from "./MenuStylePicker";
-import { resolveMenuStyle, getMenuStyleFeature, buildAppearanceBody, type MenuStyle } from "../../../../lib/menuStyles";
-import { TEMPLATES, type TemplateOption } from "../../../../lib/templates";
+import { MENU_STYLE_OPTIONS, resolveMenuStyle, getMenuStyleFeature, buildAppearanceBody, type MenuStyle } from "../../../../lib/menuStyles";
+import { TEMPLATES, templateName, type TemplateOption } from "../../../../lib/templates";
 import { normalizeArPhone, isValidArLocalPhone } from "../../../../lib/whatsapp";
+import {
+  BusinessCard, BusinessJumpBar, BusinessNav, BusinessOverview, BusinessPanel, BusinessTabs,
+} from "./Workspace/BusinessWorkspace";
+import {
+  BUSINESS_BLOCKS, BUSINESS_TABS,
+  type BusinessBlockId, type BusinessCheck, type BusinessTab,
+} from "./Workspace/businessBlocks";
+import ws from "../MenuEditor/Workspace/MenuWorkspace.module.css";
+import bw from "./Workspace/BusinessWorkspace.module.css";
 import styles from "./UserEditor.module.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tab = "info" | "media" | "template";
+type Tab = BusinessTab;
+
+// Desde este ancho el editor es un espacio de trabajo de tres zonas, como el
+// editor de menú (mismo corte que MenuEditor).
+const DESKTOP_QUERY = "(min-width: 1024px)";
 
 interface FormState {
   businessName: string;
@@ -49,6 +64,18 @@ const EMPTY_FORM: FormState = {
   orderMessage: "",
   takeAwayMessage: "",
 };
+
+// Qué campos del formulario edita cada bloque de "Información" (entre todos
+// cubren FormState; WhatsApp suma sus números y Horario, el horario). Con
+// esto se sabe qué bloques tienen cambios sin guardar.
+const BLOCK_FIELDS: [BusinessBlockId, (keyof FormState)[]][] = [
+  ["datos", ["businessName", "address"]],
+  ["contacto", ["number", "mail"]],
+  ["whatsapp", ["reservationMessage"]],
+  ["redes", ["instagram", "facebook"]],
+  ["pedidos", ["hasDelivery", "hasTakeAway", "orderMessage", "takeAwayMessage"]],
+  ["horario", []],
+];
 
 // Espejo del máximo de contactInfo.orderMessage / takeAwayMessage en el backend.
 const ORDER_MESSAGE_MAX_LENGTH = 500;
@@ -261,8 +288,9 @@ function LockIcon({ size = 14 }: { size?: number }) {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function UserEditorPage() {
-  const { token, logout } = useAuth();
+  const { token, logout, user } = useAuth();
   const catalog = usePlans();
+  const isDesktop = useMediaQuery(DESKTOP_QUERY);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef   = useRef<HTMLInputElement>(null);
@@ -314,6 +342,14 @@ export default function UserEditorPage() {
   const premiumPlan = catalog.data?.find(plan => plan.features.premium_menu_styles === true);
 
   const [isDirty, setIsDirty]   = useState(false);
+  // Bloques de "Información" con cambios sin guardar (escritorio: se marcan
+  // en su tarjeta y en la columna de estructura).
+  const [dirtyKey, setDirtyKey] = useState("");
+  const dirtyBlocks = useMemo(() => (dirtyKey ? dirtyKey.split(",") as BusinessBlockId[] : []), [dirtyKey]);
+  // Escritorio: bloque a la vista (se resalta en la estructura) y último
+  // salto pedido desde la estructura o el resumen.
+  const [activeBlock, setActiveBlock] = useState<BusinessBlockId | null>(null);
+  const [jump, setJump] = useState<{ id: BusinessBlockId; seq: number } | null>(null);
   const initialFormRef = useRef<FormState>(EMPTY_FORM);
 
   // ── Cambio de email de contacto ──
@@ -376,12 +412,15 @@ export default function UserEditorPage() {
   // y siempre marcaría dirty aunque el contenido sea igual.
   useEffect(() => {
     const initial = initialFormRef.current;
-    const formDirty = (Object.keys(form) as (keyof FormState)[]).some(
-      k => form[k] !== initial[k]
-    );
     const scheduleDirty = JSON.stringify(schedule) !== JSON.stringify(initialScheduleRef.current);
     const waNumbersDirty = JSON.stringify(waNumbers) !== JSON.stringify(initialWaNumbersRef.current);
-    setIsDirty(formDirty || scheduleDirty || waNumbersDirty);
+    const dirty = BLOCK_FIELDS
+      .filter(([id, keys]) => keys.some(k => form[k] !== initial[k])
+        || (id === "whatsapp" && waNumbersDirty)
+        || (id === "horario" && scheduleDirty))
+      .map(([id]) => id);
+    setDirtyKey(dirty.join(","));
+    setIsDirty(dirty.length > 0);
   }, [form, schedule, waNumbers]);
 
   // Load initial data
@@ -1047,9 +1086,70 @@ export default function UserEditorPage() {
 
   const changeTab = (next: Tab) => {
     setTab(next);
+    setJump(null);
     setError("");
     setSuccess("");
   };
+
+  // Vuelve "Información" a lo último guardado.
+  const discardChanges = () => {
+    setForm(initialFormRef.current);
+    setSchedule(initialScheduleRef.current);
+    setWaNumbers(initialWaNumbersRef.current);
+  };
+
+  // Escritorio: ir a un bloque desde la estructura o el resumen (cambia de
+  // pestaña si hace falta; el efecto de abajo lo trae a la vista).
+  const goToBlock = (id: BusinessBlockId) => {
+    const target = BUSINESS_BLOCKS.find(block => block.id === id);
+    if (!target) return;
+    if (target.tab !== tab) setTab(target.tab);
+    setJump(prev => ({ id, seq: (prev?.seq ?? 0) + 1 }));
+  };
+
+  useEffect(() => {
+    if (!jump) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.getElementById(`business-block-${jump.id}`)
+      ?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+  }, [jump]);
+
+  // Escritorio: qué bloque está a la vista, para resaltarlo en la estructura.
+  useEffect(() => {
+    if (!isDesktop || loading) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const cards = Array.from(document.querySelectorAll<HTMLElement>("[data-business-block]"));
+      if (cards.length === 0) return;
+      // Al final de la página el último bloque no llega arriba de todo.
+      const atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      const current = atEnd && window.scrollY > 0
+        ? cards[cards.length - 1]
+        : cards.filter(card => card.getBoundingClientRect().top <= 220).pop() ?? cards[0];
+      setActiveBlock(current.dataset.businessBlock as BusinessBlockId);
+    };
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(update); };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, [isDesktop, loading, tab]);
+
+  // Escritorio: Ctrl+S guarda "Información", como en el editor de menú.
+  const canSave = isDirty && !saving && emailChangeStep !== "pending" && !nameChangeConfirmOpen && !cropSrc;
+  useEffect(() => {
+    if (!isDesktop) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s") return;
+      event.preventDefault();
+      if (canSave) handleSaveClick();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
 
   if (loading) {
     return (
@@ -1059,631 +1159,678 @@ export default function UserEditorPage() {
     );
   }
 
-  return (
-    <div className={styles.ne}>
+  const banners = (
+    <>
+      {error && (
+        <div className={styles.errorBanner} role="alert" aria-live="assertive">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className={styles.successBanner} role="status" aria-live="polite">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          {success}
+        </div>
+      )}
+    </>
+  );
 
-      {/* Top bar */}
-      <header className={styles.topBar}>
-        <span className={styles.topTitle}>Mi negocio</span>
-        <div style={{ width: 32 }} aria-hidden="true" />
-      </header>
+  // En escritorio cada bloque es una tarjeta del tablero (con su título en el
+  // encabezado); en el celular va suelto dentro de su pestaña.
+  const block = (id: BusinessBlockId, children: ReactNode, aside?: ReactNode) => isDesktop
+    ? (
+      <BusinessCard
+        key={id}
+        block={id}
+        dirty={dirtyBlocks.includes(id)}
+        flash={jump?.id === id ? jump.seq : 0}
+        aside={aside}
+      >
+        {children}
+      </BusinessCard>
+    )
+    : children;
 
-      {/* Tabs */}
-      <div className={styles.tabs} role="tablist" aria-label="Secciones">
-        {([
-          { key: "info",     label: "Información" },
-          { key: "media",    label: "Imágenes"    },
-          { key: "template", label: "Apariencia"  },
-        ] as const).map(({ key, label }) => (
-          <button
-            key={key}
-            role="tab"
-            aria-selected={tab === key}
-            className={`${styles.tabBtn} ${tab === key ? styles.active : ""}`}
-            onClick={() => changeTab(key)}
-          >
-            {label}
-            {key === "info" && isDirty && (
-              <span className={styles.dirtyDot} aria-label="Cambios sin guardar" />
-            )}
-          </button>
-        ))}
-      </div>
+  const removeLogoButton = favicon && (
+    <button
+      className={styles.textBtn}
+      onClick={removeFavicon}
+      disabled={uploading !== null}
+      type="button"
+    >
+      Quitar logo
+    </button>
+  );
 
-      <div className={styles.content}>
+  const addPhotosButton = (
+    <button
+      className={styles.textBtn}
+      onClick={() => fileInputRef.current?.click()}
+      disabled={uploading !== null || pictures.length >= 10}
+      type="button"
+    >
+      {uploading === "gallery"
+        ? <><Spinner size={12} /> {galleryProgress ? `Subiendo ${galleryProgress.done + 1}/${galleryProgress.total}...` : "Subiendo..."}</>
+        : "+ Agregar fotos"
+      }
+    </button>
+  );
 
-        {/* Banners */}
-        {error && (
-          <div className={styles.errorBanner} role="alert" aria-live="assertive">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            {error}
+  // ── Pestaña: Información ──
+  const infoContent = (
+    <>
+      {block("datos", (
+        <>
+          <div className={styles.field}>
+            <label htmlFor="businessName">
+              Nombre del negocio
+              <span className={styles.required} aria-hidden> *</span>
+            </label>
+            <input
+              id="businessName"
+              type="text"
+              placeholder="Ej: La Pizzería de Juan"
+              value={form.businessName}
+              onChange={e => setForm(f => ({ ...f, businessName: e.target.value }))}
+              autoComplete="organization"
+              maxLength={80}
+            />
           </div>
-        )}
-        {success && (
-          <div className={styles.successBanner} role="status" aria-live="polite">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            {success}
-          </div>
-        )}
 
-        {/* ── TAB: INFO ── */}
-        {tab === "info" && (
-          <>
+          <div className={styles.field}>
+            <label htmlFor="address">Dirección</label>
+            <input
+              id="address"
+              type="text"
+              placeholder="Av. Principal 123"
+              value={form.address}
+              onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+              autoComplete="street-address"
+            />
+          </div>
+        </>
+      ))}
+
+      {block("contacto", (
+        <>
+          <div className={styles.fieldRow}>
             <div className={styles.field}>
-              <label htmlFor="businessName">
-                Nombre del negocio
-                <span className={styles.required} aria-hidden> *</span>
-              </label>
+              <label htmlFor="phone">Teléfono</label>
               <input
-                id="businessName"
-                type="text"
-                placeholder="Ej: La Pizzería de Juan"
-                value={form.businessName}
-                onChange={e => setForm(f => ({ ...f, businessName: e.target.value }))}
-                autoComplete="organization"
-                maxLength={80}
+                id="phone"
+                type="tel"
+                inputMode="tel"
+                placeholder="11 2345-6789"
+                value={form.number}
+                onChange={e => setForm(f => ({ ...f, number: e.target.value }))}
+                autoComplete="tel-national"
+                aria-describedby="phone-hint"
+              />
+              <p id="phone-hint" className={styles.fieldHint}>{PHONE_FORMAT_HINT}</p>
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                placeholder="negocio@mail.com"
+                value={form.mail}
+                onChange={e => setForm(f => ({ ...f, mail: e.target.value }))}
+                autoComplete="email"
+                disabled={emailChangeStep === "pending"}
               />
             </div>
+          </div>
 
-            <div className={styles.field}>
-              <label htmlFor="address">Dirección</label>
-              <input
-                id="address"
-                type="text"
-                placeholder="Av. Principal 123"
-                value={form.address}
-                onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                autoComplete="street-address"
-              />
-            </div>
-
-            <div className={styles.fieldRow}>
-              <div className={styles.field}>
-                <label htmlFor="phone">Teléfono</label>
+          {emailChangeStep === "pending" && (
+            <div className={styles.emailChangeCard}>
+              <p className={styles.fieldHint}>
+                Te mandamos un código a {emailChangeMasked || "tu email nuevo"} para
+                confirmarlo. El email de contacto se actualiza recién al ingresarlo acá
+                — el resto de esta pestaña ya se guardó.
+              </p>
+              <div className={styles.emailChangeRow}>
                 <input
-                  id="phone"
-                  type="tel"
-                  inputMode="tel"
-                  placeholder="11 2345-6789"
-                  value={form.number}
-                  onChange={e => setForm(f => ({ ...f, number: e.target.value }))}
-                  autoComplete="tel-national"
-                  aria-describedby="phone-hint"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={emailChangeCode}
+                  onChange={e => setEmailChangeCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  disabled={emailChangeSubmitting}
+                  aria-label="Código de confirmación del email nuevo"
                 />
-                <p id="phone-hint" className={styles.fieldHint}>{PHONE_FORMAT_HINT}</p>
+                <button
+                  type="button"
+                  className={styles.emailChangeConfirmBtn}
+                  onClick={confirmEmailChangeCode}
+                  disabled={emailChangeSubmitting || emailChangeCode.length !== 6}
+                >
+                  {emailChangeSubmitting ? "Confirmando..." : "Confirmar"}
+                </button>
               </div>
-              <div className={styles.field}>
-                <label htmlFor="email">Email</label>
-                <input
-                  id="email"
-                  type="email"
-                  placeholder="negocio@mail.com"
-                  value={form.mail}
-                  onChange={e => setForm(f => ({ ...f, mail: e.target.value }))}
-                  autoComplete="email"
-                  disabled={emailChangeStep === "pending"}
-                />
-              </div>
-            </div>
-
-            {emailChangeStep === "pending" && (
-              <div className={styles.emailChangeCard}>
-                <p className={styles.fieldHint}>
-                  Te mandamos un código a {emailChangeMasked || "tu email nuevo"} para
-                  confirmarlo. El email de contacto se actualiza recién al ingresarlo acá
-                  — el resto de esta pestaña ya se guardó.
-                </p>
-                <div className={styles.emailChangeRow}>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    placeholder="000000"
-                    value={emailChangeCode}
-                    onChange={e => setEmailChangeCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    disabled={emailChangeSubmitting}
-                    aria-label="Código de confirmación del email nuevo"
-                  />
-                  <button
-                    type="button"
-                    className={styles.emailChangeConfirmBtn}
-                    onClick={confirmEmailChangeCode}
-                    disabled={emailChangeSubmitting || emailChangeCode.length !== 6}
-                  >
-                    {emailChangeSubmitting ? "Confirmando..." : "Confirmar"}
-                  </button>
-                </div>
-                {emailChangeError && <p className={styles.emailChangeError}>{emailChangeError}</p>}
-                <div className={styles.emailChangeActions}>
-                  <button
-                    type="button"
-                    className={styles.textBtn}
-                    onClick={() => void startEmailChange(form.mail.trim())}
-                    disabled={emailChangeSubmitting}
-                  >
-                    Reenviar código
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.textBtn}
-                    onClick={cancelEmailChange}
-                    disabled={emailChangeSubmitting}
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className={styles.field} role="group" aria-labelledby="waNumbers-label" aria-describedby="waNumbers-hint">
-              <p id="waNumbers-label" className={styles.groupLabel}>WhatsApp para pedidos y reservas</p>
-              {waNumbers.length > 0 && (
-                <ul className={styles.waList}>
-                  {waNumbers.map((w, i) => (
-                    <li key={i} className={styles.waRow}>
-                      <input
-                        type="text"
-                        placeholder={waNumbers.length > 1 ? "Nombre (ej: Sucursal Centro)" : "Nombre (opcional)"}
-                        value={w.name}
-                        maxLength={WHATSAPP_NAME_MAX_LENGTH}
-                        onChange={e => setWaNumbers(list => list.map((row, j) => j === i ? { ...row, name: e.target.value } : row))}
-                        aria-label={`Nombre del WhatsApp ${i + 1}`}
-                      />
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="11 2345-6789"
-                        value={w.number}
-                        onChange={e => setWaNumbers(list => list.map((row, j) => j === i ? { ...row, number: e.target.value } : row))}
-                        aria-label={`Número del WhatsApp ${i + 1}`}
-                      />
-                      <button
-                        type="button"
-                        className={styles.waRemove}
-                        onClick={() => setWaNumbers(list => list.filter((_, j) => j !== i))}
-                        aria-label={`Quitar el WhatsApp ${w.name.trim() || i + 1}`}
-                      >
-                        ×
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {waNumbers.length < WHATSAPP_NUMBERS_MAX && (
+              {emailChangeError && <p className={styles.emailChangeError}>{emailChangeError}</p>}
+              <div className={styles.emailChangeActions}>
                 <button
                   type="button"
                   className={styles.textBtn}
-                  onClick={() => setWaNumbers(list => [...list, { name: "", number: "" }])}
+                  onClick={() => void startEmailChange(form.mail.trim())}
+                  disabled={emailChangeSubmitting}
                 >
-                  + Agregar {waNumbers.length === 0 ? "un WhatsApp" : "otro WhatsApp"}
+                  Reenviar código
                 </button>
-              )}
-              <p id="waNumbers-hint" className={styles.fieldHint}>
-                {PHONE_FORMAT_HINT} Si tenés más de una sucursal, cargá un número por cada una con su
-                nombre: al pedir o reservar, tus clientes eligen a cuál escribir. Si no cargás
-                ninguno, se usa el teléfono de arriba.
-              </p>
+                <button
+                  type="button"
+                  className={styles.textBtn}
+                  onClick={cancelEmailChange}
+                  disabled={emailChangeSubmitting}
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
+          )}
+        </>
+      ))}
 
+      {block("whatsapp", (
+        <>
+          <div className={styles.field} role="group" aria-labelledby="waNumbers-label" aria-describedby="waNumbers-hint">
+            <p id="waNumbers-label" className={styles.groupLabel}>WhatsApp para pedidos y reservas</p>
+            {waNumbers.length > 0 && (
+              <ul className={styles.waList}>
+                {waNumbers.map((w, i) => (
+                  <li key={i} className={styles.waRow}>
+                    <input
+                      type="text"
+                      placeholder={waNumbers.length > 1 ? "Nombre (ej: Sucursal Centro)" : "Nombre (opcional)"}
+                      value={w.name}
+                      maxLength={WHATSAPP_NAME_MAX_LENGTH}
+                      onChange={e => setWaNumbers(list => list.map((row, j) => j === i ? { ...row, name: e.target.value } : row))}
+                      aria-label={`Nombre del WhatsApp ${i + 1}`}
+                    />
+                    <input
+                      type="tel"
+                      inputMode="tel"
+                      placeholder="11 2345-6789"
+                      value={w.number}
+                      onChange={e => setWaNumbers(list => list.map((row, j) => j === i ? { ...row, number: e.target.value } : row))}
+                      aria-label={`Número del WhatsApp ${i + 1}`}
+                    />
+                    <button
+                      type="button"
+                      className={styles.waRemove}
+                      onClick={() => setWaNumbers(list => list.filter((_, j) => j !== i))}
+                      aria-label={`Quitar el WhatsApp ${w.name.trim() || i + 1}`}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {waNumbers.length < WHATSAPP_NUMBERS_MAX && (
+              <button
+                type="button"
+                className={styles.textBtn}
+                onClick={() => setWaNumbers(list => [...list, { name: "", number: "" }])}
+              >
+                + Agregar {waNumbers.length === 0 ? "un WhatsApp" : "otro WhatsApp"}
+              </button>
+            )}
+            <p id="waNumbers-hint" className={styles.fieldHint}>
+              {PHONE_FORMAT_HINT} Si tenés más de una sucursal, cargá un número por cada una con su
+              nombre: al pedir o reservar, tus clientes eligen a cuál escribir. Si no cargás
+              ninguno, se usa el teléfono de arriba.
+            </p>
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="reservationMessage">Mensaje de reserva (WhatsApp)</label>
+            <textarea
+              id="reservationMessage"
+              rows={2}
+              placeholder="Hola! Quiero hacer una reserva en [nombre del negocio]."
+              value={form.reservationMessage}
+              onChange={e => setForm(f => ({ ...f, reservationMessage: e.target.value }))}
+              aria-describedby="reservationMessage-hint"
+            />
+            <p id="reservationMessage-hint" className={styles.fieldHint}>
+              Este texto se pre-carga cuando un cliente toca "Reservar por WhatsApp" en tu carta pública.
+              Si lo dejás vacío, se usa un mensaje genérico con el nombre de tu negocio.
+            </p>
+          </div>
+        </>
+      ))}
+
+      {block("redes", (
+        <>
+          <div className={styles.fieldRow}>
             <div className={styles.field}>
-              <label htmlFor="reservationMessage">Mensaje de reserva (WhatsApp)</label>
-              <textarea
-                id="reservationMessage"
-                rows={2}
-                placeholder="Hola! Quiero hacer una reserva en [nombre del negocio]."
-                value={form.reservationMessage}
-                onChange={e => setForm(f => ({ ...f, reservationMessage: e.target.value }))}
-                aria-describedby="reservationMessage-hint"
+              <label htmlFor="instagram">Instagram</label>
+              <input
+                id="instagram"
+                type="text"
+                placeholder="@tunegocio"
+                value={form.instagram}
+                onChange={e => setForm(f => ({ ...f, instagram: e.target.value }))}
               />
-              <p id="reservationMessage-hint" className={styles.fieldHint}>
-                Este texto se pre-carga cuando un cliente toca "Reservar por WhatsApp" en tu carta pública.
-                Si lo dejás vacío, se usa un mensaje genérico con el nombre de tu negocio.
-              </p>
             </div>
+            <div className={styles.field}>
+              <label htmlFor="facebook">Facebook</label>
+              <input
+                id="facebook"
+                type="text"
+                placeholder="tunegocio"
+                value={form.facebook}
+                onChange={e => setForm(f => ({ ...f, facebook: e.target.value }))}
+              />
+            </div>
+          </div>
+        </>
+      ))}
 
-            <div className={styles.fieldRow}>
-              <div className={styles.field}>
-                <label htmlFor="instagram">Instagram</label>
-                <input
-                  id="instagram"
-                  type="text"
-                  placeholder="@tunegocio"
-                  value={form.instagram}
-                  onChange={e => setForm(f => ({ ...f, instagram: e.target.value }))}
+      {block("pedidos", (
+        <>
+          <div className={styles.orderModes}>
+            {!isDesktop && <p className={styles.mediaLabel}>Delivery / Take away</p>}
+            <div className={styles.toggleGroup}>
+              <div className={styles.toggleRow}>
+                <div>
+                  <p className={styles.toggleLabel}>Delivery</p>
+                  <p className={styles.toggleDesc}>El negocio realiza envíos a domicilio</p>
+                </div>
+                <Toggle
+                  checked={form.hasDelivery}
+                  onChange={() => setForm(f => ({ ...f, hasDelivery: !f.hasDelivery }))}
+                  label="Activar delivery"
                 />
               </div>
-              <div className={styles.field}>
-                <label htmlFor="facebook">Facebook</label>
-                <input
-                  id="facebook"
-                  type="text"
-                  placeholder="tunegocio"
-                  value={form.facebook}
-                  onChange={e => setForm(f => ({ ...f, facebook: e.target.value }))}
+              <div className={styles.toggleRow}>
+                <div>
+                  <p className={styles.toggleLabel}>Take away</p>
+                  <p className={styles.toggleDesc}>Los clientes pueden retirar el pedido en el local</p>
+                </div>
+                <Toggle
+                  checked={form.hasTakeAway}
+                  onChange={() => setForm(f => ({ ...f, hasTakeAway: !f.hasTakeAway }))}
+                  label="Activar take away"
                 />
               </div>
             </div>
+            <p className={styles.fieldHint}>
+              {orderModesHint(form.hasDelivery, form.hasTakeAway)}
+            </p>
 
-            <div className={styles.orderModes}>
-              <p className={styles.mediaLabel}>Delivery / Take away</p>
-              <div className={styles.toggleGroup}>
-                <div className={styles.toggleRow}>
-                  <div>
-                    <p className={styles.toggleLabel}>Delivery</p>
-                    <p className={styles.toggleDesc}>El negocio realiza envíos a domicilio</p>
-                  </div>
-                  <Toggle
-                    checked={form.hasDelivery}
-                    onChange={() => setForm(f => ({ ...f, hasDelivery: !f.hasDelivery }))}
-                    label="Activar delivery"
-                  />
-                </div>
-                <div className={styles.toggleRow}>
-                  <div>
-                    <p className={styles.toggleLabel}>Take away</p>
-                    <p className={styles.toggleDesc}>Los clientes pueden retirar el pedido en el local</p>
-                  </div>
-                  <Toggle
-                    checked={form.hasTakeAway}
-                    onChange={() => setForm(f => ({ ...f, hasTakeAway: !f.hasTakeAway }))}
-                    label="Activar take away"
-                  />
-                </div>
+            {ORDER_MESSAGE_FIELDS.filter(field => form[field.enabledBy]).map(field => (
+              <div key={field.key} className={`${styles.field} ${styles.orderMessageField}`}>
+                <label htmlFor={field.key}>{field.label}</label>
+                <textarea
+                  id={field.key}
+                  rows={3}
+                  maxLength={ORDER_MESSAGE_MAX_LENGTH}
+                  placeholder={field.placeholder}
+                  value={form[field.key]}
+                  onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))}
+                  // Así el lector de pantalla también lee la nota del plan cuando aparece.
+                  aria-describedby={`${field.key}-hint`}
+                />
+                <p id={`${field.key}-hint`} className={styles.fieldHint}>
+                  {field.hint} Si lo dejás vacío, el pedido sale sin texto extra.
+                  {orderMessageLocked && (
+                    <>
+                      {" "}Tu plan actual no incluye pedidos por WhatsApp: podés dejarlo cargado y se
+                      va a usar cuando tengas un plan que los incluya
+                      {orderMessagePlan ? ` (${orderMessagePlan.label})` : ""}.
+                    </>
+                  )}
+                </p>
               </div>
-              <p className={styles.fieldHint}>
-                {orderModesHint(form.hasDelivery, form.hasTakeAway)}
-              </p>
+            ))}
+          </div>
+        </>
+      ))}
 
-              {ORDER_MESSAGE_FIELDS.filter(field => form[field.enabledBy]).map(field => (
-                <div key={field.key} className={`${styles.field} ${styles.orderMessageField}`}>
-                  <label htmlFor={field.key}>{field.label}</label>
-                  <textarea
-                    id={field.key}
-                    rows={3}
-                    maxLength={ORDER_MESSAGE_MAX_LENGTH}
-                    placeholder={field.placeholder}
-                    value={form[field.key]}
-                    onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))}
-                    // Así el lector de pantalla también lee la nota del plan cuando aparece.
-                    aria-describedby={`${field.key}-hint`}
-                  />
-                  <p id={`${field.key}-hint`} className={styles.fieldHint}>
-                    {field.hint} Si lo dejás vacío, el pedido sale sin texto extra.
-                    {orderMessageLocked && (
-                      <>
-                        {" "}Tu plan actual no incluye pedidos por WhatsApp: podés dejarlo cargado y se
-                        va a usar cuando tengas un plan que los incluya
-                        {orderMessagePlan ? ` (${orderMessagePlan.label})` : ""}.
-                      </>
-                    )}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div className={styles.scheduleSection}>
+      {block("horario", (
+        <>
+          <div className={styles.scheduleSection}>
+            {!isDesktop && (
               <div className={styles.scheduleHeader}>
                 <p className={styles.mediaLabel}>Horario de atención</p>
               </div>
+            )}
 
-              <div className={styles.scheduleCard}>
-                <WeeklySchedule
-                  value={scheduleWeek}
-                  onChange={handleScheduleChange}
-                  idPrefix="business-hours"
-                  daysLabel="Días que abrís"
-                  timeLabel="Horario de atención"
-                  allDayLabel="Abierto 24 h"
-                  addRangeLabel="+ Agregar otro turno"
-                  emptyLabel="Sin días abiertos: la carta no va a mostrar horarios."
-                  exceptionLabel="Algún día abro en otro horario"
-                />
-              </div>
-
-              <p className={styles.fieldHint}>
-                Cargá el horario una sola vez y prendé los días que abrís. Si cortás
-                al mediodía, agregá otro turno (por ejemplo, 12:00 a 15:00 y 20:00 a 00:00).
-                Si algún día tenés otro horario, marcá la opción y cambiá solo ese día.
-                Si el cierre es anterior a la apertura, termina al día siguiente.
-                Se muestra en tu carta pública junto con el estado abierto/cerrado.
-              </p>
-            </div>
-
-            <button
-              className={styles.saveBtn}
-              onClick={handleSaveClick}
-              disabled={saving || !isDirty || emailChangeStep === "pending"}
-              aria-busy={saving}
-            >
-              {saving
-                ? <><Spinner size={16} /> Guardando...</>
-                : emailChangeStep === "pending" ? "Confirmá el email arriba"
-                : isDirty ? "Guardar cambios" : "Sin cambios"
-              }
-            </button>
-          </>
-        )}
-
-        {/* ── TAB: MEDIA ── */}
-        {tab === "media" && (
-          <>
-            {/* Background */}
-            <div className={styles.mediaSection}>
-              <p className={styles.mediaLabel}>Imagen de portada</p>
-              <div
-                className={`${styles.bgPreview} ${uploading === "bg" ? styles.uploading : ""}`}
-                style={backgroundPicture ? { backgroundImage: `url(${backgroundPicture})` } : undefined}
-                onClick={() => uploading === null && bgInputRef.current?.click()}
-                role="button"
-                aria-label={backgroundPicture ? "Cambiar portada" : "Subir portada"}
-                tabIndex={0}
-                onKeyDown={e => e.key === "Enter" && uploading === null && bgInputRef.current?.click()}
-              >
-                {uploading === "bg" ? (
-                  <div className={styles.uploadingOverlay}>
-                    <Spinner size={24} />
-                    <span>Subiendo...</span>
-                  </div>
-                ) : !backgroundPicture ? (
-                  <div className={styles.uploadPlaceholder}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-                      strokeLinejoin="round" style={{ color: "var(--gray-400)" }} aria-hidden>
-                      <rect x="3" y="3" width="18" height="18" rx="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <polyline points="21 15 16 10 5 21" />
-                    </svg>
-                    <span>Subir portada</span>
-                    <span className={styles.uploadHint}>Recomendado: 1600 × 900 px</span>
-                  </div>
-                ) : (
-                  <div className={styles.overlayEdit}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                      stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    <span>Cambiar portada</span>
-                  </div>
-                )}
-              </div>
-              <input
-                ref={bgInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={e => {
-                  if (e.target.files?.[0]) openCropModal(e.target.files[0]);
-                  e.target.value = "";
-                }}
+            <div className={styles.scheduleCard}>
+              <WeeklySchedule
+                value={scheduleWeek}
+                onChange={handleScheduleChange}
+                idPrefix="business-hours"
+                daysLabel="Días que abrís"
+                timeLabel="Horario de atención"
+                allDayLabel="Abierto 24 h"
+                addRangeLabel="+ Agregar otro turno"
+                emptyLabel="Sin días abiertos: la carta no va a mostrar horarios."
+                exceptionLabel="Algún día abro en otro horario"
               />
             </div>
 
-            {/* Favicon */}
-            <div className={styles.mediaSection}>
+            <p className={styles.fieldHint}>
+              Cargá el horario una sola vez y prendé los días que abrís. Si cortás
+              al mediodía, agregá otro turno (por ejemplo, 12:00 a 15:00 y 20:00 a 00:00).
+              Si algún día tenés otro horario, marcá la opción y cambiá solo ese día.
+              Si el cierre es anterior a la apertura, termina al día siguiente.
+              Se muestra en tu carta pública junto con el estado abierto/cerrado.
+            </p>
+          </div>
+        </>
+      ))}
+
+      {/* En escritorio se guarda desde el encabezado (o con Ctrl+S). */}
+      {!isDesktop && (
+        <button
+          className={styles.saveBtn}
+          onClick={handleSaveClick}
+          disabled={saving || !isDirty || emailChangeStep === "pending"}
+          aria-busy={saving}
+        >
+          {saving
+            ? <><Spinner size={16} /> Guardando...</>
+            : emailChangeStep === "pending" ? "Confirmá el email arriba"
+            : isDirty ? "Guardar cambios" : "Sin cambios"
+          }
+        </button>
+      )}
+    </>
+  );
+
+  // ── Pestaña: Imágenes ──
+  const mediaContent = (
+    <>
+      {block("portada", (
+        <>
+          {/* Background */}
+          <div className={styles.mediaSection}>
+            {!isDesktop && <p className={styles.mediaLabel}>Imagen de portada</p>}
+            <div
+              className={`${styles.bgPreview} ${uploading === "bg" ? styles.uploading : ""}`}
+              style={backgroundPicture ? { backgroundImage: `url(${backgroundPicture})` } : undefined}
+              onClick={() => uploading === null && bgInputRef.current?.click()}
+              role="button"
+              aria-label={backgroundPicture ? "Cambiar portada" : "Subir portada"}
+              tabIndex={0}
+              onKeyDown={e => e.key === "Enter" && uploading === null && bgInputRef.current?.click()}
+            >
+              {uploading === "bg" ? (
+                <div className={styles.uploadingOverlay}>
+                  <Spinner size={24} />
+                  <span>Subiendo...</span>
+                </div>
+              ) : !backgroundPicture ? (
+                <div className={styles.uploadPlaceholder}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+                    strokeLinejoin="round" style={{ color: "var(--gray-400)" }} aria-hidden>
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                  <span>Subir portada</span>
+                  <span className={styles.uploadHint}>Recomendado: 1600 × 900 px</span>
+                </div>
+              ) : (
+                <div className={styles.overlayEdit}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  <span>Cambiar portada</span>
+                </div>
+              )}
+            </div>
+            <input
+              ref={bgInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={e => {
+                if (e.target.files?.[0]) openCropModal(e.target.files[0]);
+                e.target.value = "";
+              }}
+            />
+          </div>
+        </>
+      ))}
+
+      {block("logo", (
+        <>
+          {/* Favicon */}
+          <div className={styles.mediaSection}>
+            {!isDesktop && (
               <div className={styles.mediaLabelRow}>
                 <p className={styles.mediaLabel}>Logo (ícono de la pestaña)</p>
-                {favicon && (
-                  <button
-                    className={styles.textBtn}
-                    onClick={removeFavicon}
-                    disabled={uploading !== null}
-                    type="button"
-                  >
-                    Quitar logo
-                  </button>
-                )}
+                {removeLogoButton}
               </div>
-              <div className={styles.faviconRow}>
+            )}
+            <div className={styles.faviconRow}>
+              <button
+                className={`${styles.faviconPreview} ${uploading === "favicon" ? styles.uploading : ""}`}
+                onClick={() => faviconInputRef.current?.click()}
+                disabled={uploading !== null}
+                aria-label={favicon ? "Cambiar logo" : "Subir logo"}
+                type="button"
+              >
+                {uploading === "favicon" ? (
+                  <Spinner size={18} />
+                ) : favicon ? (
+                  <img src={favicon} alt="Logo actual" />
+                ) : (
+                  <img src="/favicon-96x96.png" alt="Ícono de Menú Digital (por defecto)" />
+                )}
+              </button>
+              <div className={styles.faviconInfo}>
+                <p className={styles.faviconText}>
+                  {favicon
+                    ? "Tu logo se muestra en la pestaña del navegador cuando entran a tu página y a tu carta."
+                    : "Sin logo cargado: tu página y tu carta muestran el ícono de Menú Digital."}
+                </p>
+                <span className={styles.uploadHint}>
+                  Imagen cuadrada, JPG, PNG o WebP, hasta {formatMb(FAVICON_MAX_BYTES)}. Mejor con fondo transparente.
+                </span>
                 <button
-                  className={`${styles.faviconPreview} ${uploading === "favicon" ? styles.uploading : ""}`}
+                  className={styles.textBtn}
                   onClick={() => faviconInputRef.current?.click()}
                   disabled={uploading !== null}
-                  aria-label={favicon ? "Cambiar logo" : "Subir logo"}
                   type="button"
                 >
-                  {uploading === "favicon" ? (
-                    <Spinner size={18} />
-                  ) : favicon ? (
-                    <img src={favicon} alt="Logo actual" />
-                  ) : (
-                    <img src="/favicon-96x96.png" alt="Ícono de Menú Digital (por defecto)" />
-                  )}
+                  {uploading === "favicon"
+                    ? <><Spinner size={12} /> Subiendo...</>
+                    : favicon ? "Cambiar logo" : "+ Subir logo"}
                 </button>
-                <div className={styles.faviconInfo}>
-                  <p className={styles.faviconText}>
-                    {favicon
-                      ? "Tu logo se muestra en la pestaña del navegador cuando entran a tu página y a tu carta."
-                      : "Sin logo cargado: tu página y tu carta muestran el ícono de Menú Digital."}
-                  </p>
-                  <span className={styles.uploadHint}>
-                    Imagen cuadrada, JPG, PNG o WebP, hasta {formatMb(FAVICON_MAX_BYTES)}. Mejor con fondo transparente.
-                  </span>
-                  <button
-                    className={styles.textBtn}
-                    onClick={() => faviconInputRef.current?.click()}
-                    disabled={uploading !== null}
-                    type="button"
-                  >
-                    {uploading === "favicon"
-                      ? <><Spinner size={12} /> Subiendo...</>
-                      : favicon ? "Cambiar logo" : "+ Subir logo"}
-                  </button>
-                </div>
               </div>
-              <input
-                ref={faviconInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                style={{ display: "none" }}
-                onChange={e => {
-                  if (e.target.files?.[0]) uploadFaviconImage(e.target.files[0]);
-                  e.target.value = "";
-                }}
-              />
             </div>
+            <input
+              ref={faviconInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              style={{ display: "none" }}
+              onChange={e => {
+                if (e.target.files?.[0]) uploadFaviconImage(e.target.files[0]);
+                e.target.value = "";
+              }}
+            />
+          </div>
+        </>
+      ), removeLogoButton)}
 
-            {/* Gallery */}
-            <div className={styles.mediaSection}>
+      {block("galeria", (
+        <>
+          {/* Gallery */}
+          <div className={styles.mediaSection}>
+            {!isDesktop && (
               <div className={styles.mediaLabelRow}>
                 <p className={styles.mediaLabel}>
                   Galería
                   <span className={styles.mediaCount}>{pictures.length}/10</span>
                 </p>
-                <button
-                  className={styles.textBtn}
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading !== null || pictures.length >= 10}
-                  type="button"
-                >
-                  {uploading === "gallery"
-                    ? <><Spinner size={12} /> {galleryProgress ? `Subiendo ${galleryProgress.done + 1}/${galleryProgress.total}...` : "Subiendo..."}</>
-                    : "+ Agregar fotos"
-                  }
-                </button>
+                {addPhotosButton}
               </div>
+            )}
 
-              {pictures.length === 0 && (
-                <p className={styles.emptyHint}>
-                  Agregá o arrastrá fotos de tu local para que los clientes lo conozcan.
-                </p>
-              )}
+            {pictures.length === 0 && (
+              <p className={styles.emptyHint}>
+                Agregá o arrastrá fotos de tu local para que los clientes lo conozcan.
+              </p>
+            )}
 
-              <div
-                className={`${styles.galleryGrid} ${galleryDragOver ? styles.galleryGridDragging : ""}`}
-                onDragEnter={handleGalleryDragEnter}
-                onDragOver={handleGalleryDragOver}
-                onDragLeave={handleGalleryDragLeave}
-                onDrop={handleGalleryDrop}
-              >
-                {pictures.map((url, i) => (
-                  <div key={`${url}-${i}`} className={styles.galleryItem}>
-                    <img src={url} alt={`Foto del negocio ${i + 1}`} loading="lazy" />
-                    <button
-                      className={styles.galleryItemRemove}
-                      onClick={() => removeImage(i)}
-                      aria-label={`Eliminar foto ${i + 1}`}
-                      type="button"
-                    >
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-                        strokeLinejoin="round" aria-hidden>
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-
-                {pictures.length < 10 && (
+            <div
+              className={`${styles.galleryGrid} ${galleryDragOver ? styles.galleryGridDragging : ""}`}
+              onDragEnter={handleGalleryDragEnter}
+              onDragOver={handleGalleryDragOver}
+              onDragLeave={handleGalleryDragLeave}
+              onDrop={handleGalleryDrop}
+            >
+              {pictures.map((url, i) => (
+                <div key={`${url}-${i}`} className={styles.galleryItem}>
+                  <img src={url} alt={`Foto del negocio ${i + 1}`} loading="lazy" />
                   <button
-                    className={styles.galleryAdd}
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading !== null}
-                    aria-label="Agregar foto"
+                    className={styles.galleryItemRemove}
+                    onClick={() => removeImage(i)}
+                    aria-label={`Eliminar foto ${i + 1}`}
                     type="button"
                   >
-                    {uploading === "gallery" ? (
-                      <Spinner size={18} />
-                    ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"
-                        strokeLinejoin="round" aria-hidden>
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                    )}
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                      strokeLinejoin="round" aria-hidden>
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
                   </button>
-                )}
-              </div>
+                </div>
+              ))}
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                style={{ display: "none" }}
-                onChange={e => {
-                  if (e.target.files?.length) uploadGalleryFiles(Array.from(e.target.files));
-                  e.target.value = "";
-                }}
-              />
+              {pictures.length < 10 && (
+                <button
+                  className={styles.galleryAdd}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading !== null}
+                  aria-label="Agregar foto"
+                  type="button"
+                >
+                  {uploading === "gallery" ? (
+                    <Spinner size={18} />
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"
+                      strokeLinejoin="round" aria-hidden>
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                  )}
+                </button>
+              )}
             </div>
-          </>
-        )}
 
-        {/* ── TAB: TEMPLATE ── */}
-        {tab === "template" && (
-          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: "none" }}
+              onChange={e => {
+                if (e.target.files?.length) uploadGalleryFiles(Array.from(e.target.files));
+                e.target.value = "";
+              }}
+            />
+          </div>
+        </>
+      ), addPhotosButton)}
+    </>
+  );
+
+  // ── Pestaña: Apariencia ──
+  const templateContent = (
+    <>
+      {block("diseno", (
+        <>
+          {!isDesktop && (
             <p className={styles.templateDesc}>
               Elegí el diseño de tu carta y combinalo con tu paleta. Los cambios se guardan al elegir.
             </p>
-            <MenuStylePicker
-              value={menuStyle}
-              template={template}
-              disabled={savingAppearance || !currentPlan || catalog.isFetching}
-              onChange={(value) => void saveTemplate(template, value)}
-              templateIds={currentPlan?.features.templateIds}
-              lockedFeatures={{ menu_styles: familiesLocked, premium_menu_styles: premiumLocked }}
-              planLabels={{ menu_styles: familiesPlan?.label, premium_menu_styles: premiumPlan?.label }}
-              onLocked={setStylesLocked}
-            />
-            <h2 className={styles.appearanceHeading}>Paleta de colores</h2>
-            <p className={styles.templateDesc}>Se aplica al diseño elegido y a la página de tu local. Las paletas disponibles dependen de tu plan.</p>
-            {savingAppearance && <Spinner label="Guardando apariencia" />}
-            {catalog.isPending && <Spinner label="Cargando diseños del plan" />}
-            {catalog.isError && <div role="alert"><p>No se pudo consultar el catálogo.</p><button type="button" onClick={() => void catalog.refetch()} disabled={catalog.isFetching}>Reintentar</button></div>}
-            <div className={styles.templateGrid}>
-              {TEMPLATES.map(t => {
-                const isLocked = !currentPlan?.features.templateIds.includes(t.id);
-                const offeredBy = catalog.data?.find(plan => plan.features.templateIds.includes(t.id));
-                return (
-                  <button
-                    key={t.id}
-                    className={`${styles.templateCard} ${template === t.id ? styles.selected : ""} ${isLocked ? styles.locked : ""}`}
-                    onClick={() => selectTemplate(t)}
-                    disabled={savingAppearance || !currentPlan || catalog.isFetching}
-                    aria-pressed={template === t.id}
-                    type="button"
-                  >
-                    <div className={styles.templatePreview} style={{ background: t.color }}>
-                      <div className={styles.templateBar} style={{ background: t.accent }} />
-                      <div className={styles.templateLines}>
-                        <div className={styles.tl} style={{ background: `${t.accent}99` }} />
-                        <div className={`${styles.tl} ${styles.tlShort}`} style={{ background: `${t.accent}55` }} />
-                        <div className={styles.tl} style={{ background: `${t.accent}55` }} />
+          )}
+          <MenuStylePicker
+            value={menuStyle}
+            template={template}
+            disabled={savingAppearance || !currentPlan || catalog.isFetching}
+            onChange={(value) => void saveTemplate(template, value)}
+            templateIds={currentPlan?.features.templateIds}
+            lockedFeatures={{ menu_styles: familiesLocked, premium_menu_styles: premiumLocked }}
+            planLabels={{ menu_styles: familiesPlan?.label, premium_menu_styles: premiumPlan?.label }}
+            onLocked={setStylesLocked}
+          />
+        </>
+      ))}
+      {block("paleta", (
+        <>
+          {!isDesktop && <h2 className={styles.appearanceHeading}>Paleta de colores</h2>}
+          <p className={styles.templateDesc}>Se aplica al diseño elegido y a la página de tu local. Las paletas disponibles dependen de tu plan.</p>
+          {savingAppearance && <Spinner label="Guardando apariencia" />}
+          {catalog.isPending && <Spinner label="Cargando diseños del plan" />}
+          {catalog.isError && <div role="alert"><p>No se pudo consultar el catálogo.</p><button type="button" onClick={() => void catalog.refetch()} disabled={catalog.isFetching}>Reintentar</button></div>}
+          <div className={styles.templateGrid}>
+            {TEMPLATES.map(t => {
+              const isLocked = !currentPlan?.features.templateIds.includes(t.id);
+              const offeredBy = catalog.data?.find(plan => plan.features.templateIds.includes(t.id));
+              return (
+                <button
+                  key={t.id}
+                  className={`${styles.templateCard} ${template === t.id ? styles.selected : ""} ${isLocked ? styles.locked : ""}`}
+                  onClick={() => selectTemplate(t)}
+                  disabled={savingAppearance || !currentPlan || catalog.isFetching}
+                  aria-pressed={template === t.id}
+                  type="button"
+                >
+                  <div className={styles.templatePreview} style={{ background: t.color }}>
+                    <div className={styles.templateBar} style={{ background: t.accent }} />
+                    <div className={styles.templateLines}>
+                      <div className={styles.tl} style={{ background: `${t.accent}99` }} />
+                      <div className={`${styles.tl} ${styles.tlShort}`} style={{ background: `${t.accent}55` }} />
+                      <div className={styles.tl} style={{ background: `${t.accent}55` }} />
+                    </div>
+                    {isLocked && (
+                      <div className={styles.templateLockOverlay}>
+                        <LockIcon />
                       </div>
-                      {isLocked && (
-                        <div className={styles.templateLockOverlay}>
-                          <LockIcon />
-                        </div>
-                      )}
-                    </div>
-                    <div className={styles.templateFooter}>
-                      <span className={styles.templateName}>{t.name}</span>
-                      {template === t.id ? (
-                        <span className={styles.templateActive}>Activo</span>
-                      ) : isLocked ? (
-                        <span className={styles.templatePro}>{offeredBy?.label ?? "No disponible"}</span>
-                      ) : null}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
+                    )}
+                  </div>
+                  <div className={styles.templateFooter}>
+                    <span className={styles.templateName}>{t.name}</span>
+                    {template === t.id ? (
+                      <span className={styles.templateActive}>Activo</span>
+                    ) : isLocked ? (
+                      <span className={styles.templatePro}>{offeredBy?.label ?? "No disponible"}</span>
+                    ) : null}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      ))}
+    </>
+  );
 
-      </div>
-
+  const dialogs = (
+    <>
       {/* ── Modal: confirmar cambio de nombre del negocio ── */}
       {nameChangeConfirmOpen && (
         <div
@@ -1694,6 +1841,9 @@ export default function UserEditorPage() {
           aria-labelledby="name-change-modal-title"
         >
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalIcon}>
+              <Link2 size={20} strokeWidth={1.8} aria-hidden="true" />
+            </div>
             <p id="name-change-modal-title" className={styles.modalTitle}>
               ¿Cambiar el nombre del negocio?
             </p>
@@ -1762,6 +1912,7 @@ export default function UserEditorPage() {
         <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="crop-modal-title">
           <div className={styles.cropModal}>
             <p id="crop-modal-title" className={styles.modalTitle}>Ajustar portada</p>
+            <p className={styles.cropLead}>Así se va a ver arriba de todo en tu página.</p>
 
             <div
               ref={cropFrameRef}
@@ -1810,6 +1961,7 @@ export default function UserEditorPage() {
                 <line x1="11" y1="8" x2="11" y2="14" />
                 <line x1="8" y1="11" x2="14" y2="11" />
               </svg>
+              <output className={styles.cropZoomValue}>{Math.round(cropZoom * 100)}%</output>
             </div>
 
             <p className={styles.cropHint}>Arrastrá para posicionar y usá el control para hacer zoom.</p>
@@ -1835,6 +1987,181 @@ export default function UserEditorPage() {
           </div>
         </div>
       )}
+    </>
+  );
+
+  // ── Escritorio: estructura, tablero de tarjetas y vista previa a la vez ──
+
+  if (isDesktop) {
+    const tabMeta = BUSINESS_TABS.find(item => item.key === tab) ?? BUSINESS_TABS[0];
+    const blockCount = BUSINESS_BLOCKS.filter(item => item.tab === tab).length;
+    const emailPending = emailChangeStep === "pending";
+    const businessName = form.businessName.trim();
+
+    const checklist: BusinessCheck[] = [
+      { block: "datos", label: "Nombre y dirección", done: Boolean(businessName && form.address.trim()) },
+      {
+        block: "contacto",
+        label: "Teléfono o WhatsApp",
+        done: Boolean(form.number.trim()) || waNumbers.some(w => w.number.trim()),
+      },
+      { block: "horario", label: "Horario de atención", done: DAY_ORDER.some(day => schedule[day].enabled) },
+      { block: "portada", label: "Imagen de portada", done: Boolean(backgroundPicture) },
+      { block: "logo", label: "Logo", done: Boolean(favicon) },
+      { block: "galeria", label: "Fotos del local", done: pictures.length > 0 },
+      { block: "redes", label: "Redes sociales", done: Boolean(form.instagram.trim() || form.facebook.trim()) },
+    ];
+
+    return (
+      <div className={`${styles.ne} ${styles.neWide} ${ws.shell}`}>
+        <header className={ws.header}>
+          <div className={ws.headerTitle}>
+            <h1>Mi negocio</h1>
+            <span>
+              {businessName || "Sin nombre"}
+              {currentPlan ? ` · Plan ${currentPlan.label}` : ""}
+            </span>
+          </div>
+
+          <BusinessTabs value={tab} dirty={isDirty} onChange={changeTab} />
+
+          <div className={ws.headerActions}>
+            {user?.slug && (
+              <a
+                className={`${ws.headerButton} ${bw.headerLink}`}
+                href={`/${user.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Ver mi página"
+              >
+                <ExternalLink size={17} strokeWidth={1.8} aria-hidden="true" />
+                <span className={ws.buttonLabel}>Ver mi página</span>
+              </a>
+            )}
+            {isDirty && !emailPending && (
+              <button
+                type="button"
+                className={ws.headerButton}
+                onClick={discardChanges}
+                disabled={saving}
+                title="Descartar los cambios sin guardar"
+              >
+                <Undo2 size={17} strokeWidth={1.8} aria-hidden="true" />
+                <span className={ws.buttonLabel}>Descartar</span>
+              </button>
+            )}
+            <button
+              type="button"
+              className={`${ws.headerButton} ${isDirty || saving ? ws.headerButtonPrimary : ""} ${bw.saveButton}`}
+              onClick={handleSaveClick}
+              disabled={saving || !isDirty || emailPending}
+              aria-busy={saving}
+              title="Guardar cambios (Ctrl+S)"
+            >
+              {saving
+                ? <Spinner size={16} />
+                : isDirty
+                  ? <Save size={17} strokeWidth={1.8} aria-hidden="true" />
+                  : <Check size={17} strokeWidth={2} aria-hidden="true" />}
+              {saving ? "Guardando..." : emailPending ? "Confirmá el email" : isDirty ? "Guardar cambios" : "Guardado"}
+            </button>
+          </div>
+        </header>
+
+        <div className={ws.workspace}>
+          <BusinessNav
+            tab={tab}
+            activeBlock={activeBlock}
+            dirtyBlocks={dirtyBlocks}
+            counts={{ galeria: pictures.length }}
+            onSelect={goToBlock}
+          />
+
+          <div className={ws.board}>
+            <div className={ws.boardTools}>
+              <BusinessJumpBar tab={tab} activeBlock={activeBlock} onSelect={goToBlock} />
+            </div>
+
+            {/* key: al cambiar de pestaña las tarjetas entran de nuevo. */}
+            <div key={tab} className={bw.boardView}>
+              <div className={ws.section}>
+                <h2 className={ws.sectionTitle}>{tabMeta.label}</h2>
+                <span className={ws.sectionMeta}>{blockCount} bloques · {tabMeta.note}</span>
+              </div>
+              {tab === "info" && infoContent}
+              {tab === "media" && mediaContent}
+              {tab === "template" && templateContent}
+            </div>
+          </div>
+
+          <BusinessPanel
+            title="Tu página"
+            subtitle={user?.slug ? `/${user.slug}` : undefined}
+            status={isDirty ? "Sin guardar" : undefined}
+          >
+            <BusinessOverview
+              preview={{
+                name: form.businessName,
+                address: form.address,
+                cover: backgroundPicture,
+                logo: favicon,
+                open: getOpenStatus(schedule),
+                hasDelivery: form.hasDelivery,
+                hasTakeAway: form.hasTakeAway,
+                template,
+                paletteName: templateName(template),
+                styleName: MENU_STYLE_OPTIONS.find(option => option.id === menuStyle)?.name ?? "Clásico",
+              }}
+              checklist={checklist}
+              publicUrl={user?.slug ? `/${user.slug}` : null}
+              onSelect={goToBlock}
+            />
+          </BusinessPanel>
+        </div>
+
+        {dialogs}
+      </div>
+    );
+  }
+
+  // ── Móvil: una pestaña por vez ──
+
+  return (
+    <div className={styles.ne}>
+
+      {/* Top bar */}
+      <header className={styles.topBar}>
+        <span className={styles.topTitle}>Mi negocio</span>
+        <div style={{ width: 32 }} aria-hidden="true" />
+      </header>
+
+      {/* Tabs */}
+      <div className={styles.tabs} role="tablist" aria-label="Secciones">
+        {BUSINESS_TABS.map(({ key, label }) => (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={tab === key}
+            className={`${styles.tabBtn} ${tab === key ? styles.active : ""}`}
+            onClick={() => changeTab(key)}
+          >
+            {label}
+            {key === "info" && isDirty && (
+              <span className={styles.dirtyDot} aria-label="Cambios sin guardar" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className={styles.content}>
+
+        {banners}
+        {tab === "info" && infoContent}
+        {tab === "media" && mediaContent}
+        {tab === "template" && templateContent}
+      </div>
+
+      {dialogs}
     </div>
   );
 }

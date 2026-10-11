@@ -1118,15 +1118,13 @@
 
 /* ── Modal: ajustar portada (crop/zoom) ── */
 .cropModal {
-  background: var(--admin-bg-elevated);
-  border: 0.5px solid var(--admin-border-warm);
+  composes: md-surface from global;
   border-radius: var(--admin-radius-2xl);
   padding: 1.5rem;
   width: 100%;
   max-width: 420px;
   text-align: center;
   animation: scaleIn 0.18s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.04) inset;
 }
 
 .cropStage {
@@ -1184,5 +1182,162 @@
 @media (pointer: coarse) {
   .galleryItemRemove {
     opacity: 1;
+  }
+}
+
+.cropLead {
+  margin: -0.2rem 0 1rem;
+  color: var(--admin-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.cropZoomValue {
+  min-width: 3.2em;
+  color: var(--admin-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ══ Escritorio (≥1024px) ══
+   El editor pasa a ser un espacio de trabajo como el del editor de menú
+   (ver Workspace/BusinessWorkspace.module.css): acá solo se adapta lo que
+   va dentro de las tarjetas y las ventanas. */
+@media (min-width: 1024px) {
+  .neWide {
+    max-width: none;
+  }
+
+  /* Campos sobre el tono de la tarjeta: un escalón más arriba. */
+  .neWide .field input,
+  .neWide .field textarea,
+  .neWide .field select {
+    background: var(--tone-high);
+  }
+
+  .neWide .field input:focus,
+  .neWide .field textarea:focus,
+  .neWide .field select:focus {
+    background: var(--tone-highest);
+  }
+
+  .neWide .field:last-child,
+  .neWide .fieldRow:last-child .field {
+    margin-bottom: 0;
+  }
+
+  /* Dentro de una tarjeta, estos grupos ya no son otra tarjeta. */
+  .neWide .orderModes,
+  .neWide .scheduleSection,
+  .neWide .mediaSection {
+    margin: 0;
+  }
+
+  .neWide .toggleGroup,
+  .neWide .scheduleCard {
+    border-radius: 18px;
+    background: var(--tone-high);
+  }
+
+  .neWide .bgPreview {
+    height: auto;
+    aspect-ratio: 16 / 6;
+    border-radius: 18px;
+    background-color: var(--tone-high);
+  }
+
+  .neWide .faviconPreview {
+    border-radius: 18px;
+    background-color: var(--tone-high);
+    transition: border-color 0.15s, transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .neWide .faviconPreview:hover:not(:disabled) {
+    transform: scale(1.04);
+  }
+
+  .neWide .galleryGrid {
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    gap: 10px;
+  }
+
+  .neWide .galleryItem,
+  .neWide .galleryAdd {
+    border-radius: 18px;
+  }
+
+  .neWide .galleryAdd {
+    background: var(--tone-high);
+  }
+
+  .neWide .templateGrid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .neWide .templateCard {
+    background: var(--tone-high);
+  }
+
+  .neWide .templateCard:hover:not(.selected) {
+    background: var(--tone-highest);
+    transform: translateY(-2px);
+  }
+
+  /* ── Ventanas ── */
+  .modal,
+  .cropModal {
+    padding: 1.75rem;
+    border-radius: 28px;
+    text-align: left;
+  }
+
+  .modal {
+    max-width: 440px;
+  }
+
+  .cropModal {
+    max-width: 720px;
+  }
+
+  .modalIcon {
+    margin: 0 0 1rem;
+    border-radius: 14px;
+    border: 0;
+    background: var(--tone-primary-container);
+    color: var(--tone-on-primary-container);
+  }
+
+  .modalTitle {
+    font-size: 1.15rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+
+  .modalDesc {
+    font-size: 0.86rem;
+  }
+
+  .cropStage {
+    border-radius: 20px;
+  }
+
+  .modalBtns {
+    justify-content: flex-end;
+  }
+
+  .modalBtns .modalCancel,
+  .modalBtns .modalUpgrade {
+    flex: 0 1 auto;
+    min-width: 132px;
+    padding: 0.72rem 1.35rem;
+  }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  .neWide .faviconPreview:hover:not(:disabled),
+  .neWide .templateCard:hover:not(.selected) {
+    transform: none;
   }
 }

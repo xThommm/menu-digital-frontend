@@ -1,0 +1,496 @@
+/* Editor de negocio — espacio de trabajo de escritorio (≥1024px).
+   Mismo armado que el editor de menú: el encabezado, la columna de
+   estructura y el panel salen de MenuWorkspace.module.css (se importan en
+   BusinessWorkspace.tsx); acá va solo lo propio: las pestañas del
+   encabezado, las tarjetas del tablero y la vista previa del panel. */
+
+/* ── Pestañas del encabezado ──
+   Control segmentado: la píldora activa se desliza de una pestaña a otra. */
+.tabs {
+  composes: md-surface from global;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 0.3rem;
+  border-radius: var(--radius-full);
+  background: var(--tone-high);
+  box-shadow: none;
+}
+
+.tabIndicator {
+  position: absolute;
+  top: 0.3rem;
+  bottom: 0.3rem;
+  left: 0.3rem;
+  width: calc((100% - 0.6rem) / 3);
+  border-radius: var(--radius-full);
+  background: var(--admin-gold);
+  transform: translateX(calc(var(--tab-index, 0) * 100%));
+  transition: transform 0.36s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.tab {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  min-width: 0;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--admin-text-muted);
+  font: 600 0.82rem var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.24s ease;
+}
+
+.tab:hover {
+  color: var(--admin-text-primary);
+}
+
+.tabActive,
+.tabActive:hover {
+  color: var(--admin-gold-ink);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
+}
+
+/* Cambios sin guardar: en una pestaña o en un bloque de la estructura. */
+.dirtyDot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--admin-gold);
+  animation: dotIn 0.3s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+.tabActive .dirtyDot {
+  background: currentColor;
+}
+
+@keyframes dotIn {
+  from { opacity: 0; transform: scale(0); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Guardar: conserva el texto también en anchos donde los demás botones del
+   encabezado quedan solo con ícono. Doble clase para ganarle a .headerButton
+   sin depender del orden de las hojas de estilo. */
+.saveButton.saveButton {
+  padding: 0 1.1rem;
+}
+
+.saveButton svg {
+  flex-shrink: 0;
+}
+
+/* Enlace con forma de botón del encabezado. */
+.headerLink {
+  text-decoration: none;
+}
+
+.headerLink:hover {
+  opacity: 1;
+}
+
+/* ── Estructura ── */
+.navIcon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+/* ── Tablero ──
+   Cada pestaña entra de nuevo al elegirla: sus tarjetas suben escalonadas. */
+.boardView {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.boardView > :first-child {
+  margin-top: 0;
+}
+
+.card {
+  scroll-margin-top: calc(var(--admin-editor-header-height) + 4.75rem);
+  border: 1px solid var(--admin-editor-border);
+  border-radius: var(--admin-editor-radius);
+  background: var(--tone);
+  transition: box-shadow var(--admin-transition);
+  animation: cardIn 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--card-index, 0) * 45ms);
+}
+
+@media (min-width: 1280px) {
+  .card {
+    scroll-margin-top: calc(var(--admin-editor-header-height) + 1.25rem);
+  }
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.cardDirty {
+  box-shadow: inset 3px 0 0 var(--admin-gold);
+}
+
+/* Destello al llegar desde la estructura o el resumen. Dos animaciones
+   iguales: alternarlas hace que se repita en saltos seguidos al mismo bloque. */
+.cardFlashA {
+  animation: cardFlashA 1.6s ease both;
+}
+
+.cardFlashB {
+  animation: cardFlashB 1.6s ease both;
+}
+
+@keyframes cardFlashA {
+  0%, 25% { background: color-mix(in srgb, var(--admin-gold) 16%, var(--tone)); }
+  100% { background: var(--tone); }
+}
+
+@keyframes cardFlashB {
+  0%, 25% { background: color-mix(in srgb, var(--admin-gold) 16%, var(--tone)); }
+  100% { background: var(--tone); }
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 1.25rem 0.25rem;
+}
+
+.cardIcon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--tone-primary-container);
+  color: var(--tone-on-primary-container);
+}
+
+.cardHeading {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cardTitle {
+  overflow: hidden;
+  color: var(--admin-text-primary);
+  font-size: 1.08rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardHint {
+  color: var(--admin-text-muted);
+  font-size: 0.74rem;
+}
+
+.cardStatus {
+  animation: dotIn 0.3s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+.cardBody {
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+/* Los bloques traen sus márgenes de la vista de celular. */
+.cardBody > :first-child {
+  margin-top: 0;
+}
+
+.cardBody > :last-child {
+  margin-bottom: 0;
+}
+
+/* El título ya está en el encabezado de la tarjeta. */
+.cardBody fieldset > legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── Vista previa (panel) ── */
+.previewFigure {
+  margin: 0;
+}
+
+.preview {
+  overflow: hidden;
+  border-radius: 22px;
+  background: var(--t-bg);
+  color: var(--t-text);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.previewCover {
+  position: relative;
+  aspect-ratio: 16 / 7;
+  background:
+    radial-gradient(circle at 20% 20%, var(--t-accent-glow), transparent 60%),
+    linear-gradient(135deg, var(--t-surface-2), var(--t-surface));
+  background-position: center;
+  background-size: cover;
+}
+
+.previewCover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--t-hero-grad);
+}
+
+.previewStatus {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--t-bg) 86%, transparent);
+  color: var(--t-title);
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.previewStatus::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--t-muted);
+}
+
+.previewStatusOpen::before {
+  background: #3fb97a;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.previewBody {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0 1rem 1rem;
+}
+
+.previewLogo {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  overflow: hidden;
+  margin: -26px 0 0.3rem;
+  border: 3px solid var(--t-bg);
+  border-radius: 16px;
+  background: var(--t-accent);
+  color: var(--t-btn-text);
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.previewLogo img {
+  width: 100%;
+  height: 100%;
+  background: var(--t-surface);
+  object-fit: contain;
+}
+
+.previewName {
+  overflow: hidden;
+  color: var(--t-title);
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previewAddress {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  overflow: hidden;
+  color: var(--t-text);
+  font-size: 0.74rem;
+  opacity: 0.85;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previewAddress svg {
+  flex-shrink: 0;
+  color: var(--t-accent);
+}
+
+.previewChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.previewChip {
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--t-accent);
+  color: var(--t-btn-text);
+  font-size: 0.68rem;
+  font-weight: 700;
+  animation: dotIn 0.3s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+.previewChipSoft {
+  background: var(--t-accent-soft);
+  color: var(--t-title);
+}
+
+.previewCaption {
+  margin-top: 0.55rem;
+  color: var(--admin-text-muted);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+/* ── Avance del perfil (panel) ── */
+.progress {
+  height: 8px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+  border-radius: 999px;
+  background: var(--tone-highest);
+}
+
+.progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--admin-gold);
+  transition: width 0.5s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.checklist {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checkItem {
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 0.4rem 0 0.5rem;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--admin-text-primary);
+  font: 500 0.82rem var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--admin-transition), color var(--admin-transition);
+}
+
+.checkItem:hover {
+  background: color-mix(in srgb, var(--admin-text-primary) 6%, transparent);
+}
+
+.checkItem:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 1px;
+}
+
+.checkItemDone {
+  color: var(--admin-text-muted);
+}
+
+.checkMark {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1.5px solid var(--tone-outline);
+  border-radius: 50%;
+  color: var(--admin-gold-ink);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.checkItemDone .checkMark {
+  border-color: var(--admin-gold);
+  background: var(--admin-gold);
+}
+
+.checkItemDone .checkMark svg {
+  animation: dotIn 0.3s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+.checkLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+.checkArrow {
+  flex-shrink: 0;
+  color: var(--admin-text-faint);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity var(--admin-transition), transform var(--admin-transition);
+}
+
+.checkItem:hover .checkArrow,
+.checkItem:focus-visible .checkArrow {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabIndicator,
+  .progress span,
+  .checkArrow {
+    transition: none;
+  }
+
+  .card,
+  .cardFlashA,
+  .cardFlashB,
+  .cardStatus,
+  .dirtyDot,
+  .previewChip,
+  .previewStatusOpen::before,
+  .checkItemDone .checkMark svg {
+    animation: none;
+  }
+}
