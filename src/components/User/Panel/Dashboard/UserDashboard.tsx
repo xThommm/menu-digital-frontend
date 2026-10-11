@@ -43,6 +43,36 @@ function useSpotlight(ref: React.RefObject<HTMLElement>) {
   }, [ref]);
 }
 
+// ── Hook: número que sube hasta su valor ──────────────────────────────────────
+// Arranca desde lo último que se mostró (0 la primera vez), así un refresco
+// de "Hoy" anima solo la diferencia. Todo el setState pasa dentro de
+// requestAnimationFrame; con movimiento reducido salta directo al valor.
+
+function useCountUp(value: number | undefined, duration = 900) {
+  const [display, setDisplay] = useState(0);
+  const shownRef = useRef(0);
+  useEffect(() => {
+    if (value === undefined) return;
+    const from = shownRef.current;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const total = reduce || from === value ? 0 : duration;
+    let start: number | null = null;
+    let raf = 0;
+    const tick = (time: number) => {
+      start ??= time;
+      const progress = total === 0 ? 1 : Math.min((time - start) / total, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const next = Math.round(from + (value - from) * eased);
+      shownRef.current = next;
+      setDisplay(next);
+      if (progress < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value, duration]);
+  return display;
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function UserDashboard() {
@@ -106,6 +136,8 @@ export default function UserDashboard() {
   const [qrMenuPos, setQrMenuPos] = useState<{ top: number; left: number } | null>(null);
   const qrMenuWrapRef = useRef<HTMLDivElement>(null);
   const qrMenuPortalRef = useRef<HTMLDivElement>(null);
+  const storefrontRef = useRef<HTMLDivElement>(null);
+  useSpotlight(storefrontRef as React.RefObject<HTMLElement>);
 
   // MercadoPago puede redirigir antes de que llegue su webhook. Al volver de
   // un pago aprobado refrescamos el usuario y reintentamos unos segundos si
@@ -395,10 +427,14 @@ export default function UserDashboard() {
         {/* Bienvenida — con la foto de portada real del negocio si existe,
             mismo patrón de overlay que usa la landing pública (UserHome).
             Sin foto, cae al fondo con degradé que ya usaba .planCard. */}
-        <div
-          className={s.hero}
-          style={data?.backgroundPicture ? { backgroundImage: `url(${data.backgroundPicture})` } : undefined}
-        >
+        <div className={`${s.hero} ${data?.backgroundPicture ? s.heroWithPhoto : ""}`}>
+          {/* La foto va en su propia capa para poder acercarla al pasar el
+              mouse sin mover el chip con el nombre. */}
+          <div
+            className={s.heroMedia}
+            style={data?.backgroundPicture ? { backgroundImage: `url(${data.backgroundPicture})` } : undefined}
+            aria-hidden
+          />
           <div className={s.heroOverlay} />
           <div className={s.heroContent}>
             <p className={s.welcomeEyebrow}>{spooky(greeting(now.getHours()), "¡Feliz Halloween! 🎃")}</p>
@@ -476,7 +512,7 @@ export default function UserDashboard() {
         )}
 
         {/* Tarjeta storefront */}
-        <div className={s.storefrontCard}>
+        <div className={s.storefrontCard} ref={storefrontRef}>
           <div className={s.storefrontTop}>
             <div className={s.storefrontIcon} aria-hidden>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -502,7 +538,9 @@ export default function UserDashboard() {
                 className={`${s.urlCopyBtn} ${copied ? s.urlCopyBtnDone : ""}`}
                 onClick={handleCopy}
               >
-                {copied ? <CheckIcon /> : <CopyIcon />}
+                <span key={copied ? "done" : "idle"} className={s.urlCopyIcon}>
+                  {copied ? <CheckIcon /> : <CopyIcon />}
+                </span>
                 {copied ? "¡Copiado!" : "Copiar"}
               </button>
             )}
@@ -665,19 +703,27 @@ interface TodayTileProps {
 }
 
 function TodayTile({ icon, label, value, loading, detail, alert, chart, onClick }: TodayTileProps) {
+  const ref = useRef<HTMLButtonElement>(null);
+  useSpotlight(ref as React.RefObject<HTMLElement>);
+  const shown = useCountUp(value);
+
   return (
     <button
+      ref={ref}
       type="button"
       className={`${s.todayTile} ${alert ? s.todayTileAlert : ""}`}
       onClick={onClick}
       aria-busy={loading}
     >
-      <span className={s.todayTileLabel}>{icon}{label}</span>
+      <span className={s.todayTileLabel}>
+        <span className={s.todayTileIcon}>{icon}</span>
+        {label}
+      </span>
       {loading ? (
         <span className={s.todayTileSkeleton} aria-hidden />
       ) : (
         <>
-          <strong className={s.todayTileValue}>{value === undefined ? "—" : formatCount(value)}</strong>
+          <strong className={s.todayTileValue}>{value === undefined ? "—" : formatCount(shown)}</strong>
           <span className={s.todayTileDetail}>{detail}</span>
         </>
       )}
@@ -693,6 +739,7 @@ function Sparkline({ series }: { series: number[] }) {
   if (!points) return null;
   return (
     <svg className={s.sparkline} viewBox={`0 -2 ${SPARK.w} ${SPARK.h + 4}`} preserveAspectRatio="none" aria-hidden>
+      <polygon className={s.sparklineArea} points={`0,${SPARK.h + 2} ${points} ${SPARK.w},${SPARK.h + 2}`} />
       <polyline
         points={points}
         fill="none"
