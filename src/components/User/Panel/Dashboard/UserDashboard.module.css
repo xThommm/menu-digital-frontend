@@ -247,7 +247,7 @@
   line-height: 1.4;
 }
 
-.sectionLabel span { color: var(--admin-text-muted); font-weight: 500; }
+.sectionLabel span { color: var(--admin-text-secondary); font-weight: 500; }
 
 .todayTiles {
   display: grid;

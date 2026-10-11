@@ -72,8 +72,17 @@ export default function UserDashboard() {
     : catalog.data?.find(plan => plan.name === effectiveSubscription);
   const canDownloadQr = currentPlan?.features.qr === true;
 
-  // Momento en que se abrió el inicio: saludo, fecha y días que le quedan al plan.
-  const [now] = useState(() => new Date());
+  // Momento de referencia para el saludo, la fecha y los días que le quedan al
+  // plan. Se renueva al volver a la pestaña, igual que los datos de "Hoy":
+  // si no, pasada la medianoche el título quedaría con la fecha de ayer.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") setNow(new Date());
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
   const planDaysLeft = subscriptionExpired ? null : daysUntil(user?.subscriptionExpiresAt, now.getTime());
   const planExpiringSoon = effectiveSubscription !== "free" && planDaysLeft !== null && planDaysLeft <= PLAN_WARNING_DAYS;
   // Un plan pago y al día no necesita una tarjeta entera: queda como una
