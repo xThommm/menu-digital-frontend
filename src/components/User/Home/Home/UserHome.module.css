@@ -96,11 +96,8 @@
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
-.landing[data-template="2"] .galleryTitle,
-.landing[data-template="5"] .galleryTitle,
-.landing[data-template="8"] .galleryTitle,
-.landing[data-template="9"] .galleryTitle,
-.landing[data-template="14"] .galleryTitle { font-family: var(--font-sans); font-weight: 600; }
+/* Paletas con título sans (`sans` en lib/templates.ts). */
+.landing[data-title-sans] .galleryTitle { font-family: var(--font-sans); font-weight: 600; }
 .gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
 .galleryItem { min-width: 0; aspect-ratio: 1; overflow: hidden; }
 .galleryButton {

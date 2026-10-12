@@ -22,6 +22,7 @@ import WaTargetPicker from "../WaTargetPicker/WaTargetPicker";
 import { resolveMenuDisplay } from "../../../../lib/menuDisplay";
 import { cartUnitPrice, repriceCartLines } from "../../../../lib/cartPricing";
 import { getVisualFamily, resolveMenuStyle } from "../../../../lib/menuStyles";
+import { resolveTemplate } from "../../../../lib/templates";
 import { pageScrollbarRef } from "../../../../lib/pageScrollbar";
 import { buildMenuTabs, categoryKey, isItemUnavailable, tabHasItems } from "../../../../lib/publicMenu";
 import {
@@ -433,7 +434,7 @@ export default function MenuPage() {
         <div
           ref={pageScrollbarRef}
           className={styles.mp}
-          data-template={user.template ?? 1}
+          data-template={resolveTemplate(user.template).id}
           data-menu-style={menuStyle}
           data-menu-family={family?.id}
         >
@@ -1313,7 +1314,7 @@ function EmptyMenu({
   onBack?: () => void;
 }) {
   return (
-    <div ref={pageScrollbarRef} className={styles.emptyMenu} data-template={template} data-menu-style={menuStyle} data-menu-family={getVisualFamily(menuStyle)?.id}>
+    <div ref={pageScrollbarRef} className={styles.emptyMenu} data-template={resolveTemplate(template).id} data-menu-style={menuStyle} data-menu-family={getVisualFamily(menuStyle)?.id}>
       <p className={styles.emptyMenuTitle}>{name}</p>
       <p className={styles.emptyMenuSub}>El menú todavía no tiene productos cargados.</p>
       {onBack && <button onClick={onBack} className={styles.emptyMenuBtn}>Volver</button>}

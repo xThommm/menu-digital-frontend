@@ -9,21 +9,11 @@ import { getOpenStatus, getBusinessDayIndex, getDayRanges, JS_DAY_TO_KEY } from 
 import { resolveLandingVisibility } from "../../../../lib/landingVisibility";
 import { getVisualFamily, resolveMenuStyle } from "../../../../lib/menuStyles";
 import { pageScrollbarRef } from "../../../../lib/pageScrollbar";
+import { resolveTemplate, type TemplateOption } from "../../../../lib/templates";
 import { buildWaHref, getWaTargets, sanitizePhoneForWa, type WaTarget } from "../../../../lib/whatsapp";
 import WaTargetPicker from "../WaTargetPicker/WaTargetPicker";
 import ReservationEntry from "../../../../features/reservations/components/customer/ReservationEntry";
 import { useReservationConfig } from "../../../../features/reservations/hooks/useCustomerReservation";
-
-// ── Tokens por template ───────────────────────────────────────────────────────
-
-type TemplateId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
-
-interface TemplateTokens {
-  titleClass: string;
-  galleryRadius: string;
-  btnLabel: string;
-  useAvatar: boolean;
-}
 
 const SLUG_REGEX = /^[a-z0-9-]{2,80}$/;
 
@@ -49,108 +39,6 @@ const DAY_LABEL: Record<DayKey, string> = {
 function scheduleHasData(schedule?: Schedule): boolean {
   return !!schedule && DAY_ORDER.some(day => schedule[day]?.enabled);
 }
-
-const TEMPLATE_TOKENS: Record<TemplateId, TemplateTokens> = {
-  1: {
-    titleClass: "t-title",
-    galleryRadius: "10px",
-    btnLabel: "Ver menú",
-    useAvatar: false,
-  },
-  2: {
-    titleClass: "t-title-sans",
-    galleryRadius: "6px",
-    btnLabel: "Ver menú →",
-    useAvatar: true,
-  },
-  3: {
-    titleClass: "t-title",
-    galleryRadius: "12px",
-    btnLabel: "Ver menú",
-    useAvatar: false,
-  },
-  4: {
-    titleClass: "t-title",
-    galleryRadius: "8px",
-    btnLabel: "Ver menú",
-    useAvatar: false,
-  },
-  5: {
-    titleClass: "t-title-sans",
-    galleryRadius: "8px",
-    btnLabel: "Ver menú",
-    useAvatar: false,
-  },
-  6: {
-    titleClass: "t-title",
-    galleryRadius: "14px",
-    btnLabel: "Ver menú",
-    useAvatar: false,
-  },
-  7: {
-    titleClass: "t-title",
-    galleryRadius: "6px",
-    btnLabel: "Ver menú",
-    useAvatar: false,
-  },
-  // ── Templates 8-15 ──
-  // 8 Coastal — claro y aireado, título sans para un look fresco de costa.
-  8: {
-    titleClass: "t-title-sans",
-    galleryRadius: "12px",
-    btnLabel: "Ver menú",
-    useAvatar: false,
-  },
-  // 9 Charcoal — usa el layout con avatar (como el 2), sin hero con foto.
-  9: {
-    titleClass: "t-title-sans",
-    galleryRadius: "8px",
-    btnLabel: "Ver menú →",
-    useAvatar: true,
-  },
-  // 10 Terracotta — cálido y rústico, título serif.
-  10: {
-    titleClass: "t-title",
-    galleryRadius: "10px",
-    btnLabel: "Ver menú",
-    useAvatar: false,
-  },
-  // 11 Lavender — elegante, esquinas más redondeadas, serif.
-  11: {
-    titleClass: "t-title",
-    galleryRadius: "14px",
-    btnLabel: "Ver menú",
-    useAvatar: false,
-  },
-  // 12 Forest — oscuro luxe, serif.
-  12: {
-    titleClass: "t-title",
-    galleryRadius: "8px",
-    btnLabel: "Ver menú",
-    useAvatar: false,
-  },
-  // 13 Platinum — esquinas ajustadas para un look afilado.
-  13: {
-    titleClass: "t-title",
-    galleryRadius: "6px",
-    btnLabel: "Ver menú",
-    useAvatar: false,
-  },
-  // 14 Ocean — oscuro marino con acento turquesa.
-  14: {
-    titleClass: "t-title-sans",
-    galleryRadius: "10px",
-    btnLabel: "Ver menú →",
-    useAvatar: true,
-  },
-  // 15 Rosé — claro editorial con acento rosa profundo.
-  15: {
-    titleClass: "t-title",
-    galleryRadius: "14px",
-    btnLabel: "Ver menú",
-    useAvatar: true,
-  },
-};
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
@@ -213,8 +101,7 @@ export default function BusinessLandingPage() {
   if (loadError) return <NotFound unavailable />;
   if (notFound || !user) return <NotFound />;
 
-  const templateId = (user.template ?? 1) as TemplateId;
-  const tokens = TEMPLATE_TOKENS[templateId] ?? TEMPLATE_TOKENS[1];
+  const palette = resolveTemplate(user.template);
 
   return (
   <>
@@ -227,7 +114,7 @@ export default function BusinessLandingPage() {
     <Template
       slug={slug!}
       user={user}
-      tokens={tokens}
+      palette={palette}
       goMenu={goMenu}
     />
   </>
@@ -240,15 +127,15 @@ interface TemplateProps {
   // El payload público del local no trae el slug: viene de la URL.
   slug: string;
   user: User;
-  tokens: TemplateTokens;
+  palette: TemplateOption;
   goMenu: () => void;
 }
 
-function Template({ slug, user, tokens, goMenu }: TemplateProps) {
-  const { contactInfo: info, media, hasDelivery, hasTakeAway, template, schedule } = user;
+function Template({ slug, user, palette, goMenu }: TemplateProps) {
+  const { contactInfo: info, media, hasDelivery, hasTakeAway, schedule } = user;
   const menuStyle = resolveMenuStyle(user.menuStyle);
   const family = getVisualFamily(menuStyle);
-  const useAvatar = !family && tokens.useAvatar;
+  const useAvatar = !family && palette.avatar === true;
   const bg = media?.backgroundPicture;
 
   // Guardamos qué URL específica falló, no solo un booleano. Así, cuando `bg`
@@ -296,7 +183,7 @@ function Template({ slug, user, tokens, goMenu }: TemplateProps) {
   const showHeroBadges = hasDelivery || hasTakeAway || scheduleActive;
 
   return (
-    <div ref={pageScrollbarRef} className={`t-wrap ${styles.landing}`} data-template={template ?? 1} data-menu-style={menuStyle} data-menu-family={family?.id}>
+    <div ref={pageScrollbarRef} className={`t-wrap ${styles.landing}`} data-template={palette.id} data-title-sans={palette.sans ? "" : undefined} data-menu-style={menuStyle} data-menu-family={family?.id}>
       {user.features?.sin_publicidad !== true && <FreePlanAd />}
       <main className={styles.layout}>
         <header className={`${styles.header} ${showBg && !useAvatar ? styles.headerWithCover : ""}`}>
@@ -322,7 +209,7 @@ function Template({ slug, user, tokens, goMenu }: TemplateProps) {
               )}
               <div className={styles.identityText}>
                 {family && <p className={styles.familyEyebrow}>Bienvenidos a</p>}
-                <h1 className={`${tokens.titleClass} ${styles.title}`}>{businessName}</h1>
+                <h1 className={`${palette.sans ? "t-title-sans" : "t-title"} ${styles.title}`}>{businessName}</h1>
                 {showHeroBadges && (
                   <div className={styles.badgeRow}>
                     {scheduleActive && <OpenStatusBadge isOpen={isOpenNow} />}
@@ -334,7 +221,7 @@ function Template({ slug, user, tokens, goMenu }: TemplateProps) {
             </div>
             <div className={styles.actions}>
               <button type="button" onClick={goMenu} className="t-btn">
-                {tokens.btnLabel}
+                {palette.arrow ? "Ver menú →" : "Ver menú"}
               </button>
               {reservations?.enabled ? (
                 <ReservationEntry
@@ -355,7 +242,7 @@ function Template({ slug, user, tokens, goMenu }: TemplateProps) {
         <div className={styles.content}>
           <Gallery
             pictures={media?.pictures}
-            radius={family ? "var(--t-family-photo-radius)" : tokens.galleryRadius}
+            radius={family ? "var(--t-family-photo-radius)" : `${palette.radius ?? 10}px`}
             businessName={businessName}
             onImageClick={(index) => { setViewerIndex(index); setViewerOpen(true); }}
           />
