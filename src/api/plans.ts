@@ -67,7 +67,10 @@ export function isPlanFeatures(value: unknown): value is PlanFeatures {
     && BOOLEAN_FEATURES.every(key => typeof value[key] === "boolean")
     && (value.item_limit === null || (isAmount(value.item_limit) && value.item_limit > 0))
     && Array.isArray(value.templateIds) && value.templateIds.length > 0
-    && value.templateIds.every(id => isAmount(id) && id >= 1 && id <= 15)
+    // Sin tope a propósito: un plan puede nombrar una paleta más nueva que esta
+    // versión del frontend. Rechazarla tiraría el catálogo entero; alcanza con
+    // no ofrecerla (el panel solo lista las de lib/templates.ts).
+    && value.templateIds.every(id => isAmount(id) && id >= 1)
     && new Set(value.templateIds).size === value.templateIds.length;
 }
 

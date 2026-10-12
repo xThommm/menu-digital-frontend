@@ -8,6 +8,7 @@ import { PLANS_QUERY_KEY } from "../../../hooks/usePlans";
 import { useNotifications } from "../../../context/useNotifications";
 import { formatPaymentAmount, formatPaymentDate } from "../../../lib/adminPayments";
 import { getPlanFeatureLabels, BOOLEAN_FEATURES, FEATURE_LABELS } from "../../../lib/plans";
+import { TEMPLATES } from "../../../lib/templates";
 import DataTable from "../../Common/DataTable/DataTable";
 import Spinner from "../../Common/Spinner";
 import s from "./AdminPlans.module.css";
@@ -343,8 +344,8 @@ function PlanCard({ plan, usage, onUpdated }: {
           <fieldset className={s.featureFields} disabled={busy}>
             <legend>Diseños disponibles</legend>
             <p className={s.hint}>Elegí al menos uno. Si quitás un diseño en uso, se mostrará el primer diseño permitido sin borrar la selección guardada.</p>
-            <div className={s.templateFields}>{Array.from({ length: 15 }, (_, i) => i + 1).map(id => <label key={id}>
-              <input type="checkbox" className="md-check" checked={features.templateIds.includes(id)} onChange={event => setFeatures(current => ({ ...current, templateIds: event.target.checked ? [...current.templateIds, id].sort((a,b) => a-b) : current.templateIds.filter(template => template !== id) }))} />Diseño {id}
+            <div className={s.templateFields}>{TEMPLATES.map(({ id, name }) => <label key={id}>
+              <input type="checkbox" className="md-check" checked={features.templateIds.includes(id)} onChange={event => setFeatures(current => ({ ...current, templateIds: event.target.checked ? [...current.templateIds, id].sort((a,b) => a-b) : current.templateIds.filter(template => template !== id) }))} />{id} · {name}
             </label>)}</div>
           </fieldset>
           {validationError && <p className={s.error} id={errorID} role="alert">{validationError}</p>}

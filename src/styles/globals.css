@@ -1912,6 +1912,190 @@ a:hover { opacity: 0.75; }
   --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #fff6f3 100%);
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   TEMPLATES 16-25 — segunda tanda de paletas.
+   Solo tokens, igual que 8-15. Todas cumplen contraste AA (4.5:1) en
+   texto, texto secundario, acento sobre el fondo y texto del botón.
+     16 Malbec · 17 Mostaza · 18 Oliva · 19 Índigo · 20 Espresso
+     21 Menta · 22 Marino · 23 Tinta · 24 Magenta · 25 Cereza
+   ───────────────────────────────────────────────────────────────── */
+
+/* Template 16 — Malbec (oscuro borgoña + rosa viejo, vinoteca / wine bar) */
+[data-template="16"] {
+  --t-bg:          #170a10;
+  --t-bg-image:    linear-gradient(160deg, #20101a 0%, #170a10 55%, #1c0d14 100%);
+  --t-surface:     #1f0f17;
+  --t-surface-2:   #29141e;
+  --t-border:      #3a1d2a;
+  --t-border-md:   #54303f;
+  --t-text:        #e6d3d8;
+  --t-title:       #f8ecee;
+  --t-muted:       #96707c;
+  --t-accent:      #e39aa9;
+  --t-accent-soft: rgba(227, 154, 169, 0.09);
+  --t-accent-glow: rgba(227, 154, 169, 0.20);
+  --t-btn-text:    #170a10;
+  --t-btn-bg:      linear-gradient(135deg, #efb7c2 0%, #e39aa9 55%, #f4c9d1 100%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #170a10 100%);
+}
+
+/* Template 17 — Mostaza (claro crema + ocre mostaza, sandwichería / brunch) */
+[data-template="17"] {
+  --t-bg:          #fbf5e4;
+  --t-surface:     #f5ecd2;
+  --t-surface-2:   #ede0bd;
+  --t-border:      #e0cf9f;
+  --t-border-md:   #cdb678;
+  --t-text:        #4d4226;
+  --t-title:       #2b2410;
+  --t-muted:       #7d7046;
+  --t-accent:      #8f6400;
+  --t-accent-soft: rgba(143, 100, 0, 0.09);
+  --t-accent-glow: rgba(143, 100, 0, 0.16);
+  --t-btn-text:    #fbf5e4;
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #fbf5e4 100%);
+}
+
+/* Template 18 — Oliva (claro piedra + verde oliva, cocina mediterránea) */
+[data-template="18"] {
+  --t-bg:          #f4f2e9;
+  --t-surface:     #eae7d9;
+  --t-surface-2:   #dedbc8;
+  --t-border:      #cecbb2;
+  --t-border-md:   #b5b292;
+  --t-text:        #3f402e;
+  --t-title:       #23241a;
+  --t-muted:       #6f7057;
+  --t-accent:      #5c6b1e;
+  --t-accent-soft: rgba(92, 107, 30, 0.09);
+  --t-accent-glow: rgba(92, 107, 30, 0.16);
+  --t-btn-text:    #f4f2e9;
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #f4f2e9 100%);
+}
+
+/* Template 19 — Índigo (oscuro violeta profundo + lila, bar de tragos) */
+[data-template="19"] {
+  --t-bg:          #0f0c1d;
+  --t-bg-image:    linear-gradient(155deg, #17122b 0%, #0f0c1d 58%, #130f25 100%);
+  --t-surface:     #171329;
+  --t-surface-2:   #1f1a36;
+  --t-border:      #2b2548;
+  --t-border-md:   #403865;
+  --t-text:        #d2cde6;
+  --t-title:       #f1eefb;
+  --t-muted:       #7c75a0;
+  --t-accent:      #a99bf5;
+  --t-accent-soft: rgba(169, 155, 245, 0.09);
+  --t-accent-glow: rgba(169, 155, 245, 0.20);
+  --t-btn-text:    #0f0c1d;
+  --t-btn-bg:      linear-gradient(135deg, #c2b8fa 0%, #a99bf5 55%, #d2cbfc 100%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #0f0c1d 100%);
+}
+
+/* Template 20 — Espresso (oscuro café tostado + caramelo, cafetería de especialidad) */
+[data-template="20"] {
+  --t-bg:          #16100c;
+  --t-surface:     #1f1711;
+  --t-surface-2:   #281e17;
+  --t-border:      #372a20;
+  --t-border-md:   #4e3d2f;
+  --t-text:        #dccdbd;
+  --t-title:       #f5eadd;
+  --t-muted:       #907c69;
+  --t-accent:      #d99a5b;
+  --t-accent-soft: rgba(217, 154, 91, 0.09);
+  --t-accent-glow: rgba(217, 154, 91, 0.20);
+  --t-btn-text:    #16100c;
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #16100c 100%);
+}
+
+/* Template 21 — Menta (claro menta + verde azulado, heladería / jugos) */
+[data-template="21"] {
+  --t-bg:          #eefaf5;
+  --t-surface:     #e0f4eb;
+  --t-surface-2:   #cfecdf;
+  --t-border:      #b6dfcd;
+  --t-border-md:   #93ccb4;
+  --t-text:        #27473d;
+  --t-title:       #102b23;
+  --t-muted:       #55796c;
+  --t-accent:      #0b7a63;
+  --t-accent-soft: rgba(11, 122, 99, 0.09);
+  --t-accent-glow: rgba(11, 122, 99, 0.16);
+  --t-btn-text:    #eefaf5;
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #eefaf5 100%);
+}
+
+/* Template 22 — Marino (oscuro azul marino + bronce, pescados y mariscos) */
+[data-template="22"] {
+  --t-bg:          #0a1424;
+  --t-bg-image:    linear-gradient(160deg, #0f1c31 0%, #0a1424 55%, #0d192c 100%);
+  --t-surface:     #101d32;
+  --t-surface-2:   #16263f;
+  --t-border:      #1f3252;
+  --t-border-md:   #2f486f;
+  --t-text:        #cbd5e3;
+  --t-title:       #eef3fa;
+  --t-muted:       #6f819c;
+  --t-accent:      #d9b36c;
+  --t-accent-soft: rgba(217, 179, 108, 0.09);
+  --t-accent-glow: rgba(217, 179, 108, 0.20);
+  --t-btn-text:    #0a1424;
+  --t-btn-bg:      linear-gradient(135deg, #e8cc93 0%, #d9b36c 55%, #f0daad 100%);
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #0a1424 100%);
+}
+
+/* Template 23 — Tinta (claro papel marfil + azul tinta, bodegón / trattoria) */
+[data-template="23"] {
+  --t-bg:          #faf7f0;
+  --t-surface:     #f2ede1;
+  --t-surface-2:   #e8e1d0;
+  --t-border:      #d9d0ba;
+  --t-border-md:   #bfb497;
+  --t-text:        #3a3d4a;
+  --t-title:       #161a2b;
+  --t-muted:       #6b6c82;
+  --t-accent:      #24386e;
+  --t-accent-soft: rgba(36, 56, 110, 0.09);
+  --t-accent-glow: rgba(36, 56, 110, 0.16);
+  --t-btn-text:    #faf7f0;
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #faf7f0 100%);
+}
+
+/* Template 24 — Magenta (oscuro casi negro + magenta, bar nocturno) */
+[data-template="24"] {
+  --t-bg:          #110a12;
+  --t-surface:     #1a101b;
+  --t-surface-2:   #231625;
+  --t-border:      #332036;
+  --t-border-md:   #4c3050;
+  --t-text:        #e2d2e3;
+  --t-title:       #f9edf9;
+  --t-muted:       #8d7090;
+  --t-accent:      #f062c0;
+  --t-accent-soft: rgba(240, 98, 192, 0.09);
+  --t-accent-glow: rgba(240, 98, 192, 0.20);
+  --t-btn-text:    #110a12;
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #110a12 100%);
+}
+
+/* Template 25 — Cereza (claro blanco cálido + rojo cereza, hamburguesería / diner) */
+[data-template="25"] {
+  --t-bg:          #fffaf7;
+  --t-surface:     #fbefea;
+  --t-surface-2:   #f6e2db;
+  --t-border:      #edcfc6;
+  --t-border-md:   #dcaea2;
+  --t-text:        #4f2f2c;
+  --t-title:       #2e1513;
+  --t-muted:       #8f6660;
+  --t-accent:      #c0182b;
+  --t-accent-soft: rgba(192, 24, 43, 0.09);
+  --t-accent-glow: rgba(192, 24, 43, 0.16);
+  --t-btn-text:    #fffaf7;
+  --t-hero-grad:   linear-gradient(to bottom, transparent 45%, #fffaf7 100%);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    COMPONENTES DE TEMPLATE — .t-*
    Viven aquí para que no haya necesidad de :global() en módulos
