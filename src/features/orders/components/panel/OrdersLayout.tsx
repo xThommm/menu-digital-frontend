@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChefHat, ClipboardList, MoreHorizontal, History, LayoutGrid, PanelLeft, Settings, Truck, Users, Wallet } from "lucide-react";
 import { useAuth } from "../../../../context/useAuth";
+import { usePanelPreferences } from "../../../../hooks/usePanelPreferences";
 import { isSubscriptionExpired } from "../../../../lib/plans";
 import { OWNER_SIDEBAR_COLLAPSED_KEY } from "../../../../lib/ownerSidebar";
 import { useOrderSettings } from "../../hooks/usePanelData";
@@ -47,6 +48,8 @@ export default function OrdersLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
+  // Misma apariencia que el panel principal; se configura desde ahí.
+  usePanelPreferences();
   const orderSettings = useOrderSettings();
   const { reload: reloadSettings } = orderSettings;
   const NAV_ITEMS = withDelivery(orderSettings.data?.settings.options.deliveryEnabled === true);

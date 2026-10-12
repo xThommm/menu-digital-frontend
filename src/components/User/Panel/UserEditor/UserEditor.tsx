@@ -362,6 +362,16 @@ export default function UserEditorPage() {
   const [emailChangeSubmitting, setEmailChangeSubmitting] = useState(false);
   const [emailChangeMasked, setEmailChangeMasked] = useState<string | null>(null);
   const [emailChangeError, setEmailChangeError] = useState("");
+  const emailChangeCardRef = useRef<HTMLDivElement>(null);
+
+  // La tarjeta del código aparece en "Contacto", que puede haber quedado
+  // fuera de la vista al tocar Guardar: se la trae y se enfoca el código.
+  useEffect(() => {
+    if (emailChangeStep !== "pending") return;
+    const card = emailChangeCardRef.current;
+    card?.scrollIntoView({ block: "center" });
+    card?.querySelector("input")?.focus({ preventScroll: true });
+  }, [emailChangeStep]);
 
   // ── Ajuste de portada (crop/zoom) ──
   // En vez de subir el archivo tal cual se selecciona, se abre un modal
@@ -535,7 +545,8 @@ export default function UserEditorPage() {
     // Cambiar el mail no pasa por este PUT (el backend lo rechaza): se manda
     // siempre el valor ya guardado, y si el dueño tipeó uno distinto se
     // dispara aparte el flujo de confirmación por código.
-    const mailChanged = trimmedMail !== initialFormRef.current.mail;
+    // Sin distinguir mayúsculas: el backend lo guarda en minúsculas.
+    const mailChanged = trimmedMail.toLowerCase() !== initialFormRef.current.mail.toLowerCase();
 
     setSaving(true); setError(""); setSuccess("");
     try {
@@ -581,10 +592,20 @@ export default function UserEditorPage() {
       initialWaNumbersRef.current = savedWaNumbers;
       setWaNumbers(savedWaNumbers);
       setIsDirty(mailChanged);
-      setSuccess("Información guardada.");
+      if (!mailChanged) {
+        setForm(f => ({ ...f, mail: initialFormRef.current.mail }));
+        setSuccess("Información guardada.");
+        return;
+      }
 
-      if (mailChanged) {
-        await startEmailChange(trimmedMail);
+      // El email todavía no cambió: decir "guardada" a secas hacía creer que
+      // sí, y si el pedido del código fallaba el motivo no se veía en ningún
+      // lado (la tarjeta del código todavía no existe).
+      const emailChange = await startEmailChange(trimmedMail);
+      if (emailChange.ok) {
+        setSuccess("Guardamos el resto. Para cambiar el email, ingresá el código que te mandamos.");
+      } else if (emailChange.message) {
+        setError(`El resto se guardó, pero el email no cambió: ${emailChange.message}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar la información.");
@@ -615,7 +636,7 @@ export default function UserEditorPage() {
 
   // Paso 1: pide el cambio de mail — manda un código a la casilla nueva, no
   // toca contactInfo.mail todavía.
-  const startEmailChange = async (mail: string) => {
+  const startEmailChange = async (mail: string): Promise<{ ok: boolean; message?: string }> => {
     setEmailChangeSubmitting(true);
     setEmailChangeError("");
     try {
@@ -627,14 +648,17 @@ export default function UserEditorPage() {
       if (res.status === 401) {
         logout();
         window.location.href = "/login";
-        return;
+        return { ok: false };
       }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "No se pudo iniciar el cambio de email.");
       setEmailChangeMasked(data.maskedEmail || null);
       setEmailChangeStep("pending");
+      return { ok: true };
     } catch (err) {
-      setEmailChangeError(err instanceof Error ? err.message : "No se pudo iniciar el cambio de email.");
+      const message = err instanceof Error && err.message ? err.message : "No se pudo iniciar el cambio de email.";
+      setEmailChangeError(message);
+      return { ok: false, message };
     } finally {
       setEmailChangeSubmitting(false);
     }
@@ -1292,7 +1316,7 @@ export default function UserEditorPage() {
           </div>
 
           {emailChangeStep === "pending" && (
-            <div className={styles.emailChangeCard}>
+            <div className={styles.emailChangeCard} ref={emailChangeCardRef}>
               <p className={styles.fieldHint}>
                 Te mandamos un código a {emailChangeMasked || "tu email nuevo"} para
                 confirmarlo. El email de contacto se actualiza recién al ingresarlo acá

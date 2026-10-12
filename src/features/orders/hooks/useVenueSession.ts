@@ -16,7 +16,8 @@ import {
 export interface VenueState {
   token: string | null;
   context: InVenueContext | null;
-  // Se puede perder si el dueño regenera el QR mientras el cliente está sentado.
+  // Se pierde si el dueño regenera el QR mientras el cliente está sentado, o
+  // si el cliente avisa que ya no está en el local (ver VenueBanner).
   invalidate: () => void;
 }
 

@@ -1417,6 +1417,23 @@ Tema claro/oscuro del **panel** (solo tokens `--admin-*`).
 - **`useTheme()`** — devuelve `{theme, toggle, setTheme}`; persiste en localStorage. La
   primera aplicación (anti-flash) la hace un script inline en `index.html`.
 
+### `hooks/usePanelPreferences.ts` + `lib/panelPreferences.ts`
+
+Apariencia del **panel del dueño** que elige cada usuario (12-10-2026): color de
+acento (`orange` por defecto, `gold`, `blue`, `light`) y tamaño de letra (`sm`, `md`,
+`lg`, `xl`). Se guardan en localStorage (`panel-accent`, `panel-font-size`), por
+dispositivo, igual que el tema; no viajan al backend.
+
+- El hook escribe `data-panel-accent` / `data-panel-font` en `<html>` **solo mientras
+  hay un layout del panel montado** (`DashboardLayout`, `OrdersLayout`) y los saca al
+  desmontar: el tamaño escala el `font-size` de la raíz y no debe alcanzar a la carta
+  pública ni a la landing. Los valores por defecto no escriben atributo.
+- Los colores están en `globals.css` (sección "PANEL DEL DUEÑO — PREFERENCIAS DE
+  APARIENCIA"): cada acento redefine `--admin-gold` y `--admin-gold-ink`, con un valor
+  por tema. El acento `light` es neutro: claro en oscuro, grafito en claro.
+- Se configuran en `PanelAppearanceDialog` (botón "Apariencia" de la barra lateral y
+  del menú "Más" del celular), que también deja elegir el tema.
+
 ### `hooks/useAuthTheme.ts`
 
 Tema claro/oscuro de las páginas **públicas** (solo tokens `--auth-*`), independiente
