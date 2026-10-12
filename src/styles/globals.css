@@ -337,11 +337,11 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   PANEL DEL DUEÑO — PREFERENCIAS DE APARIENCIA
+   PANELES — PREFERENCIAS DE APARIENCIA
    Acento y tamaño de letra que elige cada usuario (lib/panelPreferences,
    hooks/usePanelPreferences). Los atributos solo están en el <html>
-   mientras hay un layout del panel montado, así que la carta pública,
-   la landing y el panel CEO no los ven.
+   mientras hay un layout que las usa montado (panel del dueño, pedidos,
+   panel CEO y panel de vendedores), así que la carta pública y la landing no los ven.
 
    Todo el panel deriva su color de --admin-gold (bordes, brillos y la
    escala --tone-*), por eso alcanza con cambiar ese token y su tinta.
@@ -349,17 +349,27 @@
    uno más profundo para que lea como texto. Sin atributo queda el
    naranja de siempre. El claro va con (0,3,0) porque el bloque del tema
    claro de arriba redefine --admin-gold con (0,2,0).
-   ═══════════════════════════════════════════════════════════════ */
-:root[data-panel-accent="gold"] { --admin-gold: #D9AE4E; }
-:root[data-theme="light"][data-panel-accent="gold"] { --admin-gold: #A87A1B; --admin-gold-ink: #ffffff; }
 
-:root[data-panel-accent="blue"] { --admin-gold: #5B9DFF; --admin-gold-ink: #06101f; }
-:root[data-theme="light"][data-panel-accent="blue"] { --admin-gold: #2563EB; --admin-gold-ink: #ffffff; }
+   Cada regla se repite sobre .admin-panel-graphite: el panel CEO
+   redefine --admin-gold y su tinta en ese elemento, así que heredar el
+   valor de :root no alcanza.
+   ═══════════════════════════════════════════════════════════════ */
+:root[data-panel-accent="gold"],
+:root[data-panel-accent="gold"] .admin-panel-graphite { --admin-gold: #D9AE4E; --admin-gold-ink: #0c0b09; }
+:root[data-theme="light"][data-panel-accent="gold"],
+:root[data-theme="light"][data-panel-accent="gold"] .admin-panel-graphite { --admin-gold: #A87A1B; --admin-gold-ink: #ffffff; }
+
+:root[data-panel-accent="blue"],
+:root[data-panel-accent="blue"] .admin-panel-graphite { --admin-gold: #5B9DFF; --admin-gold-ink: #06101f; }
+:root[data-theme="light"][data-panel-accent="blue"],
+:root[data-theme="light"][data-panel-accent="blue"] .admin-panel-graphite { --admin-gold: #2563EB; --admin-gold-ink: #ffffff; }
 
 /* Neutro: claro sobre el tema oscuro, grafito sobre el claro (un acento
    claro no se vería contra el fondo). */
-:root[data-panel-accent="light"] { --admin-gold: #EDE8DF; --admin-gold-ink: #14161c; }
-:root[data-theme="light"][data-panel-accent="light"] {
+:root[data-panel-accent="light"],
+:root[data-panel-accent="light"] .admin-panel-graphite { --admin-gold: #EDE8DF; --admin-gold-ink: #14161c; }
+:root[data-theme="light"][data-panel-accent="light"],
+:root[data-theme="light"][data-panel-accent="light"] .admin-panel-graphite {
   --admin-gold: #3A4150;
   --admin-gold-ink: #ffffff;
   --admin-gold-hover: color-mix(in srgb, var(--admin-gold) 85%, black);

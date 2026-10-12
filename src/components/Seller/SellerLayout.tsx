@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useTheme } from "../../hooks/useTheme";
+import { usePanelPreferences } from "../../hooks/usePanelPreferences";
+import PanelAppearanceDialog from "../User/Panel/PanelAppearance/PanelAppearanceDialog";
 import { useCrmAlerts } from "../../hooks/useCrmAlerts";
 import BrandMark from "../Common/BrandMark";
 import BrandWordmark from "../Common/BrandWordmark";
@@ -12,6 +14,7 @@ import {
   LayoutPanelLeft,
   LogOut,
   MoreHorizontal,
+  Palette,
   PanelLeft,
   Settings,
   Users,
@@ -42,7 +45,10 @@ export default function SellerLayout() {
 
 function SellerPanelLayout() {
   const { logout, user } = useAuth();
-  const { theme, toggle: toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+  const { preferences, setAccent, setFontSize, reset: resetPreferences } = usePanelPreferences();
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const closeAppearance = useCallback(() => setAppearanceOpen(false), []);
   const navigate = useNavigate();
   const location = useLocation();
   const isInfluencer = user?.role === "seller" && user.influencer === true;
@@ -89,8 +95,6 @@ function SellerPanelLayout() {
   const goToOwnPanel = useCallback(() => {
     navigate(isInfluencer ? "/sellers/influencer" : "/sellers");
   }, [navigate, isInfluencer]);
-
-  const themeLabel = theme === "dark" ? "Activar tema claro" : "Activar tema oscuro";
 
   return (
     <div className={`${s.layoutRoot} seller-panel`}>
@@ -139,15 +143,11 @@ function SellerPanelLayout() {
         <div className={s.sideFooter}>
           <button
             className={s.navItem}
-            onClick={toggleTheme}
-            aria-label={themeLabel}
+            onClick={() => setAppearanceOpen(true)}
+            aria-haspopup="dialog"
           >
-            <span className={s.navIcon}>
-              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-            </span>
-            <span className={s.navLabel}>
-              {theme === "dark" ? "Tema claro" : "Tema oscuro"}
-            </span>
+            <span className={s.navIcon}><Palette size={20} strokeWidth={1.5} aria-hidden /></span>
+            <span className={s.navLabel}>Apariencia</span>
           </button>
 
           <button
@@ -254,14 +254,14 @@ function SellerPanelLayout() {
               ref={firstMobileMoreActionRef}
               type="button"
               className="admin-mobile-more__item"
+              aria-haspopup="dialog"
               onClick={() => {
-                toggleTheme();
                 setMobileMoreOpen(false);
-                mobileMoreButtonRef.current?.focus();
+                setAppearanceOpen(true);
               }}
             >
-              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-              {theme === "dark" ? "Usar tema claro" : "Usar tema oscuro"}
+              <Palette />
+              Apariencia
             </button>
             <button
               type="button"
@@ -274,26 +274,18 @@ function SellerPanelLayout() {
           </div>
         </>
       )}
+
+      {appearanceOpen && (
+        <PanelAppearanceDialog
+          theme={theme}
+          preferences={preferences}
+          onTheme={setTheme}
+          onAccent={setAccent}
+          onFontSize={setFontSize}
+          onReset={resetPreferences}
+          onClose={closeAppearance}
+        />
+      )}
     </div>
-  );
-}
-
-// ── Íconos ────────────────────────────────────────────────────────────────────
-function SunIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-    </svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-    </svg>
   );
 }
