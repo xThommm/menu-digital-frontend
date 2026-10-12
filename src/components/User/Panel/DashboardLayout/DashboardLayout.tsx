@@ -51,7 +51,7 @@ export default function DashboardLayout() {
 function DashboardLayoutInner() {
   const catalog = usePlans();
   const { user, logout } = useAuth();
-  const { theme, toggle: toggleTheme, setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { preferences, setAccent, setFontSize, reset: resetPreferences } = usePanelPreferences();
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const closeAppearance = useCallback(() => setAppearanceOpen(false), []);
@@ -96,9 +96,6 @@ function DashboardLayoutInner() {
     navigate("/login");
   }, [logout, navigate]);
 
-  // Etiqueta del toggle: describe la ACCIÓN (a qué tema cambia), no el estado
-  // actual — más claro para lectores de pantalla.
-  const themeLabel = theme === "dark" ? "Activar tema claro" : "Activar tema oscuro";
   const subscriptionExpired = user
     ? isSubscriptionExpired(user.subscription, user.subscriptionExpiresAt, user.subscriptionStatus)
     : false;
@@ -172,10 +169,6 @@ function DashboardLayoutInner() {
         </nav>
 
         <div className={s.sideFooter}>
-          <button type="button" className={s.navItem} onClick={toggleTheme} aria-label={themeLabel} data-tooltip={themeLabel}>
-            <span className={s.navIcon}>{theme === "dark" ? <SunIcon /> : <MoonIcon />}</span>
-            <span className={s.navLabel}>{theme === "dark" ? "Tema claro" : "Tema oscuro"}</span>
-          </button>
           <button type="button" className={s.navItem} onClick={() => setAppearanceOpen(true)} aria-haspopup="dialog" data-tooltip="Apariencia">
             <span className={s.navIcon}><Palette size={20} strokeWidth={1.5} aria-hidden /></span>
             <span className={s.navLabel}>Apariencia</span>
@@ -313,18 +306,6 @@ function DashboardLayoutInner() {
             <button
               type="button"
               className="admin-mobile-more__item"
-              onClick={() => {
-                toggleTheme();
-                setMobileMoreOpen(false);
-                mobileMoreButtonRef.current?.focus();
-              }}
-            >
-              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-              {theme === "dark" ? "Usar tema claro" : "Usar tema oscuro"}
-            </button>
-            <button
-              type="button"
-              className="admin-mobile-more__item"
               aria-haspopup="dialog"
               onClick={() => {
                 setMobileMoreOpen(false);
@@ -361,34 +342,3 @@ function DashboardLayoutInner() {
     </div>
   );
 }
-
-// ── Íconos ────────────────────────────────────────────────────────────────────
-
-
-
-
-
-
-
-
-// Sol = "pasar a claro" (se muestra cuando el tema actual es oscuro).
-function SunIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-    </svg>
-  );
-}
-
-// Luna = "pasar a oscuro" (se muestra cuando el tema actual es claro).
-function MoonIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-    </svg>
-  );
-}
-

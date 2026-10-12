@@ -6,13 +6,13 @@ import {
 } from "../lib/panelPreferences";
 
 // ──────────────────────────────────────────────
-// Apariencia del panel del dueño (acento + tamaño de letra).
+// Apariencia de los paneles (acento + tamaño de letra).
 //
 // A diferencia del tema (useTheme), los atributos NO se aplican desde
 // index.html ni quedan puestos para siempre: el tamaño de letra escala el
 // font-size del <html>, y eso afectaría también a la carta pública y a la
-// landing abiertas en el mismo navegador. Por eso cada layout del panel
-// (DashboardLayout, OrdersLayout) llama a este hook, que los pone al montar
+// landing abiertas en el mismo navegador. Por eso cada layout que las usa
+// (DashboardLayout, OrdersLayout, AdminLayout, SellerLayout) llama a este hook, que los pone al montar
 // y los saca al desmontar. useLayoutEffect: se aplican antes del primer
 // pintado del layout, sin parpadeo.
 // ──────────────────────────────────────────────

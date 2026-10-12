@@ -1420,20 +1420,26 @@ Tema claro/oscuro del **panel** (solo tokens `--admin-*`).
 
 ### `hooks/usePanelPreferences.ts` + `lib/panelPreferences.ts`
 
-Apariencia del **panel del dueño** que elige cada usuario (12-10-2026): color de
+Apariencia de los **paneles (dueño, CEO y vendedores)** que elige cada usuario (12-10-2026): color de
 acento (`orange` por defecto, `gold`, `blue`, `light`) y tamaño de letra (`sm`, `md`,
 `lg`, `xl`). Se guardan en localStorage (`panel-accent`, `panel-font-size`), por
 dispositivo, igual que el tema; no viajan al backend.
 
 - El hook escribe `data-panel-accent` / `data-panel-font` en `<html>` **solo mientras
-  hay un layout del panel montado** (`DashboardLayout`, `OrdersLayout`) y los saca al
+  hay un layout que las usa montado** (`DashboardLayout`, `OrdersLayout`, `AdminLayout`, `SellerLayout`) y los saca al
   desmontar: el tamaño escala el `font-size` de la raíz y no debe alcanzar a la carta
   pública ni a la landing. Los valores por defecto no escriben atributo.
-- Los colores están en `globals.css` (sección "PANEL DEL DUEÑO — PREFERENCIAS DE
+- Los colores están en `globals.css` (sección "PANELES — PREFERENCIAS DE
   APARIENCIA"): cada acento redefine `--admin-gold` y `--admin-gold-ink`, con un valor
-  por tema. El acento `light` es neutro: claro en oscuro, grafito en claro.
+  por tema. El acento `light` es neutro: claro en oscuro, grafito en claro. Cada regla
+  se repite sobre `.admin-panel-graphite`, porque el panel CEO redefine esos tokens en
+  su propio elemento.
 - Se configuran en `PanelAppearanceDialog` (botón "Apariencia" de la barra lateral y
-  del menú "Más" del celular), que también deja elegir el tema.
+  del menú "Más" del celular), que también deja elegir el tema: ya no hay botón
+  suelto de tema claro/oscuro en ningún panel. En el panel CEO el diálogo recibe `admin-panel-graphite`
+  por `className` porque va por portal al `<body>`.
+- Las claves de localStorage son las mismas para todos los paneles: en un mismo
+  navegador comparten color y tamaño.
 
 ### `hooks/useAuthTheme.ts`
 
@@ -1841,7 +1847,7 @@ mismo patrón que el `DashboardLayout` del dueño.
 - **`AdminLayout`** — nav items: Panel (`/admin`), Pagos, Planes y Vendedores. Vendedores
   despliega los accesos al panel de vendedores (Panel general, Simulación de ventas,
   CRM, Ranking y Configuración, todos bajo `/sellers`), porque el CRM y las métricas
-  del equipo viven ahí. `useTheme` (toggle claro/oscuro), `handleLogout` y la
+  del equipo viven ahí. Botón "Apariencia" (`PanelAppearanceDialog`), `handleLogout` y la
   preferencia de sidebar colapsada en `localStorage`.
 
 ### `components/Admin/Panel/CEODashboard.tsx`
@@ -2095,9 +2101,8 @@ elección. Con una sola modalidad es el comportamiento de siempre, con su mensaj
 
 ### `components/User/Panel/DashboardLayout/DashboardLayout.tsx`
 Shell del panel del dueño (sidebar desktop + bottom nav mobile + `<Outlet/>`).
-- **`DashboardLayout`** — nav items, `useTheme` (toggle claro/oscuro con `themeLabel`),
-  `handleLogout`. Íconos: `HomeIcon`, `DocIcon`, `StoreIcon`, `ChartIcon`, `LogoutIcon`,
-  `SunIcon`, `MoonIcon`.
+- **`DashboardLayout`** — nav items, botón "Apariencia" (`PanelAppearanceDialog`, que
+  incluye el tema) y `handleLogout`.
 
 ### `components/User/Panel/Dashboard/UserDashboard.tsx`
 Home del panel (`/dashboard`). Layout de dos columnas en desktop.
