@@ -1,5 +1,5 @@
 import {
-  Clock, Image, Images, LayoutTemplate, MessageCircle, Palette, Phone, Share2, ShoppingBag, Stamp, Store,
+  AppWindow, Clock, Image, Images, LayoutTemplate, MessageCircle, Palette, Phone, Share2, ShoppingBag, Stamp, Store,
   type LucideIcon,
 } from "lucide-react";
 
@@ -12,7 +12,7 @@ export type BusinessTab = "info" | "media" | "template";
 export type BusinessBlockId =
   | "datos" | "contacto" | "whatsapp" | "redes" | "pedidos" | "horario"
   | "portada" | "logo" | "galeria"
-  | "diseno" | "paleta";
+  | "diseno" | "plantilla" | "paleta";
 
 export interface BusinessBlock {
   id: BusinessBlockId;
@@ -39,6 +39,7 @@ export const BUSINESS_BLOCKS: BusinessBlock[] = [
   { id: "logo", tab: "media", title: "Logo", hint: "El ícono de la pestaña del navegador", icon: Stamp },
   { id: "galeria", tab: "media", title: "Galería", hint: "Fotos del local para que lo conozcan", icon: Images },
   { id: "diseno", tab: "template", title: "Diseño de carta", hint: "Una identidad para la portada y la carta", icon: LayoutTemplate },
+  { id: "plantilla", tab: "template", title: "Plantilla de página", hint: "Cómo se acomodan la portada y la carta en la computadora", icon: AppWindow },
   { id: "paleta", tab: "template", title: "Paleta de colores", hint: "Los colores del diseño elegido", icon: Palette },
 ];
 

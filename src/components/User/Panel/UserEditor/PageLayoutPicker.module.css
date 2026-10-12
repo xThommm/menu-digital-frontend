@@ -1,0 +1,37 @@
+/* Mismo esqueleto que MenuStylePicker: una grilla de tarjetas donde lo único
+   que distingue lo bloqueado es el candado. */
+.picker { border: 0; padding: 0; margin: 0 0 2rem; min-width: 0; }
+.picker legend { color: var(--admin-text-primary); font-size: 1rem; font-weight: 600; margin-bottom: 0.875rem; }
+.hint { margin: 0 0 1rem; color: var(--admin-text-secondary); font-size: 0.8rem; line-height: 1.6; }
+
+.layouts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+.layout { position: relative; display: flex; flex-direction: column; overflow: hidden; padding: 0; border: 1px solid var(--admin-border-default); border-radius: var(--admin-radius-xl); background: var(--admin-bg-raised); color: var(--admin-text-primary); text-align: left; cursor: pointer; }
+.layout[aria-pressed="true"] { border-color: var(--admin-gold); box-shadow: 0 0 0 1px var(--admin-gold); }
+.layout:hover { border-color: var(--admin-gold); }
+.layout:focus-visible { outline: 2px solid var(--admin-gold); outline-offset: 4px; }
+.picker:disabled .layout { opacity: 0.6; cursor: wait; }
+
+/* El esquema no usa los colores de la paleta del local a propósito: la
+   plantilla no los cambia, y pintarlo con ellos sugeriría que sí. */
+.sample { position: relative; display: grid; gap: 0.5rem; width: 100%; padding: 1.25rem 1.25rem 0.875rem; background: var(--admin-bg-base); color: var(--admin-text-primary); }
+.sample svg { display: block; width: 100%; height: auto; }
+.frame { fill: var(--admin-bg-raised); stroke: var(--admin-border-default); stroke-width: 1; }
+.photo { fill: color-mix(in srgb, var(--admin-gold) 34%, var(--admin-bg-raised)); }
+.ink { fill: currentColor; }
+.line { fill: currentColor; opacity: 0.35; }
+.block { fill: currentColor; opacity: 0.16; }
+.accent { fill: var(--admin-gold); }
+.sampleCaption { display: grid; grid-template-columns: 1fr 1fr; color: var(--admin-text-secondary); font-size: 0.66rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; text-align: center; }
+
+.copy { display: grid; gap: 0.35rem; padding: 1rem 1.25rem; font-size: 0.8rem; line-height: 1.55; }
+.copy strong { font-size: 0.95rem; font-weight: 600; }
+.copy span { color: var(--admin-text-secondary); }
+.check { position: absolute; top: 0.6rem; right: 0.6rem; display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.55rem; border-radius: var(--radius-full); background: var(--admin-gold); color: var(--admin-gold-ink); font-size: 0.68rem; font-weight: 600; }
+
+/* Plantilla fuera del plan: la tarjeta sigue siendo clickeable y abre el
+   modal de upsell, igual que un diseño bloqueado. */
+.layout.locked .sample svg { opacity: 0.55; }
+.lockOverlay { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: flex-end; padding: 0.75rem; background: rgba(0, 0, 0, 0.35); color: var(--admin-gold); }
+.plan { position: absolute; top: 0.6rem; right: 0.6rem; padding: 2px 7px; border: 0.5px solid var(--admin-border-gold-mid); border-radius: 4px; background: var(--admin-gold-glow); color: var(--admin-gold); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+
+@media (max-width: 480px) { .layouts { grid-template-columns: 1fr; } }

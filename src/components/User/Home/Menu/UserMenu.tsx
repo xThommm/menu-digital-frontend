@@ -22,6 +22,8 @@ import WaTargetPicker from "../WaTargetPicker/WaTargetPicker";
 import { resolveMenuDisplay } from "../../../../lib/menuDisplay";
 import { cartUnitPrice, repriceCartLines } from "../../../../lib/cartPricing";
 import { getVisualFamily, resolveMenuStyle } from "../../../../lib/menuStyles";
+import { PAGE_LAYOUT_MIN_WIDTH, resolvePageLayout } from "../../../../lib/pageLayouts";
+import { useMediaQuery } from "../../../../hooks/useMediaQuery";
 import { resolveTemplate } from "../../../../lib/templates";
 import { pageScrollbarRef } from "../../../../lib/pageScrollbar";
 import { buildMenuTabs, categoryKey, isItemUnavailable, tabHasItems } from "../../../../lib/publicMenu";
@@ -226,6 +228,11 @@ export default function MenuPage() {
   const isBistro = menuStyle === "bistro";
   const family = getVisualFamily(menuStyle);
   const collapsible = display.collapsibleCategories;
+  // La plantilla cambia la ESTRUCTURA de la cabecera, y solo en escritorio:
+  // por eso se resuelve acá y no con un @media (igual que en la portada).
+  const isDesktop = useMediaQuery(`(min-width: ${PAGE_LAYOUT_MIN_WIDTH}px)`);
+  const immersive = isDesktop && resolvePageLayout(user?.pageLayout) === "immersive";
+  const heroRef = useRef<HTMLElement>(null);
 
   // Ítems del tab activo, en el mismo orden en que se ven en pantalla
   // (categoría por categoría, tal como itera el render más abajo) — no el
@@ -284,7 +291,12 @@ export default function MenuPage() {
     // todo, el tope de la página ya es el inicio visible del contenido.
     // Antes se hacía scrollIntoView(mpContent), que dejaba el arranque de
     // la lista tapado debajo del bloque sticky.
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // Con la plantilla Inmersiva la cabecera fotográfica no es sticky: el
+    // inicio visible de la lista es donde termina la foto, y volver a 0
+    // obligaría a pasarla de nuevo en cada cambio de pestaña.
+    const hero = heroRef.current;
+    const top = hero ? Math.min(window.scrollY, hero.offsetTop + hero.offsetHeight) : 0;
+    window.scrollTo({ top, behavior: "smooth" });
     if (opts?.focus) tabRefs.current[index]?.focus();
   }, []);
 
@@ -437,11 +449,40 @@ export default function MenuPage() {
           data-template={resolveTemplate(user.template).id}
           data-menu-style={menuStyle}
           data-menu-family={family?.id}
+          data-page-layout={immersive ? "immersive" : undefined}
         >
-          {family && <MenuFamilyCover src={user.media?.backgroundPicture} />}
+          {family && !immersive && <MenuFamilyCover src={user.media?.backgroundPicture} />}
+          {/* Inmersiva: la cabecera es la foto de portada con el nombre
+              encima y se va con el scroll; lo que queda fijo son las
+              pestañas y las categorías. */}
+          {immersive && (
+            <header ref={heroRef} className={styles.immHero}>
+              <MenuFamilyCover src={user.media?.backgroundPicture} className={styles.immHeroImg} />
+              {user.features?.landing_page && (
+                <button
+                  className={styles.mpBack}
+                  onClick={goBack}
+                  aria-label="Volver al inicio del local"
+                >
+                  <BackIcon />
+                </button>
+              )}
+              <div className={styles.immHeroInfo}>
+                <p className={styles.mpEyebrow}>Nuestra carta</p>
+                <h1 className={`${styles.mpName} t-family-heading`}>
+                  {info.businessName || "Menú"}
+                </h1>
+                <div className={styles.mpMeta}>
+                  {info.address && <span><PinIcon /> {info.address}</span>}
+                  {user.hasDelivery && <span><DeliveryIcon /> Delivery</span>}
+                  {user.hasTakeAway && <span><TakeAwayIcon /> Take away</span>}
+                </div>
+              </div>
+            </header>
+          )}
           {/* ── Cabecera + tabs ── */}
           <div className={styles.mpSticky}>
-            <header className={styles.mpHeader}>
+            {!immersive && <header className={styles.mpHeader}>
               {user.features?.landing_page && (
                 <button
                   className={styles.mpBack}
@@ -479,7 +520,7 @@ export default function MenuPage() {
                 </div>
               </div>
               {(isBistro || family) && cartOn && <MenuCartShortcut onClick={() => setCartOpen(true)} />}
-            </header>
+            </header>}
 
             {/* Tabs */}
             {tabs.length > 1 && (
@@ -514,6 +555,17 @@ export default function MenuPage() {
                     )
                 )}
               </nav>
+            )}
+
+            {immersive && (
+              <CategoryNav
+                categories={currentTab.categorias
+                  .map((cat, catIndex) => ({ key: categoryKey(activeTab, catIndex), title: cat.title, empty: cat.items.length === 0 }))
+                  .filter(cat => !cat.empty)}
+                onSelect={(key) => {
+                  if (collapsible && !openCats.has(key)) toggleCategory(key);
+                }}
+              />
             )}
           </div>
 
@@ -563,6 +615,7 @@ export default function MenuPage() {
                     return (
                       <section
                         key={catKey}
+                        id={categorySectionId(catKey)}
                         className={styles.mpCat}
                       >
                         <h2 className={`${styles.mpCatTitle} t-family-heading`}>
@@ -585,6 +638,7 @@ export default function MenuPage() {
                   return (
                     <section
                       key={catKey}
+                      id={categorySectionId(catKey)}
                       className={styles.mpCatCollapsible}
                     >
                       <h2 className={`${styles.mpCatTitle} t-family-heading`}>
@@ -712,10 +766,99 @@ export default function MenuPage() {
 // interno entre renders) ────────────────────────────────────────────────
 
 // ── Botón flotante del carrito ────────────────────────────────────────────────
-function MenuFamilyCover({ src }: { src?: string }) {
+function MenuFamilyCover({ src, className = styles.familyCover }: { src?: string; className?: string }) {
   const [failedSrc, setFailedSrc] = useState<string>();
   if (!src || src === failedSrc) return null;
-  return <img src={src} alt="" className={styles.familyCover} onError={() => setFailedSrc(src)} />;
+  return <img src={src} alt="" className={className} onError={() => setFailedSrc(src)} />;
+}
+
+// ── Barra de categorías (plantilla Inmersiva) ─────────────────────────────────
+// Atajos a las categorías de la pestaña activa, fijos debajo de las pestañas.
+// Marca la categoría que se está leyendo; con categorías desplegables,
+// elegir una cerrada también la abre (onSelect).
+const categorySectionId = (key: string) => `mp-catsec-${key}`;
+
+function CategoryNav({
+  categories,
+  onSelect,
+}: {
+  categories: { key: string; title: string }[];
+  onSelect: (key: string) => void;
+}) {
+  const [active, setActive] = useState<string | null>(null);
+  const navRef = useRef<HTMLElement>(null);
+  // Hasta cuándo manda la categoría elegida a mano (ver el onClick).
+  const pinnedUntil = useRef(0);
+  // Las claves incluyen la pestaña (categoryKey): al cambiar de pestaña el
+  // efecto se vuelve a enganchar a las secciones nuevas.
+  const keys = categories.map(cat => cat.key).join("|");
+
+  useEffect(() => {
+    const sections = keys.split("|")
+      .map(key => document.getElementById(categorySectionId(key)))
+      .filter((section): section is HTMLElement => section !== null);
+    if (sections.length === 0) return;
+    // Franja de lectura: debajo de la barra fija y hasta mitad de pantalla.
+    // La categoría activa es la última que la cruzó.
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) visible.add(entry.target.id);
+        else visible.delete(entry.target.id);
+      }
+      const current = sections.find(section => visible.has(section.id));
+      if (current && performance.now() > pinnedUntil.current) setActive(current.id);
+    }, { rootMargin: "-150px 0px -55% 0px" });
+    sections.forEach(section => observer.observe(section));
+    return () => observer.disconnect();
+  }, [keys]);
+
+  // El atajo activo se mantiene a la vista cuando la barra desborda. Se mueve
+  // el scroll de la barra y no scrollIntoView: eso también movería la página.
+  useEffect(() => {
+    const nav = navRef.current;
+    const current = nav?.querySelector<HTMLElement>("[aria-current]");
+    if (!nav || !current) return;
+    const left = current.offsetLeft - nav.offsetLeft;
+    if (left < nav.scrollLeft || left + current.offsetWidth > nav.scrollLeft + nav.clientWidth) {
+      nav.scrollTo({ left: Math.max(0, left - 32), behavior: "smooth" });
+    }
+  }, [active]);
+
+  // Una sola categoría no necesita atajos.
+  if (categories.length < 2) return null;
+
+  return (
+    <nav ref={navRef} className={styles.catNav} aria-label="Categorías">
+      {categories.map(({ key, title }) => {
+        const id = categorySectionId(key);
+        return (
+          <button
+            key={key}
+            type="button"
+            className={styles.catNavLink}
+            aria-current={active === id ? "true" : undefined}
+            onClick={() => {
+              onSelect(key);
+              setActive(id);
+              // Mientras dura el scroll hacia ella no se recalcula: las
+              // categorías que pasan por el camino harían saltar la marca, y
+              // una categoría corta al final de la carta nunca llega arriba
+              // (la página se termina antes), así que perdería la marca.
+              pinnedUntil.current = performance.now() + 1000;
+              // Después del render: una categoría desplegable recién abierta
+              // todavía no tiene su altura.
+              requestAnimationFrame(() => {
+                document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+              });
+            }}
+          >
+            {title}
+          </button>
+        );
+      })}
+    </nav>
+  );
 }
 
 function MenuCartShortcut({ onClick }: { onClick: () => void }) {
