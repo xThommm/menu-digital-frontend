@@ -1487,3 +1487,169 @@
   .mp:is([data-menu-family="neo-brutalism"], [data-menu-family="tactile"]) :is(.itemCard, .addBtn, .mpCartShortcut) { transition: opacity 0.01s; }
   .mp:is([data-menu-family="neo-brutalism"], [data-menu-family="tactile"]) .itemCard:hover { translate: none; }
 }
+
+/* ── Diseños premium, segunda tanda ──
+   Tokens en globals.css ([data-menu-family="retro-diner"|"neon"|"swiss"|
+   "art-deco"]). Misma regla que arriba: solo forma, los colores son de la paleta. */
+
+/* Retro diner */
+.mp[data-menu-family="retro-diner"] .mpHeader { border-bottom: 8px solid; border-image: var(--rd-stripes) 8; }
+.mp[data-menu-family="retro-diner"] .mpBack { border: var(--rd-line); border-radius: 50%; background: var(--t-surface); color: var(--t-accent); }
+.mp[data-menu-family="retro-diner"] .mpEyebrow { font-size: 0.75rem; letter-spacing: 0.22em; }
+.mp[data-menu-family="retro-diner"] .mpName { font-size: clamp(1.7rem, 5vw, 2.4rem); line-height: 1.1; }
+.mp[data-menu-family="retro-diner"] .mpTabs { border-bottom: 0; padding-block: 1rem; }
+.mp[data-menu-family="retro-diner"] .mpTab { border: var(--rd-line); border-radius: 999px; background: var(--t-surface); color: var(--t-title); font-weight: 700; font-size: 0.9rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.mp[data-menu-family="retro-diner"] .mpTab.active { background: var(--t-accent); color: var(--t-btn-text); box-shadow: var(--rd-drop); }
+.mp[data-menu-family="retro-diner"] .mpCatTitle { display: flex; align-items: center; gap: 0.9rem; font-size: 2.1rem; border-bottom: 0; padding-bottom: 0.25rem; }
+.mp[data-menu-family="retro-diner"] .mpCatTitle::after { content: ""; flex: 1; min-width: 1.5rem; border-top: 4px dotted var(--t-accent); }
+.mp[data-menu-family="retro-diner"] .featuredTitle { font-family: var(--font-serif); font-weight: 400; font-size: 1.5rem; letter-spacing: 0; text-transform: none; color: var(--t-title); }
+.mp[data-menu-family="retro-diner"] .featuredTrack { gap: 1.1rem; padding: 6px 6px 1rem; }
+.mp[data-menu-family="retro-diner"] .featuredCard { border: var(--rd-line); border-radius: var(--t-family-radius); background: var(--t-surface); box-shadow: var(--rd-ring); }
+.mp[data-menu-family="retro-diner"] .featuredName { font-weight: 700; font-size: 1rem; letter-spacing: 0.02em; }
+.mp[data-menu-family="retro-diner"] .itemCard { margin: 0 5px 1.2rem; border: var(--rd-line); border-radius: var(--t-family-radius); background: var(--t-surface); box-shadow: var(--rd-ring); }
+.mp[data-menu-family="retro-diner"] .itemCard:hover { background: var(--t-surface); }
+.mp[data-menu-family="retro-diner"] .itemCard.recommended { background: color-mix(in srgb, var(--t-accent) 12%, var(--t-surface)); }
+.mp[data-menu-family="retro-diner"] .itemCard.unavailable { border-style: dashed; box-shadow: none; }
+.mp[data-menu-family="retro-diner"] :is(.itemImg, .itemImgPlaceholder) { border: var(--rd-line); }
+/* El plato vuelve a la condensada: la script queda para títulos. */
+.mp[data-menu-family="retro-diner"] .itemName { font-family: var(--font-sans); font-size: 1.2rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; text-shadow: none; }
+.mp[data-menu-family="retro-diner"] .itemDesc { font-size: 0.92rem; line-height: 1.45; }
+/* Precio en etiqueta: fondo de acento con pespunte. */
+.mp[data-menu-family="retro-diner"] .itemPrice { display: inline-block; padding: 3px 11px; border-radius: 7px; background: var(--t-accent); color: var(--t-btn-text); font-size: 1.05rem; font-weight: 700; letter-spacing: 0.02em; outline: 1px dashed color-mix(in srgb, var(--t-btn-text) 70%, transparent); outline-offset: -4px; }
+.mp[data-menu-family="retro-diner"] .badge { border-radius: 999px; padding: 2px 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.mp[data-menu-family="retro-diner"] .badgeOffer { rotate: -4deg; }
+.mp[data-menu-family="retro-diner"] :is(.addBtn, .mpCartShortcut) { border-radius: 50%; box-shadow: var(--rd-drop); transition: translate 0.1s ease, box-shadow 0.1s ease; }
+.mp[data-menu-family="retro-diner"] :is(.addBtn, .mpCartShortcut):active { translate: 0 3px; box-shadow: 0 1px 0 color-mix(in srgb, var(--t-accent) 55%, black); }
+.mp[data-menu-family="retro-diner"] .qtyStepper { border: var(--rd-line); border-radius: 999px; background: var(--t-surface); }
+.mp[data-menu-family="retro-diner"] .qtyStepper span { font-weight: 700; color: var(--t-title); }
+.mp[data-menu-family="retro-diner"] .cartBar { --control-shape: 0; border-top: 8px solid; border-image: var(--rd-stripes) 8; background: var(--t-accent); color: var(--t-btn-text); }
+.mp[data-menu-family="retro-diner"] .cartBarCount { border-radius: 50%; background: var(--t-btn-text); color: var(--t-accent); }
+.mp[data-menu-family="retro-diner"] .cartBarLabel { font-family: var(--font-serif); font-weight: 400; font-size: 1.15rem; }
+.mp[data-menu-family="retro-diner"] .cartBarTotal { color: inherit; font-size: 1.05rem; }
+.mp[data-menu-family="retro-diner"] .orderWhatsapp { border-radius: 999px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.mp[data-menu-family="retro-diner"] .orderSummary { border: var(--rd-line); border-radius: var(--t-family-radius); background: var(--t-surface); box-shadow: none; }
+
+/* Neón nocturno */
+/* Encabezado y pestañas quedan fijos al scrollear: necesitan fondo opaco. */
+.mp[data-menu-family="neon"] .mpHeader { background: var(--nn-ambient), var(--t-bg); border-bottom: var(--nn-line); box-shadow: 0 8px 22px -10px color-mix(in srgb, var(--t-accent) 60%, transparent); }
+.mp[data-menu-family="neon"] .mpBack { border: var(--nn-line); border-radius: 50%; background: transparent; color: var(--nn-tube); box-shadow: var(--nn-glow); }
+.mp[data-menu-family="neon"] .mpEyebrow { letter-spacing: 0.3em; color: var(--nn-tube); text-shadow: var(--nn-text-glow-sm); }
+.mp[data-menu-family="neon"] .mpTabs { background: var(--t-bg); border-bottom: 0; padding-block: 1.1rem; gap: 0.7rem; }
+.mp[data-menu-family="neon"] .mpTab { border: var(--nn-line-off); border-radius: 999px; background: transparent; color: var(--t-family-muted); }
+.mp[data-menu-family="neon"] .mpTab.active { border: var(--nn-line); background: color-mix(in srgb, var(--t-accent) 10%, transparent); color: var(--nn-tube); text-shadow: var(--nn-text-glow-sm); box-shadow: var(--nn-glow); }
+.mp[data-menu-family="neon"] .mpCatTitle { font-size: 2rem; border-bottom: var(--nn-line); box-shadow: 0 10px 14px -12px color-mix(in srgb, var(--t-accent) 80%, transparent); }
+.mp[data-menu-family="neon"] .featuredTitle { font-family: var(--font-serif); font-weight: 400; font-size: 1.15rem; letter-spacing: 0.04em; color: var(--nn-tube); text-shadow: var(--nn-text-glow-sm); }
+.mp[data-menu-family="neon"] .featuredTrack { gap: 1rem; padding-block: 0.75rem 1.25rem; }
+.mp[data-menu-family="neon"] .featuredCard { border: var(--nn-line-off); border-radius: var(--t-family-radius); background: var(--t-surface); box-shadow: var(--nn-glow-soft); }
+.mp[data-menu-family="neon"] .featuredPrice { font-family: var(--font-serif); font-weight: 400; color: var(--nn-tube); text-shadow: var(--nn-text-glow-sm); }
+.mp[data-menu-family="neon"] .itemCard {
+  margin-bottom: 1rem;
+  border: var(--nn-line-off);
+  border-radius: var(--t-family-radius);
+  background: var(--t-surface);
+  box-shadow: var(--nn-glow-soft);
+  transition: opacity 0.4s var(--ease-out), border-color 0.2s ease, box-shadow 0.2s ease;
+  transition-delay: var(--reveal-delay, 0s), 0s, 0s;
+}
+.mp[data-menu-family="neon"] .itemCard:hover { background: var(--t-surface); border-color: var(--t-accent); box-shadow: var(--nn-glow); }
+.mp[data-menu-family="neon"] .itemCard.recommended { border: var(--nn-line); background: color-mix(in srgb, var(--t-accent) 8%, var(--t-surface)); box-shadow: var(--nn-glow); }
+.mp[data-menu-family="neon"] .itemCard.unavailable { box-shadow: none; }
+/* El plato no brilla: si todo está encendido, nada destaca. */
+.mp[data-menu-family="neon"] .itemName { font-family: var(--font-sans); font-size: 1.1rem; font-weight: 700; letter-spacing: 0; color: var(--t-title); text-shadow: none; }
+.mp[data-menu-family="neon"] .itemPrice { font-family: var(--font-serif); font-weight: 400; font-size: 1.15rem; color: var(--nn-tube); text-shadow: var(--nn-text-glow-sm); }
+.mp[data-menu-family="neon"] .badge { border-radius: 999px; padding: 2px 9px; background: transparent; }
+.mp[data-menu-family="neon"] .badgeReco { border: 1px solid var(--t-accent); color: var(--nn-tube); box-shadow: 0 0 8px color-mix(in srgb, var(--t-accent) 45%, transparent); }
+.mp[data-menu-family="neon"] .badgeOffer { border: 1px solid var(--t-offer); box-shadow: 0 0 8px color-mix(in srgb, var(--t-offer) 45%, transparent); }
+.mp[data-menu-family="neon"] :is(.addBtn, .mpCartShortcut) { border-radius: 50%; box-shadow: 0 0 14px color-mix(in srgb, var(--t-accent) 65%, transparent), 0 0 34px color-mix(in srgb, var(--t-accent) 30%, transparent); }
+.mp[data-menu-family="neon"] .qtyStepper { border: var(--nn-line); border-radius: 999px; background: transparent; box-shadow: var(--nn-glow); }
+.mp[data-menu-family="neon"] .qtyStepper :is(button, span) { color: var(--nn-tube); font-weight: 700; }
+.mp[data-menu-family="neon"] .cartBar { --control-shape: 22px 22px 0 0; border-top: 0; background: var(--t-accent); color: var(--t-btn-text); box-shadow: 0 -6px 28px color-mix(in srgb, var(--t-accent) 55%, transparent); }
+.mp[data-menu-family="neon"] .cartBarCount { border-radius: 50%; background: var(--t-btn-text); color: var(--t-accent); }
+.mp[data-menu-family="neon"] .cartBarLabel { font-family: var(--font-serif); font-weight: 400; font-size: 1.05rem; letter-spacing: 0.03em; }
+.mp[data-menu-family="neon"] .cartBarTotal { color: inherit; }
+.mp[data-menu-family="neon"] .orderWhatsapp { border-radius: 999px; }
+.mp[data-menu-family="neon"] .orderSummary { border: var(--nn-line); border-radius: var(--t-family-radius); background: var(--t-surface); box-shadow: var(--nn-glow); }
+
+/* Editorial suizo */
+.mp[data-menu-family="swiss"] { counter-reset: sw-cat; }
+.mp[data-menu-family="swiss"] .mpHeader { background: var(--t-bg); border-bottom: var(--sw-rule); padding-block: 1.5rem; }
+.mp[data-menu-family="swiss"] .mpBack { border: 0; border-radius: 0; background: none; color: var(--t-title); }
+.mp[data-menu-family="swiss"] .mpEyebrow { font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 0.8rem; color: var(--t-family-muted); }
+.mp[data-menu-family="swiss"] .mpName { font-size: clamp(1.9rem, 6vw, 3rem); line-height: 0.95; }
+.mp[data-menu-family="swiss"] .mpTabs { border-bottom: var(--sw-hair); padding-block: 0.25rem 0; gap: 1.5rem; }
+.mp[data-menu-family="swiss"] .mpTab { padding: 0.9rem 0; border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; box-shadow: none; font-weight: 500; font-size: 0.95rem; letter-spacing: -0.01em; }
+.mp[data-menu-family="swiss"] .mpTab.active { background: none; color: var(--t-title); font-weight: 700; border-bottom-color: var(--t-accent); }
+.mp[data-menu-family="swiss"] .mpCat { counter-increment: sw-cat; counter-reset: sw-item; margin-bottom: 3.5rem; }
+.mp[data-menu-family="swiss"] .mpCatTitle { font-size: clamp(2.2rem, 8vw, 3.5rem); line-height: 0.95; border-bottom: 0; border-top: var(--sw-rule); padding: 0.75rem 0 0.5rem; }
+.mp[data-menu-family="swiss"] .mpCatCollapsible .mpCatTitle { border-top: 0; }
+.mp[data-menu-family="swiss"] .mpCatTitle::before { content: counter(sw-cat, decimal-leading-zero); display: block; margin-bottom: 0.9rem; font-size: 0.8rem; font-weight: 500; letter-spacing: 0; line-height: 1; color: var(--t-accent); }
+.mp[data-menu-family="swiss"] .featuredTitle { font-weight: 700; font-size: 0.8rem; letter-spacing: 0; text-transform: none; color: var(--t-title); }
+.mp[data-menu-family="swiss"] .featuredCard { border: 0; border-top: var(--sw-rule); border-radius: 0; background: none; }
+.mp[data-menu-family="swiss"] .featuredName { font-weight: 700; letter-spacing: -0.02em; }
+.mp[data-menu-family="swiss"] .itemCard { counter-increment: sw-item; margin: 0; padding: 1.25rem 0; border: 0; border-top: var(--sw-hair); border-radius: 0; background: none; }
+.mp[data-menu-family="swiss"] .itemCard:hover { background: none; }
+.mp[data-menu-family="swiss"] .itemCard.recommended { background: none; }
+.mp[data-menu-family="swiss"] .itemName { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.035em; line-height: 1.1; }
+.mp[data-menu-family="swiss"] .itemName::before { content: counter(sw-item, decimal-leading-zero); display: block; margin-bottom: 0.45rem; font-size: 0.72rem; font-weight: 500; letter-spacing: 0; color: var(--t-family-muted); font-variant-numeric: tabular-nums; }
+.mp[data-menu-family="swiss"] .itemDesc { font-size: 0.88rem; line-height: 1.45; }
+.mp[data-menu-family="swiss"] .itemPrice { font-size: 1.05rem; font-weight: 500; letter-spacing: -0.02em; color: var(--t-title); font-variant-numeric: tabular-nums; }
+.mp[data-menu-family="swiss"] .badge { border: 1px solid currentColor; border-radius: 0; background: none; font-weight: 500; letter-spacing: 0; }
+.mp[data-menu-family="swiss"] :is(.addBtn, .mpCartShortcut) { --control-shape: 0; border-radius: 0; box-shadow: none; }
+.mp[data-menu-family="swiss"] .qtyStepper { border: 1px solid var(--t-title); border-radius: 0; background: none; }
+.mp[data-menu-family="swiss"] .qtyStepper :is(button, span) { color: var(--t-title); font-weight: 700; }
+.mp[data-menu-family="swiss"] .cartBar { --control-shape: 0; border-top: 0; background: var(--t-title); color: var(--t-bg); }
+.mp[data-menu-family="swiss"] .cartBarCount { border-radius: 0; }
+.mp[data-menu-family="swiss"] .cartBarLabel { font-weight: 700; letter-spacing: -0.02em; }
+.mp[data-menu-family="swiss"] .cartBarTotal { color: inherit; font-weight: 500; font-variant-numeric: tabular-nums; }
+.mp[data-menu-family="swiss"] .orderWhatsapp { --control-shape: 0; border-radius: 0; }
+.mp[data-menu-family="swiss"] .orderSummary { border: 0; border-top: var(--sw-rule); border-radius: 0; background: none; box-shadow: none; }
+
+/* Art déco */
+/* Los rayos van en el encabezado, que es fijo y necesita fondo opaco. */
+.mp[data-menu-family="art-deco"] .mpHeader { background: linear-gradient(to bottom, transparent, var(--t-bg)), var(--ad-rays), var(--t-bg); border-bottom: 4px double var(--t-accent); padding-block: 1.5rem; }
+.mp[data-menu-family="art-deco"] .mpBack { border: var(--ad-line); border-radius: 0; background: transparent; color: var(--t-accent); }
+.mp[data-menu-family="art-deco"] .mpEyebrow { font-weight: 600; letter-spacing: 0.34em; }
+.mp[data-menu-family="art-deco"] .mpName { font-size: clamp(1.35rem, 4.5vw, 2rem); line-height: 1.2; }
+.mp[data-menu-family="art-deco"] .mpTabs { background: var(--t-bg); border-bottom: 0; padding-block: 1.1rem; gap: 0.75rem; }
+.mp[data-menu-family="art-deco"] .mpTab { border: 1px solid color-mix(in srgb, var(--t-accent) 45%, transparent); border-radius: 0; background: transparent; font-weight: 600; font-size: 0.74rem; letter-spacing: 0.2em; text-transform: uppercase; }
+.mp[data-menu-family="art-deco"] .mpTab.active { border-color: var(--t-accent); background: var(--t-accent); color: var(--t-btn-text); box-shadow: var(--ad-frame); }
+/* Título de sección centrado entre dos filetes. */
+.mp[data-menu-family="art-deco"] .mpCatTitle { display: flex; align-items: center; gap: 1rem; justify-content: center; text-align: center; font-size: 1.55rem; border-bottom: 0; padding-bottom: 0.25rem; }
+.mp[data-menu-family="art-deco"] .mpCatTitle::before,
+.mp[data-menu-family="art-deco"] .mpCatTitle::after { content: ""; flex: 1; min-width: 1rem; height: 5px; border-block: 1px solid var(--t-accent); }
+.mp[data-menu-family="art-deco"] .featuredTitle { font-family: var(--font-serif); font-weight: 400; font-size: 1.05rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--t-accent); -webkit-text-stroke: var(--ad-stroke); }
+.mp[data-menu-family="art-deco"] .featuredTrack { gap: 1.2rem; padding: 5px 5px 1rem; }
+.mp[data-menu-family="art-deco"] .featuredCard { border: var(--ad-line); border-radius: 0; background: var(--t-surface); box-shadow: var(--ad-frame); }
+.mp[data-menu-family="art-deco"] .featuredName { font-weight: 600; font-size: 0.85rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.mp[data-menu-family="art-deco"] .itemCard { grid-template-columns: 92px minmax(0, 1fr); margin: 0 4px 1.3rem; padding: 1rem; border: var(--ad-line); border-radius: 0; background: var(--t-surface); box-shadow: var(--ad-frame); }
+.mp[data-menu-family="art-deco"] .itemCard:hover { background: var(--t-surface); }
+.mp[data-menu-family="art-deco"] .itemCard.recommended { background: color-mix(in srgb, var(--t-accent) 9%, var(--t-surface)); }
+.mp[data-menu-family="art-deco"] .itemCard.unavailable { box-shadow: none; }
+/* Fotos en arco, como un vitral. */
+.mp[data-menu-family="art-deco"] :is(.itemImg, .itemImgPlaceholder) { grid-column: 1; grid-row: 1; width: 92px; height: 122px; border: var(--ad-line); border-radius: 46px 46px 0 0; }
+.mp[data-menu-family="art-deco"] .itemBody { grid-column: 2; grid-row: 1; }
+.mp[data-menu-family="art-deco"] .itemName { font-family: var(--font-sans); font-size: 0.98rem; font-weight: 600; letter-spacing: 0.1em; line-height: 1.35; }
+.mp[data-menu-family="art-deco"] .itemDesc { font-size: 0.88rem; line-height: 1.5; }
+.mp[data-menu-family="art-deco"] .itemPrice { font-size: 1rem; font-weight: 600; letter-spacing: 0.08em; }
+.mp[data-menu-family="art-deco"] .badge { border-radius: 0; padding: 2px 8px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+.mp[data-menu-family="art-deco"] :is(.addBtn, .mpCartShortcut) { --control-shape: 0; border-radius: 0; box-shadow: var(--ad-frame); }
+.mp[data-menu-family="art-deco"] .qtyStepper { border: var(--ad-line); border-radius: 0; background: transparent; }
+.mp[data-menu-family="art-deco"] .cartBar { --control-shape: 0; border-top: 4px double var(--t-accent); background: var(--t-surface); color: var(--t-title); }
+.mp[data-menu-family="art-deco"] .cartBarCount { border-radius: 0; }
+.mp[data-menu-family="art-deco"] .cartBarLabel { font-weight: 600; font-size: 0.8rem; letter-spacing: 0.2em; text-transform: uppercase; }
+.mp[data-menu-family="art-deco"] .cartBarTotal { letter-spacing: 0.06em; }
+.mp[data-menu-family="art-deco"] .orderWhatsapp { --control-shape: 0; border-radius: 0; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+.mp[data-menu-family="art-deco"] .orderSummary { border: var(--ad-line); border-radius: 0; background: var(--t-surface); box-shadow: var(--ad-frame); }
+
+@media (min-width: 600px) {
+  /* Las tarjetas con aro o marco doble traen margen para la lista; en grilla
+     lo reemplaza el espacio entre columnas. */
+  .mp:is([data-menu-family="retro-diner"], [data-menu-family="art-deco"]) .itemCard { margin: 0; }
+  .mp:is([data-menu-family="retro-diner"], [data-menu-family="art-deco"]) :is(.mpCat, .mpCatItems:not([hidden])) { padding-inline: 5px; }
+  .mp[data-menu-family="swiss"] :is(.mpCat, .mpCatItems:not([hidden])) { gap: 0 2rem; }
+  .mp[data-menu-family="swiss"] .itemName { font-size: 1.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mp:is([data-menu-family="retro-diner"], [data-menu-family="neon"]) :is(.itemCard, .addBtn, .mpCartShortcut) { transition: opacity 0.01s; }
+}

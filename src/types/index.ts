@@ -24,7 +24,8 @@ export interface PlanFeatures {
   image_manager: boolean
   menu_templates: boolean
   menu_styles: boolean
-  // Diseños premium (Neobrutalismo, Maximalismo táctil). Clave aparte de
+  // Diseños premium (Neobrutalismo, Maximalismo táctil, Retro diner, Neón
+  // nocturno, Editorial suizo, Art déco). Clave aparte de
   // menu_styles: un plan puede tener las familias comunes sin estas.
   premium_menu_styles: boolean
   item_limit: number | null

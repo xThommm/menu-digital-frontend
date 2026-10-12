@@ -235,3 +235,15 @@
 
 :global([data-menu-family="tactile"]) .bannerBtn,
 :global([data-menu-family="tactile"]) .bannerIcon { box-shadow: var(--tx-puffy); }
+
+:global([data-menu-family="retro-diner"]) :is(.sendBtn, .bannerBtn) { border-radius: 999px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+:global([data-menu-family="retro-diner"]) :is(.banner, .historyItem) { border: var(--rd-line); border-radius: var(--t-family-radius); }
+
+:global([data-menu-family="neon"]) :is(.sendBtn, .bannerBtn) { border-radius: 999px; box-shadow: 0 0 16px color-mix(in srgb, var(--t-accent) 55%, transparent); }
+:global([data-menu-family="neon"]) :is(.banner, .historyItem) { border: var(--nn-line-off); border-radius: var(--t-family-radius); }
+
+:global([data-menu-family="swiss"]) :is(.sendBtn, .bannerBtn) { --control-shape: 0; border-radius: 0; font-weight: 700; }
+:global([data-menu-family="swiss"]) :is(.banner, .historyItem) { border: 0; border-top: var(--sw-rule); border-radius: 0; background: none; }
+
+:global([data-menu-family="art-deco"]) :is(.sendBtn, .bannerBtn) { --control-shape: 0; border-radius: 0; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+:global([data-menu-family="art-deco"]) :is(.banner, .historyItem) { border: var(--ad-line); border-radius: 0; }

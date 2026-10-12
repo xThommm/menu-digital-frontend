@@ -68,7 +68,7 @@ test("el cuerpo del PATCH lleva el diseño cuando el dueño lo eligió", () => {
 // Espejo de PREMIUM_MENU_STYLES del backend: si divergen, el selector ofrece
 // un diseño que el PATCH rechaza (o candadea uno que el plan ya incluye).
 test("los diseños premium son familias con su propia feature", () => {
-  assert.deepEqual([...PREMIUM_MENU_STYLES], ["neo-brutalism", "tactile"]);
+  assert.deepEqual([...PREMIUM_MENU_STYLES], ["neo-brutalism", "tactile", "retro-diner", "neon", "swiss", "art-deco"]);
   for (const style of PREMIUM_MENU_STYLES) {
     assert.equal(isPremiumMenuStyle(style), true);
     assert.equal(getVisualFamily(style)?.id, style);

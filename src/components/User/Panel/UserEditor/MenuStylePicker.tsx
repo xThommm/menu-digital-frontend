@@ -1,4 +1,4 @@
-import { LayoutGrid, List, Check, Coffee, Sandwich, Flame, Wine, Croissant, Lock, Shapes, Hand } from "lucide-react";
+import { LayoutGrid, List, Check, Coffee, Sandwich, Flame, Wine, Croissant, Lock, Shapes, Hand, IceCreamCone, Zap, Grid3x3, Martini } from "lucide-react";
 import { MENU_STYLE_OPTIONS, isLegacyMenuStyle, isPremiumMenuStyle, getMenuStyleFeature, type MenuStyle } from "../../../../lib/menuStyles";
 import { TEMPLATES, templateName } from "../../../../lib/templates";
 import styles from "./MenuStylePicker.module.css";
@@ -7,6 +7,7 @@ const styleIcons: Record<MenuStyle, typeof List> = {
   classic: List, bistro: LayoutGrid,
   coffee: Coffee, "fast-food": Sandwich, grill: Flame, premium: Wine, bakery: Croissant,
   "neo-brutalism": Shapes, tactile: Hand,
+  "retro-diner": IceCreamCone, neon: Zap, swiss: Grid3x3, "art-deco": Martini,
 };
 
 type StyleFeature = NonNullable<ReturnType<typeof getMenuStyleFeature>>;

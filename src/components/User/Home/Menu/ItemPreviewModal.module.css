@@ -413,3 +413,40 @@
 :global([data-menu-family="tactile"]) .badge { border: 0; border-radius: 999px; font-weight: 800; }
 :global([data-menu-family="tactile"]) .addBtn { min-height: 52px; padding-inline: 1.4rem; border-radius: 999px; font-weight: 800; box-shadow: var(--tx-puffy); }
 :global([data-menu-family="tactile"]) .addBtn:active { translate: 0 4px; box-shadow: var(--tx-puffy-pressed); }
+
+:global([data-menu-family="retro-diner"]) .sheet { border: var(--rd-line); box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35); }
+:global([data-menu-family="retro-diner"]) :is(.img, .imgPlaceholder) { border-bottom: 8px solid; border-image: var(--rd-stripes) 8; }
+:global([data-menu-family="retro-diner"]) .close { border: var(--rd-line); border-radius: 50%; background: var(--t-surface); color: var(--t-accent); }
+:global([data-menu-family="retro-diner"]) .name { font-size: 2rem; line-height: 1.1; }
+:global([data-menu-family="retro-diner"]) .price { padding: 3px 12px; border-radius: 7px; background: var(--t-accent); color: var(--t-btn-text); font-weight: 700; outline: 1px dashed color-mix(in srgb, var(--t-btn-text) 70%, transparent); outline-offset: -4px; }
+:global([data-menu-family="retro-diner"]) .badge { border-radius: 999px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+:global([data-menu-family="retro-diner"]) .addBtn { border-radius: 999px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; box-shadow: var(--rd-drop); }
+:global([data-menu-family="retro-diner"]) .addBtn:active { translate: 0 3px; box-shadow: 0 1px 0 color-mix(in srgb, var(--t-accent) 55%, black); }
+:global([data-menu-family="retro-diner"]) .qtyStepper { border: var(--rd-line); border-radius: 999px; }
+
+:global([data-menu-family="neon"]) .sheet { border: var(--nn-line); box-shadow: var(--nn-glow), 0 30px 60px rgba(0, 0, 0, 0.5); }
+:global([data-menu-family="neon"]) :is(.img, .imgPlaceholder) { border-bottom: var(--nn-line); }
+:global([data-menu-family="neon"]) .close { border: var(--nn-line); border-radius: 50%; background: var(--t-surface); color: var(--nn-tube); box-shadow: var(--nn-glow); }
+:global([data-menu-family="neon"]) .name { font-size: 1.8rem; }
+:global([data-menu-family="neon"]) .price { font-family: var(--font-serif); font-weight: 400; font-size: 1.4rem; color: var(--nn-tube); text-shadow: var(--nn-text-glow-sm); }
+:global([data-menu-family="neon"]) .badge { border-radius: 999px; }
+:global([data-menu-family="neon"]) .addBtn { border-radius: 999px; font-family: var(--font-serif); font-weight: 400; font-size: 1.05rem; box-shadow: 0 0 16px color-mix(in srgb, var(--t-accent) 60%, transparent), 0 0 40px color-mix(in srgb, var(--t-accent) 28%, transparent); }
+:global([data-menu-family="neon"]) .qtyStepper { border: var(--nn-line); border-radius: 999px; background: transparent; }
+
+:global([data-menu-family="swiss"]) .sheet { border-top: 6px solid var(--t-title); }
+:global([data-menu-family="swiss"]) .close { border: 0; border-radius: 0; background: var(--t-title); color: var(--t-bg); }
+:global([data-menu-family="swiss"]) .name { font-size: clamp(2rem, 8vw, 2.75rem); line-height: 0.95; }
+:global([data-menu-family="swiss"]) .price { font-size: 1.3rem; font-weight: 500; letter-spacing: -0.02em; color: var(--t-title); font-variant-numeric: tabular-nums; }
+:global([data-menu-family="swiss"]) .badge { border: 1px solid currentColor; border-radius: 0; background: none; }
+:global([data-menu-family="swiss"]) .addBtn { --control-shape: 0; border-radius: 0; font-weight: 700; letter-spacing: -0.01em; }
+:global([data-menu-family="swiss"]) .qtyStepper { border: 1px solid var(--t-title); border-radius: 0; background: none; }
+
+:global([data-menu-family="art-deco"]) .sheet { border: var(--ad-line); outline: 1px solid var(--t-accent); outline-offset: -7px; }
+:global([data-menu-family="art-deco"]) .imageZone { padding: 1.5rem 1.5rem 0; }
+:global([data-menu-family="art-deco"]) :is(.img, .imgPlaceholder) { width: min(100%, 280px, 34dvh); aspect-ratio: 3 / 4; margin-inline: auto; border: var(--ad-line); border-radius: 999px 999px 0 0; }
+:global([data-menu-family="art-deco"]) .close { border: var(--ad-line); border-radius: 0; background: var(--t-surface); color: var(--t-accent); }
+:global([data-menu-family="art-deco"]) .name { font-size: 1.45rem; line-height: 1.3; }
+:global([data-menu-family="art-deco"]) .price { font-weight: 600; letter-spacing: 0.1em; }
+:global([data-menu-family="art-deco"]) .badge { border-radius: 0; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+:global([data-menu-family="art-deco"]) .addBtn { --control-shape: 0; border-radius: 0; font-weight: 600; font-size: 0.8rem; letter-spacing: 0.2em; text-transform: uppercase; }
+:global([data-menu-family="art-deco"]) .qtyStepper { border: var(--ad-line); border-radius: 0; background: transparent; }
