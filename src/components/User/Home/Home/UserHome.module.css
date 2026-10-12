@@ -816,7 +816,10 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   PLANTILLA INMERSIVA (lib/pageLayouts.ts) — solo escritorio
+   PLANTILLAS DE PÁGINA (lib/pageLayouts.ts) — solo escritorio
+   Base: la Inmersiva. Lo que vale para todas va con [data-page-layout]
+   (el atributo solo existe fuera de Estándar); cada plantilla ajusta lo
+   suyo más abajo con [data-page-layout="id"].
    La plantilla decide la composición; la paleta sigue poniendo los colores
    y el diseño de carta la tipografía y las formas. Por eso acá no hay
    colores propios ni fuentes: solo dónde va cada cosa.
@@ -833,8 +836,9 @@
   display: grid;
   align-items: end;
   padding: 120px var(--hero-gutter) 56px;
-  /* Sin foto: un resplandor del acento para que el encabezado no quede plano. */
-  background: radial-gradient(90% 120% at 12% 100%, color-mix(in srgb, var(--t-accent) 16%, transparent), transparent 62%);
+  /* Sin foto: un resplandor del acento para que el encabezado no quede plano.
+     Se apaga antes del borde de abajo: si no, se nota dónde termina. */
+  background: radial-gradient(60% 75% at 0% 40%, color-mix(in srgb, var(--t-accent) 16%, transparent), transparent 70%);
 }
 
 .heroWithCover {
@@ -887,44 +891,44 @@
   min-width: 0;
 }
 
-.landing[data-page-layout="immersive"] .hero .title {
+.landing[data-page-layout] .hero .title {
   margin-bottom: 20px;
   line-height: 1;
   text-wrap: balance;
 }
 /* El Editorial suizo ya trae un nombre más grande que este: se lo deja. */
-.landing[data-page-layout="immersive"]:not([data-menu-family="swiss"]) .hero .title { font-size: clamp(3.5rem, 6.4vw, 6.25rem); }
-.landing[data-page-layout="immersive"] .hero .familyEyebrow { margin-bottom: 16px; }
+.landing[data-page-layout]:not([data-menu-family="swiss"]) .hero .title { font-size: clamp(3.5rem, 6.4vw, 6.25rem); }
+.landing[data-page-layout] .hero .familyEyebrow { margin-bottom: 16px; }
 
 /* Las insignias van sobre la foto: fondo opaco. Los diseños con insignia
    propia (contorno, relieve) conservan la suya. */
-.landing[data-page-layout="immersive"]:not([data-menu-family]) .hero :global(.t-badge) {
+.landing[data-page-layout]:not([data-menu-family]) .hero :global(.t-badge) {
   background: color-mix(in srgb, var(--t-accent) 14%, var(--t-bg));
 }
 
 /* Acciones en fila, a su ancho: en una pantalla ancha un botón de lado a
    lado se lee como una barra. */
-.landing[data-page-layout="immersive"] .hero .actions {
+.landing[data-page-layout] .hero .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   width: auto;
   margin-inline: 0;
 }
-.landing[data-page-layout="immersive"] .hero .actions > * { flex: 0 0 auto; }
-.landing[data-page-layout="immersive"] .hero .actions :global(.t-btn),
-.landing[data-page-layout="immersive"] .hero .reserveBtn { width: auto; min-width: 232px; padding-inline: 32px; }
-.landing[data-page-layout="immersive"] .hero .reserveBtn { min-height: 52px; }
-.landing[data-page-layout="immersive"][data-menu-family] .hero .reserveBtn { min-height: 56px; }
+.landing[data-page-layout] .hero .actions > * { flex: 0 0 auto; }
+.landing[data-page-layout] .hero .actions :global(.t-btn),
+.landing[data-page-layout] .hero .reserveBtn { width: auto; min-width: 232px; padding-inline: 32px; }
+.landing[data-page-layout] .hero .reserveBtn { min-height: 52px; }
+.landing[data-page-layout][data-menu-family] .hero .reserveBtn { min-height: 56px; }
 
-.landing[data-page-layout="immersive"] .hero .mapBadge { max-width: 100%; min-height: 0; padding: 12px 16px; gap: var(--space-3); }
-.landing[data-page-layout="immersive"] .hero .mapBadge > svg:last-child { margin-left: var(--space-2); }
+.landing[data-page-layout] .hero .mapBadge { max-width: 100%; min-height: 0; padding: 12px 16px; gap: var(--space-3); }
+.landing[data-page-layout] .hero .mapBadge > svg:last-child { margin-left: var(--space-2); }
 
 /* Diseños de composición centrada (Bistró / Premium, Art déco): el
    encabezado también va al centro y el velo solo funde hacia abajo. */
-.landing[data-page-layout="immersive"]:is([data-menu-family="premium"], [data-menu-family="art-deco"]) .heroIntro { justify-self: center; justify-items: center; text-align: center; }
-.landing[data-page-layout="immersive"]:is([data-menu-family="premium"], [data-menu-family="art-deco"]) .hero .actions { justify-content: center; }
-.landing[data-page-layout="immersive"]:is([data-menu-family="premium"], [data-menu-family="art-deco"]) .heroWithCover::after {
+.landing[data-page-layout]:is([data-menu-family="premium"], [data-menu-family="art-deco"]) .heroIntro { justify-self: center; justify-items: center; text-align: center; }
+.landing[data-page-layout]:is([data-menu-family="premium"], [data-menu-family="art-deco"]) .hero .actions { justify-content: center; }
+.landing[data-page-layout]:is([data-menu-family="premium"], [data-menu-family="art-deco"]) .heroWithCover::after {
   background: linear-gradient(to top,
     var(--t-bg) 0%,
     color-mix(in srgb, var(--t-bg) 90%, transparent) 30%,
@@ -933,21 +937,21 @@
 }
 
 /* ── Debajo de la foto ── */
-.landing[data-page-layout="immersive"] .layout { max-width: 1288px; padding: 72px 48px 96px; }
-.landing[data-page-layout="immersive"] .heroWithCover + .layout { padding-top: 40px; }
-.landing[data-page-layout="immersive"] .content { grid-template-columns: minmax(0, 1.9fr) minmax(320px, 1fr); gap: 64px; }
-.landing[data-page-layout="immersive"] .content:not(:has(.gallerySection)),
-.landing[data-page-layout="immersive"] .content:not(:has(.practical > *)) { grid-template-columns: minmax(0, 1fr); max-width: 760px; margin-inline: auto; }
-.landing[data-page-layout="immersive"] .content:not(:has(.practical > *)) { max-width: none; }
+.landing[data-page-layout] .layout { max-width: 1288px; padding: 72px 48px 96px; }
+.landing[data-page-layout] .heroWithCover + .layout { padding-top: 40px; }
+.landing[data-page-layout] .content { grid-template-columns: minmax(0, 1.9fr) minmax(320px, 1fr); gap: 64px; }
+.landing[data-page-layout] .content:not(:has(.gallerySection)),
+.landing[data-page-layout] .content:not(:has(.practical > *)) { grid-template-columns: minmax(0, 1fr); max-width: 760px; margin-inline: auto; }
+.landing[data-page-layout] .content:not(:has(.practical > *)) { max-width: none; }
 /* Horarios y contacto acompañan mientras se recorren las fotos. */
-.landing[data-page-layout="immersive"] .content:has(.gallerySection) .practical { position: sticky; top: calc(var(--free-ad-h, 0px) + 32px); }
+.landing[data-page-layout] .content:has(.gallerySection) .practical { position: sticky; top: calc(var(--free-ad-h, 0px) + 32px); }
 
-.landing[data-page-layout="immersive"]:not([data-menu-family]) .galleryTitle { margin-bottom: var(--space-6); font-size: 2rem; }
-.landing[data-page-layout="immersive"]:not([data-menu-family]) .gallery { gap: var(--space-4); }
+.landing[data-page-layout]:not([data-menu-family]) .galleryTitle { margin-bottom: var(--space-6); font-size: 2rem; }
+.landing[data-page-layout]:not([data-menu-family]) .gallery { gap: var(--space-4); }
 /* Mosaico: con 3 o 6 fotos la primera ocupa cuatro lugares y las demás
    completan el rectángulo. Con otras cantidades quedaría un hueco, así que
    sigue la grilla pareja. */
-.landing[data-page-layout="immersive"] .galleryItem:first-child:is(:nth-last-child(3), :nth-last-child(6)) {
+.landing[data-page-layout] .galleryItem:first-child:is(:nth-last-child(3), :nth-last-child(6)) {
   position: relative;
   grid-column: span 2;
   grid-row: span 2;
@@ -955,15 +959,48 @@
 }
 /* La foto grande no define el alto de sus filas (lo hacen las chicas, con la
    proporción de cada diseño): si lo hiciera, quedaría un hueco al lado. */
-.landing[data-page-layout="immersive"] .galleryItem:first-child:is(:nth-last-child(3), :nth-last-child(6)) .galleryButton { position: absolute; inset: 0; }
+.landing[data-page-layout] .galleryItem:first-child:is(:nth-last-child(3), :nth-last-child(6)) .galleryButton { position: absolute; inset: 0; }
 
-/* ── Secciones de la Inmersiva (LandingShowcase.tsx) ──
+/* Inmersiva: sin ajustes propios, es la base de arriba. El selector queda
+   escrito para que test/pageLayouts.test.ts la encuentre. */
+.landing[data-page-layout="immersive"] .hero { isolation: auto; }
+
+/* ── Plantilla Partida ──
+   El texto a un lado y la foto al otro, enmarcada; nada va encima de la
+   foto, así que no hay velo. Sin foto queda una sola columna. */
+.landing[data-page-layout="split"] .hero { align-items: center; padding: 88px var(--hero-gutter) 112px; }
+.landing[data-page-layout="split"] .heroWithCover {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 72px;
+  min-height: clamp(560px, calc(100svh - var(--free-ad-h, 0px) - 96px), 780px);
+  /* Conserva el resplandor del acento que la Inmersiva tapa con la foto. */
+  background: radial-gradient(60% 75% at 0% 40%, color-mix(in srgb, var(--t-accent) 16%, transparent), transparent 70%);
+}
+.landing[data-page-layout="split"] .heroWithCover::after { content: none; }
+.landing[data-page-layout="split"] .heroCover {
+  position: relative;
+  inset: auto;
+  order: 2;
+  align-self: stretch;
+  min-height: 440px;
+  max-height: 620px;
+  border-radius: var(--t-family-photo-radius, 28px);
+  /* Marco fino separado de la foto, del color de acento. */
+  outline: 1px solid color-mix(in srgb, var(--t-accent) 50%, transparent);
+  outline-offset: 14px;
+  box-shadow: 0 40px 80px -48px color-mix(in srgb, var(--t-title) 60%, transparent);
+}
+.landing[data-page-layout="split"] .heroIntro { width: auto; }
+.landing[data-page-layout="split"]:not([data-menu-family="swiss"]) .hero .title { font-size: clamp(3.25rem, 5.2vw, 5.25rem); }
+.landing[data-page-layout="split"] .hero :global(.t-badge) { background: color-mix(in srgb, var(--t-accent) 10%, transparent); }
+
+/* ── Secciones (LandingShowcase.tsx) ──
    Franja de servicios, vidriera de platos, aviso de oferta y cierre. Solo se
-   dibujan con esta plantilla, así que no llevan [data-page-layout]. Colores
+   dibujan fuera de Estándar, así que no llevan [data-page-layout]. Colores
    de la paleta; radios y tipografía del diseño cuando los define
    (--t-family-*), con un valor propio de respaldo para Clásico y Bistró. */
-.landing[data-page-layout="immersive"] .layout { display: grid; gap: 96px; }
-.landing[data-page-layout="immersive"] .layout > * { min-width: 0; }
+.landing[data-page-layout] .layout { display: grid; gap: 96px; }
+.landing[data-page-layout] .layout > * { min-width: 0; }
 
 /* Título de sección: línea chica entre filetes y título centrado. */
 .sectionHead { display: grid; justify-items: center; gap: 14px; margin-bottom: 40px; text-align: center; }
@@ -979,7 +1016,7 @@
 }
 .sectionEyebrow::before,
 .sectionEyebrow::after { content: ""; width: 44px; height: 1px; background: color-mix(in srgb, var(--t-accent) 55%, transparent); }
-.landing[data-page-layout="immersive"] .sectionTitle { margin: 0; font-size: clamp(2rem, 3.2vw, 2.9rem); line-height: 1.08; text-wrap: balance; }
+.landing[data-page-layout] .sectionTitle { margin: 0; font-size: clamp(2rem, 3.2vw, 2.9rem); line-height: 1.08; text-wrap: balance; }
 
 /* Franja de servicios: se monta sobre el final de la foto. */
 .services {
@@ -1108,12 +1145,12 @@
 .offer:not(:has(.offerImg)) { grid-template-columns: minmax(0, 1fr); }
 .offerText { display: grid; align-content: center; justify-items: start; gap: 14px; padding: 48px 56px; }
 .offerEyebrow { margin: 0; color: var(--t-accent); font: 600 0.72rem var(--font-template-sans); letter-spacing: 0.26em; text-transform: uppercase; }
-.landing[data-page-layout="immersive"] .offerTitle { margin: 0; font-size: clamp(2rem, 3vw, 2.75rem); line-height: 1.08; text-wrap: balance; }
+.landing[data-page-layout] .offerTitle { margin: 0; font-size: clamp(2rem, 3vw, 2.75rem); line-height: 1.08; text-wrap: balance; }
 .offerDesc { margin: 0; max-width: 46ch; color: var(--t-text); font-size: 0.95rem; line-height: 1.6; }
 .offerPrices { display: flex; align-items: center; gap: 4px 12px; flex-wrap: wrap; margin: 0; }
 .offerPrices strong { color: var(--t-accent); font-size: 1.9rem; font-weight: 700; }
 .offerPrices .pickOld { margin: 0; font-size: 1rem; }
-.landing[data-page-layout="immersive"] .offerText :global(.t-btn) { width: auto; min-height: 52px; margin: 6px 0 0; padding-inline: 32px; }
+.landing[data-page-layout] .offerText :global(.t-btn) { width: auto; min-height: 52px; margin: 6px 0 0; padding-inline: 32px; }
 /* La foto llena la altura que marca el texto, sin estirar el aviso. */
 .offerImg { width: 100%; height: 100%; max-height: 420px; min-height: 320px; object-fit: cover; }
 
@@ -1122,8 +1159,8 @@
 .closing .sectionHead { margin-bottom: 14px; }
 .closingAddress { margin: 0 0 28px; color: var(--t-text); font-size: 0.95rem; }
 .closingActions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
-.landing[data-page-layout="immersive"] .closingActions :global(.t-btn),
-.landing[data-page-layout="immersive"] .closingActions .reserveBtn { width: auto; min-width: 220px; min-height: 52px; margin: 0; padding-inline: 32px; }
+.landing[data-page-layout] .closingActions :global(.t-btn),
+.landing[data-page-layout] .closingActions .reserveBtn { width: auto; min-width: 220px; min-height: 52px; margin: 0; padding-inline: 32px; }
 
 @media (prefers-reduced-motion: reduce) {
   .pickButton, .pickMedia img, .pickArrow, .picksMore { transition: none; }

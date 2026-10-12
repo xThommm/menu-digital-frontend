@@ -22,7 +22,7 @@ test("las cuentas y los backends sin el campo conservan la plantilla Estándar",
 // Espejo de PAGE_LAYOUT_CATALOG del backend: si divergen, el selector ofrece
 // una plantilla que el PATCH rechaza (o candadea una que el plan ya incluye).
 test("Estándar es la única plantilla abierta a todos los planes", () => {
-  assert.deepEqual(PAGE_LAYOUT_OPTIONS.map(option => option.id), ["standard", "immersive"]);
+  assert.deepEqual(PAGE_LAYOUT_OPTIONS.map(option => option.id), ["standard", "immersive", "split"]);
   assert.equal(getPageLayoutFeature("standard"), null);
   for (const option of PAGE_LAYOUT_OPTIONS.filter(option => option.id !== "standard")) {
     assert.equal(getPageLayoutFeature(option.id), "page_layouts");

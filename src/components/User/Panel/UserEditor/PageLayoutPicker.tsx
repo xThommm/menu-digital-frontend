@@ -53,6 +53,32 @@ const thumbnails: Record<PageLayout, ReactElement> = {
       <rect className={styles.block} x="198" y="70" width="30" height="13" rx="2" />
     </>
   ),
+  split: (
+    <>
+      <rect className={styles.ink} x="12" y="18" width="40" height="8" rx="2" />
+      <rect className={styles.line} x="12" y="31" width="30" height="3" rx="1.5" />
+      <rect className={styles.accent} x="12" y="40" width="22" height="8" rx="4" />
+      <rect className={styles.block} x="37" y="40" width="20" height="8" rx="4" />
+      <rect className={styles.photo} x="66" y="12" width="42" height="42" rx="5" />
+      <rect className={styles.block} x="12" y="64" width="22" height="16" rx="2" />
+      <rect className={styles.block} x="37" y="64" width="22" height="16" rx="2" />
+      <rect className={styles.block} x="62" y="64" width="22" height="16" rx="2" />
+      <rect className={styles.block} x="87" y="64" width="21" height="16" rx="2" />
+
+      <rect className={styles.ink} x="132" y="14" width="38" height="7" rx="2" />
+      <rect className={styles.line} x="132" y="25" width="28" height="3" rx="1.5" />
+      <rect className={styles.photo} x="186" y="10" width="42" height="24" rx="4" />
+      <rect className={styles.accent} x="132" y="40" width="16" height="6" rx="3" />
+      <rect className={styles.block} x="151" y="40" width="16" height="6" rx="3" />
+      <rect className={styles.line} x="124" y="50" width="112" height="1" />
+      <rect className={styles.block} x="132" y="56" width="30" height="12" rx="2" />
+      <rect className={styles.block} x="165" y="56" width="30" height="12" rx="2" />
+      <rect className={styles.block} x="198" y="56" width="30" height="12" rx="2" />
+      <rect className={styles.block} x="132" y="71" width="30" height="12" rx="2" />
+      <rect className={styles.block} x="165" y="71" width="30" height="12" rx="2" />
+      <rect className={styles.block} x="198" y="71" width="30" height="12" rx="2" />
+    </>
+  ),
 };
 
 export default function PageLayoutPicker({

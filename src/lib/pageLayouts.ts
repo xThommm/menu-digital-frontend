@@ -28,6 +28,12 @@ export const PAGE_LAYOUT_OPTIONS = [
     description: "La foto de portada a pantalla completa con el nombre encima; carta con cabecera fotográfica y categorías siempre a mano.",
     gated: true,
   },
+  {
+    id: "split",
+    name: "Partida",
+    description: "El nombre y los botones a un lado y la foto de portada al otro, enmarcada; la carta abre con la misma cabecera partida.",
+    gated: true,
+  },
 ] as const;
 
 export type PageLayout = typeof PAGE_LAYOUT_OPTIONS[number]["id"];

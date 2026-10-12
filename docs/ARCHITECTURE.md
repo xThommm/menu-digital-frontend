@@ -1,5 +1,25 @@
 # MenuDigital — Arquitectura de la aplicación
-> **Revisión vigente — 09-10-2026:** manejo de pedidos que no siguen su curso
+> **Revisión vigente — 12-10-2026:** plantillas de página, rama
+> `plantillas-portada` en ambos repos: la composición de la portada y la carta en
+> escritorio pasa a ser un tercer eje de la apariencia (`User.pageLayout`, feature
+> `page_layouts`), con las plantillas Inmersiva y Partida. Ver
+> [`config/pageLayouts.js`](#configpagelayoutsjs) y `lib/pageLayouts.ts`. Backend
+> 813/813 y frontend 158/158, typecheck, lint y build; probado contra la maqueta
+> local, no desplegado. En esta revisión también se corrigieron datos viejos (las
+> paletas ya no tienen tope de 15) y se listaron rutas y archivos que faltaban.
+>
+> **Pendiente de documentar** (el código existe y funciona; falta su sección):
+> reservas online (`src/reservations/` y `src/features/reservations/`), reportes de
+> ventas y caja (`reportExportController`, `reportService`, `reportWorkbook`,
+> `cashService`; `Stats/SalesView`, `CashView`, `ExportDialog`), notificaciones y
+> push del panel admin (`AdminNotification`, `AdminPushToken`,
+> `AdminPushPreference`, `adminPushService`; `Admin/Notifications/`), avisos al
+> dueño (`services/ownerAlerts.js`; `src/features/ownerAlerts/`), comandas por sector
+> (`sectorController`, `sectorService`, `sectorRouting`, migración
+> `003_comandas.sql`; `features/orders/lib/print/`) y Halloween
+> (`components/Halloween/`, `useHalloween`, `lib/halloween.ts`).
+>
+> **Revisión anterior — 09-10-2026:** manejo de pedidos que no siguen su curso
 > natural, rama `feature/manejo-pedidos` en ambos repos: quitar o restaurar un
 > producto de un pedido en curso (falta de stock), devolución parcial sugerida si
 > estaba pagado online y entrega en partes. Además, todas las pantallas de pedidos
@@ -193,10 +213,16 @@ Conexión a Postgres (Neon) con un `Pool` de `pg`, creado recién cuando se usa.
 
 ### `config/plans.js`
 
-Reglas técnicas: `PLAN_MAP`, `PLAN_ORDER`, `BOOLEAN_FEATURES`, `TEMPLATE_IDS`,
+Reglas técnicas: `PLAN_MAP`, `PLAN_ORDER`, `BOOLEAN_FEATURES`, `isTemplateId`,
 `isValidFeatures`, `isValidPeriodMultipliers`, `getTemplateForFeatures` y `getEffectivePlan`.
 El orden solo gobierna upgrade/renovación; **no hay herencia de beneficios**.
 Las asignaciones, límites y diseños permitidos viven en `Plan.features`.
+Las paletas las define el frontend (`lib/templates.ts` + `globals.css`): acá
+`isTemplateId` solo valida la forma del ID (entero ≥ 1, sin tope), para que sumar una
+no exija un deploy del backend. `BOOLEAN_FEATURES` tiene 14 claves; la última es
+`page_layouts`. `isValidFeatures` exige la cantidad **exacta** de claves, y el
+frontend también: agregar una feature es un cambio de contrato entre los dos repos
+(ver `normalizePlanFeatures` en `lib/plans.ts`, que lo suaviza del lado del front).
 Una suscripción vencida usa Free; un template retirado se presenta con el primer
 ID permitido sin modificar la selección persistida.
 **`getSubscriptionState(user)`** devuelve el estado que consumen los paneles (plan
@@ -260,6 +286,22 @@ paleta (`template`): `classic`, `bistro`, `coffee`, `fast-food`, `grill`, `premi
   la API responde `classic`. El valor elegido sigue guardado, así que al renovar la
   carta recupera su diseño sin volver a elegirlo.
 
+### `config/pageLayouts.js`
+
+Plantillas de página (`User.pageLayout`, 12-10-2026): la **composición** de la
+portada y la carta en escritorio. Es el tercer eje de la apariencia y no se pisa con
+los otros dos: `template` elige la paleta y `menuStyle` la familia (tipografía y
+formas). En el celular todas las plantillas se ven como Estándar.
+
+- `PAGE_LAYOUT_CATALOG`: `standard` (abierta a todos los planes; es como se veían
+  todas las cuentas antes del campo), `immersive` y `split` (feature
+  `page_layouts`, solo Pro al lanzarla). De esa tabla salen `PAGE_LAYOUTS` (enum del
+  modelo) y `PAGE_LAYOUT_LABELS`. Espejo en `src/lib/pageLayouts.ts` del front.
+- **`getPageLayoutFeature(value)`** — feature que habilita una plantilla, o null.
+- **`getPageLayoutForFeatures(value, features)`** — recorte de lectura, igual que
+  `getMenuStyleForFeatures`: sin la feature la API responde `standard` y el valor
+  elegido sigue guardado en Mongo.
+
 ### `config/cloudinaryStorage.js`
 Storage engine de Multer propio que sube directo a Cloudinary vía `upload_stream`
 (reemplazó a `multer-storage-cloudinary`, que arrastraba una versión vulnerable de
@@ -299,7 +341,9 @@ hook de hasheo con bcrypt y método `matchPassword`. Además:
   código), `trialActive` (marca histórica de que la cuenta nació con la prueba
   gratis de 7 días; se resetea al pagar un plan real) y `lastConnectionAt` (último
   `GET /users/me`).
-- **Apariencia:** `menuStyle` (familia visual, ver `config/menuStyles.js`).
+- **Apariencia:** `menuStyle` (familia visual, ver `config/menuStyles.js`) y
+  `pageLayout` (plantilla de página, ver `config/pageLayouts.js`; default
+  `standard`).
 - **Gestor de imágenes:** `pendingMenuImages` (URLs de Cloudinary subidas y todavía
   sin asignar a ningún producto; al asignarse pasan a `Item.image`, nunca quedan en
   los dos lados) y `presetImagesUser` (marca a mano, a lo sumo un usuario: sus
@@ -338,7 +382,8 @@ Colección `plans`, un documento por `free/basic/pro`: `name` único/inmutable,
 `label`, `description`, `price`, `discountPrice`, moneda ARS, `periodMultipliers`,
 `features`, `updatedBy` y timestamps. Concurrencia optimista con `__v`.
 `features` es un objeto obligatorio idéntico en los tres planes: booleanos explícitos,
-`item_limit` positivo o null y `templateIds` no vacío de IDs 1–15 sin duplicados.
+`item_limit` positivo o null y `templateIds` no vacío de IDs enteros ≥ 1 sin
+duplicados (sin tope: hoy el frontend implementa 25 paletas).
 Free cuesta cero; planes pagos positivos, promociones menores al precio regular.
 `periodMultipliers` es un Map numérico con exactamente 1/3/6/12 meses: un mes vale
 1 y el resto debe ser positivo y no superar la cantidad de meses. Cada total pago
@@ -592,8 +637,8 @@ Endpoints:
     `whatsappNumbers`, `address`, `orderMessage`, `takeAwayMessage`, sin las claves
     vacías; sin mail, redes, ubicación ni mensaje de reserva), `media` con
     `backgroundPicture`, `favicon` y **solo la primera** imagen de `pictures`,
-    `hasDelivery`, `hasTakeAway` (siempre booleano), `template` y `menuStyle`
-    ya recortados por plan,
+    `hasDelivery`, `hasTakeAway` (siempre booleano), `template`, `menuStyle` y
+    `pageLayout` ya recortados por plan,
     `features` con tres booleanos explícitos (`sin_publicidad`, `landing_page`,
     `pedido_whatsapp`) y `menuDisplay`; sin `_id`, `subscription` ni `schedule`.
     `menu` es `{ secciones: [{ title, categorias: [{ title, items }] }], sinSeccion:
@@ -681,8 +726,13 @@ Endpoints:
   devuelve 400 con un mensaje claro si el archivo pesa de más o no es imagen. Quitar
   solo borra la referencia; el archivo queda en Cloudinary.
 - **`useTemplate`** `PATCH /api/users/template` — cambia el template (paleta) y,
-  opcionalmente, `menuStyle` (familia visual de la carta y la landing). Valida contra
-  `TEMPLATE_IDS` y `features.templateIds` del catálogo. **Barrera real** del gating de
+  opcionalmente, `menuStyle` (familia visual de la carta y la landing) y
+  `pageLayout` (plantilla de página). Valida la forma del ID con `isTemplateId` y
+  el permiso contra `features.templateIds` del catálogo. `menuStyle` y `pageLayout`
+  se escriben solo si vienen en el body: un cambio de paleta no pisa lo guardado. Una
+  plantilla fuera del plan responde 403 con `feature: "page_layouts"`. La respuesta
+  trae `template`, `menuStyle` y `pageLayout` ya recortados. `fetchUser` y
+  `getAuthUser` también devuelven `pageLayout`; la carta legacy no. **Barrera real** del gating de
   templates y diseños: si el diseño pide una feature que el plan no tiene
   (`getMenuStyleFeature`) responde 403 con esa `feature` ("Tu plan no incluye los
   diseños premium" / "...las familias visuales"). Si el template o el diseño
@@ -1275,13 +1325,23 @@ refetch al enfocar el tab), importa `globals.css`, y monta `<App/>` dentro de
     `/arrepentimiento` y `/baja`.
   - Admin (protegidas por `AdminRoute` + `AdminLayout`, el shell con sidebar/bottomnav):
     `/admin` (CEODashboard), `/admin/payments` (AdminPayments), `/admin/plans`
-    (AdminPlans) y `/admin/sellers` (AdminSellers). El CRM ya no está en `/admin/crm`:
+    (AdminPlans), `/admin/sellers` (AdminSellers) y `/admin/notifications`
+    (AdminNotifications: bandeja y push). El CRM ya no está en `/admin/crm`:
     vive en `/sellers/crm`, compartido con los vendedores.
   - Vendedores (protegidas por `SellerRoute` + `SellerLayout`; también entra el admin):
     `/sellers` (SellerOverview), `/sellers/simulacion`, `/sellers/configuracion`,
     `/sellers/ranking`, `/sellers/crm` y `/sellers/influencer` (InfluencerOverview).
   - Dueño (protegidas por `UserRoute` + `DashboardLayout`): `/dashboard`,
-    `/menu/editor`, `/user/editor`, `/estadisticas`, `/configuracion` (SettingsPanel).
+    `/menu/editor`, `/user/editor`, `/estadisticas`, `/configuracion` (SettingsPanel)
+    y `/reservas` (ReservationsPage).
+  - Gestión de pedidos (dueño, plan Pro): `/pedidos` (OrdersBoard), `/pedidos/mesas`,
+    `/pedidos/historial`, `/pedidos/operadores` (WaitersPage; `/pedidos/mozos`
+    redirige acá), `/pedidos/sectores`, `/pedidos/caja`, `/pedidos/delivery`,
+    `/pedidos/delivery/repartidores` (`/pedidos/repartidores` redirige acá),
+    `/pedidos/delivery/historial` y `/pedidos/configuracion`. Aparte, `/comandas`
+    (pantalla de comandas por sector).
+  - Personal del local, sin login de dueño: `/:slug/operador` y `/:slug/mozo`
+    (tomador de pedidos), `/:slug/repartidor` y `/repartidor` (app del repartidor).
   - Tenant público por slug (al final): `/:slug` (UserHome) y `/:slug/menu` (UserMenu).
 
 ### `routes/AdminRoutes.tsx`
@@ -1485,6 +1545,12 @@ responde `false`.
 ### `lib/plans.ts`
 
 `PLAN_ORDER`/`PLAN_LABEL` son identificadores, orden y etiquetas técnicas de UI.
+**`normalizePlanFeatures(value)`** (12-10-2026) empareja las features que llegan con
+las que conoce el bundle antes de validarlas: completa en `false` las
+`OPTIONAL_FEATURES` que falten (hoy `page_layouts`) y descarta booleanos
+desconocidos. Con eso el frontend se puede desplegar **antes** que el backend al
+sumar una feature. Lo usa `parsePlanCatalog` (`api/plans.ts`).
+
 `FEATURE_LABELS`, `BOOLEAN_FEATURES` y `getPlanFeatureLabels()` convierten el objeto
 del catálogo en textos visibles, incluyendo límite y cantidad de diseños.
 No asignan permisos: el backend los resuelve desde MongoDB.
@@ -1513,9 +1579,30 @@ opciones cambian cómo se ve una carta que ya está en uso.
 
 ### `lib/templates.ts`
 
-`TEMPLATES` (apariencia de las paletas implementadas) y **`templateName(id)`**. Los
-permisos vienen del catálogo (`features.templateIds`), nunca de esta tabla. Lo usan el
-grid de paletas y el selector de familias.
+`TEMPLATES` (las 25 paletas implementadas; catálogo único y sin tope: sumar una es
+una fila acá y su bloque `[data-template="N"]` en `globals.css`), **`templateName(id)`**
+y **`resolveTemplate(id)`** (un ID desconocido cae a la paleta 1). Cada fila trae además
+los ajustes de la portada con los diseños Clásico y Bistró (`sans`, `radius`, `arrow`,
+`avatar`). Los permisos vienen del catálogo (`features.templateIds`), nunca de esta
+tabla. Lo usan el grid de paletas, el selector de familias, la portada y la carta.
+
+### `lib/pageLayouts.ts`
+
+Espejo de `config/pageLayouts.js`: `PAGE_LAYOUT_OPTIONS` (`standard`, `immersive`,
+`split`), `getPageLayoutFeature`, `resolvePageLayout` (ausente o desconocido =
+Estándar), `pageLayoutName` y `PAGE_LAYOUT_MIN_WIDTH` (1024 px: por debajo, toda
+plantilla se ve como Estándar). Sumar una plantilla: una fila acá, su gemela en el
+backend, su miniatura en `PageLayoutPicker.tsx` y sus estilos
+`[data-page-layout="id"]` en los módulos de la portada y la carta
+(`test/pageLayouts.test.ts` avisa si faltan).
+
+### `lib/landingHighlights.ts`
+
+Qué productos muestra la portada fuera de Estándar. **`pickHighlights(menu, {
+hidePrices })`** devuelve la vidriera (solo disponibles y con foto; recomendados
+primero; 4 productos, u 8 si la carta alcanza) y el producto en oferta para el aviso.
+**`highlightPrice(item, { hidePrices })`** resuelve el precio con el criterio de la
+carta: oferta > variantes ("Desde") > simple.
 
 ### `lib/sellerCommission.ts`
 
@@ -1985,6 +2072,18 @@ Bloquea pagos ante catálogo inválido y exige reconfirmación tras un 409.
 - **`TemplateId`** / **`TemplateTokens`** (types), **`SLUG_REGEX`**, y
   **`TEMPLATE_TOKENS`** — mapa de config por template (heroClass, overlayClass,
   titleClass, showDeliveryRow, galleryRadius, btnLabel, useAvatar) para los 15 templates.
+  **Desactualizado:** ese mapa ya no existe. Los ajustes por paleta viven en
+  `lib/templates.ts` y la portada los lee con `resolveTemplate`.
+- **Plantillas de página (12-10-2026).** En escritorio y fuera de Estándar,
+  `UserHome` cambia el marcado del encabezado (`.hero` / `.heroCover` /
+  `.heroIntro` en vez de `.header` / `.cover` / `.intro`), así las reglas de
+  composición de cada diseño no le llegan; las piezas de adentro son las mismas. Se
+  decide con `useMediaQuery`, no con `@media`, porque cambia la estructura. Suma las
+  secciones de `LandingShowcase.tsx` (franja de servicios, vidriera de platos, aviso
+  de oferta y cierre), con los productos que trae `useLandingHighlights.ts` desde
+  `GET /api/users/:slug/menu?v=2&track=0` (no cuenta como visita a la carta). En
+  `UserMenu` la cabecera pasa a `.immHero` y queda fija una barra con las pestañas y
+  `CategoryNav` (atajos a las categorías, con la activa marcada).
 - **`BusinessLandingPage`** — componente de ruta: valida el slug, hace fetch de
   `/users/:slug`, maneja loading/notFound, y renderiza `<Template>` con los tokens del
   template elegido. Si `landing_page` está desactivada, redirige a la carta;
@@ -2168,7 +2267,13 @@ Editor del menú (`/menu/editor`). El componente más grande.
 
 ### `components/User/Panel/UserEditor/UserEditor.tsx`
 "Mi negocio" (`/user/editor`). Tabs info / media / template.
-- `TEMPLATES` (los 15 diseños implementados), `EMPTY_FORM`. Sub-componentes `Toggle` y
+- `TEMPLATES` viene de `lib/templates.ts` (25 paletas), `EMPTY_FORM`. La pestaña
+  Apariencia tiene tres bloques: `MenuStylePicker` (diseño), `PageLayoutPicker`
+  (plantilla de página, con miniaturas y candado por `page_layouts`) y el grid de
+  paletas. Los tres guardan con `saveTemplate`, que arma el cuerpo con
+  `buildAppearanceBody` (`lib/menuStyles.ts`). En escritorio el editor es un tablero
+  de tarjetas (`Workspace/BusinessWorkspace.tsx`, mapa de bloques en
+  `Workspace/businessBlocks.ts`). Sub-componentes `Toggle` y
   `LockIcon`; el spinner inline viene de `Common/Spinner`.
 - **`UserEditorPage`** — edita datos de contacto vigentes (sin reseñas), delivery / take away, galería
   (subida múltiple a Cloudinary con progreso, drag & drop) y **selección de template**
@@ -2225,6 +2330,36 @@ Estadísticas de visitas (`/estadisticas`, permiso `features.estadisticas`).
   no incluye stats (403), muestra paywall con planes que incluyan `estadisticas`;
   no presupone que Pro la ofrezca.
 
+
+### Archivos sin sección propia
+
+Existen y están en uso; se listan para que no parezcan código muerto. Los que
+pertenecen a un módulo pendiente de documentar figuran en el encabezado.
+
+- **Dashboard del dueño** (`User/Panel/Dashboard/`): `AgendaCard.tsx`,
+  `DashboardWidgets.tsx`, `agendaCalendar.ts`, `todayActivity.ts`,
+  `useTodayActivity.ts`, `useCountUp.ts`.
+- **Editor de menú**: `ImageManager/ImageManager.tsx`,
+  `MenuTemplatePicker/MenuTemplatePicker.tsx`, `Workspace/workspaceFilters.ts`.
+- **Estadísticas** (`User/Panel/Stats/`): `StatsCharts.tsx`, `statsFormat.ts`,
+  `statsInsights.ts`, `statsRequests.ts`.
+- **Pedidos** (`features/orders/`): `customer/OrderTracking.tsx`,
+  `shared/ServiceFields.tsx`, `shared/TableBill.tsx`, `shared/SectorField.tsx`,
+  `waiter/WaiterOrderCard.tsx`, `courier/CourierOrderCard.tsx`,
+  `hooks/useOnlineOrdering.ts`, `hooks/useMenuSectors.ts`, `lib/beep.ts`,
+  `lib/orderTracking.ts`, `lib/service.ts`, `lib/stationSession.ts`.
+- **lib/**: `menuAnalytics.ts` (visitas y embudo de la carta), `ownerSidebar.ts`,
+  `pageScrollbar.ts`, `emailNotVerified.ts`, `pushDevices.ts`, `adminPush.ts`.
+- **Páginas**: `pages/Blog/` (`BlogHome`, `BlogLayout`, `MenuQrGuide`,
+  `blogContent.ts`) y `pages/Legal/Regret.tsx` y `Unsubscribe.tsx`.
+- **Backend**: `utils/menuAnalytics.js`, `services/adminSubscriptionNotices.js`,
+  `orders/controllers/ownerController.js` y `waiterController.js`,
+  `orders/services/tableSessionService.js`, y las migraciones
+  `002_correcciones_gestion.sql`, `005_pedido_en_camino.sql` y
+  `007_repartidor_codigo_manual.sql`.
+- **Variables de entorno sin documentar arriba**: `FIREBASE_SERVICE_ACCOUNT` (push
+  del panel admin), `ADMIN_SUBSCRIPTION_NOTICES`, `KOYEB_PUBLIC_DOMAIN` y
+  `JWT_EXPIRES_IN`.
 
 ## pages/
 
