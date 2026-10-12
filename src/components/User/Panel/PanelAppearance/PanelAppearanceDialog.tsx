@@ -12,7 +12,7 @@ import styles from "./PanelAppearanceDialog.module.css";
 // letra. Cada cambio se aplica al instante (el panel de fondo es la vista
 // previa) y se guarda en el dispositivo; no hay botón de guardar.
 export default function PanelAppearanceDialog({
-  theme, preferences, onTheme, onAccent, onFontSize, onReset, onClose,
+  theme, preferences, onTheme, onAccent, onFontSize, onReset, onClose, className,
 }: {
   theme: PanelTheme;
   preferences: PanelPreferences;
@@ -21,6 +21,9 @@ export default function PanelAppearanceDialog({
   onFontSize: (size: PanelFontSize) => void;
   onReset: () => void;
   onClose: () => void;
+  /** El diálogo va por portal al <body>: el panel CEO pasa su clase de
+      identidad para que no salga con los tonos del panel del dueño. */
+  className?: string;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -41,7 +44,7 @@ export default function PanelAppearanceDialog({
     && preferences.fontSize === DEFAULT_PANEL_PREFERENCES.fontSize;
 
   return createPortal(
-    <div className={styles.overlay} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className={className ? `${styles.overlay} ${className}` : styles.overlay} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
       <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="panel-appearance-title">
         <header className={styles.header}>
           <div>
