@@ -30,6 +30,9 @@ export const FEATURE_LABELS: Record<BooleanPlanFeature, string> = {
   menu_templates: "Cargar productos desde plantilla",
   menu_styles: "Diseños de carta",
   premium_menu_styles: "Diseños de carta premium",
+  // "Plantilla de página" y no "plantilla" a secas: en el panel esa palabra ya
+  // nombra la carga de productos (menu_templates).
+  page_layouts: "Plantillas de página",
 };
 
 // Solo sirve para pintar el estado mientras llega el refresh del backend; los
@@ -46,6 +49,33 @@ export function isSubscriptionExpired(
 }
 
 export const BOOLEAN_FEATURES = Object.keys(FEATURE_LABELS) as BooleanPlanFeature[];
+
+// Features que este frontend ya conoce y un backend anterior todavía no manda.
+// Ausentes valen false (sin la clave el backend tampoco acepta lo que
+// habilitan), así el frontend se puede desplegar antes que el backend sin
+// tirar el catálogo entero. Una clave sale de acá cuando el backend que la
+// manda ya está en producción.
+const OPTIONAL_FEATURES: BooleanPlanFeature[] = ["page_layouts"];
+
+// Deja `features` con la forma que valida isPlanFeatures (api/plans.ts), que
+// exige la cantidad exacta de claves:
+//   - completa en false las OPTIONAL_FEATURES que falten;
+//   - descarta los booleanos que esta versión no conoce: son features más
+//     nuevas que el bundle (una pestaña que quedó abierta durante un deploy) y
+//     no hay nada que mostrar de ellas.
+// Cualquier otra diferencia se deja pasar tal cual, para que el validador la
+// rechace: eso sí es un catálogo roto.
+export function normalizePlanFeatures(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
+  const known = new Set<string>([...BOOLEAN_FEATURES, "item_limit", "templateIds"]);
+  const features: Record<string, unknown> = Object.fromEntries(
+    Object.entries(value).filter(([key, entry]) => known.has(key) || typeof entry !== "boolean"),
+  );
+  for (const key of OPTIONAL_FEATURES) {
+    if (!(key in features)) features[key] = false;
+  }
+  return features;
+}
 
 const paletteLabel = (count: number) => `${count} ${count === 1 ? "paleta de colores" : "paletas de colores"}`;
 

@@ -814,3 +814,319 @@
 @media (prefers-reduced-motion: reduce) {
   .landing[data-menu-family="neon"] .title { animation: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   PLANTILLA INMERSIVA (lib/pageLayouts.ts) — solo escritorio
+   La plantilla decide la composición; la paleta sigue poniendo los colores
+   y el diseño de carta la tipografía y las formas. Por eso acá no hay
+   colores propios ni fuentes: solo dónde va cada cosa.
+
+   El encabezado tiene su propio marcado (.hero en vez de .header/.cover/
+   .intro, ver UserHome.tsx), así las reglas de composición de cada diseño
+   no le llegan y no hay que deshacerlas una por una. Las piezas de adentro
+   (.title, .actions, .reserveBtn, .mapBadge…) son las de siempre.
+   ═══════════════════════════════════════════════════════════════ */
+.hero {
+  /* Margen lateral que alinea el texto con el contenido de abajo (.layout). */
+  --hero-gutter: max(48px, calc((100% - 1288px) / 2 + 48px));
+  position: relative;
+  display: grid;
+  align-items: end;
+  padding: 120px var(--hero-gutter) 56px;
+  /* Sin foto: un resplandor del acento para que el encabezado no quede plano. */
+  background: radial-gradient(90% 120% at 12% 100%, color-mix(in srgb, var(--t-accent) 16%, transparent), transparent 62%);
+}
+
+.heroWithCover {
+  /* Casi toda la pantalla: asoma el comienzo del contenido, que es la pista
+     de que la página sigue. */
+  min-height: clamp(560px, calc(100svh - var(--free-ad-h, 0px) - 56px), 940px);
+  padding-bottom: 72px;
+  background: none;
+}
+
+.heroCover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background-color: var(--t-surface);
+  cursor: zoom-in;
+}
+
+/* Velo: la foto se funde con el fondo de la paleta hacia abajo y hacia el
+   lado del texto. Como sale de --t-bg, el título (--t-title) se lee igual en
+   paletas claras y oscuras sin elegir un color de texto aparte. */
+.heroWithCover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to top,
+      var(--t-bg) 0%,
+      color-mix(in srgb, var(--t-bg) 88%, transparent) 22%,
+      color-mix(in srgb, var(--t-bg) 42%, transparent) 55%,
+      transparent 82%),
+    linear-gradient(to right,
+      color-mix(in srgb, var(--t-bg) 80%, transparent) 0%,
+      color-mix(in srgb, var(--t-bg) 38%, transparent) 42%,
+      transparent 68%);
+}
+
+/* Encima del velo. Ancho acotado: el resto de la foto sigue abriendo el visor. */
+.heroIntro {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: start;
+  gap: 28px;
+  width: min(100%, 760px);
+  min-width: 0;
+}
+
+.landing[data-page-layout="immersive"] .hero .title {
+  margin-bottom: 20px;
+  line-height: 1;
+  text-wrap: balance;
+}
+/* El Editorial suizo ya trae un nombre más grande que este: se lo deja. */
+.landing[data-page-layout="immersive"]:not([data-menu-family="swiss"]) .hero .title { font-size: clamp(3.5rem, 6.4vw, 6.25rem); }
+.landing[data-page-layout="immersive"] .hero .familyEyebrow { margin-bottom: 16px; }
+
+/* Las insignias van sobre la foto: fondo opaco. Los diseños con insignia
+   propia (contorno, relieve) conservan la suya. */
+.landing[data-page-layout="immersive"]:not([data-menu-family]) .hero :global(.t-badge) {
+  background: color-mix(in srgb, var(--t-accent) 14%, var(--t-bg));
+}
+
+/* Acciones en fila, a su ancho: en una pantalla ancha un botón de lado a
+   lado se lee como una barra. */
+.landing[data-page-layout="immersive"] .hero .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: auto;
+  margin-inline: 0;
+}
+.landing[data-page-layout="immersive"] .hero .actions > * { flex: 0 0 auto; }
+.landing[data-page-layout="immersive"] .hero .actions :global(.t-btn),
+.landing[data-page-layout="immersive"] .hero .reserveBtn { width: auto; min-width: 232px; padding-inline: 32px; }
+.landing[data-page-layout="immersive"] .hero .reserveBtn { min-height: 52px; }
+.landing[data-page-layout="immersive"][data-menu-family] .hero .reserveBtn { min-height: 56px; }
+
+.landing[data-page-layout="immersive"] .hero .mapBadge { max-width: 100%; min-height: 0; padding: 12px 16px; gap: var(--space-3); }
+.landing[data-page-layout="immersive"] .hero .mapBadge > svg:last-child { margin-left: var(--space-2); }
+
+/* Diseños de composición centrada (Bistró / Premium, Art déco): el
+   encabezado también va al centro y el velo solo funde hacia abajo. */
+.landing[data-page-layout="immersive"]:is([data-menu-family="premium"], [data-menu-family="art-deco"]) .heroIntro { justify-self: center; justify-items: center; text-align: center; }
+.landing[data-page-layout="immersive"]:is([data-menu-family="premium"], [data-menu-family="art-deco"]) .hero .actions { justify-content: center; }
+.landing[data-page-layout="immersive"]:is([data-menu-family="premium"], [data-menu-family="art-deco"]) .heroWithCover::after {
+  background: linear-gradient(to top,
+    var(--t-bg) 0%,
+    color-mix(in srgb, var(--t-bg) 90%, transparent) 30%,
+    color-mix(in srgb, var(--t-bg) 55%, transparent) 62%,
+    color-mix(in srgb, var(--t-bg) 12%, transparent) 100%);
+}
+
+/* ── Debajo de la foto ── */
+.landing[data-page-layout="immersive"] .layout { max-width: 1288px; padding: 72px 48px 96px; }
+.landing[data-page-layout="immersive"] .heroWithCover + .layout { padding-top: 40px; }
+.landing[data-page-layout="immersive"] .content { grid-template-columns: minmax(0, 1.9fr) minmax(320px, 1fr); gap: 64px; }
+.landing[data-page-layout="immersive"] .content:not(:has(.gallerySection)),
+.landing[data-page-layout="immersive"] .content:not(:has(.practical > *)) { grid-template-columns: minmax(0, 1fr); max-width: 760px; margin-inline: auto; }
+.landing[data-page-layout="immersive"] .content:not(:has(.practical > *)) { max-width: none; }
+/* Horarios y contacto acompañan mientras se recorren las fotos. */
+.landing[data-page-layout="immersive"] .content:has(.gallerySection) .practical { position: sticky; top: calc(var(--free-ad-h, 0px) + 32px); }
+
+.landing[data-page-layout="immersive"]:not([data-menu-family]) .galleryTitle { margin-bottom: var(--space-6); font-size: 2rem; }
+.landing[data-page-layout="immersive"]:not([data-menu-family]) .gallery { gap: var(--space-4); }
+/* Mosaico: con 3 o 6 fotos la primera ocupa cuatro lugares y las demás
+   completan el rectángulo. Con otras cantidades quedaría un hueco, así que
+   sigue la grilla pareja. */
+.landing[data-page-layout="immersive"] .galleryItem:first-child:is(:nth-last-child(3), :nth-last-child(6)) {
+  position: relative;
+  grid-column: span 2;
+  grid-row: span 2;
+  aspect-ratio: auto;
+}
+/* La foto grande no define el alto de sus filas (lo hacen las chicas, con la
+   proporción de cada diseño): si lo hiciera, quedaría un hueco al lado. */
+.landing[data-page-layout="immersive"] .galleryItem:first-child:is(:nth-last-child(3), :nth-last-child(6)) .galleryButton { position: absolute; inset: 0; }
+
+/* ── Secciones de la Inmersiva (LandingShowcase.tsx) ──
+   Franja de servicios, vidriera de platos, aviso de oferta y cierre. Solo se
+   dibujan con esta plantilla, así que no llevan [data-page-layout]. Colores
+   de la paleta; radios y tipografía del diseño cuando los define
+   (--t-family-*), con un valor propio de respaldo para Clásico y Bistró. */
+.landing[data-page-layout="immersive"] .layout { display: grid; gap: 96px; }
+.landing[data-page-layout="immersive"] .layout > * { min-width: 0; }
+
+/* Título de sección: línea chica entre filetes y título centrado. */
+.sectionHead { display: grid; justify-items: center; gap: 14px; margin-bottom: 40px; text-align: center; }
+.sectionEyebrow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  color: var(--t-accent);
+  font: 600 0.72rem var(--font-template-sans);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+.sectionEyebrow::before,
+.sectionEyebrow::after { content: ""; width: 44px; height: 1px; background: color-mix(in srgb, var(--t-accent) 55%, transparent); }
+.landing[data-page-layout="immersive"] .sectionTitle { margin: 0; font-size: clamp(2rem, 3.2vw, 2.9rem); line-height: 1.08; text-wrap: balance; }
+
+/* Franja de servicios: se monta sobre el final de la foto. */
+.services {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+  background: var(--t-surface);
+  border: 1px solid var(--t-border-md);
+  border-radius: var(--t-family-radius, 24px);
+  box-shadow: 0 24px 60px -32px color-mix(in srgb, var(--t-title) 45%, transparent);
+}
+.heroWithCover + .layout .services { margin-top: -72px; }
+.service { display: flex; align-items: center; gap: 16px; padding: 20px 24px; min-width: 0; }
+.service + .service { border-left: 1px solid var(--t-border-md); }
+.serviceIcon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border: 1px solid color-mix(in srgb, var(--t-accent) 55%, transparent);
+  border-radius: 50%;
+  color: var(--t-accent);
+}
+.serviceText { display: grid; gap: 2px; min-width: 0; }
+.serviceText strong { color: var(--t-title); font-size: 0.95rem; font-weight: 600; }
+.serviceText span { color: var(--t-text); font-size: 0.8rem; line-height: 1.4; overflow-wrap: anywhere; }
+
+/* Vidriera de platos */
+.picks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin: 0; padding: 0; list-style: none; }
+.pick { min-width: 0; display: flex; }
+.pickButton {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  background: var(--t-surface);
+  border: 1px solid var(--t-border-md);
+  border-radius: var(--t-family-radius, 22px);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.pickButton:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--t-accent) 60%, transparent);
+  box-shadow: 0 22px 44px -28px color-mix(in srgb, var(--t-title) 55%, transparent);
+}
+.pickMedia { position: relative; display: block; aspect-ratio: 4 / 3; overflow: hidden; background: var(--t-bg); }
+.pickMedia img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+.pickButton:hover .pickMedia img { transform: scale(1.05); }
+.pickBadge,
+.offerBadge {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--t-accent);
+  color: var(--t-btn-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.pickBadge { position: absolute; top: 12px; left: 12px; }
+.pickBody { display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 18px 20px 20px; }
+.pickName { color: var(--t-title); font-size: 1.08rem; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.pickDesc {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--t-text);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.pickFoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 10px; }
+.pickPrice { color: var(--t-accent); font-size: 1.05rem; font-weight: 700; }
+.pickFrom { font-size: 0.75rem; font-weight: 500; }
+.pickOld { margin-left: 8px; color: var(--t-muted); font-size: 0.8rem; font-weight: 400; text-decoration: line-through; }
+.pickArrow {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--t-border-md);
+  border-radius: 50%;
+  color: var(--t-accent);
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.pickButton:hover .pickArrow { background: var(--t-accent); border-color: var(--t-accent); color: var(--t-btn-text); }
+.picksMore {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  margin: 36px auto 0;
+  padding: 0 28px;
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--t-accent) 55%, transparent);
+  border-radius: var(--t-family-radius, 999px);
+  color: var(--t-title);
+  font: 600 0.9rem var(--font-sans);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.picksMore:hover { background: var(--t-accent); color: var(--t-btn-text); }
+
+/* Aviso de oferta */
+.offer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  align-items: stretch;
+  min-height: 320px;
+  overflow: hidden;
+  background: var(--t-surface);
+  border: 1px solid color-mix(in srgb, var(--t-accent) 55%, transparent);
+  border-radius: var(--t-family-radius, 28px);
+}
+.offer:not(:has(.offerImg)) { grid-template-columns: minmax(0, 1fr); }
+.offerText { display: grid; align-content: center; justify-items: start; gap: 14px; padding: 48px 56px; }
+.offerEyebrow { margin: 0; color: var(--t-accent); font: 600 0.72rem var(--font-template-sans); letter-spacing: 0.26em; text-transform: uppercase; }
+.landing[data-page-layout="immersive"] .offerTitle { margin: 0; font-size: clamp(2rem, 3vw, 2.75rem); line-height: 1.08; text-wrap: balance; }
+.offerDesc { margin: 0; max-width: 46ch; color: var(--t-text); font-size: 0.95rem; line-height: 1.6; }
+.offerPrices { display: flex; align-items: center; gap: 4px 12px; flex-wrap: wrap; margin: 0; }
+.offerPrices strong { color: var(--t-accent); font-size: 1.9rem; font-weight: 700; }
+.offerPrices .pickOld { margin: 0; font-size: 1rem; }
+.landing[data-page-layout="immersive"] .offerText :global(.t-btn) { width: auto; min-height: 52px; margin: 6px 0 0; padding-inline: 32px; }
+/* La foto llena la altura que marca el texto, sin estirar el aviso. */
+.offerImg { width: 100%; height: 100%; max-height: 420px; min-height: 320px; object-fit: cover; }
+
+/* Cierre */
+.closing { display: grid; justify-items: center; padding-top: 72px; border-top: 1px solid var(--t-border-md); text-align: center; }
+.closing .sectionHead { margin-bottom: 14px; }
+.closingAddress { margin: 0 0 28px; color: var(--t-text); font-size: 0.95rem; }
+.closingActions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.landing[data-page-layout="immersive"] .closingActions :global(.t-btn),
+.landing[data-page-layout="immersive"] .closingActions .reserveBtn { width: auto; min-width: 220px; min-height: 52px; margin: 0; padding-inline: 32px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pickButton, .pickMedia img, .pickArrow, .picksMore { transition: none; }
+  .pickButton:hover { transform: none; }
+  .pickButton:hover .pickMedia img { transform: none; }
+}

@@ -1,3 +1,5 @@
+import type { PageLayout } from "./pageLayouts.ts";
+
 // Catálogo de diseños de carta. Todos se eligen de la misma lista; lo único
 // que los separa es el plan: Clásico y Bistró están en todos, las familias
 // visuales requieren la feature menu_styles y las premium, premium_menu_styles.
@@ -84,8 +86,15 @@ export function getVisualFamily(value: unknown): VisualFamily | undefined {
 // escribiría "classic" sobre la familia guardada en MongoDB y destruiría lo
 // único que el recorte de lectura promete devolver al renovar. Omitir la clave
 // deja que el backend conserve lo guardado (ver useTemplate).
-export function buildAppearanceBody(template: number, menuStyle?: MenuStyle) {
-  return menuStyle === undefined ? { template } : { template, menuStyle };
+//
+// Lo mismo vale para `pageLayout` (lib/pageLayouts.ts): la API lo recorta a
+// "standard" sin la feature, así que solo viaja cuando el dueño eligió una.
+export function buildAppearanceBody(template: number, menuStyle?: MenuStyle, pageLayout?: PageLayout) {
+  return {
+    template,
+    ...(menuStyle === undefined ? {} : { menuStyle }),
+    ...(pageLayout === undefined ? {} : { pageLayout }),
+  };
 }
 
 // Ausente en cuentas y backends anteriores: conservar el diseño original.

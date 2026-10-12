@@ -194,6 +194,7 @@ export interface BusinessPreviewData {
   template: number;
   paletteName: string;
   styleName: string;
+  layoutName: string;
 }
 
 // Miniatura de la portada del local: se actualiza mientras se edita, antes
@@ -229,7 +230,7 @@ function BusinessPreview({ data }: { data: BusinessPreviewData }) {
         </div>
       </div>
       <figcaption className={bw.previewCaption}>
-        Vista ilustrativa · Diseño {data.styleName} · Paleta {data.paletteName}
+        Vista ilustrativa · Diseño {data.styleName} · Plantilla {data.layoutName} · Paleta {data.paletteName}
       </figcaption>
     </figure>
   );

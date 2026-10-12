@@ -1,5 +1,5 @@
 import { apiFetch } from "./apiClient";
-import { PLAN_ORDER, BOOLEAN_FEATURES } from "../lib/plans";
+import { PLAN_ORDER, BOOLEAN_FEATURES, normalizePlanFeatures } from "../lib/plans";
 import type { Subscription, PlanFeatures } from "../types";
 
 export interface PlanBillingOption {
@@ -100,13 +100,17 @@ function isPlanDefinition(value: unknown): value is PlanDefinition {
 }
 
 export function parsePlanCatalog(response: unknown): PlanDefinition[] {
-  if (!isRecord(response) || !Array.isArray(response.plans)
-    || response.plans.length !== PLAN_ORDER.length || !response.plans.every(isPlanDefinition)
-    || new Set(response.plans.map(plan => plan.name)).size !== PLAN_ORDER.length) {
+  // Antes de validar se emparejan las features con las que conoce este bundle
+  // (ver normalizePlanFeatures): backend y frontend no se despliegan juntos.
+  const plans = isRecord(response) && Array.isArray(response.plans)
+    ? response.plans.map(plan => (isRecord(plan) ? { ...plan, features: normalizePlanFeatures(plan.features) } : plan))
+    : null;
+  if (!plans || plans.length !== PLAN_ORDER.length || !plans.every(isPlanDefinition)
+    || new Set(plans.map(plan => plan.name)).size !== PLAN_ORDER.length) {
     throw new Error("El catálogo de planes está incompleto o no es válido. Intentá nuevamente.");
   }
   // Mantener el orden comercial aunque el servidor entregue otro orden.
-  return [...response.plans].sort((first, second) => PLAN_ORDER.indexOf(first.name) - PLAN_ORDER.indexOf(second.name));
+  return [...plans].sort((first, second) => PLAN_ORDER.indexOf(first.name) - PLAN_ORDER.indexOf(second.name));
 }
 
 export async function listPlans(signal?: AbortSignal): Promise<PlanDefinition[]> {

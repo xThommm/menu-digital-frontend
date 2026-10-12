@@ -28,6 +28,9 @@ export interface PlanFeatures {
   // nocturno, Editorial suizo, Art déco). Clave aparte de
   // menu_styles: un plan puede tener las familias comunes sin estas.
   premium_menu_styles: boolean
+  // Plantillas de página: la composición de la portada y la carta en
+  // escritorio (lib/pageLayouts.ts). Estándar no depende de esta clave.
+  page_layouts: boolean
   item_limit: number | null
   templateIds: number[]
 }
@@ -171,6 +174,8 @@ export interface User {
   template: number
   contactInfo: ContactInfo
   menuStyle?: import("../lib/menuStyles").MenuStyle
+  // Ausente en un backend anterior al campo: Estándar (ver resolvePageLayout).
+  pageLayout?: import("../lib/pageLayouts").PageLayout
   media: Media
   schedule?: Schedule
   // Solo viene en la landing pública (GET /api/users/:slug). Opcional para
@@ -401,9 +406,10 @@ export interface PublicMenuUser {
   hasDelivery: boolean
   hasTakeAway?: boolean
   // Ya recortados por plan en el servidor (getTemplateForFeatures /
-  // getMenuStyleForFeatures).
+  // getMenuStyleForFeatures / getPageLayoutForFeatures).
   template: number
   menuStyle?: import("../lib/menuStyles").MenuStyle
+  pageLayout?: import("../lib/pageLayouts").PageLayout
   // v2 manda estos tres como booleanos explícitos y la carta compara con
   // `=== true`. Opcional (y parcial) para tolerar la respuesta legacy, que
   // manda el catálogo entero de features.

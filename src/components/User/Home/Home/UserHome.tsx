@@ -1,13 +1,18 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styles from "./UserHome.module.css";
+import { Bike, CalendarCheck, Clock, ShoppingBag } from "lucide-react";
 import { useReveal } from "../../../../hooks/useReveal";
+import { ClosingBand, Highlights, OfferBanner, ServiceStrip, type ServiceItem } from "./LandingShowcase";
+import { useLandingHighlights } from "./useLandingHighlights";
 import type { User, ContactInfo, DayKey, DayHours, LandingVisibility, Schedule, TimeRange } from "../../../../types/index";
 import BusinessSEO from "../../../Common/BusinessSEO";
 import FreePlanAd from "../../../Common/FreePlanAd";
 import { getOpenStatus, getBusinessDayIndex, getDayRanges, JS_DAY_TO_KEY } from "../../../../Utils/businessSchedule";
 import { resolveLandingVisibility } from "../../../../lib/landingVisibility";
 import { getVisualFamily, resolveMenuStyle } from "../../../../lib/menuStyles";
+import { PAGE_LAYOUT_MIN_WIDTH, resolvePageLayout } from "../../../../lib/pageLayouts";
+import { useMediaQuery } from "../../../../hooks/useMediaQuery";
 import { pageScrollbarRef } from "../../../../lib/pageScrollbar";
 import { resolveTemplate, type TemplateOption } from "../../../../lib/templates";
 import { buildWaHref, getWaTargets, sanitizePhoneForWa, type WaTarget } from "../../../../lib/whatsapp";
@@ -135,7 +140,13 @@ function Template({ slug, user, palette, goMenu }: TemplateProps) {
   const { contactInfo: info, media, hasDelivery, hasTakeAway, schedule } = user;
   const menuStyle = resolveMenuStyle(user.menuStyle);
   const family = getVisualFamily(menuStyle);
-  const useAvatar = !family && palette.avatar === true;
+  // La plantilla cambia la ESTRUCTURA del encabezado, y solo en escritorio:
+  // por eso se resuelve acá y no con un @media. En el celular (o con Estándar)
+  // el marcado es el de siempre.
+  const isDesktop = useMediaQuery(`(min-width: ${PAGE_LAYOUT_MIN_WIDTH}px)`);
+  const immersive = isDesktop && resolvePageLayout(user.pageLayout) === "immersive";
+  // La Inmersiva usa la foto de portada de fondo: el avatar no tiene lugar.
+  const useAvatar = !immersive && !family && palette.avatar === true;
   const bg = media?.backgroundPicture;
 
   // Guardamos qué URL específica falló, no solo un booleano. Así, cuando `bg`
@@ -182,76 +193,147 @@ function Template({ slug, user, palette, goMenu }: TemplateProps) {
   const isOpenNow = scheduleActive ? getOpenStatus(schedule) : false;
   const showHeroBadges = hasDelivery || hasTakeAway || scheduleActive;
 
-  return (
-    <div ref={pageScrollbarRef} className={`t-wrap ${styles.landing}`} data-template={palette.id} data-title-sans={palette.sans ? "" : undefined} data-menu-style={menuStyle} data-menu-family={family?.id}>
-      {user.features?.sin_publicidad !== true && <FreePlanAd />}
-      <main className={styles.layout}>
-        <header className={`${styles.header} ${showBg && !useAvatar ? styles.headerWithCover : ""}`}>
-          {showBg && !useAvatar && (
-            <button
-              type="button"
-              className={styles.cover}
-              style={heroStyle}
-              aria-label={`Ampliar foto de ${businessName}`}
-              onClick={() => { setViewerIndex(-1); setViewerOpen(true); }}
-            />
-          )}
-          <div className={styles.intro}>
-            <div className={styles.identity}>
-              {useAvatar && showBg && (
-                <button
-                  type="button"
-                  className={`t-avatar ${styles.avatar}`}
-                  style={heroStyle}
-                  aria-label={`Ampliar foto de ${businessName}`}
-                  onClick={() => { setViewerIndex(-1); setViewerOpen(true); }}
-                />
-              )}
-              <div className={styles.identityText}>
-                {family && <p className={styles.familyEyebrow}>Bienvenidos a</p>}
-                <h1 className={`${palette.sans ? "t-title-sans" : "t-title"} ${styles.title}`}>{businessName}</h1>
-                {showHeroBadges && (
-                  <div className={styles.badgeRow}>
-                    {scheduleActive && <OpenStatusBadge isOpen={isOpenNow} />}
-                    {hasDelivery && <DeliveryBadge />}
-                    {hasTakeAway && <TakeAwayBadge />}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className={styles.actions}>
-              <button type="button" onClick={goMenu} className="t-btn">
-                {palette.arrow ? "Ver menú →" : "Ver menú"}
-              </button>
-              {reservations?.enabled ? (
-                <ReservationEntry
-                  slug={slug}
-                  businessName={businessName}
-                  config={reservations}
-                  whatsappTargets={visible.whatsappReserve ? waTargets : []}
-                  whatsappMessage={reserveMessage}
-                  buttonClassName={styles.reserveBtn}
-                />
-              ) : visible.whatsappReserve && (
-                <ReserveButton targets={waTargets} message={info.reservationMessage} businessName={businessName} />
-              )}
-            </div>
-            {visible.address && <MapBadge address={info.address} businessName={businessName} />}
-          </div>
-        </header>
-        <div className={styles.content}>
-          <Gallery
-            pictures={media?.pictures}
-            radius={family ? "var(--t-family-photo-radius)" : `${palette.radius ?? 10}px`}
-            businessName={businessName}
-            onImageClick={(index) => { setViewerIndex(index); setViewerOpen(true); }}
-          />
-          <div className={styles.practical}>
-            {visible.schedule && <ScheduleSection schedule={schedule} />}
-            <ContactList info={info} visible={visible} />
-          </div>
+  // Inmersiva: la portada suma secciones (ver LandingShowcase). La franja de
+  // servicios dice lo mismo que las insignias del encabezado, con más
+  // detalle, así que cuando se muestra las reemplaza.
+  const showcase = useLandingHighlights(slug, immersive);
+  const todayHours = scheduleActive ? formatHours(schedule?.[JS_DAY_TO_KEY[getBusinessDayIndex()]]) : "";
+  const reservesOnline = reservations?.enabled === true;
+  const services: ServiceItem[] = !immersive ? [] : [
+    ...(scheduleActive ? [{ key: "open", icon: <Clock size={22} strokeWidth={1.6} />, title: isOpenNow ? "Abierto ahora" : "Cerrado ahora", detail: `Hoy · ${todayHours}` }] : []),
+    ...(hasDelivery ? [{ key: "delivery", icon: <Bike size={22} strokeWidth={1.6} />, title: "Delivery", detail: "Te lo llevamos a tu casa" }] : []),
+    ...(hasTakeAway ? [{ key: "takeaway", icon: <ShoppingBag size={22} strokeWidth={1.6} />, title: "Take away", detail: "Pedí y retirá en el local" }] : []),
+    ...(reservesOnline || (visible.whatsappReserve && waTargets.length > 0)
+      ? [{ key: "reserve", icon: <CalendarCheck size={22} strokeWidth={1.6} />, title: "Reservas", detail: reservesOnline ? "Reservá tu mesa online" : "Reservá tu mesa por WhatsApp" }]
+      : []),
+  ];
+  const showServices = services.length >= 2;
+  const titleClass = palette.sans ? "t-title-sans" : "t-title";
+  const menuLabel = palette.arrow ? "Ver menú →" : "Ver menú";
+
+  const openCover = () => { setViewerIndex(-1); setViewerOpen(true); };
+
+  // Las piezas del encabezado son las mismas en todas las plantillas; lo que
+  // cambia es el contenedor que las acomoda. Así los estilos de cada diseño
+  // (.title, .actions, .reserveBtn, .mapBadge…) valen en cualquiera.
+  const identityText = (
+    <div className={styles.identityText}>
+      {family && <p className={styles.familyEyebrow}>Bienvenidos a</p>}
+      <h1 className={`${palette.sans ? "t-title-sans" : "t-title"} ${styles.title}`}>{businessName}</h1>
+      {showHeroBadges && !showServices && (
+        <div className={styles.badgeRow}>
+          {scheduleActive && <OpenStatusBadge isOpen={isOpenNow} />}
+          {hasDelivery && <DeliveryBadge />}
+          {hasTakeAway && <TakeAwayBadge />}
         </div>
-      </main>
+      )}
+    </div>
+  );
+  const actions = (
+    <div className={styles.actions}>
+      <button type="button" onClick={goMenu} className="t-btn">
+        {palette.arrow ? "Ver menú →" : "Ver menú"}
+      </button>
+      {reservations?.enabled ? (
+        <ReservationEntry
+          slug={slug}
+          businessName={businessName}
+          config={reservations}
+          whatsappTargets={visible.whatsappReserve ? waTargets : []}
+          whatsappMessage={reserveMessage}
+          buttonClassName={styles.reserveBtn}
+        />
+      ) : visible.whatsappReserve && (
+        <ReserveButton targets={waTargets} message={info.reservationMessage} businessName={businessName} />
+      )}
+    </div>
+  );
+  const mapBadge = visible.address && <MapBadge address={info.address} businessName={businessName} />;
+  const content = (
+    <div className={styles.content}>
+      <Gallery
+        pictures={media?.pictures}
+        radius={family ? "var(--t-family-photo-radius)" : `${palette.radius ?? 10}px`}
+        businessName={businessName}
+        onImageClick={(index) => { setViewerIndex(index); setViewerOpen(true); }}
+      />
+      <div className={styles.practical}>
+        {visible.schedule && <ScheduleSection schedule={schedule} />}
+        <ContactList info={info} visible={visible} />
+      </div>
+    </div>
+  );
+
+  return (
+    <div ref={pageScrollbarRef} className={`t-wrap ${styles.landing}`} data-template={palette.id} data-title-sans={palette.sans ? "" : undefined} data-menu-style={menuStyle} data-menu-family={family?.id} data-page-layout={immersive ? "immersive" : undefined}>
+      {user.features?.sin_publicidad !== true && <FreePlanAd />}
+      {immersive ? (
+        <main>
+          {/* Inmersiva: la foto ocupa la pantalla y el encabezado va encima.
+              El botón de la foto queda detrás de todo; el velo y el texto no
+              reciben clics salvo en sus propios controles. */}
+          <header className={`${styles.hero} ${showBg ? styles.heroWithCover : ""}`}>
+            {showBg && (
+              <button
+                type="button"
+                className={styles.heroCover}
+                style={heroStyle}
+                aria-label={`Ampliar foto de ${businessName}`}
+                onClick={openCover}
+              />
+            )}
+            <div className={styles.heroIntro}>
+              {identityText}
+              {actions}
+              {mapBadge}
+            </div>
+          </header>
+          <div className={styles.layout}>
+            {showServices && <ServiceStrip items={services} />}
+            {showcase && <Highlights data={showcase} titleClass={titleClass} onOpenMenu={goMenu} />}
+            {showcase?.offer && <OfferBanner item={showcase.offer} titleClass={titleClass} onOpenMenu={goMenu} />}
+            {content}
+            <ClosingBand
+              businessName={businessName}
+              address={visible.address ? info.address : undefined}
+              titleClass={titleClass}
+              menuLabel={menuLabel}
+              onOpenMenu={goMenu}
+            />
+          </div>
+        </main>
+      ) : (
+        <main className={styles.layout}>
+          <header className={`${styles.header} ${showBg && !useAvatar ? styles.headerWithCover : ""}`}>
+            {showBg && !useAvatar && (
+              <button
+                type="button"
+                className={styles.cover}
+                style={heroStyle}
+                aria-label={`Ampliar foto de ${businessName}`}
+                onClick={openCover}
+              />
+            )}
+            <div className={styles.intro}>
+              <div className={styles.identity}>
+                {useAvatar && showBg && (
+                  <button
+                    type="button"
+                    className={`t-avatar ${styles.avatar}`}
+                    style={heroStyle}
+                    aria-label={`Ampliar foto de ${businessName}`}
+                    onClick={openCover}
+                  />
+                )}
+                {identityText}
+              </div>
+              {actions}
+              {mapBadge}
+            </div>
+          </header>
+          {content}
+        </main>
+      )}
       {viewerOpen && (
   <ImageViewer
     images={galleryImages}

@@ -12,6 +12,8 @@ import type { WeekRanges } from "../../../Common/WeeklySchedule/weekSchedule";
 import Spinner from "../../../Common/Spinner";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import MenuStylePicker from "./MenuStylePicker";
+import PageLayoutPicker from "./PageLayoutPicker";
+import { resolvePageLayout, pageLayoutName, type PageLayout } from "../../../../lib/pageLayouts";
 import { MENU_STYLE_OPTIONS, resolveMenuStyle, getMenuStyleFeature, buildAppearanceBody, type MenuStyle } from "../../../../lib/menuStyles";
 import { TEMPLATES, templateName, type TemplateOption } from "../../../../lib/templates";
 import { normalizeArPhone, isValidArLocalPhone } from "../../../../lib/whatsapp";
@@ -317,11 +319,12 @@ export default function UserEditorPage() {
   const [favicon,           setFavicon]    = useState("");
   const [template,         setTemplate]   = useState(1);
   const [menuStyle, setMenuStyle] = useState<MenuStyle>("classic");
+  const [pageLayout, setPageLayout] = useState<PageLayout>("standard");
   const [savingAppearance, setSavingAppearance] = useState(false);
   const appearanceSavingRef = useRef(false);
   const [subscription,      setSubscription] = useState<Subscription>("free");
   const [lockedTemplate,    setLockedTemplate] = useState<typeof TEMPLATES[number] | null>(null);
-  const [stylesLocked,      setStylesLocked] = useState<"menu_styles" | "premium_menu_styles" | null>(null);
+  const [stylesLocked,      setStylesLocked] = useState<"menu_styles" | "premium_menu_styles" | "page_layouts" | null>(null);
   const [nameChangeConfirmOpen, setNameChangeConfirmOpen] = useState(false);
 
   const currentPlan = catalog.isError ? undefined : catalog.data?.find(plan => plan.name === subscription);
@@ -340,6 +343,10 @@ export default function UserEditorPage() {
   const premiumLocked = currentPlan !== undefined && currentPlan.features.premium_menu_styles !== true;
   const familiesPlan = catalog.data?.find(plan => plan.features.menu_styles);
   const premiumPlan = catalog.data?.find(plan => plan.features.premium_menu_styles === true);
+  // Plantillas de página: tercera feature de apariencia, con la misma lectura
+  // (`!== true`: un backend anterior no manda la clave ni acepta el campo).
+  const layoutsLocked = currentPlan !== undefined && currentPlan.features.page_layouts !== true;
+  const layoutsPlan = catalog.data?.find(plan => plan.features.page_layouts === true);
 
   const [isDirty, setIsDirty]   = useState(false);
   // Bloques de "Información" con cambios sin guardar (escritorio: se marcan
@@ -484,6 +491,7 @@ export default function UserEditorPage() {
         setFavicon(data.media?.favicon || "");
         setTemplate(data.template || 1);
         setMenuStyle(resolveMenuStyle(data.menuStyle));
+        setPageLayout(resolvePageLayout(data.pageLayout));
         setSubscription(data.subscription || "free");
       } catch (err) {
         setError(err instanceof Error ? err.message : "No se pudo cargar la información del negocio.");
@@ -711,20 +719,23 @@ export default function UserEditorPage() {
   // `nextStyle` es opcional a propósito: sin él, esto es un cambio de paleta y
   // el diseño guardado no se toca. Ver buildAppearanceBody — reenviar el
   // estado actual pisaría la familia de una cuenta con el plan vencido.
-  const saveTemplate = async (t: number, nextStyle?: MenuStyle) => {
+  // `nextLayout` sigue la misma regla para la plantilla de página.
+  const saveTemplate = async (t: number, nextStyle?: MenuStyle, nextLayout?: PageLayout) => {
     if (appearanceSavingRef.current) return;
     appearanceSavingRef.current = true;
     setSavingAppearance(true);
     const previous = template;
     const previousStyle = menuStyle;
+    const previousLayout = pageLayout;
     setTemplate(t);
     if (nextStyle !== undefined) setMenuStyle(nextStyle);
+    if (nextLayout !== undefined) setPageLayout(nextLayout);
     setError(""); setSuccess("");
     try {
       const res = await fetch("/api/users/template", {
         method: "PATCH",
         headers: authHeaders,
-        body: JSON.stringify(buildAppearanceBody(t, nextStyle)),
+        body: JSON.stringify(buildAppearanceBody(t, nextStyle, nextLayout)),
       });
       if (res.status === 401) {
         logout();
@@ -735,6 +746,8 @@ export default function UserEditorPage() {
         const data = await res.json().catch(() => null);
         const fallback = res.status !== 403
           ? "No se pudo guardar la apariencia."
+          : nextLayout !== undefined && nextLayout !== "standard"
+            ? "Las plantillas de página requieren un plan superior."
           : nextStyle !== undefined && getMenuStyleFeature(nextStyle) === "premium_menu_styles"
             ? "Los diseños premium requieren un plan superior."
             : nextStyle !== undefined && getMenuStyleFeature(nextStyle) === "menu_styles"
@@ -746,14 +759,19 @@ export default function UserEditorPage() {
       // Un backend anterior ignora menuStyle: no confirmar un diseño que no guardó.
       setTemplate(data.template);
       setMenuStyle(resolveMenuStyle(data.menuStyle));
+      // Un backend anterior tampoco conoce pageLayout: no lo devuelve.
+      setPageLayout(nextLayout !== undefined || data.pageLayout !== undefined ? resolvePageLayout(data.pageLayout) : previousLayout);
       if (nextStyle !== undefined && nextStyle !== "classic" && data.menuStyle !== nextStyle) {
         setError("Este diseño todavía no está disponible. Tu paleta se guardó y la carta conserva el diseño Clásico.");
+      } else if (nextLayout !== undefined && nextLayout !== "standard" && data.pageLayout !== nextLayout) {
+        setError("Esta plantilla todavía no está disponible. Tu página conserva la plantilla Estándar.");
       } else {
         setSuccess("Apariencia actualizada.");
       }
     } catch (err) {
       setTemplate(previous);
       setMenuStyle(previousStyle);
+      setPageLayout(previousLayout);
       setError(err instanceof Error && err.message ? err.message : "No se pudo guardar la apariencia.");
     } finally {
       appearanceSavingRef.current = false;
@@ -1803,6 +1821,16 @@ export default function UserEditorPage() {
           />
         </>
       ))}
+      {block("plantilla", (
+        <PageLayoutPicker
+          value={pageLayout}
+          disabled={savingAppearance || !currentPlan || catalog.isFetching}
+          locked={layoutsLocked}
+          planLabel={layoutsPlan?.label}
+          onChange={(value) => void saveTemplate(template, undefined, value)}
+          onLocked={() => setStylesLocked("page_layouts")}
+        />
+      ))}
       {block("paleta", (
         <>
           {!isDesktop && <h2 className={styles.appearanceHeading}>Paleta de colores</h2>}
@@ -1916,6 +1944,17 @@ export default function UserEditorPage() {
           requiredFeature="premium_menu_styles"
           title="Desbloqueá los diseños premium"
           description="Neobrutalismo, Maximalismo táctil, Retro diner, Neón nocturno, Editorial suizo y Art déco para la portada y la carta. Tu paleta de colores actual se conserva."
+          onClose={() => setStylesLocked(null)}
+        />
+      )}
+
+      {stylesLocked === "page_layouts" && (
+        <UpgradeModal
+          currentPlan={subscription}
+          minPlan="basic"
+          requiredFeature="page_layouts"
+          title="Desbloqueá las plantillas de página"
+          description="Otra composición para la portada y la carta en pantallas grandes, como la Inmersiva con la foto a pantalla completa. Tu diseño y tu paleta se conservan."
           onClose={() => setStylesLocked(null)}
         />
       )}
@@ -2135,6 +2174,7 @@ export default function UserEditorPage() {
                 template,
                 paletteName: templateName(template),
                 styleName: MENU_STYLE_OPTIONS.find(option => option.id === menuStyle)?.name ?? "Clásico",
+                layoutName: pageLayoutName(pageLayout),
               }}
               checklist={checklist}
               publicUrl={user?.slug ? `/${user.slug}` : null}
