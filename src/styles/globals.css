@@ -1481,6 +1481,97 @@ a:hover { opacity: 0.75; }
 [data-menu-family="tactile"] :is(.t-title, .t-title-sans, .t-family-heading) {
   text-shadow: 0 2px 0 var(--t-accent), 0 4px 0 var(--tx-base);
 }
+/* Retro diner: letras de cartel, rayas de toldo y piezas con doble aro. */
+[data-menu-family="retro-diner"] {
+  --font-sans:  'Barlow Semi Condensed', var(--font-template-sans);
+  --font-serif: 'Lobster', var(--font-template-serif);
+  --t-family-title-weight: 400;
+  --t-family-title-spacing: 0;
+  --t-family-radius: 18px;
+  --t-family-photo-radius: 14px;
+  --t-family-image-ratio: 4 / 3;
+  --t-family-muted: color-mix(in srgb, var(--t-title) 78%, var(--t-bg));
+  --rd-line: 2px solid var(--t-accent);
+  --rd-stripes: repeating-linear-gradient(90deg, var(--t-accent) 0 12px, var(--t-bg) 12px 24px);
+  /* Aro separado del borde, como una insignia esmaltada. */
+  --rd-ring: 0 0 0 3px var(--t-bg), 0 0 0 5px var(--t-accent);
+  --rd-drop: 0 4px 0 color-mix(in srgb, var(--t-accent) 55%, black);
+  --t-family-shadow: var(--rd-ring);
+}
+[data-menu-family="retro-diner"] :is(.t-title, .t-title-sans, .t-family-heading) {
+  text-shadow: 0.045em 0.045em 0 color-mix(in srgb, var(--t-accent) 70%, var(--t-bg));
+}
+/* Neón nocturno: el acento es la luz. Los brillos son sombras del acento, así
+   que en una paleta clara quedan como un halo suave en vez de desaparecer. */
+[data-menu-family="neon"] {
+  --font-sans:  'Outfit', var(--font-template-sans);
+  --font-serif: 'Tilt Neon', 'Outfit', var(--font-template-sans);
+  --t-family-title-weight: 400;
+  --t-family-title-spacing: 0.01em;
+  --t-family-radius: 16px;
+  --t-family-photo-radius: 12px;
+  --t-family-image-ratio: 4 / 3;
+  --t-family-muted: color-mix(in srgb, var(--t-title) 74%, var(--t-bg));
+  /* Tubo encendido: el acento corrido hacia la tinta, más claro en paletas
+     oscuras y más oscuro en las claras, para que el texto siga leyéndose. */
+  --nn-tube: color-mix(in srgb, var(--t-accent) 72%, var(--t-title));
+  --nn-line: 1.5px solid var(--t-accent);
+  --nn-line-off: 1.5px solid color-mix(in srgb, var(--t-accent) 30%, var(--t-border-md));
+  --nn-text-glow:
+    0 0 6px color-mix(in srgb, var(--t-accent) 75%, transparent),
+    0 0 18px color-mix(in srgb, var(--t-accent) 50%, transparent),
+    0 0 42px color-mix(in srgb, var(--t-accent) 30%, transparent);
+  --nn-text-glow-sm: 0 0 8px color-mix(in srgb, var(--t-accent) 60%, transparent);
+  --nn-glow:
+    0 0 10px color-mix(in srgb, var(--t-accent) 50%, transparent),
+    0 0 26px color-mix(in srgb, var(--t-accent) 26%, transparent),
+    inset 0 0 10px color-mix(in srgb, var(--t-accent) 16%, transparent);
+  --nn-glow-soft: 0 0 22px color-mix(in srgb, var(--t-accent) 16%, transparent);
+  --nn-ambient: radial-gradient(ellipse 90% 380px at 50% 0, color-mix(in srgb, var(--t-accent) 16%, transparent), transparent);
+  --t-family-shadow: var(--nn-glow);
+}
+[data-menu-family="neon"] :is(.t-title, .t-title-sans, .t-family-heading) {
+  color: var(--nn-tube);
+  text-shadow: var(--nn-text-glow);
+}
+/* Editorial suizo: sin sombras ni radios; la jerarquía la hacen el tamaño de
+   la tipografía y los filetes. */
+[data-menu-family="swiss"] {
+  --font-sans:  'Inter Tight', var(--font-template-sans);
+  --font-serif: 'Inter Tight', var(--font-template-sans);
+  --t-family-title-weight: 800;
+  --t-family-title-spacing: -0.045em;
+  --t-family-radius: 0px;
+  --t-family-photo-radius: 0px;
+  --t-family-image-ratio: 1;
+  --t-family-muted: color-mix(in srgb, var(--t-title) 70%, var(--t-bg));
+  --sw-rule: 3px solid var(--t-title);
+  --sw-hair: 1px solid color-mix(in srgb, var(--t-title) 24%, transparent);
+  --t-family-shadow: none;
+}
+/* Art déco: marcos dobles, mayúsculas espaciadas y rayos geométricos. */
+[data-menu-family="art-deco"] {
+  --font-sans:  'Josefin Sans', var(--font-template-sans);
+  --font-serif: 'Poiret One', 'Josefin Sans', var(--font-template-serif);
+  --t-family-title-weight: 400;
+  --t-family-title-spacing: 0.12em;
+  --t-family-title-case: uppercase;
+  --t-family-radius: 0px;
+  --t-family-photo-radius: 0px;
+  --t-family-image-ratio: 1;
+  --t-family-muted: color-mix(in srgb, var(--t-title) 76%, var(--t-bg));
+  --ad-line: 1px solid var(--t-accent);
+  /* Segundo filete separado del borde: el marco doble del déco. */
+  --ad-frame: 0 0 0 3px var(--t-bg), 0 0 0 4px var(--t-accent);
+  --ad-rays: repeating-conic-gradient(from 90deg at 50% 0, color-mix(in srgb, var(--t-accent) 10%, transparent) 0 5deg, transparent 5deg 10deg);
+  /* Poiret One es de trazo muy fino: un contorno mínimo la engrosa para que
+     se lea en tamaños chicos y no tome franjas de color con ClearType. */
+  --ad-stroke: 0.028em currentColor;
+  --t-family-shadow: var(--ad-frame);
+}
+[data-menu-family="art-deco"] :is(.t-title, .t-title-sans, .t-family-heading) {
+  -webkit-text-stroke: var(--ad-stroke);
+}
 
 [data-menu-family] :is(.t-title, .t-title-sans, .t-family-heading) {
   font-family: var(--font-serif);

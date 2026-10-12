@@ -29,6 +29,10 @@ export const VISUAL_FAMILIES = [
   // de la paleta), pero gateadas con su propia feature. Ver PREMIUM_MENU_STYLES.
   { id: "neo-brutalism", name: "Neobrutalismo", description: "Bordes gruesos, sombras duras y colores planos que se leen de lejos.", palettes: [5, 8, 11] },
   { id: "tactile", name: "Maximalismo táctil", description: "Botones con relieve, texturas y platos que dan ganas de tocar.", palettes: [4, 9, 6] },
+  { id: "retro-diner", name: "Retro diner", description: "Letras de cartel, rayas de toldo y precios en etiqueta, como un diner de los 50.", palettes: [10, 15, 9] },
+  { id: "neon", name: "Neón nocturno", description: "Títulos y contornos que brillan como un cartel luminoso. Luce más en paletas oscuras.", palettes: [2, 14, 9] },
+  { id: "swiss", name: "Editorial suizo", description: "Tipografía enorme, grilla estricta, platos numerados y mucho aire.", palettes: [5, 8, 13] },
+  { id: "art-deco", name: "Art déco", description: "Marcos dobles, mayúsculas espaciadas y ornamentos geométricos de coctelería.", palettes: [7, 1, 12] },
 ] as const;
 
 export type LegacyStyle = typeof LEGACY_STYLES[number];
@@ -42,7 +46,7 @@ export const LEGACY_MENU_STYLES = LEGACY_STYLES.map(style => style.id) as readon
 
 // Espejo de PREMIUM_MENU_STYLES en el backend: se habilitan con
 // premium_menu_styles en vez de menu_styles (arrancan exclusivos de Pro).
-export const PREMIUM_MENU_STYLES: readonly MenuStyle[] = ["neo-brutalism", "tactile"];
+export const PREMIUM_MENU_STYLES: readonly MenuStyle[] = ["neo-brutalism", "tactile", "retro-diner", "neon", "swiss", "art-deco"];
 
 export function isPremiumMenuStyle(value: MenuStyle): boolean {
   return PREMIUM_MENU_STYLES.includes(value);

@@ -50,3 +50,11 @@
 .sample[data-menu-family="neo-brutalism"] .sampleTitle { display: inline-block; justify-self: start; padding: 2px 8px; border: var(--nb-border); background: var(--t-surface); box-shadow: var(--nb-shadow-sm); }
 .sample[data-menu-family="tactile"] { background-image: var(--tx-dots); }
 .sample[data-menu-family="tactile"] .sampleTitle { text-shadow: 0 2px 0 var(--t-accent), 0 4px 0 var(--tx-base); }
+.sample[data-menu-family="retro-diner"] { border-top: 10px solid; border-image: var(--rd-stripes) 10; }
+.sample[data-menu-family="retro-diner"] .sampleTitle { font-size: 1.9rem; text-shadow: 0.045em 0.045em 0 color-mix(in srgb, var(--t-accent) 70%, var(--t-bg)); }
+.sample[data-menu-family="neon"] { background-image: var(--nn-ambient); }
+.sample[data-menu-family="neon"] .sampleTitle { color: var(--nn-tube); text-shadow: var(--nn-text-glow); }
+.sample[data-menu-family="swiss"] { border-top: 6px solid var(--t-title); align-content: end; }
+.sample[data-menu-family="swiss"] .sampleTitle { font-size: 2.1rem; line-height: 0.92; }
+.sample[data-menu-family="art-deco"] { justify-items: center; text-align: center; background-image: linear-gradient(to bottom, transparent, var(--t-bg)), var(--ad-rays); }
+.sample[data-menu-family="art-deco"] .sampleTitle { font-size: 1.35rem; padding-block: 0.5rem; border-block: 4px double var(--t-accent); }

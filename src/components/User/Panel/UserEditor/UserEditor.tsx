@@ -1891,7 +1891,7 @@ export default function UserEditorPage() {
           minPlan="basic"
           requiredFeature="premium_menu_styles"
           title="Desbloqueá los diseños premium"
-          description="Neobrutalismo y Maximalismo táctil para la portada y la carta. Tu paleta de colores actual se conserva."
+          description="Neobrutalismo, Maximalismo táctil, Retro diner, Neón nocturno, Editorial suizo y Art déco para la portada y la carta. Tu paleta de colores actual se conserva."
           onClose={() => setStylesLocked(null)}
         />
       )}

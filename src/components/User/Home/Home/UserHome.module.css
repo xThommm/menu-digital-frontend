@@ -711,3 +711,109 @@
 @media (prefers-reduced-motion: reduce) {
   .landing:is([data-menu-family="neo-brutalism"], [data-menu-family="tactile"]) :is(.actions :global(.t-btn), .reserveBtn, .mapBadge) { transition: none; }
 }
+
+/* ── Diseños premium, segunda tanda ──
+   Tokens en globals.css ([data-menu-family="retro-diner"|"neon"|"swiss"|"art-deco"]). */
+
+/* Retro diner: toldo a rayas arriba, script de cartel e insignias con aro. */
+.landing[data-menu-family="retro-diner"] { border-top: 12px solid; border-image: var(--rd-stripes) 12; }
+.landing[data-menu-family="retro-diner"] .cover { border: var(--rd-line); box-shadow: var(--rd-ring); }
+.landing[data-menu-family="retro-diner"] .avatar { border: var(--rd-line); border-radius: 50%; box-shadow: var(--rd-ring); }
+.landing[data-menu-family="retro-diner"] .title { font-size: clamp(2.8rem, 12vw, 5rem); line-height: 1.02; }
+.landing[data-menu-family="retro-diner"] .familyEyebrow { font: 700 0.8rem var(--font-sans); letter-spacing: 0.26em; color: var(--t-accent); }
+.landing[data-menu-family="retro-diner"] .familyEyebrow::before { content: "★ "; }
+.landing[data-menu-family="retro-diner"] .familyEyebrow::after { content: " ★"; }
+.landing[data-menu-family="retro-diner"] :global(.t-badge) { padding: 4px 12px; border: var(--rd-line); border-radius: 999px; background: var(--t-surface); color: var(--t-title); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.landing[data-menu-family="retro-diner"] .actions { gap: 16px; }
+.landing[data-menu-family="retro-diner"] .actions :global(.t-btn) { border-radius: 999px; box-shadow: var(--rd-ring); font-weight: 700; font-size: 1.1rem; letter-spacing: 0.14em; text-transform: uppercase; }
+.landing[data-menu-family="retro-diner"] .reserveBtn { border: var(--rd-line); border-radius: 999px; background: var(--t-surface); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.landing[data-menu-family="retro-diner"] :is(.mapBadge, .contactCard, .scheduleCard) { border: var(--rd-line); background: var(--t-surface); box-shadow: var(--rd-ring); }
+.landing[data-menu-family="retro-diner"] :is(.sectionLabel, .scheduleHeading) { font-family: var(--font-serif); font-weight: 400; font-size: 1.45rem; letter-spacing: 0; text-transform: none; color: var(--t-title); }
+.landing[data-menu-family="retro-diner"] .galleryTitle { font-size: 2.1rem; }
+.landing[data-menu-family="retro-diner"] .gallery { gap: 1.1rem; padding: 6px; }
+.landing[data-menu-family="retro-diner"] .galleryItem { border: var(--rd-line); border-radius: var(--t-family-photo-radius); box-shadow: var(--rd-ring); }
+.landing[data-menu-family="retro-diner"] .scheduleTableRow { border-bottom: 2px dotted color-mix(in srgb, var(--t-accent) 55%, transparent); opacity: 1; }
+.landing[data-menu-family="retro-diner"] .scheduleTableToday { padding-inline: 0.6rem; border-radius: 999px; border-bottom-color: transparent; background: var(--t-accent); color: var(--t-btn-text); font-weight: 700; }
+.landing[data-menu-family="retro-diner"] .contactCard :global(.t-info-row) { border-bottom: 2px dotted color-mix(in srgb, var(--t-accent) 55%, transparent); font-weight: 500; color: var(--t-title); }
+.landing[data-menu-family="retro-diner"] .contactCard :global(.t-info-row:last-child) { border-bottom: 0; }
+.landing[data-menu-family="retro-diner"] :global(.t-info-icon) { border-radius: 50%; background: var(--t-accent); color: var(--t-btn-text); }
+
+/* Neón nocturno: resplandor ambiente y tubos encendidos. */
+.landing[data-menu-family="neon"] { background-image: var(--nn-ambient), var(--t-bg-image, none); background-repeat: no-repeat; }
+.landing[data-menu-family="neon"] .cover { border: var(--nn-line); box-shadow: var(--nn-glow); }
+.landing[data-menu-family="neon"] .avatar { border: var(--nn-line); border-radius: 50%; box-shadow: var(--nn-glow); }
+.landing[data-menu-family="neon"] .title { font-size: clamp(2.6rem, 11vw, 4.75rem); line-height: 1.05; animation: nnFlicker 2.2s linear 0.3s 1 both; }
+.landing[data-menu-family="neon"] .familyEyebrow { font: 500 0.78rem var(--font-sans); letter-spacing: 0.32em; color: var(--nn-tube); text-shadow: var(--nn-text-glow-sm); }
+.landing[data-menu-family="neon"] :global(.t-badge) { padding: 4px 12px; border: var(--nn-line-off); border-radius: 999px; background: transparent; color: var(--t-title); }
+.landing[data-menu-family="neon"] .actions { gap: 16px; }
+.landing[data-menu-family="neon"] .actions :global(.t-btn) { border-radius: 999px; font-family: var(--font-serif); font-weight: 400; font-size: 1.2rem; letter-spacing: 0.04em; box-shadow: 0 0 16px color-mix(in srgb, var(--t-accent) 60%, transparent), 0 0 44px color-mix(in srgb, var(--t-accent) 30%, transparent); }
+.landing[data-menu-family="neon"] .reserveBtn { border: var(--nn-line); border-radius: 999px; background: transparent; color: var(--nn-tube); font-weight: 500; font-size: 0.98rem; box-shadow: var(--nn-glow); }
+.landing[data-menu-family="neon"] :is(.mapBadge, .contactCard, .scheduleCard) { border: var(--nn-line-off); background: var(--t-surface); box-shadow: var(--nn-glow-soft); }
+.landing[data-menu-family="neon"] .mapBadge:hover { border-color: var(--t-accent); background: var(--t-surface); box-shadow: var(--nn-glow); }
+.landing[data-menu-family="neon"] :is(.sectionLabel, .scheduleHeading) { font-family: var(--font-serif); font-weight: 400; font-size: 1.15rem; letter-spacing: 0.04em; text-transform: none; color: var(--nn-tube); text-shadow: var(--nn-text-glow-sm); }
+.landing[data-menu-family="neon"] .galleryTitle { font-size: 2rem; color: var(--nn-tube); text-shadow: var(--nn-text-glow); }
+.landing[data-menu-family="neon"] .gallery { gap: 1rem; }
+.landing[data-menu-family="neon"] .galleryItem { border: var(--nn-line-off); border-radius: var(--t-family-photo-radius); box-shadow: var(--nn-glow-soft); }
+.landing[data-menu-family="neon"] .scheduleTableRow { opacity: 1; }
+.landing[data-menu-family="neon"] .scheduleTableToday { color: var(--nn-tube); font-weight: 700; text-shadow: var(--nn-text-glow-sm); }
+.landing[data-menu-family="neon"] :global(.t-info-icon) { border: 1px solid var(--t-accent); border-radius: 50%; background: transparent; color: var(--nn-tube); box-shadow: 0 0 8px color-mix(in srgb, var(--t-accent) 45%, transparent); }
+/* Encendido del cartel: parpadea una vez al cargar y queda fijo. */
+@keyframes nnFlicker {
+  0%, 6%, 9%, 13%, 22%, 25% { opacity: 0.35; text-shadow: none; }
+  3%, 8%, 11%, 18%, 24%, 30%, 100% { opacity: 1; text-shadow: var(--nn-text-glow); }
+}
+
+/* Editorial suizo: nombre gigante, filetes y nada de cajas. */
+.landing[data-menu-family="swiss"] .header { border-top: 6px solid var(--t-title); padding-top: 1.5rem; }
+.landing[data-menu-family="swiss"] .cover { border-radius: 0; }
+.landing[data-menu-family="swiss"] .avatar { border-radius: 0; }
+.landing[data-menu-family="swiss"] .title { font-size: clamp(3.2rem, 15vw, 7.5rem); line-height: 0.88; letter-spacing: -0.06em; margin-bottom: 1.5rem; }
+.landing[data-menu-family="swiss"] .familyEyebrow { display: flex; align-items: center; gap: 0.6rem; font: 500 0.85rem var(--font-sans); letter-spacing: 0; text-transform: none; color: var(--t-title); }
+.landing[data-menu-family="swiss"] .familyEyebrow::before { content: ""; width: 0.7rem; height: 0.7rem; background: var(--t-accent); }
+.landing[data-menu-family="swiss"] :global(.t-badge) { padding: 3px 9px; border: 1px solid var(--t-title); border-radius: 0; background: none; color: var(--t-title); font-weight: 500; }
+.landing[data-menu-family="swiss"] .actions { gap: 0; }
+.landing[data-menu-family="swiss"] .actions :global(.t-btn) { --control-shape: 0; justify-content: flex-start; padding-inline: 1.25rem; border-radius: 0; box-shadow: none; font-weight: 700; font-size: 1.15rem; letter-spacing: -0.02em; }
+.landing[data-menu-family="swiss"] .reserveBtn { justify-content: flex-start; padding-inline: 1.25rem; border: 0; border-bottom: var(--sw-rule); border-radius: 0; background: none; font-weight: 500; font-size: 1rem; }
+.landing[data-menu-family="swiss"] :is(.mapBadge, .contactCard, .scheduleCard) { border: 0; border-top: var(--sw-rule); border-radius: 0; background: none; padding-inline: 0; }
+.landing[data-menu-family="swiss"] .mapBadge:hover { background: none; transform: none; }
+.landing[data-menu-family="swiss"] :is(.sectionLabel, .scheduleHeading) { font-weight: 800; font-size: 1.5rem; letter-spacing: -0.04em; text-transform: none; color: var(--t-title); }
+.landing[data-menu-family="swiss"] .galleryTitle { font-size: clamp(2rem, 6vw, 3.25rem); line-height: 0.95; padding-top: 0.75rem; border-top: var(--sw-rule); }
+.landing[data-menu-family="swiss"] .gallery { gap: 2px; }
+.landing[data-menu-family="swiss"] .scheduleTableRow { border-bottom: var(--sw-hair); opacity: 1; font-variant-numeric: tabular-nums; }
+.landing[data-menu-family="swiss"] .scheduleTableToday { font-weight: 800; color: var(--t-title); box-shadow: inset 4px 0 0 var(--t-accent); padding-left: 0.75rem; }
+.landing[data-menu-family="swiss"] .contactCard :global(.t-info-row) { border-bottom: var(--sw-hair); color: var(--t-title); }
+.landing[data-menu-family="swiss"] :global(.t-info-icon) { border-radius: 0; background: none; color: var(--t-title); }
+
+/* Art déco: composición centrada, portada en arco y rayos detrás del nombre. */
+.landing[data-menu-family="art-deco"] { background-image: linear-gradient(to bottom, transparent, var(--t-bg) 460px), var(--ad-rays), var(--t-bg-image, none); background-repeat: no-repeat; }
+.landing[data-menu-family="art-deco"] .header { grid-template-columns: minmax(0, 1fr); }
+.landing[data-menu-family="art-deco"] .intro { text-align: center; width: min(100%, 640px); margin-inline: auto; }
+.landing[data-menu-family="art-deco"] .identity { flex-direction: column; justify-content: center; }
+.landing[data-menu-family="art-deco"] .badgeRow { justify-content: center; }
+.landing[data-menu-family="art-deco"] .actions { width: min(100%, 400px); margin-inline: auto; gap: 18px; }
+.landing[data-menu-family="art-deco"] .cover { width: min(calc(100% - 10px), 460px); height: clamp(300px, 80vw, 520px); margin-inline: auto; justify-self: center; border: var(--ad-line); border-radius: 999px 999px 0 0; box-shadow: var(--ad-frame); }
+.landing[data-menu-family="art-deco"] .avatar { border: var(--ad-line); border-radius: 50%; box-shadow: var(--ad-frame); }
+.landing[data-menu-family="art-deco"] .title { font-size: clamp(2rem, 8.5vw, 4rem); line-height: 1.15; }
+.landing[data-menu-family="art-deco"] .familyEyebrow { display: flex; align-items: center; justify-content: center; gap: 0.9rem; font: 600 0.7rem var(--font-sans); letter-spacing: 0.34em; color: var(--t-accent); }
+.landing[data-menu-family="art-deco"] .familyEyebrow::before,
+.landing[data-menu-family="art-deco"] .familyEyebrow::after { content: ""; width: 2.25rem; height: 5px; border-block: 1px solid var(--t-accent); }
+.landing[data-menu-family="art-deco"] :global(.t-badge) { padding: 4px 11px; border: 1px solid color-mix(in srgb, var(--t-accent) 55%, transparent); border-radius: 0; background: transparent; color: var(--t-title); font-weight: 600; font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase; }
+.landing[data-menu-family="art-deco"] .actions :global(.t-btn) { --control-shape: 0; border-radius: 0; box-shadow: var(--ad-frame); font-weight: 600; font-size: 0.9rem; letter-spacing: 0.26em; text-transform: uppercase; }
+.landing[data-menu-family="art-deco"] .reserveBtn { border: var(--ad-line); border-radius: 0; background: transparent; font-weight: 600; font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; }
+.landing[data-menu-family="art-deco"] :is(.mapBadge, .contactCard, .scheduleCard) { border: var(--ad-line); border-radius: 0; background: var(--t-surface); box-shadow: var(--ad-frame); }
+.landing[data-menu-family="art-deco"] .practical { padding: 4px; }
+.landing[data-menu-family="art-deco"] :is(.sectionLabel, .scheduleHeading) { font-family: var(--font-serif); font-weight: 400; font-size: 1.15rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--t-accent); -webkit-text-stroke: var(--ad-stroke); }
+.landing[data-menu-family="art-deco"] .galleryTitle { display: flex; align-items: center; gap: 1rem; text-align: center; font-size: 1.5rem; letter-spacing: 0.12em; text-transform: uppercase; -webkit-text-stroke: var(--ad-stroke); }
+.landing[data-menu-family="art-deco"] .galleryTitle::before,
+.landing[data-menu-family="art-deco"] .galleryTitle::after { content: ""; flex: 1; min-width: 1rem; height: 5px; border-block: 1px solid var(--t-accent); }
+.landing[data-menu-family="art-deco"] .gallery { gap: 1.1rem; padding: 5px; }
+.landing[data-menu-family="art-deco"] .galleryItem { aspect-ratio: 3 / 4; border: var(--ad-line); box-shadow: var(--ad-frame); }
+.landing[data-menu-family="art-deco"] .scheduleTableRow { border-bottom: 1px solid color-mix(in srgb, var(--t-accent) 30%, transparent); opacity: 1; letter-spacing: 0.04em; }
+.landing[data-menu-family="art-deco"] .scheduleTableToday { color: var(--t-accent); font-weight: 600; }
+.landing[data-menu-family="art-deco"] .contactCard :global(.t-info-row) { border-bottom: 1px solid color-mix(in srgb, var(--t-accent) 30%, transparent); color: var(--t-title); letter-spacing: 0.03em; }
+.landing[data-menu-family="art-deco"] .contactCard :global(.t-info-row:last-child) { border-bottom: 0; }
+.landing[data-menu-family="art-deco"] :global(.t-info-icon) { border: var(--ad-line); border-radius: 0; background: transparent; color: var(--t-accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing[data-menu-family="neon"] .title { animation: none; }
+}

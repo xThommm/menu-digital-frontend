@@ -244,7 +244,8 @@ cotizan con `services/planCatalog.js` desde MongoDB, sin fallback.
 Familias visuales de la carta y la landing (`User.menuStyle`), independientes de la
 paleta (`template`): `classic`, `bistro`, `coffee`, `fast-food`, `grill`, `premium`,
 `bakery` y, desde el 25-09-2026, los **diseños premium** `neo-brutalism`
-(Neobrutalismo) y `tactile` (Maximalismo táctil).
+(Neobrutalismo) y `tactile` (Maximalismo táctil), más `retro-diner`, `neon`,
+`swiss` y `art-deco` desde el 12-10-2026.
 
 - `LEGACY_MENU_STYLES` (`classic`, `bistro`) quedan abiertos a todos los planes, porque
   ya había cuentas gratuitas usándolos antes del gating. El resto son
@@ -1548,8 +1549,8 @@ horario del local.
 ### `lib/menuStyles.ts`
 
 Espejo de `config/menuStyles.js` del backend: `LEGACY_STYLES` (Clásico, Bistró) y
-`VISUAL_FAMILIES`, que incluyen los diseños premium `neo-brutalism` y `tactile`
-(`PREMIUM_MENU_STYLES`, 25-09-2026). **`getMenuStyleFeature(style)`** dice qué feature
+`VISUAL_FAMILIES`, que incluyen los diseños premium `neo-brutalism`, `tactile`,
+`retro-diner`, `neon`, `swiss` y `art-deco` (`PREMIUM_MENU_STYLES`). **`getMenuStyleFeature(style)`** dice qué feature
 pide cada diseño (`menu_styles`, `premium_menu_styles` o ninguna); `MenuStylePicker`
 lo usa para mostrar el candado y el `UpgradeModal`. `resolveMenuStyle` y
 `getVisualFamily` traducen el valor guardado; `buildAppearanceBody` arma el cuerpo
@@ -2178,7 +2179,8 @@ Editor del menú (`/menu/editor`). El componente más grande.
   Muestra un candado según `getMenuStyleFeature` (`menu_styles` o
   `premium_menu_styles`) y abre `UpgradeModal` filtrado por esa feature, con la
   etiqueta del plan que la ofrece según el catálogo. Los diseños premium
-  (Neobrutalismo, Maximalismo táctil) llevan la etiqueta "Premium".
+  (Neobrutalismo, Maximalismo táctil, Retro diner, Neón nocturno, Editorial
+  suizo, Art déco) llevan la etiqueta "Premium".
 
 ### `components/User/Panel/Settings/SettingsPanel.tsx`
 Configuración del panel del dueño, protegida por una contraseña propia
@@ -2308,7 +2310,15 @@ Asistente de importación por Excel (se abre desde el MenuEditor).
   `[data-menu-family="tactile"]` (Bagel Fat One + Figtree + Instrument Serif,
   relieve con la base `--tx-base`). Como la tinta es `--t-title`, se invierten solos
   en las paletas oscuras. Sus fuentes se importan con las demás, pero el navegador
-  solo las descarga si alguna carta las usa.
+  solo las descarga si alguna carta las usa. El 12-10-2026 se sumaron cuatro más,
+  con la misma feature y la misma regla de colores: `retro-diner` (Lobster + Barlow
+  Semi Condensed; rayas `--rd-stripes` y aro `--rd-ring`), `neon` (Tilt Neon +
+  Outfit; brillos `--nn-*` que son sombras del acento), `swiss` (Inter Tight; sin
+  radios ni sombras, filetes `--sw-*` y platos numerados con contadores CSS) y
+  `art-deco` (Poiret One + Josefin Sans; marco doble `--ad-frame`, rayos
+  `--ad-rays` y `--ad-stroke` para engrosar la Poiret). El encabezado y las
+  pestañas de la carta son fijos: un diseño que los quiera con textura tiene que
+  dejarles un fondo opaco.
 - Reset, base de `html/body`, `:focus-visible` global y `prefers-reduced-motion`.
 
 ---
