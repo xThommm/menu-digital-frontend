@@ -8,7 +8,9 @@ import s from "./VenueOrder.module.css";
 
 // Aviso arriba de la carta cuando el comensal escaneó el QR del local: su
 // mesa, si puede pedir desde acá o tiene que pedírselo al personal, y acceso a
-// los pedidos que ya hizo (historial en su navegador).
+// los pedidos que ya hizo (historial en su navegador). La sesión dura unas
+// horas (ver venueSession.ts): quien vuelve a abrir la carta desde su casa
+// sale con "No estoy en el local" y la carta queda como para cualquiera.
 
 interface Props {
   slug: string;
@@ -16,9 +18,10 @@ interface Props {
   hidePrices: boolean;
   // Cambia con cada pedido enviado para releer el historial.
   historyVersion: number;
+  onLeave: () => void;
 }
 
-export default function VenueBanner({ slug, context, hidePrices, historyVersion }: Props) {
+export default function VenueBanner({ slug, context, hidePrices, historyVersion, onLeave }: Props) {
   const [historyOpen, setHistoryOpen] = useState(false);
   // Se relee del localStorage en cada render: el padre cambia historyVersion
   // después de cada envío justamente para provocar ese render.
@@ -36,6 +39,9 @@ export default function VenueBanner({ slug, context, hidePrices, historyVersion 
         <span className={s.bannerText}>
           <strong>{where}</strong>
           <span>{message}</span>
+          <button type="button" className={s.bannerLeave} onClick={onLeave}>
+            No estoy en el local
+          </button>
         </span>
         {history.length > 0 && (
           <button type="button" className={s.bannerBtn} onClick={() => setHistoryOpen(true)}>

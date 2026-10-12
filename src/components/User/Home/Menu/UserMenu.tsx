@@ -522,6 +522,7 @@ export default function MenuPage() {
               context={venueContext}
               hidePrices={display.hidePrices}
               historyVersion={venueHistoryVersion}
+              onLeave={venue.invalidate}
             />
           )}
 
