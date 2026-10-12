@@ -10,12 +10,20 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Sidebar (desktop) ── */
+/* ── Sidebar (desktop) — identidad "consola" del panel CEO ──
+   Cada panel tiene su barra (ver DashboardLayout / SellerLayout
+   .module.css). Acá es una herramienta: pegada al borde, de esquinas
+   rectas, con un renglonado tenue y un filamento del acento en el canto.
+   El ítem activo se marca con un riel a la izquierda y un lavado que se
+   desvanece hacia la derecha, no con una píldora. */
 .sidebar {
   width: var(--sidebar-width);
   flex-shrink: 0;
-  background: var(--admin-bg-surface);
-  border-right: 0.5px solid var(--admin-border-subtle);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--admin-gold) 6%, transparent), transparent 30%),
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--admin-text-primary) 3%, transparent) 0 1px, transparent 1px 28px),
+    color-mix(in srgb, var(--admin-bg-surface) 90%, transparent);
+  border-right: 0.5px solid var(--admin-border-default);
   display: flex;
   flex-direction: column;
   padding: var(--space-5) var(--space-3);
@@ -24,11 +32,25 @@
   left: 0;
   bottom: 0;
   z-index: 20;
-  transition: transform var(--transition-md);
+  transition: transform var(--transition-md), opacity var(--transition-md);
+}
+
+/* Filamento del acento sobre el canto derecho. */
+.sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -0.5px;
+  width: 1px;
+  height: 148px;
+  background: linear-gradient(180deg, var(--admin-gold), transparent);
+  opacity: 0.75;
+  pointer-events: none;
 }
 
 .sidebarCollapsed {
   transform: translateX(-100%);
+  opacity: 0;
 }
 
 /* Botón de toggle, fijo fuera del <aside> — ver comentario en AdminLayout.tsx.
@@ -36,9 +58,9 @@
    al borde derecho interno de la sidebar — de ahí el calc() en vez de un
    left fijo, así sigue pegado al borde si --sidebar-width cambia). Colapsada:
    salta a la esquina superior izquierda (estilo ChatGPT/Claude) para seguir
-   visible sin la sidebar — ver .sidebarToggleCollapsed y .contentExpanded. */
+   visible sin la sidebar — ver .sidebarToggleCollapsed y .contentExpanded.
+   Acá es una tecla cuadrada con contorno fino. */
 .sidebarToggle {
-  composes: md-button from global;
   position: fixed;
   top: 22px;
   left: calc(var(--sidebar-width) - 32px - var(--space-3));
@@ -47,28 +69,64 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  isolation: isolate;
   background: transparent;
-  border: none;
+  border: 0.5px solid var(--admin-border-default);
   border-radius: var(--admin-radius-md);
   color: var(--admin-text-secondary);
   cursor: pointer;
   z-index: 25;
   transition: top var(--transition-md), left var(--transition-md),
-    background var(--admin-transition), color var(--admin-transition), transform var(--admin-transition-spring);
+    color var(--transition), border-color var(--transition), background-color var(--transition),
+    box-shadow var(--transition), transform var(--admin-transition-spring);
+}
+
+/* Capa de hover: entra y sale por opacidad en vez de cambiar el fondo. */
+.sidebarToggle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--admin-gold) 22%, transparent), transparent 75%);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.sidebarToggle svg {
+  transition: transform var(--transition-md);
 }
 
 .sidebarToggle:hover {
-  background: var(--admin-bg-raised);
+  border-color: var(--admin-gold);
   color: var(--admin-gold);
 }
 
+.sidebarToggle:hover::before {
+  opacity: 1;
+}
+
+.sidebarToggle:hover svg {
+  transform: translateX(-1px);
+}
+
 .sidebarToggle:active {
-  transform: scale(0.9);
+  transform: scale(0.92);
 }
 
 .sidebarToggleCollapsed {
   top: var(--space-4);
   left: var(--space-4);
+  /* Flota sobre el contenido: el desenfoque evita que el texto de abajo
+     se mezcle con el ícono. */
+  background: color-mix(in srgb, var(--admin-bg-surface) 86%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--admin-shadow-card);
+}
+
+.sidebarToggleCollapsed:hover svg {
+  transform: translateX(1px);
 }
 
 /* ── Brand ── */
@@ -140,16 +198,21 @@
 .sideNav {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 2px;
   flex: 1;
 }
 
+/* El riel (::before) y el lavado (::after) viven en capas propias: los
+   estados se funden por opacidad y escala, así que al navegar el activo
+   viejo se apaga mientras el nuevo se enciende. */
 .navItem {
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   gap: var(--space-3);
   width: 100%;
-  height: 42px;
+  height: 40px;
   padding: 0 var(--space-3);
   border-radius: var(--admin-radius-md);
   border: none;
@@ -160,30 +223,60 @@
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: background var(--admin-transition), color var(--admin-transition), transform var(--admin-transition-spring);
+  transition: color var(--transition-md);
+}
+
+.navItem::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--admin-text-faint);
+  transform: scaleY(0);
+  transition: transform var(--transition-md), background-color var(--transition-md), box-shadow var(--transition-md);
+}
+
+.navItem::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--admin-text-primary) 8%, transparent), transparent 88%);
+  opacity: 0;
+  transition: opacity var(--transition-md);
 }
 
 .navItem:hover {
-  background: var(--admin-bg-raised);
-  color: var(--admin-text-warm);
-  transform: translateX(2px);
+  color: var(--admin-text-primary);
 }
 
-.navItem:active {
-  transform: translateX(2px) scale(0.97);
+.navItem:hover::before {
+  transform: scaleY(0.45);
 }
 
-.navItemActive {
-  composes: md-button from global;
-  background: var(--admin-bg-raised-2);
-  color: var(--admin-gold);
-  box-shadow: inset 2px 0 0 var(--admin-gold);
+.navItem:hover::after {
+  opacity: 1;
 }
 
+.navItemActive,
 .navItemActive:hover {
-  background: var(--admin-bg-raised-3);
-  color: var(--admin-gold);
-  transform: translateX(2px);
+  color: var(--admin-text-primary);
+}
+
+.navItemActive::before,
+.navItemActive:hover::before {
+  background: var(--admin-gold);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--admin-gold) 70%, transparent);
+  transform: scaleY(1);
+}
+
+.navItemActive::after {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--admin-gold) 20%, transparent), transparent 92%);
+  opacity: 1;
 }
 
 .navIcon {
@@ -193,6 +286,15 @@
   flex-shrink: 0;
   width: 20px;
   height: 20px;
+  transition: color var(--transition-md), transform var(--transition-md);
+}
+
+.navItem:hover .navIcon {
+  transform: translateX(2px);
+}
+
+.navItemActive .navIcon {
+  color: var(--admin-gold);
 }
 
 .navLabel {
@@ -201,6 +303,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: transform var(--transition-md);
+}
+
+.navItem:hover .navLabel {
+  transform: translateX(2px);
 }
 
 /* Notificaciones sin leer — mismo badge que el CRM en SellerLayout. */
@@ -254,31 +361,54 @@
 }
 
 .navSubToggle {
+  position: relative;
+  isolation: isolate;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
-  height: 42px;
+  height: 40px;
   border: none;
   border-radius: var(--admin-radius-md);
   background: none;
   color: var(--admin-text-muted);
   cursor: pointer;
-  transition: background var(--admin-transition), color var(--admin-transition);
+  transition: color var(--transition-md);
+}
+
+.navSubToggle::before {
+  content: '';
+  position: absolute;
+  inset: 4px 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--admin-text-primary) 8%, transparent);
+  opacity: 0;
+  transition: opacity var(--transition-md);
 }
 
 .navSubToggle:hover {
-  background: var(--admin-bg-raised);
-  color: var(--admin-text-warm);
+  color: var(--admin-gold);
+}
+
+.navSubToggle:hover::before {
+  opacity: 1;
 }
 
 .navSubToggle svg {
-  transition: transform var(--admin-transition);
+  transition: transform var(--transition-md);
 }
 
 .navSubToggleIconOpen {
   transform: rotate(180deg);
+}
+
+@keyframes navSubListIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 }
 
 .navSubList {
@@ -287,13 +417,17 @@
   gap: 1px;
   margin: 2px 0 var(--space-1);
   padding-left: var(--space-6);
-  border-left: 1px solid var(--admin-border-subtle);
+  border-left: 1px solid var(--admin-border-default);
   margin-left: var(--space-4);
+  animation: navSubListIn var(--transition-md) both;
 }
 
+/* Mismo lenguaje que .navItem, en chico: el riel de cada acceso se dibuja
+   sobre la línea de la lista. */
 .navSubItem {
+  position: relative;
   width: 100%;
-  height: 34px;
+  height: 32px;
   padding: 0 var(--space-2);
   border: none;
   border-radius: var(--admin-radius-md);
@@ -304,39 +438,63 @@
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: background var(--admin-transition), color var(--admin-transition);
+  transition: color var(--transition-md), transform var(--transition-md);
+}
+
+.navSubItem::before {
+  content: '';
+  position: absolute;
+  left: calc(-1 * var(--space-6) - 1.5px);
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--admin-text-faint);
+  transform: scaleY(0);
+  transition: transform var(--transition-md), background-color var(--transition-md);
 }
 
 .navSubItem:hover {
-  background: var(--admin-bg-raised);
-  color: var(--admin-gold);
+  color: var(--admin-text-primary);
+  transform: translateX(2px);
 }
 
-/* Sección de /sellers/* abierta: mismo lenguaje que .navItemActive, en chico. */
-.navSubItemActive {
-  composes: md-button from global;
-  background: var(--admin-bg-raised-2);
-  color: var(--admin-gold);
-  box-shadow: inset 2px 0 0 var(--admin-gold);
+.navSubItem:hover::before {
+  transform: scaleY(0.5);
 }
 
+.navSubItemActive,
 .navSubItemActive:hover {
-  background: var(--admin-bg-raised-3);
+  color: var(--admin-gold);
+  transform: none;
+}
+
+.navSubItemActive::before,
+.navSubItemActive:hover::before {
+  background: var(--admin-gold);
+  transform: scaleY(1);
 }
 
 /* ── Footer (tema, logout) ── */
 .sideFooter {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 2px;
   padding-top: var(--space-3);
   margin-top: var(--space-3);
-  border-top: 0.5px solid var(--admin-border-subtle);
+  border-top: 0.5px solid var(--admin-border-default);
 }
 
 .navItemDanger:hover {
-  background: var(--admin-red-bg);
   color: var(--admin-red-text);
+}
+
+.navItemDanger:hover::before {
+  background: var(--admin-danger-core);
+}
+
+.navItemDanger::after {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--admin-danger-core) 18%, transparent), transparent 88%);
 }
 
 /* ── Área de contenido (Outlet) ── */
@@ -352,6 +510,30 @@
   /* Con la sidebar oculta, el sidebarToggle fijo flota sobre esta esquina
      del contenido — se reserva el espacio para que no quede tapado. */
   padding-top: var(--space-16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebarToggle,
+  .sidebarToggle svg,
+  .navItem::before,
+  .navIcon,
+  .navLabel,
+  .navSubItem,
+  .navSubItem::before {
+    transition-duration: 0.01ms;
+  }
+
+  .navSubList {
+    animation: none;
+  }
+
+  .navItem:hover .navIcon,
+  .navItem:hover .navLabel,
+  .navSubItem:hover,
+  .sidebarToggle:hover svg {
+    transform: none;
+  }
 }
 
 @media (max-width: 599px) {

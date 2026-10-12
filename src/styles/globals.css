@@ -589,7 +589,18 @@
   --tone-focus:     var(--t-accent);
 }
 
-/* ── Dock móvil compartido (panel de usuario + panel CEO) ── */
+/* ── Dock móvil compartido (panel de usuario + panel CEO + vendedores) ──
+   La base es la del panel del dueño (y Gestión de pedidos): una cápsula
+   flotante cuyo activo lleva el ícono en una píldora llena del acento.
+   Más abajo, dentro del mismo @media, cada panel le pone su identidad
+   según la clase de la raíz de su layout — la misma que tiene su barra
+   lateral (ver los .module.css de cada layout):
+     .admin-panel-graphite  "consola": barra pegada al borde, recta
+     .seller-panel          "pulso": la celda activa se llena con el degradé */
+.seller-panel {
+  --nav-grad: linear-gradient(135deg, color-mix(in srgb, var(--admin-gold) 78%, white), var(--admin-gold));
+}
+
 .admin-mobile-dock,
 .admin-mobile-more,
 .admin-mobile-more-scrim {
@@ -631,9 +642,27 @@
     display: flex;
     align-items: stretch;
     gap: var(--space-1);
-    /* Fondo y sombra los pone .md-surface (ver el TSX de cada layout):
-       el dock flota sobre el contenido igual que los paneles. */
     border-radius: 28px;
+  }
+
+  /* El dock flota sobre el contenido: apenas translúcido, para que se
+     adivine lo que pasa por debajo. El desenfoque es lo que mantiene la
+     lectura: sin él, el texto de la página se mezcla con las etiquetas.
+     Con las dos clases (0,2,0) le gana al fondo opaco de .md-surface,
+     declarado más abajo. */
+  .admin-mobile-dock.md-surface {
+    background: color-mix(in srgb, var(--tone-float) 86%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    backdrop-filter: blur(14px) saturate(1.3);
+    box-shadow:
+      inset 0 0 0 0.5px color-mix(in srgb, var(--tone-accent) 20%, transparent),
+      var(--tone-shadow);
+  }
+
+  .admin-mobile-more.md-surface {
+    background: color-mix(in srgb, var(--tone-float) 92%, transparent);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
   }
 
   .admin-mobile-dock__button {
@@ -677,7 +706,9 @@
     outline-offset: 1px;
   }
 
-  /* El activo no pinta toda la celda: una píldora tonal detrás del icono. */
+  /* El activo no pinta toda la celda: una píldora llena del acento detrás
+     del icono, que entra por opacidad y escala (al cambiar de sección la
+     vieja se apaga mientras la nueva se enciende). */
   .admin-mobile-dock__button--active,
   .admin-mobile-dock__button--active:hover {
     color: var(--tone-on-primary-container);
@@ -693,6 +724,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: color var(--transition-md), transform var(--admin-transition-spring);
   }
 
   .admin-mobile-dock__icon::before {
@@ -703,18 +735,26 @@
     border-radius: var(--radius-full);
     background: var(--tone-accent);
     opacity: 0;
-    transition: opacity var(--admin-transition);
+    transform: scale(0.7);
+    transition: opacity var(--transition-md), transform var(--admin-transition-spring);
   }
 
   @media (hover: hover) {
     .admin-mobile-dock__button:hover .admin-mobile-dock__icon::before {
-      opacity: 0.1;
+      opacity: 0.12;
+      transform: none;
     }
   }
 
+  .admin-mobile-dock__button--active .admin-mobile-dock__icon {
+    color: var(--admin-gold-ink);
+    transform: translateY(-1px);
+  }
+
   .admin-mobile-dock__button--active .admin-mobile-dock__icon::before {
-    background: var(--tone-indicator);
+    box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--tone-accent) 75%, transparent);
     opacity: 1;
+    transform: none;
   }
 
   .admin-mobile-dock__icon svg {
@@ -778,10 +818,146 @@
     height: 20px;
     flex: 0 0 auto;
   }
+
+  /* ── Panel CEO: "consola" ──
+     Barra pegada al borde de abajo, de esquinas rectas. El activo se marca
+     con un filete del acento arriba de la celda, igual que el riel de su
+     barra lateral. Los selectores van con (0,3,0) para ganarle a la receta
+     .md-button.md-button, que el botón activo también lleva. */
+  .admin-panel-graphite .admin-mobile-dock {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-width: none;
+    height: calc(62px + env(safe-area-inset-bottom));
+    padding: 0 calc(var(--space-2) + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(var(--space-2) + env(safe-area-inset-left));
+    gap: 0;
+    border-radius: 0;
+  }
+
+  .admin-panel-graphite .admin-mobile-dock.md-surface {
+    background: color-mix(in srgb, var(--admin-bg-surface) 86%, transparent);
+    box-shadow:
+      inset 0 0.5px 0 var(--admin-border-default),
+      0 -14px 30px -20px color-mix(in srgb, black 70%, transparent);
+  }
+
+  .admin-panel-graphite .admin-mobile-dock .admin-mobile-dock__button {
+    position: relative;
+    isolation: isolate;
+    min-height: 0;
+    border-radius: 0;
+    font-size: 0.625rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  .admin-panel-graphite .admin-mobile-dock .admin-mobile-dock__button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 24%;
+    right: 24%;
+    height: 2px;
+    border-radius: 0 0 2px 2px;
+    background: var(--admin-gold);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--admin-gold) 70%, transparent);
+    transform: scaleX(0);
+    transition: transform var(--transition-md);
+  }
+
+  .admin-panel-graphite .admin-mobile-dock .admin-mobile-dock__button--active {
+    color: var(--admin-text-primary);
+  }
+
+  .admin-panel-graphite .admin-mobile-dock .admin-mobile-dock__button--active::before {
+    transform: scaleX(1);
+  }
+
+  .admin-panel-graphite .admin-mobile-dock .admin-mobile-dock__icon::before {
+    inset: -4px -12px;
+    border-radius: var(--admin-radius-md);
+    box-shadow: none;
+  }
+
+  .admin-panel-graphite .admin-mobile-dock .admin-mobile-dock__button--active .admin-mobile-dock__icon {
+    color: var(--admin-gold);
+    transform: none;
+  }
+
+  .admin-panel-graphite .admin-mobile-dock .admin-mobile-dock__button--active .admin-mobile-dock__icon::before {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--admin-gold) 26%, transparent), transparent);
+  }
+
+  .admin-panel-graphite .admin-mobile-more {
+    bottom: calc(70px + env(safe-area-inset-bottom));
+    border-radius: var(--admin-radius-2xl);
+  }
+
+  .admin-panel-graphite .admin-mobile-more__item {
+    border-radius: var(--admin-radius-md);
+  }
+
+  /* ── Panel de vendedores: "pulso" ──
+     La celda activa se llena entera con el degradé del acento (el mismo
+     del ítem activo de su barra lateral). El degradé vive en ::before
+     porque un background con gradiente no transiciona: entra por opacidad. */
+  .seller-panel .admin-mobile-dock {
+    padding: 6px;
+    border-radius: 22px;
+  }
+
+  .seller-panel .admin-mobile-dock .admin-mobile-dock__button {
+    position: relative;
+    isolation: isolate;
+    border-radius: 16px;
+  }
+
+  .seller-panel .admin-mobile-dock .admin-mobile-dock__button::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--nav-grad);
+    box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--admin-gold) 80%, transparent);
+    opacity: 0;
+    transform: scale(0.82);
+    transition: opacity var(--transition-md), transform var(--admin-transition-spring);
+  }
+
+  .seller-panel .admin-mobile-dock .admin-mobile-dock__button--active,
+  .seller-panel .admin-mobile-dock .admin-mobile-dock__button--active:hover {
+    color: var(--admin-gold-ink);
+  }
+
+  .seller-panel .admin-mobile-dock .admin-mobile-dock__button--active::before {
+    opacity: 1;
+    transform: none;
+  }
+
+  .seller-panel .admin-mobile-dock .admin-mobile-dock__button--active .admin-mobile-dock__icon {
+    color: inherit;
+    transform: none;
+  }
+
+  .seller-panel .admin-mobile-dock .admin-mobile-dock__button--active .admin-mobile-dock__icon::before {
+    opacity: 0;
+  }
+
+  .seller-panel .admin-mobile-more {
+    border-radius: 20px;
+  }
+
+  .seller-panel .admin-mobile-more__item {
+    border-radius: 14px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .admin-mobile-dock__button,
+  .admin-mobile-dock__button::before,
+  .admin-mobile-dock__icon,
   .admin-mobile-dock__icon::before,
   .admin-mobile-more {
     transition: none;
