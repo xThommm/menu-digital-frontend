@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../context/useAuth";
 import { useTheme } from "../../../../hooks/useTheme";
+import { usePanelPreferences } from "../../../../hooks/usePanelPreferences";
+import PanelAppearanceDialog from "../PanelAppearance/PanelAppearanceDialog";
 import { usePlans } from "../../../../hooks/usePlans";
 import { isSubscriptionExpired, PLAN_LABEL } from "../../../../lib/plans";
 import { formatDateAR } from "../../../../lib/dates";
@@ -11,7 +13,7 @@ import { useMobileDock } from "../../../../context/useMobileDock";
 import BrandMark from "../../../Common/BrandMark";
 import BrandWordmark from "../../../Common/BrandWordmark";
 import s from "./DashboardLayout.module.css";
-import { ArrowUpRight, CalendarCheck, ChartColumn, ClipboardList, FileText, House, LogOut, MoreHorizontal, PanelLeft, Settings, Store } from "lucide-react";
+import { ArrowUpRight, CalendarCheck, ChartColumn, ClipboardList, FileText, House, LogOut, MoreHorizontal, Palette, PanelLeft, Settings, Store } from "lucide-react";
 
 const NAV_ITEMS = [
   { path: "/dashboard",      label: "Inicio",         short: "Inicio",  icon: <House size={20} strokeWidth={1.5} /> },
@@ -49,7 +51,10 @@ export default function DashboardLayout() {
 function DashboardLayoutInner() {
   const catalog = usePlans();
   const { user, logout } = useAuth();
-  const { theme, toggle: toggleTheme } = useTheme();
+  const { theme, toggle: toggleTheme, setTheme } = useTheme();
+  const { preferences, setAccent, setFontSize, reset: resetPreferences } = usePanelPreferences();
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const closeAppearance = useCallback(() => setAppearanceOpen(false), []);
   const navigate = useNavigate();
   const location = useLocation();
   const { hidden: mobileDockHidden } = useMobileDock();
@@ -170,6 +175,10 @@ function DashboardLayoutInner() {
           <button type="button" className={s.navItem} onClick={toggleTheme} aria-label={themeLabel} data-tooltip={themeLabel}>
             <span className={s.navIcon}>{theme === "dark" ? <SunIcon /> : <MoonIcon />}</span>
             <span className={s.navLabel}>{theme === "dark" ? "Tema claro" : "Tema oscuro"}</span>
+          </button>
+          <button type="button" className={s.navItem} onClick={() => setAppearanceOpen(true)} aria-haspopup="dialog" data-tooltip="Apariencia">
+            <span className={s.navIcon}><Palette size={20} strokeWidth={1.5} aria-hidden /></span>
+            <span className={s.navLabel}>Apariencia</span>
           </button>
           <button type="button" className={`${s.navItem} ${s.navItemDanger}`} onClick={handleLogout} data-tooltip="Cerrar sesión">
             <span className={s.navIcon}><LogOut size={20} strokeWidth={1.5} /></span>
@@ -315,6 +324,18 @@ function DashboardLayoutInner() {
             </button>
             <button
               type="button"
+              className="admin-mobile-more__item"
+              aria-haspopup="dialog"
+              onClick={() => {
+                setMobileMoreOpen(false);
+                setAppearanceOpen(true);
+              }}
+            >
+              <Palette />
+              Apariencia
+            </button>
+            <button
+              type="button"
               className="admin-mobile-more__item admin-mobile-more__item--danger"
               onClick={handleLogout}
             >
@@ -323,6 +344,18 @@ function DashboardLayoutInner() {
             </button>
           </div>
         </>
+      )}
+
+      {appearanceOpen && (
+        <PanelAppearanceDialog
+          theme={theme}
+          preferences={preferences}
+          onTheme={setTheme}
+          onAccent={setAccent}
+          onFontSize={setFontSize}
+          onReset={resetPreferences}
+          onClose={closeAppearance}
+        />
       )}
 
     </div>

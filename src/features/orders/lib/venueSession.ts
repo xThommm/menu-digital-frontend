@@ -1,5 +1,5 @@
 import type { CustomerOrderReceipt, VenueContext } from "../types";
-import { isObject, readJson, removeKey, writeJson } from "./storage";
+import { isObject, readJson, removeKey, writeJson } from "./storage.ts";
 
 // ── Sesión "en el local" ─────────────────────────────────────────────────────
 // Al escanear el QR de la mesa (o el general) la carta abre con ?mesa=<token>.
@@ -28,7 +28,7 @@ export function readVenueSession(slug: string, now = Date.now()): VenueSession |
   const session = readJson(venueKey(slug), isVenueSession);
   if (!session) return null;
   if (session.expiresAt <= now) {
-    removeKey(venueKey(slug));
+    clearVenueSession(slug);
     return null;
   }
   return session;
@@ -38,12 +38,17 @@ export function saveVenueSession(slug: string, token: string, context: InVenueCo
   writeJson(venueKey(slug), { token, context, expiresAt: Date.now() + VENUE_TTL_MS });
 }
 
+// La mesa elegida se va con la visita: la próxima vez puede sentarse en otra.
 export function clearVenueSession(slug: string) {
   removeKey(venueKey(slug));
+  removeKey(tableKey(slug));
 }
 
-// Mesa que eligió el comensal con un QR general (para no preguntarla de nuevo).
-const tableKey = (slug: string) => `md:venue-table:${slug}`;
+// Mesa que eligió el comensal con un QR general (para no preguntarla de nuevo
+// durante la misma visita).
+function tableKey(slug: string) {
+  return `md:venue-table:${slug}`;
+}
 export const readChosenTable = (slug: string): number | null =>
   readJson(tableKey(slug), (value): value is number => Number.isSafeInteger(value) && (value as number) > 0);
 export const saveChosenTable = (slug: string, table: number) => writeJson(tableKey(slug), table);

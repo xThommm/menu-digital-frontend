@@ -337,6 +337,40 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   PANEL DEL DUEÑO — PREFERENCIAS DE APARIENCIA
+   Acento y tamaño de letra que elige cada usuario (lib/panelPreferences,
+   hooks/usePanelPreferences). Los atributos solo están en el <html>
+   mientras hay un layout del panel montado, así que la carta pública,
+   la landing y el panel CEO no los ven.
+
+   Todo el panel deriva su color de --admin-gold (bordes, brillos y la
+   escala --tone-*), por eso alcanza con cambiar ese token y su tinta.
+   Cada acento tiene un valor por tema: sobre el fondo claro hace falta
+   uno más profundo para que lea como texto. Sin atributo queda el
+   naranja de siempre. El claro va con (0,3,0) porque el bloque del tema
+   claro de arriba redefine --admin-gold con (0,2,0).
+   ═══════════════════════════════════════════════════════════════ */
+:root[data-panel-accent="gold"] { --admin-gold: #D9AE4E; }
+:root[data-theme="light"][data-panel-accent="gold"] { --admin-gold: #A87A1B; --admin-gold-ink: #ffffff; }
+
+:root[data-panel-accent="blue"] { --admin-gold: #5B9DFF; --admin-gold-ink: #06101f; }
+:root[data-theme="light"][data-panel-accent="blue"] { --admin-gold: #2563EB; --admin-gold-ink: #ffffff; }
+
+/* Neutro: claro sobre el tema oscuro, grafito sobre el claro (un acento
+   claro no se vería contra el fondo). */
+:root[data-panel-accent="light"] { --admin-gold: #EDE8DF; --admin-gold-ink: #14161c; }
+:root[data-theme="light"][data-panel-accent="light"] {
+  --admin-gold: #3A4150;
+  --admin-gold-ink: #ffffff;
+  --admin-gold-hover: color-mix(in srgb, var(--admin-gold) 85%, black);
+}
+
+/* El panel mide en rem, así que escalar la raíz escala todo parejo. */
+:root[data-panel-font="sm"] { font-size: 15px; }
+:root[data-panel-font="lg"] { font-size: 17px; }
+:root[data-panel-font="xl"] { font-size: 18.5px; }
+
+/* ═══════════════════════════════════════════════════════════════
    PANEL CEO — IDENTIDAD "GRAFITO"
    El panel interno es una herramienta de gestión, no el producto que
    se vende: no debería verse como la carta del restaurante. Acá se
