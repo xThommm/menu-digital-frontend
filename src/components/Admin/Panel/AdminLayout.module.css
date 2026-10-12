@@ -1,5 +1,8 @@
 .layoutRoot {
   --sidebar-width: 292px;
+  /* Aire entre la tarjeta de la barra y el borde de la ventana. El ancho
+     que ocupa en el layout sigue siendo --sidebar-width. */
+  --sidebar-inset: 8px;
   --focus-color: var(--admin-gold);
   display: flex;
   min-height: 100vh;
@@ -12,44 +15,34 @@
 
 /* ── Sidebar (desktop) — identidad "consola" del panel CEO ──
    Cada panel tiene su barra (ver DashboardLayout / SellerLayout
-   .module.css). Acá es una herramienta: pegada al borde, de esquinas
-   rectas, con un renglonado tenue y un filamento del acento en el canto.
-   El ítem activo se marca con un riel a la izquierda y un lavado que se
-   desvanece hacia la derecha, no con una píldora. */
+   .module.css). Comparte la forma con la del dueño —una tarjeta flotante,
+   apenas translúcida, que se oculta con el botón de arriba— pero en
+   grafito y con esquinas más contenidas. Lo propio está en los ítems: el
+   activo se marca con un riel a la izquierda y un lavado que se desvanece
+   hacia la derecha, no con una píldora. */
 .sidebar {
-  width: var(--sidebar-width);
+  width: calc(var(--sidebar-width) - var(--sidebar-inset));
   flex-shrink: 0;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--admin-gold) 6%, transparent), transparent 30%),
-    repeating-linear-gradient(0deg, color-mix(in srgb, var(--admin-text-primary) 3%, transparent) 0 1px, transparent 1px 28px),
+    linear-gradient(180deg, color-mix(in srgb, var(--admin-gold) 7%, transparent), transparent 32%),
     color-mix(in srgb, var(--admin-bg-surface) 90%, transparent);
-  border-right: 0.5px solid var(--admin-border-default);
+  border: 0.5px solid var(--admin-border-default);
+  border-radius: 20px;
+  box-shadow: var(--tone-shadow);
   display: flex;
   flex-direction: column;
-  padding: var(--space-5) var(--space-3);
+  padding: var(--space-5) var(--space-3) var(--space-4);
   position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
+  top: var(--sidebar-inset);
+  left: var(--sidebar-inset);
+  bottom: var(--sidebar-inset);
   z-index: 20;
+  overflow-y: auto;
   transition: transform var(--transition-md), opacity var(--transition-md);
 }
 
-/* Filamento del acento sobre el canto derecho. */
-.sidebar::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: -0.5px;
-  width: 1px;
-  height: 148px;
-  background: linear-gradient(180deg, var(--admin-gold), transparent);
-  opacity: 0.75;
-  pointer-events: none;
-}
-
 .sidebarCollapsed {
-  transform: translateX(-100%);
+  transform: translateX(calc(-100% - var(--sidebar-inset) * 2));
   opacity: 0;
 }
 
@@ -62,7 +55,7 @@
    Acá es una tecla cuadrada con contorno fino. */
 .sidebarToggle {
   position: fixed;
-  top: 22px;
+  top: calc(22px + var(--sidebar-inset));
   left: calc(var(--sidebar-width) - 32px - var(--space-3));
   width: 32px;
   height: 32px;
