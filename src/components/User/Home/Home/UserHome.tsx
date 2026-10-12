@@ -144,8 +144,12 @@ function Template({ slug, user, palette, goMenu }: TemplateProps) {
   // por eso se resuelve acá y no con un @media. En el celular (o con Estándar)
   // el marcado es el de siempre.
   const isDesktop = useMediaQuery(`(min-width: ${PAGE_LAYOUT_MIN_WIDTH}px)`);
-  const immersive = isDesktop && resolvePageLayout(user.pageLayout) === "immersive";
-  // La Inmersiva usa la foto de portada de fondo: el avatar no tiene lugar.
+  const layout = isDesktop ? resolvePageLayout(user.pageLayout) : "standard";
+  // Todas las plantillas que no son Estándar comparten el marcado del
+  // encabezado (.hero) y las secciones de LandingShowcase; lo que cambia
+  // entre ellas es solo CSS ([data-page-layout]).
+  const immersive = layout !== "standard";
+  // Ahí la foto de portada va grande: el avatar no tiene lugar.
   const useAvatar = !immersive && !family && palette.avatar === true;
   const bg = media?.backgroundPicture;
 
@@ -265,13 +269,13 @@ function Template({ slug, user, palette, goMenu }: TemplateProps) {
   );
 
   return (
-    <div ref={pageScrollbarRef} className={`t-wrap ${styles.landing}`} data-template={palette.id} data-title-sans={palette.sans ? "" : undefined} data-menu-style={menuStyle} data-menu-family={family?.id} data-page-layout={immersive ? "immersive" : undefined}>
+    <div ref={pageScrollbarRef} className={`t-wrap ${styles.landing}`} data-template={palette.id} data-title-sans={palette.sans ? "" : undefined} data-menu-style={menuStyle} data-menu-family={family?.id} data-page-layout={immersive ? layout : undefined}>
       {user.features?.sin_publicidad !== true && <FreePlanAd />}
       {immersive ? (
         <main>
-          {/* Inmersiva: la foto ocupa la pantalla y el encabezado va encima.
-              El botón de la foto queda detrás de todo; el velo y el texto no
-              reciben clics salvo en sus propios controles. */}
+          {/* Inmersiva: la foto ocupa la pantalla y el encabezado va encima
+              (el botón de la foto queda detrás). Partida: la foto va al
+              lado. El marcado es el mismo. */}
           <header className={`${styles.hero} ${showBg ? styles.heroWithCover : ""}`}>
             {showBg && (
               <button

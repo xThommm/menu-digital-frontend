@@ -231,7 +231,10 @@ export default function MenuPage() {
   // La plantilla cambia la ESTRUCTURA de la cabecera, y solo en escritorio:
   // por eso se resuelve acá y no con un @media (igual que en la portada).
   const isDesktop = useMediaQuery(`(min-width: ${PAGE_LAYOUT_MIN_WIDTH}px)`);
-  const immersive = isDesktop && resolvePageLayout(user?.pageLayout) === "immersive";
+  const layout = isDesktop ? resolvePageLayout(user?.pageLayout) : "standard";
+  // Fuera de Estándar todas comparten el marcado de la cabecera (.immHero);
+  // lo que cambia entre plantillas es solo CSS ([data-page-layout]).
+  const immersive = layout !== "standard";
   const heroRef = useRef<HTMLElement>(null);
 
   // Ítems del tab activo, en el mismo orden en que se ven en pantalla
@@ -449,7 +452,7 @@ export default function MenuPage() {
           data-template={resolveTemplate(user.template).id}
           data-menu-style={menuStyle}
           data-menu-family={family?.id}
-          data-page-layout={immersive ? "immersive" : undefined}
+          data-page-layout={immersive ? layout : undefined}
         >
           {family && !immersive && <MenuFamilyCover src={user.media?.backgroundPicture} />}
           {/* Inmersiva: la cabecera es la foto de portada con el nombre

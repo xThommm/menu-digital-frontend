@@ -1655,13 +1655,15 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   PLANTILLA INMERSIVA (lib/pageLayouts.ts) — solo escritorio
+   PLANTILLAS DE PÁGINA (lib/pageLayouts.ts) — solo escritorio
+   Base: la Inmersiva, con [data-page-layout] (el atributo solo existe fuera
+   de Estándar). Cada plantilla ajusta lo suyo al final con su id.
    Misma regla que en la portada: la plantilla acomoda, la paleta colorea y
    el diseño de carta pone tipografía y formas. La cabecera fotográfica tiene
    marcado propio (.immHero, ver UserMenu.tsx); las pestañas, las tarjetas y
    el resumen del pedido son los de cada diseño.
    ═══════════════════════════════════════════════════════════════ */
-.mp[data-page-layout="immersive"] {
+.mp[data-page-layout] {
   /* Margen lateral de todo lo que va de lado a lado (foto, barra fija):
      alinea su contenido con la columna central (.mpShell). */
   --imm-gutter: max(2rem, calc((100% - 1320px) / 2 + 2rem));
@@ -1675,7 +1677,7 @@
   align-items: end;
   padding: 6.5rem var(--imm-gutter) 2.5rem;
   /* Sin foto: un resplandor del acento, como en la portada. */
-  background: radial-gradient(80% 140% at 10% 100%, color-mix(in srgb, var(--t-accent) 16%, transparent), transparent 64%);
+  background: radial-gradient(60% 80% at 0% 40%, color-mix(in srgb, var(--t-accent) 16%, transparent), transparent 70%);
   animation: t-fadeUp 0.35s ease both;
 }
 .immHero:has(.immHeroImg) { min-height: clamp(300px, 46vh, 480px); background: none; }
@@ -1700,8 +1702,8 @@
 .immHeroInfo { position: relative; z-index: 1; width: min(100%, 860px); min-width: 0; }
 .immHero .mpBack { position: absolute; top: 1.5rem; left: var(--imm-gutter); z-index: 1; }
 
-.mp[data-page-layout="immersive"] .immHero .mpEyebrow { margin-bottom: 0.75rem; font-size: 0.75rem; }
-.mp[data-page-layout="immersive"] .immHero .mpName {
+.mp[data-page-layout] .immHero .mpEyebrow { margin-bottom: 0.75rem; font-size: 0.75rem; }
+.mp[data-page-layout] .immHero .mpName {
   font-size: clamp(2.75rem, 4.8vw, 4.75rem);
   line-height: 1.02;
   white-space: normal;
@@ -1709,11 +1711,11 @@
   overflow-wrap: anywhere;
   text-wrap: balance;
 }
-.mp[data-page-layout="immersive"] .immHero .mpMeta { gap: 1.25rem; margin-top: 1rem; font-size: 0.875rem; color: var(--t-text); }
+.mp[data-page-layout] .immHero .mpMeta { gap: 1.25rem; margin-top: 1rem; font-size: 0.875rem; color: var(--t-text); }
 
 /* ── Barra fija: pestañas + categorías ── */
-.mp[data-page-layout="immersive"] .mpSticky { background: var(--t-bg); border-bottom: 1px solid var(--t-border); }
-.mp[data-page-layout="immersive"] .mpTabs { padding-inline: var(--imm-gutter); }
+.mp[data-page-layout] .mpSticky { background: var(--t-bg); border-bottom: 1px solid var(--t-border); }
+.mp[data-page-layout] .mpTabs { padding-inline: var(--imm-gutter); }
 
 .catNav {
   display: flex;
@@ -1742,28 +1744,53 @@
 .catNavLink[aria-current] { border-bottom-color: var(--t-accent); color: var(--t-title); font-weight: 650; }
 
 /* ── Columna central ── */
-.mp[data-page-layout="immersive"] .mpShell {
+.mp[data-page-layout] .mpShell {
   grid-template-columns: minmax(0, 1fr);
   gap: 3rem;
   max-width: 1320px;
   margin-inline: auto;
   padding: 0 2rem 6rem;
 }
-.mp[data-page-layout="immersive"] .mpShell:has(.orderSummary) { grid-template-columns: minmax(0, 1fr) 340px; }
+.mp[data-page-layout] .mpShell:has(.orderSummary) { grid-template-columns: minmax(0, 1fr) 340px; }
 /* El margen lateral ya lo pone .mpShell: así la lista arranca en la misma
    línea que el nombre y las pestañas. */
-.mp[data-page-layout="immersive"] .mpContent { padding: 2rem 0 0; }
+.mp[data-page-layout] .mpContent { padding: 2rem 0 0; }
 /* Debajo de la barra fija (pestañas + categorías), no detrás. */
-.mp[data-page-layout="immersive"] .orderSummary { top: calc(var(--free-ad-h, 0px) + 8.5rem); max-height: calc(100dvh - 9.5rem); margin-top: 2rem; }
-.mp[data-page-layout="immersive"] :is(.mpCat, .mpCatCollapsible) { scroll-margin-top: calc(var(--free-ad-h, 0px) + 8.75rem); }
+.mp[data-page-layout] .orderSummary { top: calc(var(--free-ad-h, 0px) + 8.5rem); max-height: calc(100dvh - 9.5rem); margin-top: 2rem; }
+.mp[data-page-layout] :is(.mpCat, .mpCatCollapsible) { scroll-margin-top: calc(var(--free-ad-h, 0px) + 8.75rem); }
 
 /* Con el ancho completo entra una columna más de platos. Solo en la carta
    Clásica: cada diseño de familia ya define cuántas columnas le sientan. */
 @media (min-width: 1280px) {
-  .mp[data-page-layout="immersive"][data-menu-style="classic"] .mpShell:not(:has(.orderSummary)) :is(.mpCat, .mpCatItems:not([hidden])) {
+  .mp[data-page-layout][data-menu-style="classic"] .mpShell:not(:has(.orderSummary)) :is(.mpCat, .mpCatItems:not([hidden])) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* Inmersiva: sin ajustes propios, es la base de arriba. El selector queda
+   escrito para que test/pageLayouts.test.ts la encuentre. */
+.mp[data-page-layout="immersive"] .immHero { isolation: auto; }
+
+/* ── Plantilla Partida ──
+   Cabecera en dos columnas: nombre a un lado, foto enmarcada al otro. */
+.mp[data-page-layout="split"] .immHero { align-items: center; padding: 6rem var(--imm-gutter) 3.5rem; }
+.mp[data-page-layout="split"] .immHero:has(.immHeroImg) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: 4rem;
+  min-height: 0;
+  background: radial-gradient(60% 80% at 0% 40%, color-mix(in srgb, var(--t-accent) 16%, transparent), transparent 70%);
+}
+.mp[data-page-layout="split"] .immHero:has(.immHeroImg)::after { content: none; }
+.mp[data-page-layout="split"] .immHeroImg {
+  position: relative;
+  inset: auto;
+  order: 2;
+  height: clamp(240px, 34vh, 340px);
+  border-radius: var(--t-family-photo-radius, 24px);
+  outline: 1px solid color-mix(in srgb, var(--t-accent) 50%, transparent);
+  outline-offset: 12px;
+}
+.mp[data-page-layout="split"] .immHeroInfo { width: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   .immHero { animation: none; }
