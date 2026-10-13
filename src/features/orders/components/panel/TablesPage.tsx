@@ -1,23 +1,33 @@
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Receipt } from "lucide-react";
+import { useAuth } from "../../../../context/useAuth";
 import DataTable, { type DataTableColumn } from "../../../../components/Common/DataTable/DataTable";
-import { closeTableSession, listTableSessions, setTableGuests } from "../../api/ordersApi";
+import {
+  closeTableSession, listTableSessions, ownerBillApi, ownerGroupApi, setTableGuests,
+} from "../../api/ordersApi";
 import { ownerHello, useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { errorCode, errorMessage } from "../../lib/errors";
 import { durationLabel, elapsedLabel, formatDateTime, formatMoney, formatTime, STATUS_LABEL } from "../../lib/format";
-import type { TableSession } from "../../types";
+import type { GroupSession, TableSession } from "../../types";
+import BillPanel from "../shared/BillPanel";
+import GroupPanel, { OpenGroupForm } from "../shared/GroupPanel";
 import TableBill from "../shared/TableBill";
 import p from "./panel.module.css";
 
 // Mesas: sesiones de mesa abiertas (de la primera comanda hasta que se
 // cierra la cuenta) con su consumo, y el historial de las cerradas. Desde
-// acá se puede cerrar cualquier mesa; el operador cierra las suyas desde su
+// acá se puede cerrar cualquier mesa, dividir su cuenta, registrar los pagos y
+// manejar su pedido grupal; el operador hace lo mismo con las suyas desde su
 // tomador de pedidos.
 
 const POLL_MS = 15_000;
+// Avisos del cierre que piden confirmar: pedidos sin entregar o cuenta sin terminar de cobrar.
+const CLOSE_WARNINGS = ["ACTIVE_ORDERS", "BILL_PENDING"];
 
 export default function TablesPage() {
+  const slug = useAuth().user?.slug ?? "";
   const [open, setOpen] = useState<TableSession[] | null>(null);
+  const [groups, setGroups] = useState<GroupSession[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -25,7 +35,13 @@ export default function TablesPage() {
 
   const refresh = useCallback(async () => {
     try {
-      setOpen((await listTableSessions("open")).sessions);
+      const [sessions, openGroups] = await Promise.all([
+        listTableSessions("open").then(result => result.sessions),
+        // Con un backend anterior no hay pedidos grupales: las mesas se ven igual.
+        ownerGroupApi.list().catch(() => [] as GroupSession[]),
+      ]);
+      setOpen(sessions);
+      setGroups(openGroups);
       setNow(Date.now());
       setError(null);
     } catch (err) {
@@ -44,6 +60,10 @@ export default function TablesPage() {
     setNotice(`Mesa ${session.tableNumber} cerrada · ${formatMoney(session.totalAmount)} en ${session.ordersCount} pedido(s).`);
     setHistoryVersion(v => v + 1);
   };
+
+  // Pedidos grupales de mesas que todavía no tienen ningún pedido.
+  const openTables = new Set((open ?? []).map(session => session.tableNumber));
+  const waiting = groups.filter(group => !openTables.has(group.tableNumber));
 
   return (
     <div className={p.page}>
@@ -71,14 +91,37 @@ export default function TablesPage() {
                 <OpenTableCard
                   key={session.id}
                   session={session}
+                  group={groups.find(group => group.tableNumber === session.tableNumber) ?? null}
+                  slug={slug}
                   now={now}
                   onUpdated={replace}
                   onClosed={closed}
                   onError={setError}
+                  onReload={refresh}
+                  onNotice={setNotice}
                 />
               ))}
             </div>
           )}
+        </section>
+      )}
+
+      {open !== null && (
+        <section className={p.card} style={{ marginTop: "1.5rem" }} aria-label="Pedidos grupales">
+          <h2 className={p.cardTitle}>Pedidos grupales</h2>
+          <p className={p.switchHint} style={{ marginBottom: "0.75rem" }}>
+            Los comensales de una mesa arman el pedido entre todos, cada uno desde su celular, y sale como un solo pedido con el nombre de quién pidió cada cosa.
+            Abrilo acá para una mesa que todavía no pidió nada; en las mesas abiertas está dentro de cada una.
+          </p>
+          <div className={p.stack}>
+            {waiting.map(group => (
+              <div key={group.id} className={p.stack} style={{ gap: "0.4rem" }}>
+                <span className={p.tableName}>Mesa {group.tableNumber}</span>
+                <GroupPanel api={ownerGroupApi} slug={slug} tableNumber={group.tableNumber} group={group} onChanged={refresh} onNotice={setNotice} />
+              </div>
+            ))}
+            <OpenGroupForm api={ownerGroupApi} onOpened={refresh} />
+          </div>
         </section>
       )}
 
@@ -90,14 +133,20 @@ export default function TablesPage() {
   );
 }
 
-function OpenTableCard({ session, now, onUpdated, onClosed, onError }: {
+function OpenTableCard({ session, group, slug, now, onUpdated, onClosed, onError, onReload, onNotice }: {
   session: TableSession;
+  group: GroupSession | null;
+  slug: string;
   now: number;
   onUpdated: (session: TableSession) => void;
   onClosed: (session: TableSession) => void;
   onError: (message: string | null) => void;
+  onReload: () => void;
+  onNotice: (message: string) => void;
 }) {
   const [showOrders, setShowOrders] = useState(false);
+  const [showBill, setShowBill] = useState(false);
+  const paid = session.paidAmount ?? 0;
   const [confirm, setConfirm] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [guests, setGuests] = useState(session.guests === null ? "" : String(session.guests));
@@ -108,7 +157,7 @@ function OpenTableCard({ session, now, onUpdated, onClosed, onError }: {
     try {
       onClosed(await closeTableSession(session.id, force));
     } catch (err) {
-      if (errorCode(err) === "ACTIVE_ORDERS") setConfirm(errorMessage(err, "La mesa tiene pedidos sin entregar."));
+      if (CLOSE_WARNINGS.includes(errorCode(err) ?? "")) setConfirm(errorMessage(err, "La mesa tiene pedidos sin entregar."));
       else onError(errorMessage(err, "No se pudo cerrar la mesa."));
     } finally {
       setBusy(false);
@@ -158,9 +207,20 @@ function OpenTableCard({ session, now, onUpdated, onClosed, onError }: {
 
       <TableBill orders={session.orders ?? []} total={session.totalAmount} />
 
-      <button type="button" className={`${p.btnGhost} ${p.small}`} style={{ alignSelf: "flex-start" }} onClick={() => setShowOrders(v => !v)}>
-        {showOrders ? <ChevronUp size={14} aria-hidden /> : <ChevronDown size={14} aria-hidden />} {showOrders ? "Ocultar pedidos" : "Ver pedidos"}
-      </button>
+      {paid > 0 && (
+        <span className={p.tableMeta}>
+          Cobrado {formatMoney(paid)} · falta {formatMoney(Math.max(0, session.totalAmount - paid))}
+        </span>
+      )}
+
+      <div className={p.headerActions}>
+        <button type="button" className={`${p.btn} ${p.small}`} onClick={() => setShowBill(true)}>
+          <Receipt size={14} aria-hidden /> Dividir y cobrar
+        </button>
+        <button type="button" className={`${p.btnGhost} ${p.small}`} onClick={() => setShowOrders(v => !v)}>
+          {showOrders ? <ChevronUp size={14} aria-hidden /> : <ChevronDown size={14} aria-hidden />} {showOrders ? "Ocultar pedidos" : "Ver pedidos"}
+        </button>
+      </div>
       {showOrders && (
         <ul className={p.stack} style={{ gap: "0.4rem", margin: 0, paddingLeft: "1.1rem", fontSize: "0.8rem" }}>
           {(session.orders ?? []).map(order => (
@@ -171,9 +231,11 @@ function OpenTableCard({ session, now, onUpdated, onClosed, onError }: {
         </ul>
       )}
 
+      <GroupPanel api={ownerGroupApi} slug={slug} tableNumber={session.tableNumber} group={group} onChanged={onReload} onNotice={onNotice} />
+
       {confirm ? (
         <div className={p.error}>
-          {confirm} ¿Cerrar la mesa igual? Esos pedidos siguen en el panel.
+          {confirm} ¿Cerrar la mesa igual?
           <div className={p.headerActions} style={{ marginTop: "0.5rem" }}>
             <button type="button" className={`${p.btnDanger} ${p.small}`} disabled={busy} onClick={() => close(true)}>Cerrar igual</button>
             <button type="button" className={`${p.btn} ${p.small}`} onClick={() => setConfirm(null)}>Volver</button>
@@ -183,6 +245,17 @@ function OpenTableCard({ session, now, onUpdated, onClosed, onError }: {
         <button type="button" className={p.btnPrimary} disabled={busy} onClick={() => close(false)}>
           {busy ? "Cerrando…" : "Cerrar mesa"}
         </button>
+      )}
+
+      {showBill && (
+        <BillPanel
+          api={ownerBillApi}
+          sessionId={session.id}
+          tableNumber={session.tableNumber}
+          refreshKey={now}
+          onClose={() => setShowBill(false)}
+          onChanged={onReload}
+        />
       )}
     </article>
   );
@@ -196,6 +269,7 @@ const CLOSED_COLUMNS: DataTableColumn<TableSession>[] = [
   { id: "orders", header: "Pedidos", width: "90px", align: "right", render: s => s.ordersCount },
   { id: "guests", header: "Comensales", width: "110px", align: "right", render: s => s.guests ?? "—" },
   { id: "total", header: "Total", width: "120px", align: "right", render: s => formatMoney(s.totalAmount) },
+  { id: "paid", header: "Cobrado", width: "120px", align: "right", render: s => (s.paidAmount ? formatMoney(s.paidAmount) : "—") },
   {
     id: "closedBy",
     header: "Cerrada por",
@@ -224,7 +298,7 @@ function ClosedTables({ version, onError }: { version: number; onError: (message
       rows={data?.sessions ?? []}
       columns={CLOSED_COLUMNS}
       getRowId={s => String(s.id)}
-      minWidth={950}
+      minWidth={1070}
       loading={!data}
       emptyMessage="Todavía no se cerró ninguna mesa."
       footer={pages > 1 && (

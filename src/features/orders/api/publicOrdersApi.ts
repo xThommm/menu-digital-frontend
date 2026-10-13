@@ -1,6 +1,7 @@
 import { apiFetch } from "../../../api/apiClient";
 import type { PublicMenuPayload } from "../../../types";
 import type {
+  Bill, BillApi, GroupLineInput, GroupMemberView, GroupSession, GroupStaffApi,
   CourierOrder, CourierPanel, CourierSessionInfo, CustomerDeliveryInfo,
   CustomerOrderReceipt, OnlineCheckout, OnlineCheckoutStatus, OnlineOrderingConfig, OnlineServiceType, Order, OrderLineInput, SectorTicketsResponse, ServiceInput, StationSessionInfo, TableSession,
   Ticket, TicketStatus, VenueContext, WaiterSessionInfo,
@@ -30,6 +31,43 @@ export const sendCustomerOrder = (slug: string, body: {
   `/api/orders/public/${encodeURIComponent(slug)}/orders`,
   { ...json(body), timeoutMs: 15_000 },
 );
+
+// ── Pedido grupal (comensales de una mesa) ──
+// Abrirlo pide el QR del local; sumarse, el código o el QR / enlace del grupo.
+// Después cada celular se identifica con su token de integrante.
+type GroupJoined = { memberToken: string; group: GroupSession };
+const groupAuth = (token: string) => ({ Authorization: `Group ${token}` });
+const groupJson = (token: string, body: unknown, method = "POST"): RequestInit => ({
+  method,
+  headers: { "Content-Type": "application/json", ...groupAuth(token) },
+  body: JSON.stringify(body),
+});
+
+export const openVenueGroup = (slug: string, body: { token: string; tableNumber?: number | null; name: string }) =>
+  apiFetch<GroupJoined>(`/api/orders/public/${encodeURIComponent(slug)}/group`, json(body));
+
+export const joinGroup = (slug: string, body: { code?: string; joinToken?: string; name: string }) =>
+  apiFetch<GroupJoined>(`/api/orders/public/${encodeURIComponent(slug)}/group/join`, json(body));
+
+export const getMyGroup = (token: string, signal?: AbortSignal) =>
+  apiFetch<GroupMemberView>("/api/orders/group/me", { headers: groupAuth(token), signal });
+
+export const addGroupItems = (token: string, items: GroupLineInput[]) =>
+  apiFetch<{ group: GroupSession }>("/api/orders/group/items", { ...groupJson(token, { items }), timeoutMs: 15_000 });
+
+export const updateGroupItem = (token: string, id: number, body: { quantity?: number; notes?: string | null; shared?: boolean }) =>
+  apiFetch<{ group: GroupSession }>(`/api/orders/group/items/${id}`, groupJson(token, body, "PATCH"));
+
+export const removeGroupItem = (token: string, id: number) =>
+  apiFetch<{ group: GroupSession }>(`/api/orders/group/items/${id}`, { method: "DELETE", headers: groupAuth(token) });
+
+export const sendGroupOrder = (token: string, clientRequestId: string) =>
+  apiFetch<{ order: { number: number; tableNumber: number | null; total: number; createdAt: string }; duplicate: boolean; group: GroupSession }>(
+    "/api/orders/group/send", { ...groupJson(token, { clientRequestId }), timeoutMs: 15_000 },
+  );
+
+export const leaveGroup = (token: string) =>
+  apiFetch<void>("/api/orders/group/leave", { method: "POST", headers: groupAuth(token), parseJson: false });
 
 // ── Pedidos online con pago (take away / delivery, sin QR del local) ──
 export const getOnlineOrdering = (slug: string, signal?: AbortSignal) =>
@@ -99,6 +137,37 @@ export const closeWaiterTable = (token: string, id: number, force = false) =>
 
 export const setWaiterTableGuests = (token: string, id: number, guests: number | null) =>
   apiFetch<{ session: TableSession }>(`/api/orders/waiter/tables/${id}`, waiterJson(token, { guests }, "PATCH"));
+
+// Cuenta de una de sus mesas: dividirla y registrar pagos.
+export const waiterBillApi = (token: string): BillApi => {
+  const url = (sessionId: number, rest = "") => `/api/orders/waiter/tables/${sessionId}/bill${rest}`;
+  const bill = async (path: string, init?: RequestInit) => (await apiFetch<{ bill: Bill }>(path, init)).bill;
+  const send = (path: string, body: unknown, method = "POST") => bill(path, waiterJson(token, body, method));
+  return {
+    get: sessionId => bill(url(sessionId), { headers: waiterAuth(token) }),
+    addGuests: (sessionId, body) => send(url(sessionId, "/guests"), body),
+    renameGuest: (sessionId, guestId, name) => send(url(sessionId, `/guests/${guestId}`), { name }, "PATCH"),
+    removeGuest: (sessionId, guestId) => bill(url(sessionId, `/guests/${guestId}`), { method: "DELETE", headers: waiterAuth(token) }),
+    setSplit: (sessionId, body) => send(url(sessionId, "/split"), body, "PUT"),
+    setItemShares: (sessionId, itemId, shares) => send(url(sessionId, `/items/${itemId}/shares`), { shares }, "PUT"),
+    recordPayment: (sessionId, body) => send(url(sessionId, "/payments"), body),
+    voidPayment: (sessionId, paymentId, reason) => send(url(sessionId, `/payments/${paymentId}/void`), { reason }),
+  };
+};
+
+// Pedidos grupales de las mesas.
+export const waiterGroupApi = (token: string): GroupStaffApi => {
+  const base = "/api/orders/waiter/groups";
+  return {
+    list: async () => (await apiFetch<{ groups: GroupSession[] }>(base, { headers: waiterAuth(token) })).groups,
+    open: async tableNumber => (await apiFetch<{ group: GroupSession }>(base, waiterJson(token, { tableNumber }))).group,
+    send: (groupId, clientRequestId) =>
+      apiFetch<{ order: Order; group: GroupSession }>(`${base}/${groupId}/send`, { ...waiterJson(token, { clientRequestId }), timeoutMs: 15_000 }),
+    removeItem: async (groupId, itemId) =>
+      (await apiFetch<{ group: GroupSession }>(`${base}/${groupId}/items/${itemId}`, { method: "DELETE", headers: waiterAuth(token) })).group,
+    close: async groupId => (await apiFetch<{ group: GroupSession }>(`${base}/${groupId}/close`, waiterJson(token, {}))).group,
+  };
+};
 
 // Historial: mesas que atendió y ya se cerraron.
 export const getWaiterHistory = (token: string, page = 1, signal?: AbortSignal) =>

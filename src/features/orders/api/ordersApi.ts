@@ -1,6 +1,7 @@
 import apiClient from "../../../api/client";
 import type {
   Courier, DeliveryActiveResponse, DeliveryTrail, DeliveryAssignment,
+  Bill, BillApi, GroupSession, GroupStaffApi,
   BoardResponse, MpConnection, OrderPaymentResponse, RefundResult, CashRegister, CashSession, Order, OrderLineInput, OrderOptions, OrderSettings, OrderStatus,
   PaperWidth, PrintMode, Sector, SectorAssignment, SectorTargetType, SectorTicketsResponse, ServiceInput,
   ServiceType, SettingsResponse, Shift, ShiftSummary, TableSession, Ticket, TicketStatus, Waiter,
@@ -119,6 +120,38 @@ export const closeTableSession = async (id: number, force = false): Promise<Tabl
 
 export const setTableGuests = async (id: number, guests: number | null): Promise<TableSession> =>
   (await apiClient.patch<{ session: TableSession }>(`/orders/table-sessions/${id}`, { guests })).data.session;
+
+// ── Cuenta de la mesa (dividirla y registrar pagos) ──
+const billUrl = (sessionId: number, rest = "") => `/orders/table-sessions/${sessionId}/bill${rest}`;
+type BillResponse = { bill: Bill };
+
+export const ownerBillApi: BillApi = {
+  get: async sessionId => (await apiClient.get<BillResponse>(billUrl(sessionId))).data.bill,
+  addGuests: async (sessionId, body) => (await apiClient.post<BillResponse>(billUrl(sessionId, "/guests"), body)).data.bill,
+  renameGuest: async (sessionId, guestId, name) =>
+    (await apiClient.patch<BillResponse>(billUrl(sessionId, `/guests/${guestId}`), { name })).data.bill,
+  removeGuest: async (sessionId, guestId) =>
+    (await apiClient.delete<BillResponse>(billUrl(sessionId, `/guests/${guestId}`))).data.bill,
+  setSplit: async (sessionId, body) => (await apiClient.put<BillResponse>(billUrl(sessionId, "/split"), body)).data.bill,
+  setItemShares: async (sessionId, itemId, shares) =>
+    (await apiClient.put<BillResponse>(billUrl(sessionId, `/items/${itemId}/shares`), { shares })).data.bill,
+  recordPayment: async (sessionId, body) => (await apiClient.post<BillResponse>(billUrl(sessionId, "/payments"), body)).data.bill,
+  voidPayment: async (sessionId, paymentId, reason) =>
+    (await apiClient.post<BillResponse>(billUrl(sessionId, `/payments/${paymentId}/void`), { reason })).data.bill,
+};
+
+// ── Pedidos grupales de las mesas ──
+type GroupResponse = { group: GroupSession };
+
+export const ownerGroupApi: GroupStaffApi = {
+  list: async () => (await apiClient.get<{ groups: GroupSession[] }>("/orders/groups")).data.groups,
+  open: async tableNumber => (await apiClient.post<GroupResponse>("/orders/groups", { tableNumber })).data.group,
+  send: async (groupId, clientRequestId) =>
+    (await apiClient.post<{ order: Order; group: GroupSession }>(`/orders/groups/${groupId}/send`, { clientRequestId })).data,
+  removeItem: async (groupId, itemId) =>
+    (await apiClient.delete<GroupResponse>(`/orders/groups/${groupId}/items/${itemId}`)).data.group,
+  close: async groupId => (await apiClient.post<GroupResponse>(`/orders/groups/${groupId}/close`)).data.group,
+};
 
 // ── Turnos ──
 export const listShifts = async (page = 1) =>

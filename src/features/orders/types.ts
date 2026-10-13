@@ -22,6 +22,9 @@ export interface OrderItem {
   sectorName?: string | null;
   // Entrega en partes: cuándo se entregó este producto (ausente con un backend anterior).
   deliveredAt?: string | null;
+  // Pedido grupal: quién lo pidió y si es para compartir (ausentes con un backend anterior).
+  authorName?: string | null;
+  shared?: boolean;
 }
 
 // Producto quitado del pedido (falta de stock, error de carga…). No suma al total.
@@ -126,6 +129,8 @@ export interface Order {
   serviceType: ServiceType;
   tableNumber: number | null;
   tableSessionId: number | null;
+  // Pedido que salió de un pedido grupal (null o ausente en el resto).
+  groupSessionId?: number | null;
   cashSessionId: number | null;
   customerName: string | null;
   customerPhone: string | null;
@@ -528,7 +533,192 @@ export interface TableSession {
   ordersCount: number;
   totalAmount: number;
   activeOrders: number;
+  // Cuenta: cómo se divide y cuánto se cobró con pagos registrados (ausentes con un backend anterior).
+  splitMode?: SplitMode;
+  paidAmount?: number;
   orders?: Order[];
+}
+
+// ── Cuenta de la mesa (dividirla y registrar pagos) ──
+// none: sin dividir · items: cada uno lo que tiene asignado · equal: partes iguales · custom: importes a mano.
+export type SplitMode = "none" | "items" | "equal" | "custom";
+// Medios con los que se anota un pago. No hay cobro online: el personal registra lo que cobró.
+export type PaymentKind = "cash" | "debit" | "credit" | "transfer" | "other";
+
+export interface BillGuest {
+  id: number;
+  name: string;
+  // Salió de un integrante de un pedido grupal.
+  fromGroup: boolean;
+  customAmount: number | null;
+  owed: number;
+  paid: number;
+  // Lo que le falta pagar (negativo: pagó de más).
+  balance: number;
+}
+
+// Parte de un producto que le toca a un comensal (weight = "partes").
+export interface BillShare {
+  guestId: number;
+  weight: number;
+  amount: number;
+}
+
+export interface BillItem {
+  id: number;
+  orderId: number;
+  orderNumber: number;
+  title: string;
+  option: string | null;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  authorName: string | null;
+  shared: boolean;
+  // Vacío: sin asignar.
+  shares: BillShare[];
+}
+
+export interface BillPayment {
+  id: number;
+  amount: number;
+  methodKind: PaymentKind;
+  methodName: string;
+  guestId: number | null;
+  payerName: string | null;
+  reference: string | null;
+  status: "approved" | "voided";
+  actorType: string | null;
+  actorName: string | null;
+  createdAt: string;
+  voidedAt: string | null;
+  voidReason: string | null;
+}
+
+export interface BillEvent {
+  id: number;
+  type: string;
+  detail: Record<string, unknown>;
+  actorType: string;
+  actorName: string | null;
+  createdAt: string;
+}
+
+export interface Bill {
+  tableSessionId: number;
+  tableNumber: number;
+  // Mesa cerrada: la cuenta es de solo lectura.
+  closed: boolean;
+  mode: SplitMode;
+  total: number;
+  paid: number;
+  pending: number;
+  // Se cobró más que el total (se quitó un producto después de pagar).
+  overpaid: number;
+  // Lo que todavía no tiene asignado nadie.
+  unassigned: number;
+  overAssigned: number;
+  // Pagos que no se imputaron a ningún comensal.
+  paidUnattributed: number;
+  status: "open" | "partial" | "paid";
+  guests: BillGuest[];
+  items: BillItem[];
+  payments: BillPayment[];
+  events: BillEvent[];
+}
+
+export interface PaymentInput {
+  amount: number;
+  methodKind: PaymentKind;
+  guestId?: number | null;
+  payerName?: string;
+  reference?: string;
+  idempotencyKey: string;
+}
+
+// Mismas operaciones para la app del operador y para Mesas del panel: cambia quién las firma.
+export interface BillApi {
+  get(sessionId: number): Promise<Bill>;
+  addGuests(sessionId: number, body: { name: string } | { count: number }): Promise<Bill>;
+  renameGuest(sessionId: number, guestId: number, name: string): Promise<Bill>;
+  removeGuest(sessionId: number, guestId: number): Promise<Bill>;
+  setSplit(sessionId: number, body: { mode: SplitMode; amounts?: { guestId: number; amount: number }[] }): Promise<Bill>;
+  setItemShares(sessionId: number, itemId: number, shares: { guestId: number; weight: number }[]): Promise<Bill>;
+  recordPayment(sessionId: number, body: PaymentInput): Promise<Bill>;
+  voidPayment(sessionId: number, paymentId: number, reason?: string): Promise<Bill>;
+}
+
+// ── Pedidos grupales ──
+export interface GroupMember {
+  id: number;
+  name: string;
+  // Solo en la vista de un integrante.
+  me?: boolean;
+}
+
+export interface GroupCartItem {
+  id: number;
+  memberId: number;
+  authorName: string;
+  itemId: string;
+  title: string;
+  option: string | null;
+  unitPrice: number;
+  quantity: number;
+  notes: string | null;
+  // Para compartir entre todos (se reparte en la cuenta).
+  shared: boolean;
+  // Solo en la vista de un integrante: lo cargó él.
+  mine?: boolean;
+}
+
+export interface GroupSentOrder {
+  id: number;
+  number: number;
+  status: OrderStatus;
+  total: number;
+  createdAt: string;
+  items: { title: string; option: string | null; quantity: number; authorName: string | null; shared: boolean }[];
+}
+
+export interface GroupSession {
+  id: number;
+  tableNumber: number;
+  // Código que se tipea para sumarse.
+  code: string;
+  // Secreto del QR / enlace para sumarse.
+  joinToken: string;
+  open: boolean;
+  createdAt: string;
+  closedAt: string | null;
+  members: GroupMember[];
+  // Lo que todavía no se envió.
+  cart: GroupCartItem[];
+  cartTotal: number;
+  orders: GroupSentOrder[];
+}
+
+// Producto que un integrante suma al carrito del grupo.
+export interface GroupLineInput extends OrderLineInput {
+  shared?: boolean;
+  clientItemId?: string;
+}
+
+// Lo que hace el personal con los pedidos grupales (operador o panel).
+export interface GroupStaffApi {
+  list(): Promise<GroupSession[]>;
+  open(tableNumber: number): Promise<GroupSession>;
+  send(groupId: number, clientRequestId: string): Promise<{ order: Order; group: GroupSession }>;
+  removeItem(groupId: number, itemId: number): Promise<GroupSession>;
+  close(groupId: number): Promise<GroupSession>;
+}
+
+// Lo que ve un integrante de su pedido grupal.
+export interface GroupMemberView {
+  group: GroupSession;
+  member: { id: number; name: string };
+  // false: el carrito lo envía el personal.
+  ordering: boolean;
 }
 
 // ── Caja ──

@@ -29,8 +29,8 @@ import s from "./WaiterApp.module.css";
 // sesión del dueño en cada dispositivo.
 //
 // No es solo para tomar pedidos: al entrar muestra tres accesos grandes,
-// "Nuevo pedido", "Mis mesas" (la cuenta de cada mesa abierta y su cierre
-// para cobrar) e "Historial".
+// "Nuevo pedido", "Mis mesas" (la cuenta de cada mesa abierta, dividirla y
+// registrar los pagos, su pedido grupal y el cierre) e "Historial".
 
 type Phase =
   | { kind: "loading" }
@@ -267,7 +267,7 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
             <span className={s.homeIcon}><LayoutGrid size={26} aria-hidden /></span>
             <span className={s.homeText}>
               <span className={s.homeLabel}>Mis mesas</span>
-              <span className={s.homeHint}>La cuenta de cada mesa y su cierre</span>
+              <span className={s.homeHint}>La cuenta, los cobros y el pedido grupal de cada mesa</span>
             </span>
             {openTables !== null && openTables > 0 && <span className={s.homeBadge}>{openTables}</span>}
             <ChevronRight size={20} aria-hidden className={s.homeChevron} />
@@ -301,6 +301,7 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
 
       {view === "tables" && (
         <WaiterTables
+          slug={info.business.slug || slug}
           token={token}
           waiterId={info.waiter.id}
           onAuthError={handleAuthError}
