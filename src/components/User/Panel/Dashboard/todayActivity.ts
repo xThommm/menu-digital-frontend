@@ -118,3 +118,50 @@ export function daysUntil(expiresAt: string | null | undefined, now: number): nu
   if (!Number.isFinite(time)) return null;
   return Math.ceil((time - now) / 86_400_000);
 }
+
+// Qué tarjetas de pedidos y reservas tienen algo para mostrar en el inicio.
+// Una tarjeta sin datos no se dibuja: las demás ocupan su lugar.
+export interface ActivityShape {
+  // Agenda: hay reservas cargadas o pedidos de hoy.
+  agenda: boolean;
+  // Estado de pedidos y tabla: hay pedidos en curso.
+  orders: boolean;
+  // Cifra "Reservas hoy".
+  reservations: boolean;
+}
+
+export const EMPTY_ACTIVITY_SHAPE: ActivityShape = { agenda: false, orders: false, reservations: false };
+
+/**
+ * Cada clave es true/false con los datos ya cargados y undefined mientras
+ * cargan. Una fuente en null (falló, el plan no la incluye o el dueño apagó
+ * la opción en Configuración) cuenta como sin datos.
+ */
+export function activityShape(
+  orders: OrdersSummary | null | undefined,
+  reservations: ReservationsSummary | null | undefined,
+): Partial<ActivityShape> {
+  const anything = (orders?.all.length ?? 0) > 0 || (reservations?.all.length ?? 0) > 0;
+  return {
+    agenda: anything ? true : orders === undefined || reservations === undefined ? undefined : false,
+    orders: orders === undefined ? undefined : (orders?.active ?? 0) > 0,
+    reservations: reservations === undefined ? undefined : (reservations?.today ?? 0) > 0,
+  };
+}
+
+// Lo que se dibuja: lo ya cargado y, para lo que falta, lo que había la
+// última vez (así un local con movimiento ve los esqueletos de siempre y uno
+// sin datos no ve aparecer y desaparecer tarjetas).
+export function resolveActivityShape(loaded: Partial<ActivityShape>, last: ActivityShape): ActivityShape {
+  return {
+    agenda: loaded.agenda ?? last.agenda,
+    orders: loaded.orders ?? last.orders,
+    reservations: loaded.reservations ?? last.reservations,
+  };
+}
+
+export function isActivityShape(value: unknown): value is ActivityShape {
+  if (!value || typeof value !== "object") return false;
+  const shape = value as Record<string, unknown>;
+  return typeof shape.agenda === "boolean" && typeof shape.orders === "boolean" && typeof shape.reservations === "boolean";
+}

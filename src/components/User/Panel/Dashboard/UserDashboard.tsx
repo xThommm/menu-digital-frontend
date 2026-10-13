@@ -13,8 +13,9 @@ import { formatDateAR } from "../../../../lib/dates";
 import { formatReservationDate, todayBuenosAires } from "../../../../features/reservations/lib/format";
 import UpgradeModal from "../../../Common/UpgradeModal";
 import { CalendarCheck, ChartColumn, ClipboardList, Eye, LayoutGrid, Sparkles, UtensilsCrossed } from "lucide-react";
-import { daysUntil, formatCount } from "./todayActivity";
+import { activityShape, daysUntil, formatCount, resolveActivityShape } from "./todayActivity";
 import { useTodayActivity } from "./useTodayActivity";
+import { useLastActivityShape } from "./useActivityShape";
 import {
   Gauge, KpiStat, LockedChartCard, OrdersBarsCard, OrdersTable, QuickTile, VisitsChartCard,
   type Kpi,
@@ -77,15 +78,30 @@ export default function UserDashboard() {
   // línea al final. La tarjeta grande es para cuando hay algo que hacer.
   const planNeedsAttention = subscriptionExpired || effectiveSubscription === "free" || planExpiringSoon;
 
+  const [data, setData]     = useState<DashData | null>(null);
+
+  // Pedidos y reservas: solo en Pro y si el dueño no los apagó en
+  // Configuración. Ese ajuste llega con el resumen; hasta entonces se piden
+  // solo si la última vez hubo algo para mostrar, así quien los apagó (o no
+  // los usa) no ve aparecer y desaparecer tarjetas.
   const isPro = effectiveSubscription === "pro";
+  const [lastShape, rememberShape] = useLastActivityShape(user?.id);
+  const activityOn = isPro && (data ? data.showActivity : lastShape.agenda || lastShape.orders || lastShape.reservations);
   const activity = useTodayActivity({
     token: isLoading ? null : token,
     visits: currentPlan?.features.estadisticas === true,
-    orders: isPro,
-    reservations: isPro,
+    orders: activityOn,
+    reservations: activityOn,
   });
+  // Una tarjeta de pedidos o reservas sin datos no se dibuja.
+  const loadedShape = activityShape(activity.orders, activity.reservations);
+  const shape = resolveActivityShape(loadedShape, lastShape);
+  const { agenda: showAgenda, orders: showOrders, reservations: showReservations } = shape;
+  const shapeSettled = data !== null && Object.values(loadedShape).every(value => value !== undefined);
+  useEffect(() => {
+    if (shapeSettled) rememberShape({ agenda: showAgenda, orders: showOrders, reservations: showReservations });
+  }, [shapeSettled, showAgenda, showOrders, showReservations, rememberShape]);
 
-  const [data, setData]     = useState<DashData | null>(null);
   const [copied, setCopied] = useState(false);
   const [generatingQr, setGeneratingQr] = useState(false);
   const [qrMenuOpen, setQrMenuOpen] = useState(false);
@@ -176,6 +192,7 @@ export default function UserDashboard() {
           itemCount:     json.itemCount ?? 0,
           categoryCount: json.categoryCount ?? 0,
           backgroundPicture: json.media?.backgroundPicture || null,
+          showActivity:  json.showDashboardActivity !== false,
         });
       } catch {
         if (!cancelled) {
@@ -325,17 +342,17 @@ export default function UserDashboard() {
   const openUpgrade = () => setUpgradeOpen(true);
 
   // ── Cifras del encabezado ──
-  // Primero lo que pasa hoy (pedidos, reservas, visitas) según el plan;
-  // después la carta, hasta completar cuatro.
+  // Primero lo que pasa hoy (pedidos y reservas si hay, visitas según el
+  // plan); después la carta, hasta completar cuatro.
   const kpis: Kpi[] = [];
-  if (activity.orders !== null) {
+  if (showOrders) {
     kpis.push({
       key: "orders", icon: <ClipboardList size={13} strokeWidth={1.75} />, label: "Pedidos en curso",
-      value: activity.orders === undefined ? undefined : activity.orders.shiftOpen ? activity.orders.active : null,
+      value: activity.orders?.active,
       onClick: () => navigate("/pedidos"),
     });
   }
-  if (activity.reservations !== null) {
+  if (showReservations) {
     kpis.push({
       key: "reservations", icon: <CalendarCheck size={13} strokeWidth={1.75} />, label: "Reservas hoy",
       value: activity.reservations?.today, onClick: () => navigate("/reservas"),
@@ -498,8 +515,8 @@ export default function UserDashboard() {
         )}
 
         {/* ── Agenda, visitas y estado de pedidos ────────────────────────── */}
-        <div className={`${s.row} ${isPro ? s.rowThree : s.rowTwo}`}>
-          {isPro ? (
+        <div className={`${s.row} ${showOrders ? s.rowThree : s.rowTwo}`}>
+          {showAgenda ? (
             <AgendaCard
               today={todayBuenosAires(now)}
               reservations={activity.reservations}
@@ -522,7 +539,7 @@ export default function UserDashboard() {
             ? <VisitsChartCard visits={activity.visits} onOpen={() => navigate("/estadisticas")} />
             : <LockedChartCard onUpgrade={openUpgrade} />}
 
-          {isPro && <OrdersBarsCard orders={activity.orders ?? undefined} onOpen={() => navigate("/pedidos")} />}
+          {showOrders && <OrdersBarsCard orders={activity.orders ?? undefined} onOpen={() => navigate("/pedidos")} />}
         </div>
 
         {/* ── Accesos rápidos ────────────────────────────────────────────── */}
@@ -560,7 +577,7 @@ export default function UserDashboard() {
           />
         </nav>
 
-        {isPro && <OrdersTable orders={activity.orders ?? undefined} onOpen={() => navigate("/pedidos")} />}
+        {showOrders && <OrdersTable orders={activity.orders ?? undefined} onOpen={() => navigate("/pedidos")} />}
 
         {!planNeedsAttention && user && (
           <p className={s.planLine}>

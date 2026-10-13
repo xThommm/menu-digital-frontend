@@ -18,6 +18,7 @@ interface SettingsValues {
   autoGenerateCodes: boolean;
   disableMenuDelete: boolean;
   deleteMenusWithContent: boolean;
+  showDashboardActivity: boolean;
   landingVisibility: LandingVisibility;
   menuDisplay: MenuDisplay;
 }
@@ -32,6 +33,7 @@ const EMPTY_SETTINGS: SettingsValues = {
   autoGenerateCodes: false,
   disableMenuDelete: false,
   deleteMenusWithContent: false,
+  showDashboardActivity: true,
   landingVisibility: resolveLandingVisibility(),
   menuDisplay: resolveMenuDisplay(),
 };
@@ -91,6 +93,9 @@ function toSettings(data: Partial<SettingsValues>): SettingsValues {
     autoGenerateCodes: !!data.autoGenerateCodes,
     disableMenuDelete: !!data.disableMenuDelete,
     deleteMenusWithContent: !!data.deleteMenusWithContent,
+    // Arranca encendido: solo un `false` explícito lo apaga (un backend
+    // anterior a la opción no lo manda).
+    showDashboardActivity: data.showDashboardActivity !== false,
     landingVisibility: resolveLandingVisibility(data.landingVisibility),
     menuDisplay: resolveMenuDisplay(data.menuDisplay),
   };
@@ -325,7 +330,9 @@ export default function SettingsPanel() {
     }
   }, [settings, authHeaders, handleExpiredSession, setToggleError]);
 
-  const toggleSetting = (key: "autoGenerateCodes" | "disableMenuDelete" | "deleteMenusWithContent") => {
+  const toggleSetting = (
+    key: "autoGenerateCodes" | "disableMenuDelete" | "deleteMenusWithContent" | "showDashboardActivity",
+  ) => {
     const value = !settings[key];
     saveToggle(key, { ...settings, [key]: value }, { [key]: value });
   };
@@ -448,6 +455,22 @@ export default function SettingsPanel() {
             {toggleError && (
               <div className={styles.errorBanner} role="alert" aria-live="assertive">{toggleError}</div>
             )}
+
+            <SettingsSection
+              id="dashboard-title"
+              title="Inicio del panel"
+              desc="Qué ves al entrar a tu panel."
+            >
+              <div className={styles.toggleGroup}>
+                <ToggleRow
+                  label="Mostrar datos de pedidos y reservas en el inicio"
+                  desc="La agenda, el estado de los pedidos y los pedidos en curso aparecen en el inicio cuando hay algo para mostrar. Apagado, no se muestran nunca; Pedidos y Reservas siguen funcionando igual. Disponible con el plan Pro."
+                  checked={settings.showDashboardActivity}
+                  onChange={() => toggleSetting("showDashboardActivity")}
+                  disabled={savingToggle !== null}
+                />
+              </div>
+            </SettingsSection>
 
             <SettingsSection
               id="menu-display-title"
