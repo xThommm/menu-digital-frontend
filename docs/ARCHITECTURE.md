@@ -2795,6 +2795,38 @@ Rama `feature/manejo-pedidos`; tarjeta «Manejo de pedidos».
   entrega por producto desde el tomador del mozo. Detalle en la tarjeta.
 - **Tests**: backend `test/ordersItemExceptions.test.js`; frontend `test/orderItems.test.ts`.
 
+## Circuito de caja (movimientos, arqueo y libro)
+
+La caja deja de deducirse solo de los pedidos: registra la plata que entra y sale del cajón, y el servidor entrega
+todo ya resuelto (resumen, libro, historial filtrado y totales). El panel no recalcula ni filtra en memoria.
+
+- **Esquema**: migración `010_caja_movimientos.sql` (aditiva). Tabla `cash_movements` (ingresos, egresos, retiros y el
+  rastro de los cambios de fondo; se anulan, no se borran; idempotentes). En `cash_sessions`: `cashier_id` (operador),
+  quién abrió y cerró, y el snapshot ampliado del cierre (`income_amount`, `expense_amount`, `withdrawal_amount`,
+  `online_amount`, `cash_sales_amount`, `cash_withdrawn`, `cash_left`).
+- **Efectivo esperado** = fondo inicial + ventas en efectivo + ingresos − egresos − retiros. Las ventas en efectivo
+  son lo vendido neto menos lo que no pasa por el cajón: lo cobrado online (Mercado Pago) y lo anotado con tarjeta,
+  transferencia, etc. Lo que no tiene un cobro anotado se sigue asumiendo en efectivo.
+- **Cierre con arqueo**: el efectivo contado es obligatorio; se indica cuánto se retira y lo que queda (`cash_left`) es
+  el fondo sugerido de la próxima apertura de esa caja (también cuando la caja se abre sola con un pedido).
+- **Después del cierre**: una devolución, o la anulación de un pedido cuya caja ya cerró, se descuenta en la caja
+  abierta en ese momento (`orders.returned_cash_session_id`); el cierre guardado no se reescribe.
+- **Backend** (`services/cashService.js`, rutas en `/api/orders/cash/*`):
+  - `GET /overview`: cajas (cuál está abierta y con qué fondo abriría), cajas abiertas con su resultado, operadores
+    que pueden ser cajeros y tipos de movimiento con sus conceptos (`CASH_MOVEMENT_*` en `constants.js`).
+  - `POST /sessions/:id/movements` y `POST /movements/:id/void`: devuelven la caja con el resultado actualizado.
+  - `GET /sessions/:id/ledger?type=&cashOnly=&page=`: libro de la caja (apertura, cobros, devoluciones, movimientos y
+    cierre en una sola lista), con cada línea armada, filtrada, paginada y totalizada por el servidor.
+  - `GET /sessions?register=&cashier=&result=&from=&to=&page=`: cajas cerradas filtradas, con los totales de todo el
+    filtro y las opciones de los filtros.
+- **Frontend** (`components/panel/`): `CashPage` (página, apertura, turno), `CashSessionCard` (caja abierta: resumen,
+  movimiento, libro y cierre), `CashLedgerTable`, `ClosedCashTable` y `CashParts`; `lib/cash.ts`.
+  Orden de despliegue: migración, backend y después frontend.
+- **Límites conocidos**: los pedidos y cobros siguen yendo a la caja principal si está abierta (falta elegir caja por
+  dispositivo u operador); una mesa que se carga en una caja y se cobra con tarjeta en la siguiente descuadra las dos
+  por el mismo importe; quitar un producto de un pedido cuya caja ya cerró no ajusta ninguna caja.
+- **Tests**: backend `test/ordersCash.test.js` y `test/ordersCashHttp.test.js`.
+
 ## Tiempo real de pedidos (todas las pantallas)
 
 Las pantallas de pedidos dejaron de consultar a intervalos fijos: se actualizan con los avisos del WebSocket que ya
