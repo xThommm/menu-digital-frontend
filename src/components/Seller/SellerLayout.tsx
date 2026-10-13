@@ -97,7 +97,7 @@ function SellerPanelLayout() {
   }, [navigate, isInfluencer]);
 
   return (
-    <div className={`${s.layoutRoot} seller-panel`}>
+    <div className={`${s.layoutRoot} seller-panel`} data-theme-area="panel">
       {/* ── Sidebar (desktop) ─────────────────────────────────────────────── */}
       <aside
         id="seller-sidebar"

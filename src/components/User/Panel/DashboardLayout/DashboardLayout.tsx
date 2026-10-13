@@ -110,7 +110,7 @@ function DashboardLayoutInner() {
     : "";
 
   return (
-    <div className={s.layoutRoot}>
+    <div className={s.layoutRoot} data-theme-area="panel">
 
       {/* ── Sidebar (desktop) ─────────────────────────────────────────────── */}
       <aside

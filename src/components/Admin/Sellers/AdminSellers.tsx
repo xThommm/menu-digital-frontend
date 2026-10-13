@@ -15,8 +15,12 @@ import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
 import { useNotifications } from "../../../context/useNotifications";
 import { formatPaymentDate } from "../../../lib/adminPayments";
 import { formatDateAR } from "../../../lib/dates";
+import { useContextMenu } from "../../../features/contextMenu/hooks/useContextMenu";
 import DataTable, { type DataTableColumn } from "../../Common/DataTable/DataTable";
 import Spinner from "../../Common/Spinner";
+import { buildSellerMenu, buildSellersPageMenu } from "./sellerContextMenu";
+import SellerProfileModal from "./SellerProfileModal";
+import SellerTestUserModal from "./SellerTestUserModal";
 import s from "./AdminSellers.module.css";
 
 const ADMIN_SELLERS_QUERY_KEY = (includeInactive: boolean) => ["admin-sellers", includeInactive] as const;
@@ -58,11 +62,51 @@ export default function AdminSellers() {
     gcTime: 0,
   });
 
+  const [profileSeller, setProfileSeller] = useState<Seller | null>(null);
+  const [testUserSeller, setTestUserSeller] = useState<Seller | null>(null);
+  const refetchSellers = sellers.refetch;
+
   const replaceSeller = (updated: Seller) => {
     queryClient.setQueryData<Seller[]>(queryKey, (current) =>
       current?.map((item) => (item._id === updated._id ? updated : item)),
     );
   };
+
+  // Clic derecho sobre una fila. Baja y "deshacer la baja" son las mismas
+  // operaciones del panel desplegable (DELETE y PUT active:true); el menú solo
+  // las expone, con la confirmación y los avisos a cargo de features/contextMenu.
+  const sellerMenu = useMemo(() => {
+    const listKey = ADMIN_SELLERS_QUERY_KEY(includeInactive);
+    // La otra vista del listado (y el selector del panel de vendedores, que
+    // comparte la caché) quedan viejas: se marcan sin volver a pedirlas ya.
+    const markListsStale = () => queryClient.invalidateQueries({ queryKey: ["admin-sellers"], refetchType: "none" });
+    return buildSellerMenu({
+      viewProfile: setProfileSeller,
+      createTestUser: setTestUserSeller,
+      deactivate: async (seller) => {
+        await deactivateAdminSeller(seller._id);
+        queryClient.setQueryData<Seller[]>(listKey, (current) => (includeInactive
+          ? current?.map((item) => (item._id === seller._id ? { ...item, active: false } : item))
+          : current?.filter((item) => item._id !== seller._id)));
+        void markListsStale();
+      },
+      reactivate: async (seller) => {
+        const updated = await updateAdminSeller(seller._id, { active: true });
+        queryClient.setQueryData<Seller[]>(listKey, (current) =>
+          current?.map((item) => (item._id === updated._id ? updated : item)));
+        void markListsStale();
+      },
+    });
+  }, [queryClient, includeInactive]);
+  const openSellerMenu = useContextMenu(sellerMenu, { highlightTarget: true });
+
+  // Clic derecho en el espacio vacío de la pantalla.
+  const pageMenu = useMemo(() => buildSellersPageMenu({
+    createSeller: () => setCreating(true),
+    refresh: () => refetchSellers({ throwOnError: true }),
+    setStatusFilter,
+  }), [refetchSellers]);
+  const openPageMenu = useContextMenu(pageMenu);
 
   const prependSeller = (created: Seller) => {
     queryClient.setQueryData<Seller[]>(queryKey, (current) =>
@@ -170,7 +214,7 @@ export default function AdminSellers() {
   ], [statusFilter]);
 
   return (
-    <main className={s.page}>
+    <main className={s.page} onContextMenu={(event) => openPageMenu(event, { statusFilter })}>
       <div className={s.inner}>
         <header className={s.header}>
           <p className={s.eyebrow}>Administración de MenuDigital</p>
@@ -223,6 +267,7 @@ export default function AdminSellers() {
               </button>
             </>
           }
+          onRowContextMenu={openSellerMenu}
           expandable={{
             label: (seller) => `Ver detalle de ${seller.name}`,
             renderPanel: (seller) => (
@@ -237,6 +282,12 @@ export default function AdminSellers() {
 
         {creating && (
           <CreateSellerModal onCreated={prependSeller} onClose={() => setCreating(false)} />
+        )}
+        {profileSeller && (
+          <SellerProfileModal seller={profileSeller} onClose={() => setProfileSeller(null)} />
+        )}
+        {testUserSeller && (
+          <SellerTestUserModal seller={testUserSeller} onClose={() => setTestUserSeller(null)} />
         )}
       </div>
     </main>

@@ -70,6 +70,30 @@ export async function deactivateAdminSeller(id: string): Promise<Seller> {
   return response.data.seller;
 }
 
+export interface SellerTestUser {
+  _id: string;
+  username: string;
+  mail: string;
+  number: number | null;
+  subscription: string;
+  subscriptionExpiresAt: string | null;
+  sellerID: string;
+}
+
+// Cuenta de comercio (no de vendedor) para las demos: plan Pro sin
+// vencimiento, con el mail, el teléfono y el sellerID del vendedor.
+export async function createAdminSellerTestUser(
+  id: string,
+  credentials: { username: string; password: string },
+): Promise<SellerTestUser> {
+  const response = await apiClient.post<{ user: SellerTestUser }>(
+    `/admin/sellers/${id}/test-user`,
+    credentials,
+    { timeout: 10000 },
+  );
+  return response.data.user;
+}
+
 export async function resetAdminSellerPassword(id: string, newPassword: string): Promise<void> {
   await apiClient.patch(`/admin/sellers/${id}/password`, { newPassword }, { timeout: 10000 });
 }
