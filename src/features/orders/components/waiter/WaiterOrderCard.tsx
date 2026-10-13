@@ -23,6 +23,9 @@ export default function WaiterOrderCard({ order, showPlace = true }: { order: Or
             <span className={s.orderText}>
               <span>{item.title}{item.option && <em> · {item.option}</em>}</span>
               {item.notes && <span className={s.orderNotes}>{item.notes}</span>}
+              {item.authorName && (
+                <span className={s.orderNotes}>Lo pidió {item.authorName}{item.shared && " · para compartir"}</span>
+              )}
             </span>
           </li>
         ))}

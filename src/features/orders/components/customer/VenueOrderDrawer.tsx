@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { CheckCircle2, MapPin, Send } from "lucide-react";
 import { useCart } from "../../../../context/useCart";
 import type { CartLine } from "../../../../context/CartContext";
@@ -6,7 +6,8 @@ import { sendCustomerOrder } from "../../api/publicOrdersApi";
 import { errorCode, errorMessage } from "../../lib/errors";
 import { formatMoney } from "../../lib/format";
 import { deviceId, uuid } from "../../lib/storage";
-import { lineKey, toOrderLines, type UnitLine } from "../../lib/units";
+import { toOrderLines } from "../../lib/units";
+import { useCartUnitLines } from "../../hooks/useCartUnitLines";
 import {
   appendOrderHistory, readChosenTable, saveChosenTable, type InVenueContext,
 } from "../../lib/venueSession";
@@ -38,9 +39,9 @@ interface Props {
 export default function VenueOrderDrawer({
   open, onClose, slug, token, context, hidePrices, onSent, onInvalidQr, onRequestClear,
 }: Props) {
-  const { items, updateQuantity, removeItem, clearCart, totalPrice } = useCart();
+  const { items, clearCart, totalPrice } = useCart();
   // Aclaraciones por unidad, por línea del carrito (el carrito compartido no las guarda).
-  const [notes, setNotes] = useState<Record<string, string[]>>({});
+  const { lines, onLinesChange, resetNotes } = useCartUnitLines();
   const [table, setTable] = useState<string>(() => String(context.tableNumber ?? readChosenTable(slug) ?? ""));
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,30 +49,7 @@ export default function VenueOrderDrawer({
   // Mismo contenido = mismo id de envío: un reintento tras un corte de red no duplica el pedido.
   const request = useRef<{ key: string; id: string } | null>(null);
 
-  const lines: UnitLine[] = useMemo(() => items.map(line => ({
-    itemId: line.itemId,
-    title: line.title,
-    option: line.selectedOption,
-    unitPrice: line.unitPrice,
-    quantity: line.quantity,
-    unitNotes: notes[lineKey(line.itemId, line.selectedOption)] ?? [],
-  })), [items, notes]);
-
   if (!open) return null;
-
-  const onLinesChange = (next: UnitLine[]) => {
-    const nextKeys = new Set(next.map(line => lineKey(line.itemId, line.option)));
-    for (const line of lines) {
-      if (!nextKeys.has(lineKey(line.itemId, line.option))) removeItem(line.itemId, line.option);
-    }
-    const nextNotes: Record<string, string[]> = {};
-    for (const line of next) {
-      const current = lines.find(l => lineKey(l.itemId, l.option) === lineKey(line.itemId, line.option));
-      if (current && current.quantity !== line.quantity) updateQuantity(line.itemId, line.option, line.quantity);
-      nextNotes[lineKey(line.itemId, line.option)] = line.unitNotes;
-    }
-    setNotes(nextNotes);
-  };
 
   // Con el QR general y la mesa opcional (configuración del local) se puede
   // pedir "en la barra", sin mesa.
@@ -100,7 +78,7 @@ export default function VenueOrderDrawer({
       if (!context.tableNumber && tableNumber) saveChosenTable(slug, tableNumber);
       onSent(items, order);
       clearCart();
-      setNotes({});
+      resetNotes();
       request.current = null;
       setReceipt(order);
     } catch (err) {

@@ -230,6 +230,136 @@
 
 .historyTotal strong { font-size: 0.9rem; color: var(--t-title); font-variant-numeric: tabular-nums; }
 
+/* ── Pedido grupal ── */
+/* Campo de texto relleno, igual que el selector de mesa. */
+.textInput {
+  min-height: 48px;
+  padding: 0.5rem 0.9rem;
+  border: none;
+  border-radius: 16px;
+  background: var(--tone-highest);
+  color: var(--t-title);
+  font: inherit;
+}
+
+.textInput::placeholder { color: var(--t-muted); }
+.textInput:focus-visible { outline: 2px solid var(--tone-focus); outline-offset: 1px; }
+
+.codeInput { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.15rem; letter-spacing: 0.14em; text-transform: uppercase; }
+
+/* Secundario: mismo tamaño que el primario, sin relleno de acento. */
+.ghostBtn {
+  composes: md-button from global;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 46px;
+  padding: 0.6rem 1rem;
+  border: none;
+  background: var(--tone-high);
+  color: var(--t-title);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.sendBtn:disabled,
+.ghostBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.groupShare {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 20px;
+  background: var(--tone-primary-container);
+  color: var(--tone-on-primary-container);
+  text-align: center;
+}
+
+.groupShare .hint { color: inherit; }
+
+.groupCode {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--t-title);
+}
+
+.groupMembers { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35rem; }
+
+.groupMember {
+  padding: 0.25rem 0.7rem;
+  border-radius: 9999px;
+  background: var(--t-bg);
+  color: var(--t-title);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.groupNotice {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border-radius: 16px;
+  font-size: 0.82rem;
+  color: var(--t-status-open);
+  background: color-mix(in srgb, var(--t-status-open) 14%, var(--tone-float));
+}
+
+.groupSection { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.groupTitle { margin: 0; font-size: 0.9rem; font-weight: 700; color: var(--t-title); }
+
+.groupLine { display: flex; flex-direction: column; gap: 0.35rem; }
+
+.groupTag {
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 9999px;
+  background: var(--tone-primary-container);
+  color: var(--tone-on-primary-container);
+  font-size: 0.66rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.groupActions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+
+.groupIcon,
+.groupToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 0.7rem;
+  border: none;
+  border-radius: 9999px;
+  background: var(--tone-highest);
+  color: var(--t-title);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.groupToggle[aria-pressed="true"] { background: var(--t-accent); color: var(--t-btn-text); }
+
+.groupIcon:disabled,
+.groupToggle:disabled { opacity: 0.45; cursor: not-allowed; }
+
+:is(.ghostBtn, .groupIcon, .groupToggle):focus-visible { outline: 2px solid var(--tone-focus); outline-offset: 2px; }
+
+/* Dos acciones en el aviso (pedir en grupo + mis pedidos): una debajo de la otra. */
+.bannerActions { display: flex; flex-direction: column; gap: 0.35rem; flex-shrink: 0; }
+
 /* ── Familias visuales: mismo relieve que el carrito de WhatsApp ── */
 :global([data-menu-family="neo-brutalism"]) .sendBtn,
 :global([data-menu-family="neo-brutalism"]) .bannerBtn {

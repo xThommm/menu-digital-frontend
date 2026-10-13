@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin } from "lucide-react";
+import { MapPin, Users } from "lucide-react";
 import { formatDateTime, formatMoney } from "../../lib/format";
 import { readOrderHistory } from "../../lib/venueSession";
 import type { InVenueContext } from "../../lib/venueSession";
@@ -19,9 +19,11 @@ interface Props {
   // Cambia con cada pedido enviado para releer el historial.
   historyVersion: number;
   onLeave: () => void;
+  // Abre "Pedir en grupo" (ausente: el comensal ya es parte de un pedido grupal).
+  onGroup?: () => void;
 }
 
-export default function VenueBanner({ slug, context, hidePrices, historyVersion, onLeave }: Props) {
+export default function VenueBanner({ slug, context, hidePrices, historyVersion, onLeave, onGroup }: Props) {
   const [historyOpen, setHistoryOpen] = useState(false);
   // Se relee del localStorage en cada render: el padre cambia historyVersion
   // después de cada envío justamente para provocar ese render.
@@ -43,10 +45,19 @@ export default function VenueBanner({ slug, context, hidePrices, historyVersion,
             No estoy en el local
           </button>
         </span>
-        {history.length > 0 && (
-          <button type="button" className={s.bannerBtn} onClick={() => setHistoryOpen(true)}>
-            Mis pedidos ({history.length})
-          </button>
+        {(onGroup || history.length > 0) && (
+          <span className={s.bannerActions}>
+            {onGroup && (
+              <button type="button" className={s.bannerBtn} onClick={onGroup}>
+                <Users size={14} aria-hidden /> Pedir en grupo
+              </button>
+            )}
+            {history.length > 0 && (
+              <button type="button" className={s.bannerBtn} onClick={() => setHistoryOpen(true)}>
+                Mis pedidos ({history.length})
+              </button>
+            )}
+          </span>
         )}
       </div>
 

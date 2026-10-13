@@ -14,6 +14,10 @@ export const venueQrUrl = (slug: string, token: string) =>
 export const waiterQrUrl = (slug: string, code: string) =>
   `${origin()}/${slug}/operador?code=${encodeURIComponent(code)}`;
 
+// Pedido grupal: la carta con ?grupo=<token>. Quien lo abre se suma al pedido de esa mesa.
+export const groupJoinUrl = (slug: string, joinToken: string) =>
+  `${origin()}/${slug}/menu?grupo=${encodeURIComponent(joinToken)}`;
+
 // Repartidor: /<slug>/repartidor?code=<código> (el código rota desde el panel y sirve una sola vez).
 export const courierQrUrl = (slug: string, code: string) =>
   `${origin()}/${slug}/repartidor?code=${encodeURIComponent(code)}`;

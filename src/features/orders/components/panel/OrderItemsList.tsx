@@ -57,6 +57,10 @@ export default function OrderItemsList({ order, busy = false, actions: offered }
                 <div className={s.itemText}>
                   <span className={s.itemTitle}>{item.title}{item.option && <em> · {item.option}</em>}</span>
                   {item.notes && <span className={s.itemNotes}>{item.notes}</span>}
+                  {/* Pedido grupal: quién pidió cada cosa (para llevarla y para la cuenta). */}
+                  {item.authorName && (
+                    <span className={s.itemNotes}>Lo pidió {item.authorName}{item.shared && " · para compartir"}</span>
+                  )}
                   {item.deliveredAt && <span className={s.itemState}><Check size={12} aria-hidden /> Entregado</span>}
                 </div>
                 {(deliverable || removable) && !open && (

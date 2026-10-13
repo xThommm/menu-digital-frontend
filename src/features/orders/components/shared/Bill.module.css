@@ -1,0 +1,197 @@
+/* Cuenta de la mesa y pedido grupal en la app del operador y en Mesas.
+   Mismo estilo tonal que panel.module.css (del que hereda botones y campos):
+   la jerarquía sale del tono, no de bordes. */
+
+.section { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.sectionTitle {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-text-warm);
+}
+
+/* Total · cobrado · falta */
+.summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 18px;
+  background: var(--tone-high);
+  min-width: 0;
+}
+
+.statLabel { font-size: 0.7rem; color: var(--admin-text-warm); }
+
+.statValue {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--admin-text-primary);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.statDue .statValue { color: var(--admin-gold); }
+.statDone .statValue { color: var(--admin-success-text); }
+
+/* Forma de dividir: botones en fila, el elegido lleno. */
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 0.4rem; }
+
+.mode {
+  min-height: 44px;
+  padding: 0.4rem 0.6rem;
+  border: none;
+  border-radius: 14px;
+  background: var(--tone-high);
+  color: var(--admin-text-secondary);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mode[aria-pressed="true"] { background: var(--admin-gold); color: var(--admin-gold-ink); }
+.mode:disabled { opacity: 0.55; cursor: not-allowed; }
+.mode:focus-visible, .chip:focus-visible, .step:focus-visible { outline: 2px solid var(--admin-gold); outline-offset: 2px; }
+
+.hint { margin: 0; font-size: 0.75rem; color: var(--admin-text-warm); line-height: 1.5; }
+
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 16px;
+  background: var(--tone-high);
+}
+
+.rowHead { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; }
+
+.rowTitle { font-size: 0.88rem; font-weight: 600; color: var(--admin-text-primary); min-width: 0; overflow-wrap: anywhere; }
+.rowTitle em { font-style: normal; font-weight: 400; color: var(--admin-text-warm); }
+
+.rowAmount { font-size: 0.88rem; font-weight: 700; color: var(--admin-text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.rowMeta { font-size: 0.74rem; color: var(--admin-text-warm); line-height: 1.45; }
+
+.rowActions { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+
+.owes { color: var(--admin-gold); font-weight: 600; }
+.settled { color: var(--admin-success-text); font-weight: 600; }
+.voided { opacity: 0.6; }
+.voided .rowAmount { text-decoration: line-through; }
+
+/* Comensales de un producto: se tocan para sumarlos o sacarlos del reparto. */
+.chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  border: none;
+  border-radius: 9999px;
+  background: var(--tone-highest);
+  color: var(--admin-text-secondary);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip[aria-pressed="true"] { background: var(--admin-gold); color: var(--admin-gold-ink); }
+.chip:disabled { cursor: default; }
+.chipStatic { cursor: default; }
+
+/* Partes de cada uno cuando el producto se reparte desigual. */
+.weights { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; }
+
+.weight { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.76rem; color: var(--admin-text-secondary); }
+
+.step {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: var(--tone-highest);
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.step:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.inline { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; }
+.inline > label { flex: 1 1 140px; }
+.grow { flex: 1 1 140px; min-width: 0; }
+.narrow { flex: 0 0 92px; }
+
+.amountField { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.amountField input { width: 130px; text-align: right; }
+
+.warn {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  background: color-mix(in srgb, var(--admin-gold) 16%, var(--tone));
+  color: var(--admin-text-primary);
+}
+
+.events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.45rem; }
+.event { display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.8rem; color: var(--admin-text-secondary); }
+.eventMeta { font-size: 0.7rem; color: var(--admin-text-warm); }
+
+/* ── Pedido grupal ── */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 18px;
+  background: var(--tone-high);
+}
+
+.groupHead { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+
+.groupTitle { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 700; color: var(--admin-text-primary); }
+
+.code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--admin-text-primary);
+}
+
+.joinBox { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; text-align: center; }
+.joinQr { width: 100%; max-width: 240px; aspect-ratio: 1; border-radius: 12px; background: #fff; }
+
+.cartLine { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 0.45rem; align-items: center; font-size: 0.82rem; color: var(--admin-text-primary); }
+.cartQty { font-weight: 700; color: var(--admin-gold); font-variant-numeric: tabular-nums; }
+.cartText { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.cartText small { color: var(--admin-text-warm); font-size: 0.72rem; }
+.tag {
+  padding: 0.1rem 0.5rem;
+  border-radius: 9999px;
+  background: var(--tone-highest);
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--admin-text-warm);
+  white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+  .summary { grid-template-columns: 1fr 1fr; }
+  .summary > :first-child { grid-column: 1 / -1; }
+}

@@ -34,6 +34,8 @@ import {
 import { useVenueSession } from "../../../../features/orders/hooks/useVenueSession";
 import VenueBanner from "../../../../features/orders/components/customer/VenueBanner";
 import VenueOrderDrawer from "../../../../features/orders/components/customer/VenueOrderDrawer";
+import { useGroupSession } from "../../../../features/orders/hooks/useGroupSession";
+import { GroupBanner, GroupJoinDialog, GroupOrderDrawer } from "../../../../features/orders/components/customer/GroupOrder";
 
 // Visita decidida y todavía sin respuesta, por carta (ver el efecto de
 // carga en MenuPage).
@@ -118,6 +120,10 @@ export default function MenuPage() {
   // válido todo sigue igual: carrito → WhatsApp.
   const venue = useVenueSession(slug);
   const [venueHistoryVersion, setVenueHistoryVersion] = useState(0);
+  // Pedido grupal de la mesa (ver useGroupSession): mientras es parte de uno,
+  // el carrito es el del grupo.
+  const group = useGroupSession(slug);
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
 
   // Estadísticas de la carta (ver lib/menuAnalytics): todo fire-and-forget,
   // nunca afecta la experiencia del cliente si falla. False para el dueño,
@@ -388,8 +394,13 @@ export default function MenuPage() {
   // ellos no hay carrito (se le pide al mozo). Fuera del local, como siempre.
   const venueContext = venue.token ? venue.context : null;
   const venueOrdering = venueContext?.ordering === true;
-  const cartOn = venueContext ? venueOrdering : ordersEnabled;
-  const canOrder = venueContext ? venueOrdering : orderModes.length > 0 && ordersEnabled;
+  // En un pedido grupal siempre se puede elegir: lo elegido va al carrito del
+  // grupo (aunque el local no reciba pedidos directos, lo envía el personal).
+  const inGroup = group.active;
+  const cartOn = inGroup || (venueContext ? venueOrdering : ordersEnabled);
+  const canOrder = inGroup || (venueContext ? venueOrdering : orderModes.length > 0 && ordersEnabled);
+  // Llegó con el QR / enlace de un grupo, o tocó "Pedir en grupo".
+  const groupDialog = !inGroup && (groupDialogOpen || group.joinParam !== null);
   // Un destino por sucursal; sin sucursales cargadas, el teléfono de siempre.
   const waTargets = getWaTargets(info);
 
@@ -579,8 +590,11 @@ export default function MenuPage() {
               hidePrices={display.hidePrices}
               historyVersion={venueHistoryVersion}
               onLeave={venue.invalidate}
+              onGroup={inGroup ? undefined : () => setGroupDialogOpen(true)}
             />
           )}
+
+          {inGroup && <GroupBanner group={group} onOpen={() => setCartOpen(true)} />}
 
           <div className={styles.mpShell}>
             {/* ── Contenido del tab activo ── */}
@@ -678,7 +692,7 @@ export default function MenuPage() {
               )}
             </main>
 
-            {ordersEnabled && !venueContext && (
+            {ordersEnabled && !venueContext && !inGroup && (
               <OrderSummary
                 slug={slug}
                 online={online}
@@ -700,8 +714,30 @@ export default function MenuPage() {
             />
           )}
 
+          {/* En un pedido grupal, el carrito es el de toda la mesa. */}
+          {inGroup && slug && (
+            <GroupOrderDrawer
+              open={cartOpen}
+              onClose={() => setCartOpen(false)}
+              slug={slug}
+              group={group}
+              hidePrices={display.hidePrices}
+            />
+          )}
+
+          {groupDialog && slug && (
+            <GroupJoinDialog
+              slug={slug}
+              venue={venueContext && venue.token ? { token: venue.token, context: venueContext } : null}
+              joinParam={group.joinParam}
+              group={group}
+              onClose={() => { setGroupDialogOpen(false); group.dismissJoin(); }}
+              onJoined={() => { setGroupDialogOpen(false); setCartOpen(true); }}
+            />
+          )}
+
           {/* En el local, el carrito envía el pedido al panel (Gestión de pedidos). */}
-          {venueOrdering && venueContext && venue.token && (
+          {!inGroup && venueOrdering && venueContext && venue.token && (
             <VenueOrderDrawer
               open={cartOpen}
               onClose={() => setCartOpen(false)}
@@ -719,7 +755,7 @@ export default function MenuPage() {
           )}
 
           {/* El drawer queda dentro de .mp para heredar los tokens del template */}
-          {ordersEnabled && !venueContext && (
+          {ordersEnabled && !venueContext && !inGroup && (
             <CartDrawer
               open={cartOpen}
               onClose={() => setCartOpen(false)}
@@ -736,7 +772,7 @@ export default function MenuPage() {
           )}
 
           {/* Vuelta desde Mercado Pago (?pago=): el resultado lo confirma el servidor. */}
-          {ordersEnabled && !venueContext && slug && <OnlinePaymentReturn slug={slug} />}
+          {ordersEnabled && !venueContext && !inGroup && slug && <OnlinePaymentReturn slug={slug} />}
 
           {/* Aviso para seguir un pedido pagado online que sigue en marcha. */}
           {ordersEnabled && !venueContext && slug && <TrackedOrderBanner slug={slug} />}
