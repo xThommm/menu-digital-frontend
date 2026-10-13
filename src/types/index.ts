@@ -557,6 +557,9 @@ export interface DashData {
   itemCount: number
   categoryCount: number
   backgroundPicture: string | null
+  // Toggle de Configuración "Mostrar datos de pedidos y reservas en el
+  // inicio". Un backend anterior al campo no lo manda: se muestran.
+  showActivity: boolean
 }
 
 export interface DayCount {

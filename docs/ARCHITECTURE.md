@@ -351,10 +351,11 @@ hook de hasheo con bcrypt y método `matchPassword`. Además:
   plantilla** que los demás pueden copiar).
 - **`panelSettings`** (panel de Configuración): `password` propia del panel
   (`select:false`, distinta de la de login), `autoGenerateCodes`, `disableMenuDelete`,
-  `deleteMenusWithContent`, `landingVisibility` (qué datos de contacto muestra la
-  landing; todo `true` por defecto) y `menuDisplay` (`featuredSection`,
-  `collapsibleCategories`, `hidePrices`; todo `false` por defecto porque cambian cómo
-  se ve una carta en uso).
+  `deleteMenusWithContent`, `showDashboardActivity` (datos de pedidos y reservas en
+  el inicio del panel; `true` por defecto, viaja también en `GET /me/summary`),
+  `landingVisibility` (qué datos de contacto muestra la landing; todo `true` por
+  defecto) y `menuDisplay` (`featuredSection`, `collapsibleCategories`, `hidePrices`;
+  todo `false` por defecto porque cambian cómo se ve una carta en uso).
 
 - **`contactInfo.number`** se guarda como código de área + número (10 dígitos, sin
   54/9/0/15; ver `utils/phone.js`).
