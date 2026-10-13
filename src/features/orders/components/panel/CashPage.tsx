@@ -24,7 +24,25 @@ import p from "./panel.module.css";
 //
 // Los números, los filtros y los totales vienen resueltos del servidor.
 
+// Vive en el panel principal (/caja), fuera de Gestión de pedidos, así que
+// el candado del plan Pro lo pone la página (antes lo ponía OrdersLayout).
 export default function CashPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const expired = user ? isSubscriptionExpired(user.subscription, user.subscriptionExpiresAt, user.subscriptionStatus) : true;
+
+  if (expired || user?.subscription !== "pro") {
+    return (
+      <ProLock title="Caja y turnos" onBack={() => navigate("/dashboard")}>
+        Abrí y cerrá la caja de cada cajero y llevá el resumen de ventas de cada turno.
+        Esta función está disponible en el plan Pro.
+      </ProLock>
+    );
+  }
+  return <CashPanel />;
+}
+
+function CashPanel() {
   const [shiftData, setShiftData] = useState<{ shift: Shift | null; summary: ShiftSummary | null } | null>(null);
   const [overview, setOverview] = useState<CashOverview | null>(null);
   const [error, setError] = useState<string | null>(null);

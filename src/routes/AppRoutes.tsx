@@ -369,6 +369,12 @@ export default function AppRoutes() {
               path="/reservas"
               element={<ReservationsPage />}
             />
+
+            {/* Caja y turnos (plan Pro): en el panel principal, no en Gestión de pedidos. */}
+            <Route
+              path="/caja"
+              element={<CashPage />}
+            />
           </Route>
 
           {/* Gestión de pedidos: sección con su propia barra lateral (plan Pro). */}
@@ -380,7 +386,8 @@ export default function AppRoutes() {
             {/* Ruta vieja (antes "Mozos"). */}
             <Route path="/pedidos/mozos" element={<Navigate to="/pedidos/operadores" replace />} />
             <Route path="/pedidos/sectores" element={<SectorsPage />} />
-            <Route path="/pedidos/caja" element={<CashPage />} />
+            {/* Ruta vieja: Caja y turnos pasó al panel principal. */}
+            <Route path="/pedidos/caja" element={<Navigate to="/caja" replace />} />
             <Route path="/pedidos/delivery" element={<DeliveryPage />} />
             <Route path="/pedidos/delivery/repartidores" element={<CouriersPage />} />
             <Route path="/pedidos/repartidores" element={<Navigate to="/pedidos/delivery/repartidores" replace />} />
