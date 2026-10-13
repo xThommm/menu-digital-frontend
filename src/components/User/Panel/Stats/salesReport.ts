@@ -36,6 +36,41 @@ export interface SalesProduct {
   amount: number;
 }
 
+// Resultado de un grupo de cierres (todo el período, un cajero o una caja).
+export interface CashClosingResult {
+  closings: number;
+  netAmount: number;
+  // Cierres con el efectivo contado: la diferencia solo se mide en esos.
+  countedCount: number;
+  difference: number;
+  exactCount: number;
+  shortCount: number;
+  shortAmount: number;
+  overCount: number;
+  overAmount: number;
+}
+
+// Reporte de caja del período, ya agregado por el servidor a partir de las
+// cajas cerradas (orders/services/reportService.js → cashReport).
+export interface CashReport {
+  from: string;
+  to: string;
+  totals: CashClosingResult & {
+    cashSalesAmount: number;
+    onlineAmount: number;
+    incomeAmount: number;
+    expenseAmount: number;
+    // Retiros con la caja abierta + lo retirado al cerrar.
+    withdrawalAmount: number;
+  };
+  // Cómo entró lo vendido; suma el neto. count: cobros anotados (null si no aplica).
+  byMethod: { kind: string; label: string; count: number | null; amount: number }[];
+  // Ingresos, egresos y retiros por concepto, de mayor a menor.
+  movements: { type: "income" | "expense" | "withdrawal"; typeLabel: string; category: string; label: string; count: number; amount: number }[];
+  byCashier: (CashClosingResult & { name: string })[];
+  byRegister: (CashClosingResult & { name: string })[];
+}
+
 export interface SalesReport extends StatsPeriod {
   // Tipo de pedido al que está filtrado el reporte; null o ausente = todos.
   serviceType?: string | null;
@@ -55,6 +90,8 @@ export interface SalesReport extends StatsPeriod {
   averageServiceMinutes: number | null;
   // Cajas cerradas desde el inicio del período hasta hoy.
   cashSessions: CashSession[];
+  // Mismo rango que cashSessions. Ausente con un backend anterior.
+  cash?: CashReport;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
@@ -67,6 +104,18 @@ const isTotals = (value: unknown) => isRecord(value) && isCount(value.orders)
   && isCount(value.cancelledCount) && isCount(value.returnedCount);
 const isGroups = (value: unknown) => Array.isArray(value)
   && value.every(row => isRecord(row) && typeof row.key === "string" && isCount(row.count) && isAmount(row.amount));
+
+const isClosingResult = (value: unknown) => isRecord(value)
+  && [value.closings, value.countedCount, value.exactCount, value.shortCount, value.overCount].every(isCount)
+  && [value.netAmount, value.difference, value.shortAmount, value.overAmount].every(isAmount);
+const isNamedResults = (value: unknown) => Array.isArray(value)
+  && value.every(row => isClosingResult(row) && typeof (row as Record<string, unknown>).name === "string");
+const isCashReport = (value: unknown) => isRecord(value) && isClosingResult(value.totals) && isRecord(value.totals)
+  && [value.totals.cashSalesAmount, value.totals.onlineAmount, value.totals.incomeAmount, value.totals.expenseAmount, value.totals.withdrawalAmount].every(isAmount)
+  && Array.isArray(value.byMethod) && value.byMethod.every(row => isRecord(row) && typeof row.label === "string" && isAmount(row.amount))
+  && Array.isArray(value.movements) && value.movements.every(row => isRecord(row)
+    && typeof row.type === "string" && typeof row.label === "string" && isCount(row.count) && isAmount(row.amount))
+  && isNamedResults(value.byCashier) && isNamedResults(value.byRegister);
 
 /** Una respuesta de otro período o con otra forma se trata como error, nunca se muestra mal rotulada. */
 export function isSalesReport(value: unknown, days: 7 | 30): value is SalesReport {
@@ -83,7 +132,8 @@ export function isSalesReport(value: unknown, days: 7 | 30): value is SalesRepor
     && Array.isArray(value.byCategory) && value.byCategory.every(category => isRecord(category)
       && typeof category.name === "string" && isCount(category.quantity) && isAmount(category.amount))
     && Array.isArray(value.cashSessions) && value.cashSessions.every(session => isRecord(session)
-      && typeof session.id === "number" && typeof session.closedAt === "string" && isRecord(session.summary));
+      && typeof session.id === "number" && typeof session.closedAt === "string" && isRecord(session.summary))
+    && (value.cash === undefined || isCashReport(value.cash));
 }
 
 export type SalesResult =
@@ -177,6 +227,20 @@ export function buildCashInsights(sessions: CashSession[]): CashInsights {
   };
 }
 
+/** Los totales de caja del servidor; con un backend anterior se calculan de los cierres. */
+export function cashInsightsOf(report: Pick<SalesReport, "cash" | "cashSessions">): CashInsights {
+  if (!report.cash) return buildCashInsights(report.cashSessions);
+  const { totals } = report.cash;
+  return {
+    count: totals.closings,
+    netAmount: totals.netAmount,
+    counted: totals.countedCount,
+    difference: totals.difference,
+    shortCount: totals.shortCount,
+    overCount: totals.overCount,
+  };
+}
+
 /** Tope "redondo" para el eje de un gráfico, sin dejar mucho aire sobre la barra más alta. */
 export function niceMax(value: number): number {
   if (!(value > 0)) return 1;
@@ -187,7 +251,7 @@ export function niceMax(value: number): number {
 
 // ── Exportación a Excel ──
 
-export const SALES_SHEETS = ["ventas", "productos", "desgloses", "pedidos", "caja"] as const;
+export const SALES_SHEETS = ["ventas", "productos", "desgloses", "pedidos", "caja", "movimientos"] as const;
 export const VISIT_SHEETS = ["visitas", "vistos"] as const;
 export type ReportSheet = (typeof SALES_SHEETS)[number] | (typeof VISIT_SHEETS)[number];
 
@@ -196,7 +260,8 @@ export const SHEET_LABEL: Record<ReportSheet, { title: string; detail: string }>
   productos: { title: "Productos vendidos", detail: "Unidades e importe de cada producto y variante" },
   desgloses: { title: "Desgloses", detail: "Por tipo de pedido, origen, forma de pago, operador, categoría y hora" },
   pedidos: { title: "Pedidos", detail: "Un pedido por fila, con su estado y total" },
-  caja: { title: "Cierres de caja", detail: "Vendido, efectivo esperado, contado y diferencia" },
+  caja: { title: "Cierres de caja", detail: "Cada cierre con su arqueo, y los desgloses por medio de cobro, concepto, cajero y caja" },
+  movimientos: { title: "Movimientos de caja", detail: "Cada ingreso, egreso y retiro, con su concepto y quién lo registró" },
   visitas: { title: "Visitas por día", detail: "Visitas a la carta y el recorrido hasta el pedido" },
   vistos: { title: "Productos vistos", detail: "Veces que abrieron cada producto" },
 };

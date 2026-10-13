@@ -3,8 +3,8 @@ import { formatDateTime } from "../../../../features/orders/lib/format";
 import type { CashSession } from "../../../../features/orders/types";
 import DataTable from "../../../Common/DataTable/DataTable";
 import s from "./UserStats.module.css";
-import { Donut, Hero, Ring } from "./StatsCharts";
-import { buildCashInsights, niceMax, type SalesReport } from "./salesReport";
+import { BarList, Donut, Hero, Ring } from "./StatsCharts";
+import { cashInsightsOf, niceMax, type CashClosingResult, type CashReport, type SalesReport } from "./salesReport";
 import { formatCompactMoney, formatDay, formatMoney, formatPercent, plural } from "./statsFormat";
 
 type CashResult = "exact" | "over" | "short" | "uncounted";
@@ -27,10 +27,18 @@ const differenceLabel = (difference: number | null) => {
 
 const closingsLabel = (count: number) => `${count} ${plural(count, "cierre", "cierres")}`;
 
+// "3 cierres · faltó $ 500" para las listas por cajero y por caja.
+const closingResultLabel = (row: CashClosingResult) => {
+  const result = row.countedCount === 0 ? "sin contar"
+    : row.difference === 0 ? "sin diferencia" : `${row.difference < 0 ? "faltó" : "sobró"} ${formatMoney(Math.abs(row.difference))}`;
+  return `${closingsLabel(row.closings)} · ${result}`;
+};
+
 export default function CashView({ report }: { report: SalesReport }) {
   // De la más reciente a la más vieja, como el historial de Caja.
   const sessions = useMemo(() => [...report.cashSessions].reverse(), [report.cashSessions]);
-  const insights = useMemo(() => buildCashInsights(report.cashSessions), [report.cashSessions]);
+  const insights = useMemo(() => cashInsightsOf(report), [report]);
+  const cash = report.cash;
   const range = `${formatDay(report.periodStart)} al ${formatDay(report.todayDate)}`;
   const registers = useMemo(() => [...new Set(sessions.map(session => session.registerName))].sort(), [sessions]);
   const cashiers = useMemo(() => [...new Set(sessions.map(session => session.cashierName || "Sin cajero"))].sort(), [sessions]);
@@ -65,6 +73,8 @@ export default function CashView({ report }: { report: SalesReport }) {
           { label: "Cierres de caja", value: String(insights.count) },
           { label: "Neto de los cierres", value: formatMoney(insights.netAmount) },
           { label: "Con diferencia", value: `${insights.shortCount} faltantes · ${insights.overCount} sobrantes` },
+          // Cuatro datos entran en una fila; los retiros están en "Adónde fue el efectivo".
+          ...(cash ? [{ label: "Egresos", value: formatMoney(cash.totals.expenseAmount) }] : []),
         ]}
         aside={insights.counted > 0 && (
           <Ring size="lg" value={exact / insights.counted} label={`${exact} de ${closingsLabel(insights.counted)} con efectivo contado dieron exactos`}>
@@ -101,6 +111,8 @@ export default function CashView({ report }: { report: SalesReport }) {
           label="Cierres de caja según el resultado del conteo. El detalle está en la lista siguiente."
         />
       </section>
+
+      {cash && <CashBreakdowns cash={cash} />}
 
       <section className={`${s.card} ${s.cardWide}`}>
         <div className={s.cardHead}>
@@ -153,6 +165,77 @@ export default function CashView({ report }: { report: SalesReport }) {
         Cada cierre guarda los números del momento en que se cerró la caja. Una devolución posterior se
         registra en la caja que esté abierta, no cambia un cierre anterior.
       </p>
+    </>
+  );
+}
+
+// Cómo se cobró, adónde fue el efectivo y cómo cerró cada cajero. Todo viene
+// sumado del servidor, sobre los mismos cierres que la tabla de abajo.
+function CashBreakdowns({ cash }: { cash: CashReport }) {
+  const methods = cash.byMethod.filter(row => row.amount > 0);
+  const outflows = cash.movements.filter(row => row.type !== "income");
+  const outTotal = outflows.reduce((sum, row) => sum + row.amount, 0);
+  const closingRows = (rows: CashReport["byCashier"]) => rows.map(row => ({
+    key: row.name, label: row.name, value: row.netAmount, detail: closingResultLabel(row),
+  }));
+
+  return (
+    <>
+      <section className={`${s.card} ${s.span4}`}>
+        <div className={s.cardHead}>
+          <p className={s.cardLabel}>Cómo se cobró</p>
+          <p className={s.cardNote}>Lo vendido neto según el medio. Lo que no tiene otro cobro anotado cuenta como efectivo.</p>
+        </div>
+        {methods.length === 0
+          ? <p className={s.cardNote}>No hubo ventas en los cierres del período.</p>
+          : (
+            <Donut
+              slices={methods.map(row => ({
+                key: row.kind, label: row.label, value: row.amount,
+                detail: row.count === null ? undefined : `${row.count} ${plural(row.count, "cobro", "cobros")}`,
+              }))}
+              format={formatMoney}
+              centerLabel="neto"
+              label="Importe neto de los cierres por medio de cobro. El detalle está en la lista siguiente."
+            />
+          )}
+      </section>
+
+      <section className={`${s.card} ${s.span4}`}>
+        <div className={s.cardHead}>
+          <p className={s.cardLabel}>Adónde fue el efectivo</p>
+          <p className={s.cardNote}>
+            Egresos y retiros por concepto.
+            {cash.totals.incomeAmount > 0 && ` Además entraron ${formatMoney(cash.totals.incomeAmount)} como ingresos de caja.`}
+          </p>
+        </div>
+        {outflows.length === 0
+          ? <p className={s.cardNote}>No se registraron egresos ni retiros en los cierres del período.</p>
+          : (
+            <BarList
+              rows={outflows.map(row => ({
+                key: `${row.type}|${row.category}`, label: row.label, hint: row.typeLabel, value: row.amount,
+                detail: `${row.count} ${plural(row.count, "movimiento", "movimientos")}`,
+              }))}
+              format={formatMoney}
+              total={outTotal}
+            />
+          )}
+      </section>
+
+      <section className={`${s.card} ${s.span4}`}>
+        <div className={s.cardHead}>
+          <p className={s.cardLabel}>Por cajero</p>
+          <p className={s.cardNote}>Neto de sus cierres y la diferencia acumulada de efectivo.</p>
+        </div>
+        <BarList rows={closingRows(cash.byCashier)} format={formatMoney} total={cash.totals.netAmount} />
+        {cash.byRegister.length > 1 && (
+          <>
+            <p className={s.subLabel}>Por caja</p>
+            <BarList rows={closingRows(cash.byRegister)} format={formatMoney} total={cash.totals.netAmount} />
+          </>
+        )}
+      </section>
     </>
   );
 }

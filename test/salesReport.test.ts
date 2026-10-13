@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  buildCashInsights, buildSalesInsights, isSalesReport, niceMax, percentChange, presetRange, rangeError,
+  buildCashInsights, buildSalesInsights, cashInsightsOf, isSalesReport, niceMax, percentChange, presetRange, rangeError,
   requestReportFile, requestSalesReport, type SalesReport,
 } from "../src/components/User/Panel/Stats/salesReport.ts";
 
@@ -72,6 +72,21 @@ test("caja: la diferencia solo suma los cierres con efectivo contado", () => {
   const session = (id: number, difference: number | null) => ({ id, difference, summary: { netAmount: 1000 } });
   const insights = buildCashInsights([session(1, -500), session(2, null), session(3, 200), session(4, 0)] as never);
   assert.deepEqual(insights, { count: 4, netAmount: 4000, counted: 3, difference: -300, shortCount: 1, overCount: 1 });
+});
+
+test("caja: usa los totales del servidor y, con un backend anterior, los cierres", () => {
+  const result = { closings: 5, netAmount: 9000, countedCount: 4, difference: -700, exactCount: 2, shortCount: 1, shortAmount: -900, overCount: 1, overAmount: 200 };
+  const cash = {
+    from: "2026-09-09", to: "2026-09-16",
+    totals: { ...result, cashSalesAmount: 6000, onlineAmount: 1000, incomeAmount: 0, expenseAmount: 500, withdrawalAmount: 300 },
+    byMethod: [{ kind: "cash", label: "Efectivo", count: null, amount: 6000 }],
+    movements: [{ type: "expense" as const, typeLabel: "Egreso", category: "supplier", label: "Proveedor", count: 1, amount: 500 }],
+    byCashier: [{ name: "Ana", ...result }], byRegister: [{ name: "Caja principal", ...result }],
+  };
+  assert.deepEqual(cashInsightsOf({ cash, cashSessions: [] }), { count: 5, netAmount: 9000, counted: 4, difference: -700, shortCount: 1, overCount: 1 });
+  assert.equal(cashInsightsOf({ cashSessions: [] }).count, 0);
+  assert.equal(isSalesReport(report({ cash }), 7), true);
+  assert.equal(isSalesReport(report({ cash: { ...cash, byCashier: [{ name: "Ana" }] } as never }), 7), false);
 });
 
 test("tope del eje: redondo y apenas por encima del máximo", () => {

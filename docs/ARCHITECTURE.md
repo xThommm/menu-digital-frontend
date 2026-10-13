@@ -2825,7 +2825,15 @@ todo ya resuelto (resumen, libro, historial filtrado y totales). El panel no rec
 - **Límites conocidos**: los pedidos y cobros siguen yendo a la caja principal si está abierta (falta elegir caja por
   dispositivo u operador); una mesa que se carga en una caja y se cobra con tarjeta en la siguiente descuadra las dos
   por el mismo importe; quitar un producto de un pedido cuya caja ya cerró no ajusta ninguna caja.
-- **Tests**: backend `test/ordersCash.test.js` y `test/ordersCashHttp.test.js`.
+- **Reportes de caja**: `reportService.cashReport(ownerId, from, to)` agrega todo en el servidor a partir de las cajas
+  **cerradas** en el rango (números congelados, cierran contra la lista de cierres): totales, cómo se cobró
+  (`byMethod`, suma el neto), ingresos / egresos / retiros por concepto (`movements`, incluye lo retirado al cerrar) y
+  resultado por cajero y por caja. Sale como `cash` en `GET /api/orders/reports/sales` (pestaña Caja de Estadísticas:
+  `CashView` solo lo muestra; con un backend anterior cae a los cierres) y en el Excel: columnas nuevas en
+  «Cierres de caja», hoja «Desgloses de caja» (misma clave `caja`) y hoja «Movimientos de caja» (clave `movimientos`,
+  un movimiento por fila, con los anulados).
+- **Tests**: backend `test/ordersCash.test.js`, `test/ordersCashHttp.test.js` y `test/reportExport.test.js`; frontend
+  `test/salesReport.test.ts`.
 
 ## Tiempo real de pedidos (todas las pantallas)
 
