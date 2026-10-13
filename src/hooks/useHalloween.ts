@@ -1,16 +1,16 @@
 import { useSyncExternalStore } from "react";
 import { halloweenLevelFor, isHalloweenSeason } from "../lib/halloween";
 
-// Preferencia del visitante: encendido por defecto durante la temporada.
-// Guarda solo el "apagado" para que la decisión de la fecha mande sobre un
-// valor viejo en el storage. Store de módulo para que el interruptor, los
+// Preferencia del visitante: apagado por defecto; el adorno se enciende desde
+// el interruptor. Guarda solo el "encendido", y la fecha sigue mandando sobre
+// un valor viejo en el storage. Store de módulo para que el interruptor, los
 // murciélagos y las telarañas lean el mismo estado sin un provider.
-const STORAGE_KEY = "halloween-off";
+const STORAGE_KEY = "halloween-on";
 
 const listeners = new Set<() => void>();
-let off = readOff();
+let on = readOn();
 
-function readOff(): boolean {
+function readOn(): boolean {
   try {
     return localStorage.getItem(STORAGE_KEY) === "1";
   } catch {
@@ -24,21 +24,21 @@ function subscribe(listener: () => void) {
 }
 
 export function setHalloweenEnabled(enabled: boolean) {
-  off = !enabled;
+  on = enabled;
   try {
-    if (off) localStorage.setItem(STORAGE_KEY, "1");
+    if (on) localStorage.setItem(STORAGE_KEY, "1");
     else localStorage.removeItem(STORAGE_KEY);
   } catch { /* storage bloqueado: la preferencia vale solo esta sesión */ }
   listeners.forEach((l) => l());
 }
 
 export function useHalloween() {
-  const isOff = useSyncExternalStore(subscribe, () => off, () => false);
+  const isOn = useSyncExternalStore(subscribe, () => on, () => false);
   const season = isHalloweenSeason();
   return {
     season,
-    enabled: season && !isOff,
-    toggle: () => setHalloweenEnabled(isOff),
+    enabled: season && isOn,
+    toggle: () => setHalloweenEnabled(!isOn),
   };
 }
 
