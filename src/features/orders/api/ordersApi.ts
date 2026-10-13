@@ -2,7 +2,8 @@ import apiClient from "../../../api/client";
 import type {
   Courier, DeliveryActiveResponse, DeliveryTrail, DeliveryAssignment,
   Bill, BillApi, GroupSession, GroupStaffApi,
-  BoardResponse, MpConnection, OrderPaymentResponse, RefundResult, CashRegister, CashSession, Order, OrderLineInput, OrderOptions, OrderSettings, OrderStatus,
+  BoardResponse, MpConnection, OrderPaymentResponse, RefundResult, CashRegister, CashSession, CashOverview, CashLedger,
+  CashLedgerType, CashMovementType, ClosedCashQuery, ClosedCashResponse, Order, OrderLineInput, OrderOptions, OrderSettings, OrderStatus,
   PaperWidth, PrintMode, Sector, SectorAssignment, SectorTargetType, SectorTicketsResponse, ServiceInput,
   ServiceType, SettingsResponse, Shift, ShiftSummary, TableSession, Ticket, TicketStatus, Waiter,
   WaiterDeviceSession,
@@ -179,22 +180,45 @@ export const updateCashRegister = async (id: number, data: { name?: string; acti
 export const listOpenCash = async (): Promise<CashSession[]> =>
   (await apiClient.get<{ sessions: CashSession[] }>("/orders/cash/sessions/open")).data.sessions;
 
-export const listClosedCash = async (page = 1) =>
-  (await apiClient.get<{ sessions: CashSession[]; total: number; page: number; pageSize: number }>(
-    "/orders/cash/sessions", { params: { page } }
+// Todo lo de la pantalla de caja en una sola consulta.
+export const getCashOverview = async (): Promise<CashOverview> =>
+  (await apiClient.get<CashOverview>("/orders/cash/overview")).data;
+
+// Cajas cerradas: los filtros y los totales los resuelve el servidor.
+export const listClosedCash = async (query: ClosedCashQuery = {}) =>
+  (await apiClient.get<ClosedCashResponse>(
+    "/orders/cash/sessions", { params: query }
   )).data;
 
 export const getCashSession = async (id: number): Promise<CashSession> =>
   (await apiClient.get<{ session: CashSession }>(`/orders/cash/sessions/${id}`)).data.session;
 
-export const openCash = async (data: { registerId?: number; cashierName?: string; openingAmount?: number | null }): Promise<CashSession> =>
+export const openCash = async (data: { registerId?: number; cashierId?: number | null; cashierName?: string; openingAmount?: number | null }): Promise<CashSession> =>
   (await apiClient.post<{ session: CashSession }>("/orders/cash/sessions", data)).data.session;
 
-export const updateCash = async (id: number, data: { cashierName?: string; openingAmount?: number | null }): Promise<CashSession> =>
+export const updateCash = async (id: number, data: { cashierId?: number | null; cashierName?: string; openingAmount?: number | null }): Promise<CashSession> =>
   (await apiClient.patch<{ session: CashSession }>(`/orders/cash/sessions/${id}`, data)).data.session;
 
-export const closeCash = async (id: number, data: { cashCounted?: number | null; notes?: string }): Promise<CashSession> =>
+export const closeCash = async (id: number, data: { cashCounted: number; cashWithdrawn?: number; notes?: string }): Promise<CashSession> =>
   (await apiClient.post<{ session: CashSession }>(`/orders/cash/sessions/${id}/close`, data)).data.session;
+
+// Ingreso, egreso o retiro. Devuelve la caja con el resultado ya actualizado.
+export const addCashMovement = async (
+  sessionId: number,
+  data: { type: CashMovementType; category: string; amount: number; notes?: string; idempotencyKey: string },
+): Promise<CashSession> =>
+  (await apiClient.post<{ session: CashSession }>(`/orders/cash/sessions/${sessionId}/movements`, data)).data.session;
+
+export const voidCashMovement = async (movementId: number, reason?: string): Promise<CashSession> =>
+  (await apiClient.post<{ session: CashSession }>(`/orders/cash/movements/${movementId}/void`, { reason })).data.session;
+
+// Libro de una caja, filtrado y paginado por el servidor.
+export const getCashLedger = async (
+  sessionId: number, query: { type?: CashLedgerType; cashOnly?: boolean; page?: number } = {},
+): Promise<CashLedger> =>
+  (await apiClient.get<CashLedger>(`/orders/cash/sessions/${sessionId}/ledger`, {
+    params: { type: query.type, cashOnly: query.cashOnly ? 1 : undefined, page: query.page },
+  })).data;
 
 // ── Operadores (en la API: waiters) ──
 export const listWaiters = async (): Promise<Waiter[]> =>
