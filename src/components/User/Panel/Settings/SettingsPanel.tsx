@@ -10,6 +10,8 @@ import type {
   MenuDisplayKey,
 } from "../../../../types/index";
 import Spinner from "../../../Common/Spinner";
+// Mismas tarjetas, switches y campos que la configuración de Pedidos y Reservas.
+import p from "../../../../features/orders/components/panel/panel.module.css";
 import styles from "./SettingsPanel.module.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -103,31 +105,8 @@ function toSettings(data: Partial<SettingsValues>): SettingsValues {
 
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
-function Toggle({ checked, onChange, label, describedBy, disabled }: {
-  checked: boolean;
-  onChange: () => void;
-  label?: string;
-  describedBy?: string;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      className={`${styles.toggle} ${checked ? styles.on : ""}`}
-      onClick={onChange}
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      aria-describedby={describedBy}
-      disabled={disabled}
-    >
-      <span className={styles.toggleKnob} />
-    </button>
-  );
-}
-
 // `ariaLabel` va cuando el título solo no alcanza fuera de contexto (un lector
-// de pantalla anuncia el switch sin la sección a la que pertenece). La
+// de pantalla anuncia el switch sin la tarjeta a la que pertenece). La
 // descripción queda asociada al switch para que también se lea: algunas avisan
 // consecuencias (p. ej. que con los precios ocultos no se puede pedir).
 function ToggleRow({ label, desc, checked, onChange, disabled, ariaLabel }: {
@@ -140,24 +119,27 @@ function ToggleRow({ label, desc, checked, onChange, disabled, ariaLabel }: {
 }) {
   const descId = useId();
   return (
-    <div className={styles.toggleRow}>
-      <div>
-        <p className={styles.toggleLabel}>{label}</p>
-        <p className={styles.toggleDesc} id={descId}>{desc}</p>
+    <div className={p.switchRow}>
+      <div className={p.switchText}>
+        <span className={p.switchTitle}>{label}</span>
+        <span className={p.switchHint} id={descId}>{desc}</span>
       </div>
-      <Toggle
+      <input
+        type="checkbox"
+        role="switch"
+        className={`${p.switch} ${styles.switch}`}
         checked={checked}
         onChange={onChange}
         disabled={disabled}
-        label={ariaLabel ?? label}
-        describedBy={descId}
+        aria-label={ariaLabel ?? label}
+        aria-describedby={descId}
       />
     </div>
   );
 }
 
-// Encabezado común de las secciones del panel: título, descripción y, si la
-// sección cambia algo público, el link para ver el resultado en otra pestaña.
+// Tarjeta de cada sección: título, descripción y, si la sección cambia algo
+// público, el link para ver el resultado en otra pestaña.
 function SettingsSection({ id, title, desc, link, children }: {
   id: string;
   title: string;
@@ -166,11 +148,11 @@ function SettingsSection({ id, title, desc, link, children }: {
   children: ReactNode;
 }) {
   return (
-    <section className={styles.section} aria-labelledby={id}>
-      <div className={styles.sectionHead}>
+    <section className={`${p.card} ${styles.card}`} aria-labelledby={id}>
+      <div className={styles.cardHead}>
         <div>
-          <h2 id={id} className={styles.sectionTitle}>{title}</h2>
-          <p className={styles.sectionDesc}>{desc}</p>
+          <h2 id={id} className={`${p.cardTitle} ${styles.cardTitle}`}>{title}</h2>
+          <p className={styles.cardDesc}>{desc}</p>
         </div>
         {link && (
           <a className={styles.sectionLink} href={link.href} target="_blank" rel="noopener noreferrer">
@@ -387,21 +369,23 @@ export default function SettingsPanel() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className={styles.sp}>
-      <header className={styles.topBar}>
-        <span className={styles.topTitle}>Configuración</span>
-        <div style={{ width: 32 }} aria-hidden="true" />
+    <div className={p.page}>
+      <header className={p.header}>
+        <div className={p.titleBlock}>
+          <h1 className={p.title}>Configuración</h1>
+          <p className={p.subtitle}>Ajustes de tu panel, tu carta y la página de tu local.</p>
+        </div>
       </header>
 
-      <div className={styles.content}>
+      <div>
         {gate === "loading" && (
-          <div className={styles.gateLoading}>
+          <div className={p.loading}>
             <Spinner size={22} label="Cargando..." />
           </div>
         )}
 
         {(gate === "create" || gate === "enter") && (
-          <div className={styles.gateCard}>
+          <div className={`${p.card} ${styles.gateCard}`}>
             <div className={styles.gateIcon}><LockIcon /></div>
             {gate === "create" ? (
               <>
@@ -418,8 +402,9 @@ export default function SettingsPanel() {
               </>
             )}
 
-            <form onSubmit={submitGate} className={styles.gateForm} noValidate>
+            <form onSubmit={submitGate} className={styles.form} noValidate>
               <input
+                className={p.input}
                 type="password"
                 placeholder={gate === "create" ? "Nueva contraseña" : "Contraseña"}
                 value={passwordInput}
@@ -430,6 +415,7 @@ export default function SettingsPanel() {
               />
               {gate === "create" && (
                 <input
+                  className={p.input}
                   type="password"
                   placeholder="Repetir contraseña"
                   value={confirmInput}
@@ -439,9 +425,9 @@ export default function SettingsPanel() {
                 />
               )}
 
-              {gateError && <p className={styles.gateError} role="alert">{gateError}</p>}
+              {gateError && <p className={`${p.error} ${styles.formMsg}`} role="alert">{gateError}</p>}
 
-              <button className={styles.saveBtn} type="submit" disabled={gateSubmitting}>
+              <button className={p.btnPrimary} type="submit" disabled={gateSubmitting}>
                 {gateSubmitting
                   ? <><Spinner size={16} /> {gate === "create" ? "Creando..." : "Verificando..."}</>
                   : gate === "create" ? "Crear y entrar" : "Entrar"}
@@ -453,15 +439,16 @@ export default function SettingsPanel() {
         {gate === "unlocked" && (
           <>
             {toggleError && (
-              <div className={styles.errorBanner} role="alert" aria-live="assertive">{toggleError}</div>
+              <p className={`${p.error} ${styles.banner}`} role="alert" aria-live="assertive">{toggleError}</p>
             )}
 
+            <div className={styles.cards}>
             <SettingsSection
               id="dashboard-title"
               title="Inicio del panel"
               desc="Qué ves al entrar a tu panel."
             >
-              <div className={styles.toggleGroup}>
+              <div>
                 <ToggleRow
                   label="Mostrar datos de pedidos y reservas en el inicio"
                   desc="La agenda, el estado de los pedidos y los pedidos en curso aparecen en el inicio cuando hay algo para mostrar. Apagado, no se muestran nunca; Pedidos y Reservas siguen funcionando igual. Disponible con el plan Pro."
@@ -478,7 +465,7 @@ export default function SettingsPanel() {
               desc="Cómo ven tus clientes tu carta digital."
               link={user?.slug ? { href: `/${user.slug}/menu`, label: "Ver mi carta" } : undefined}
             >
-              <div className={styles.toggleGroup}>
+              <div>
                 {MENU_DISPLAY_KEYS.map(key => (
                   <ToggleRow
                     key={key}
@@ -499,7 +486,7 @@ export default function SettingsPanel() {
               desc="Elegí qué datos ven tus clientes en la página de tu local. Ocultar uno no lo borra: lo seguís teniendo cargado en Mi negocio."
               link={user?.slug ? { href: `/${user.slug}`, label: "Ver mi página" } : undefined}
             >
-              <div className={styles.toggleGroup}>
+              <div>
                 {LANDING_VISIBILITY_KEYS.map(key => (
                   <ToggleRow
                     key={key}
@@ -519,7 +506,7 @@ export default function SettingsPanel() {
               title="Editor de menú"
               desc="Ajustes para cuando cargás y editás tu carta."
             >
-              <div className={styles.toggleGroup}>
+              <div>
                 <ToggleRow
                   label="Generar códigos automáticamente"
                   desc="Cuando no indiques un código a mano para un producto, categoría o sección, se genera uno solo."
@@ -549,8 +536,9 @@ export default function SettingsPanel() {
               title="Contraseña de configuración"
               desc="La que te pide esta pantalla para entrar. Es distinta a la contraseña de tu cuenta."
             >
-              <form onSubmit={submitPasswordChange} className={styles.gateForm} noValidate>
+              <form onSubmit={submitPasswordChange} className={styles.form} noValidate>
                 <input
+                  className={p.input}
                   type="password"
                   placeholder="Contraseña actual"
                   value={currentPassword}
@@ -559,6 +547,7 @@ export default function SettingsPanel() {
                   onChange={e => { setCurrentPassword(e.target.value); setChangePasswordError(""); }}
                 />
                 <input
+                  className={p.input}
                   type="password"
                   placeholder="Nueva contraseña"
                   value={newPassword}
@@ -567,6 +556,7 @@ export default function SettingsPanel() {
                   onChange={e => { setNewPassword(e.target.value); setChangePasswordError(""); }}
                 />
                 <input
+                  className={p.input}
                   type="password"
                   placeholder="Repetir nueva contraseña"
                   value={confirmNewPassword}
@@ -575,14 +565,15 @@ export default function SettingsPanel() {
                   onChange={e => { setConfirmNewPassword(e.target.value); setChangePasswordError(""); }}
                 />
 
-                {changePasswordError && <p className={styles.gateError} role="alert">{changePasswordError}</p>}
-                {changePasswordSuccess && <p className={styles.gateSuccess} role="status">{changePasswordSuccess}</p>}
+                {changePasswordError && <p className={`${p.error} ${styles.formMsg}`} role="alert">{changePasswordError}</p>}
+                {changePasswordSuccess && <p className={`${p.success} ${styles.formMsg}`} role="status">{changePasswordSuccess}</p>}
 
-                <button className={styles.saveBtn} type="submit" disabled={changingPassword || invalidPasswordChange}>
+                <button className={p.btnPrimary} type="submit" disabled={changingPassword || invalidPasswordChange}>
                   {changingPassword ? <><Spinner size={16} /> Guardando...</> : "Cambiar contraseña"}
                 </button>
               </form>
             </SettingsSection>
+            </div>
           </>
         )}
       </div>
