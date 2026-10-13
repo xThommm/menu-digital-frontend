@@ -557,3 +557,47 @@
 }
 
 .connRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
+
+/* ── Dentro del panel del dueño ──
+   Las páginas que viven en el panel (Gestión de pedidos, Caja y turnos,
+   Reservas) usan todo el ancho que deja la barra lateral, esté abierta u
+   oculta, como el inicio y Estadísticas. Los tomadores públicos (operador,
+   repartidor, comandas) también arman su pantalla con .page pero no están
+   dentro de .admin-layout-content: siguen con su columna angosta.
+   La luz cálida va como fondo de la página y no en un ::before con
+   isolation: eso encerraría a los modales por debajo de la barra y el dock. */
+:global(.admin-layout-content) .page {
+  --panel-ring: inset 0 0 0 0.5px color-mix(in srgb, var(--admin-text-primary) 8%, transparent);
+
+  max-width: none;
+  margin: 0;
+  padding: var(--space-6) var(--space-6) var(--space-10);
+  background:
+    radial-gradient(34rem 26rem at 100% 0%, color-mix(in srgb, var(--admin-gold) 13%, transparent), transparent 72%) no-repeat,
+    var(--admin-bg-base);
+}
+
+/* Encabezado de la página: una banda tonal con el resplandor del acento,
+   como el encabezado del inicio. Solo el hijo directo: .header también se
+   usa como fila "título + acciones" adentro de las tarjetas. */
+:global(.admin-layout-content) .page > .header {
+  padding: calc(var(--space-5) + env(safe-area-inset-top)) var(--space-6) var(--space-5);
+  border-radius: 30px;
+  background:
+    radial-gradient(48% 150% at 94% 0%, color-mix(in srgb, var(--admin-gold) 20%, transparent), transparent 70%),
+    var(--tone-low);
+  box-shadow: var(--panel-ring);
+}
+
+:global(.admin-layout-content) .page .card,
+:global(.admin-layout-content) .page .stat,
+:global(.admin-layout-content) .page .tableCard { box-shadow: var(--panel-ring); }
+
+@media (max-width: 640px) {
+  :global(.admin-layout-content) .page { padding: var(--space-4) var(--space-4) var(--space-10); }
+
+  :global(.admin-layout-content) .page > .header {
+    padding: calc(var(--space-4) + env(safe-area-inset-top)) var(--space-4) var(--space-4);
+    border-radius: 24px;
+  }
+}

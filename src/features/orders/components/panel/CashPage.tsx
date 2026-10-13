@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Pencil, Plus } from "lucide-react";
 import DataTable, { type DataTableColumn } from "../../../../components/Common/DataTable/DataTable";
+import { useAuth } from "../../../../context/useAuth";
+import { isSubscriptionExpired } from "../../../../lib/plans";
 import {
   closeCash, closeShift, createCashRegister, getCashSession, getShiftSummary, listCashRegisters, listClosedCash,
   listOpenCash, listShifts, openCash, openShift, updateCash,
@@ -9,6 +11,7 @@ import {
 import { errorCode, errorMessage } from "../../lib/errors";
 import { formatDateTime, formatMoney, SERVICE_LABEL, SOURCE_LABEL } from "../../lib/format";
 import type { CashRegister, CashSession, CashSummary, Shift, ShiftSummary } from "../../types";
+import ProLock from "./ProLock";
 import p from "./panel.module.css";
 
 // Caja y turnos, por separado:
@@ -21,7 +24,25 @@ import p from "./panel.module.css";
 
 const toNumber = (value: string) => (value === "" ? null : Number(value));
 
+// Vive en el panel principal (/caja), fuera de Gestión de pedidos, así que
+// el candado del plan Pro lo pone la página (antes lo ponía OrdersLayout).
 export default function CashPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const expired = user ? isSubscriptionExpired(user.subscription, user.subscriptionExpiresAt, user.subscriptionStatus) : true;
+
+  if (expired || user?.subscription !== "pro") {
+    return (
+      <ProLock title="Caja y turnos" onBack={() => navigate("/dashboard")}>
+        Abrí y cerrá la caja de cada cajero y llevá el resumen de ventas de cada turno.
+        Esta función está disponible en el plan Pro.
+      </ProLock>
+    );
+  }
+  return <CashPanel />;
+}
+
+function CashPanel() {
   const [shiftData, setShiftData] = useState<{ shift: Shift | null; summary: ShiftSummary | null } | null>(null);
   const [openSessions, setOpenSessions] = useState<CashSession[] | null>(null);
   const [registers, setRegisters] = useState<CashRegister[]>([]);

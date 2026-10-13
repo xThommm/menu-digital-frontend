@@ -181,6 +181,7 @@ export default function OrdersBoard() {
         <div className={p.titleBlock}>
           <h1 className={p.title}>Panel de pedidos</h1>
           <p className={p.subtitle}>
+            <span className={`${s.shiftDot} ${shift ? s.shiftDotOpen : ""}`} aria-hidden />
             {shift ? <>Turno abierto: <strong>{shift.label}</strong> · desde las {formatTime(shift.openedAt)}</> : "No hay un turno abierto. Se abre solo con el primer pedido."}
           </p>
         </div>
@@ -208,7 +209,7 @@ export default function OrdersBoard() {
       {orders === null && !error && <p className={p.loading}>Cargando pedidos…</p>}
 
       {orders !== null && (
-        <>
+        <div className={s.boardArea}>
           <div className={`${p.segmented} ${s.mobileTabs}`} role="tablist" aria-label="Estado">
             {COLUMNS.map(column => {
               const count = orders.filter(order => order.status === column.status).length;
@@ -233,7 +234,7 @@ export default function OrdersBoard() {
               return (
                 <section
                   key={column.status}
-                  className={`${s.column} ${mobileColumn === column.status ? s.columnActive : ""}`}
+                  className={`${s.column} ${s[`column_${column.status}`] ?? ""} ${mobileColumn === column.status ? s.columnActive : ""}`}
                   aria-label={column.title}
                 >
                   <h2 className={s.columnTitle}>
@@ -262,7 +263,7 @@ export default function OrdersBoard() {
               );
             })}
           </div>
-        </>
+        </div>
       )}
 
       {refunding && (

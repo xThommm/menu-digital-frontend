@@ -6,6 +6,28 @@
   100% { box-shadow: 0 0 0 10px transparent; }
 }
 
+/* El tablero responde al ancho que le queda (con la barra lateral abierta u
+   oculta), no al de la ventana. El contenedor envuelve solo las pestañas y
+   las columnas: los modales quedan afuera para que su position: fixed siga
+   siendo contra la ventana. */
+.boardArea { container: board / inline-size; }
+
+/* Estado del turno junto al subtítulo: punto encendido si hay uno abierto. */
+.shiftDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 0.45rem;
+  border-radius: 50%;
+  background: var(--admin-text-muted);
+  vertical-align: 0.08em;
+}
+
+.shiftDotOpen {
+  background: var(--admin-success-text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-success-text) 22%, transparent);
+}
+
 .board {
   display: grid;
   gap: 1rem;
@@ -13,49 +35,70 @@
   align-items: start;
 }
 
+/* Cada estado tiene su color (el mismo de su chip): tiñe apenas la columna
+   y marca el título, así se ubican de reojo. En pantallas muy anchas las
+   tarjetas de una columna se acomodan de a dos o más. */
 .column {
-  display: flex;
-  flex-direction: column;
+  --col-accent: var(--admin-gold);
+
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  align-items: start;
+  align-content: start;
   gap: 0.6rem;
   min-width: 0;
   padding: 0.6rem;
   border-radius: 28px;
-  background: var(--tone-low);
+  background: color-mix(in srgb, var(--col-accent) 5%, var(--tone-low));
 }
 
+.column_confirmed { --col-accent: var(--admin-plan-basic); }
+.column_ready { --col-accent: var(--admin-success-text); }
+
 .columnTitle {
+  grid-column: 1 / -1;
   margin: 0;
   padding: 0.4rem 0.5rem 0.2rem 0.75rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.5rem;
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--admin-text-primary);
 }
 
+.columnTitle::before {
+  content: '';
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--col-accent);
+}
+
 .columnCount {
   min-width: 26px;
+  margin-left: auto;
   padding: 0.15rem 0.5rem;
   border-radius: 9999px;
-  background: var(--tone-secondary);
-  color: var(--tone-on-secondary);
+  background: color-mix(in srgb, var(--col-accent) 18%, var(--tone));
+  color: var(--col-accent);
   font-size: 0.72rem;
   font-weight: 600;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
-.columnEmpty { margin: 0; padding: 1.75rem 0.5rem; text-align: center; font-size: 0.8rem; color: var(--admin-text-warm); }
+.columnEmpty { grid-column: 1 / -1; margin: 0; padding: 1.75rem 0.5rem; text-align: center; font-size: 0.8rem; color: var(--admin-text-warm); }
 
 .mobileTabs { display: none; margin-bottom: 1rem; }
 
 /* Una columna por vez: la pestaña ya dice cuál es, así que la columna pierde
    su contenedor y su título y las tarjetas usan todo el ancho. */
-@media (max-width: 1023px) {
+@container board (max-width: 879px) {
   .board { grid-template-columns: 1fr; }
   .column { display: none; padding: 0; background: none; }
-  .columnActive { display: flex; }
+  .columnActive { display: grid; }
   .columnTitle { display: none; }
   .mobileTabs {
     display: flex;

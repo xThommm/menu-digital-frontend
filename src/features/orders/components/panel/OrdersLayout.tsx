@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChefHat, ClipboardList, MoreHorizontal, History, LayoutGrid, PanelLeft, Settings, Truck, Users, Wallet } from "lucide-react";
+import { ArrowLeft, ChefHat, ClipboardList, MoreHorizontal, History, LayoutGrid, PanelLeft, Settings, Truck, Users } from "lucide-react";
 import { useAuth } from "../../../../context/useAuth";
 import { usePanelPreferences } from "../../../../hooks/usePanelPreferences";
 import { isSubscriptionExpired } from "../../../../lib/plans";
@@ -11,10 +11,11 @@ import BrandMark from "../../../../components/Common/BrandMark";
 import BrandWordmark from "../../../../components/Common/BrandWordmark";
 // Mismo sidebar que el panel principal (DashboardLayout): se reusan sus estilos.
 import s from "../../../../components/User/Panel/DashboardLayout/DashboardLayout.module.css";
-import p from "./panel.module.css";
+import ProLock from "./ProLock";
 
 // Sección "Gestión de pedidos" del panel del dueño, con su propia barra
 // lateral. Exclusiva del plan Pro (el backend también lo exige).
+// "Caja y turnos" no está acá: va en la barra del panel principal (/caja).
 
 const BASE_NAV_ITEMS = [
   { path: "/pedidos", label: "Panel de pedidos", short: "Pedidos", icon: <ClipboardList size={20} strokeWidth={1.5} aria-hidden /> },
@@ -23,7 +24,6 @@ const BASE_NAV_ITEMS = [
   // "Equipo" en el dock del celular: "Operadores" no entra en la celda.
   { path: "/pedidos/operadores", label: "Operadores", short: "Equipo", icon: <Users size={20} strokeWidth={1.5} aria-hidden /> },
   { path: "/pedidos/sectores", label: "Sectores y comandas", short: "Sectores", icon: <ChefHat size={20} strokeWidth={1.5} aria-hidden /> },
-  { path: "/pedidos/caja", label: "Caja y turnos", short: "Caja", icon: <Wallet size={20} strokeWidth={1.5} aria-hidden /> },
   { path: "/pedidos/configuracion", label: "Configuración de pedidos", short: "Config", icon: <Settings size={20} strokeWidth={1.5} aria-hidden /> },
 ];
 
@@ -132,7 +132,12 @@ export default function OrdersLayout() {
       </button>
 
       <div className={`${s.content} admin-layout-content ${sidebarCollapsed ? s.contentExpanded : ""}`}>
-        {isPro ? <Outlet /> : <ProLock onBack={() => navigate("/dashboard")} />}
+        {isPro ? <Outlet /> : (
+          <ProLock title="Gestión de pedidos" onBack={() => navigate("/dashboard")}>
+            Recibí pedidos desde las mesas, organizá a tu equipo y cerrá la caja de cada turno.
+            Esta función está disponible en el plan Pro.
+          </ProLock>
+        )}
       </div>
 
       {/* En el celular entran 4 accesos + "Más" (con 8 celdas los textos se pisaban). */}
@@ -203,17 +208,3 @@ export default function OrdersLayout() {
   );
 }
 
-function ProLock({ onBack }: { onBack: () => void }) {
-  return (
-    <div className={p.page}>
-      <div className={p.card} style={{ maxWidth: 480, margin: "3rem auto", textAlign: "center" }}>
-        <h1 className={p.title}>Gestión de pedidos</h1>
-        <p className={p.subtitle} style={{ margin: "0.75rem 0 1.25rem", lineHeight: 1.55 }}>
-          Recibí pedidos desde las mesas, organizá a tu equipo y cerrá la caja de cada turno.
-          Esta función está disponible en el plan Pro.
-        </p>
-        <button type="button" className={p.btnPrimary} onClick={onBack}>Ver planes en el panel</button>
-      </div>
-    </div>
-  );
-}

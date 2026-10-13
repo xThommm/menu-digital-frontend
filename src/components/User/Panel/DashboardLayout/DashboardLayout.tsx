@@ -13,7 +13,7 @@ import { useMobileDock } from "../../../../context/useMobileDock";
 import BrandMark from "../../../Common/BrandMark";
 import BrandWordmark from "../../../Common/BrandWordmark";
 import s from "./DashboardLayout.module.css";
-import { ArrowUpRight, CalendarCheck, ChartColumn, ClipboardList, FileText, House, LogOut, MoreHorizontal, Palette, PanelLeft, Settings, Store } from "lucide-react";
+import { ArrowUpRight, CalendarCheck, ChartColumn, ClipboardList, FileText, House, LogOut, MoreHorizontal, Palette, PanelLeft, Settings, Store, Wallet } from "lucide-react";
 
 const NAV_ITEMS = [
   { path: "/dashboard",      label: "Inicio",         short: "Inicio",  icon: <House size={20} strokeWidth={1.5} /> },
@@ -31,6 +31,11 @@ const COMPACT_SIDEBAR_PATHS = ["/menu/editor", "/user/editor"];
 // src/features/orders). En el celular va en "Más" para no sumar un botón al dock.
 const ORDERS_PATH = "/pedidos";
 const ORDERS_LABEL = "Gestión de pedidos";
+
+// Caja y turnos (plan Pro): es parte de la gestión de pedidos (ver
+// src/features/orders/components/panel/CashPage.tsx) pero se entra desde acá.
+const CASH_PATH = "/caja";
+const CASH_LABEL = "Caja y turnos";
 
 // Reservas (plan Pro): página dentro de este mismo panel, ver src/features/reservations.
 const RESERVATIONS_PATH = "/reservas";
@@ -154,6 +159,16 @@ function DashboardLayoutInner() {
               <span className={s.navIcon}><ClipboardList size={20} strokeWidth={1.5} /></span>
               <span className={s.navLabel}>{ORDERS_LABEL}</span>
               <span className={s.navTrailing}><ArrowUpRight size={16} strokeWidth={1.5} aria-hidden /></span>
+            </button>
+            <button
+              type="button"
+              className={`${s.navItem} ${location.pathname === CASH_PATH ? s.navItemActive : ""}`}
+              onClick={() => navigate(CASH_PATH)}
+              aria-current={location.pathname === CASH_PATH ? "page" : undefined}
+              data-tooltip={CASH_LABEL}
+            >
+              <span className={s.navIcon}><Wallet size={20} strokeWidth={1.5} /></span>
+              <span className={s.navLabel}>{CASH_LABEL}</span>
             </button>
             <button
               type="button"
@@ -291,6 +306,18 @@ function DashboardLayoutInner() {
             >
               <ClipboardList />
               {ORDERS_LABEL}
+            </button>
+            <button
+              type="button"
+              className="admin-mobile-more__item"
+              aria-current={location.pathname === CASH_PATH ? "page" : undefined}
+              onClick={() => {
+                setMobileMoreOpen(false);
+                navigate(CASH_PATH);
+              }}
+            >
+              <Wallet />
+              {CASH_LABEL}
             </button>
             <button
               type="button"
