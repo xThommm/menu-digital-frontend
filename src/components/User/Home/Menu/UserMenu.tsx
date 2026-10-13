@@ -35,6 +35,9 @@ import { useVenueSession } from "../../../../features/orders/hooks/useVenueSessi
 import VenueBanner from "../../../../features/orders/components/customer/VenueBanner";
 import VenueOrderDrawer from "../../../../features/orders/components/customer/VenueOrderDrawer";
 import { useGroupSession } from "../../../../features/orders/hooks/useGroupSession";
+import { useGames } from "../../../../features/games/hooks/useGames";
+import { gamesVisible } from "../../../../features/games/lib/games";
+import Games from "../../../../features/games/components/Games";
 import { GroupBanner, GroupJoinDialog, GroupOrderDrawer } from "../../../../features/orders/components/customer/GroupOrder";
 
 // Visita decidida y todavía sin respuesta, por carta (ver el efecto de
@@ -124,6 +127,8 @@ export default function MenuPage() {
   // el carrito es el del grupo.
   const group = useGroupSession(slug);
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  // Juegos para comensales que el local tiene habilitados (ver features/games).
+  const games = useGames(slug);
 
   // Estadísticas de la carta (ver lib/menuAnalytics): todo fire-and-forget,
   // nunca afecta la experiencia del cliente si falla. False para el dueño,
@@ -595,6 +600,19 @@ export default function MenuPage() {
           )}
 
           {inGroup && <GroupBanner group={group} onOpen={() => setCartOpen(true)} />}
+
+          {/* Juegos del local: los productos que salen se suman al mismo pedido de la carta. */}
+          {slug && games && gamesVisible(games, !!venueContext) && (
+            <Games
+              slug={slug}
+              games={games}
+              items={menuItems}
+              hidePrices={display.hidePrices}
+              canOrder={canOrder}
+              onOpenItem={(item) => openPreview([item], 0)}
+              onOpenCart={() => setCartOpen(true)}
+            />
+          )}
 
           <div className={styles.mpShell}>
             {/* ── Contenido del tab activo ── */}

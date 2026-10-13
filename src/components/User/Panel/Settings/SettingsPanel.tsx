@@ -10,6 +10,7 @@ import type {
   MenuDisplayKey,
 } from "../../../../types/index";
 import Spinner from "../../../Common/Spinner";
+import GamesSettings from "../../../../features/games/components/GamesSettings";
 // Mismas tarjetas, switches y campos que la configuración de Pedidos y Reservas.
 import p from "../../../../features/orders/components/panel/panel.module.css";
 import styles from "./SettingsPanel.module.css";
@@ -373,7 +374,7 @@ export default function SettingsPanel() {
       <header className={p.header}>
         <div className={p.titleBlock}>
           <h1 className={p.title}>Configuración</h1>
-          <p className={p.subtitle}>Ajustes de tu panel, tu carta y la página de tu local.</p>
+          <p className={p.subtitle}>Ajustes de tu panel, tu carta, los juegos y la página de tu local.</p>
         </div>
       </header>
 
@@ -499,6 +500,15 @@ export default function SettingsPanel() {
                   />
                 ))}
               </div>
+            </SettingsSection>
+
+            <SettingsSection
+              id="games-title"
+              title="Juegos"
+              desc="Juegos para tus clientes dentro de la carta: mientras esperan, descubren productos y los suman al pedido."
+              link={user?.slug ? { href: `/${user.slug}/menu`, label: "Ver mi carta" } : undefined}
+            >
+              <GamesSettings />
             </SettingsSection>
 
             <SettingsSection
