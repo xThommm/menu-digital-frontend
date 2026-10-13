@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import DataTable from "../../../../components/Common/DataTable/DataTable";
+import { useAuth } from "../../../../context/useAuth";
+import { isSubscriptionExpired } from "../../../../lib/plans";
 import {
   closeShift, createCashRegister, getCashOverview, getShiftSummary, listShifts, openCash, openShift,
 } from "../../api/ordersApi";
@@ -12,6 +14,7 @@ import type { CashOverview, CashRegister, Shift, ShiftSummary } from "../../type
 import { CashierField, MiniTable, Pager, Stat } from "./CashParts";
 import CashSessionCard from "./CashSessionCard";
 import ClosedCashTable from "./ClosedCashTable";
+import ProLock from "./ProLock";
 import p from "./panel.module.css";
 
 // Caja y turnos, por separado:
