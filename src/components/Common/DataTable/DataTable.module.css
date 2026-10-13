@@ -100,6 +100,8 @@
   white-space: nowrap;
 }
 .table tbody tr:hover:not(.panelRow) { background: var(--admin-bg-elevated); }
+/* Fila sobre la que está abierto el menú contextual (lo marca ContextMenuProvider). */
+.table tbody tr[data-context-menu-target] { background: var(--admin-bg-elevated); }
 .table td.numeric, .table th.numeric { text-align: right; }
 
 .resizeHandle {

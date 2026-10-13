@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../../context/useAuth";
 import { getSellerOverview, type SellerOverviewEntry } from "../../../api/sellers";
@@ -286,7 +286,10 @@ function SellerOverviewSelf() {
 // ══════════════════════════════════════════════════════════════════
 function SellerOverviewAdmin() {
   const { user } = useAuth();
-  const [sellerID, setSellerID] = useState("");
+  // ?sellerID= llega desde "Ver sus comisiones" en la ficha del vendedor
+  // (admin/vendedores): la tabla arranca filtrada a ese vendedor.
+  const [searchParams] = useSearchParams();
+  const [sellerID, setSellerID] = useState(() => searchParams.get("sellerID") ?? "");
 
   // Sin filtro (el caso por defecto) es también la data que necesita el
   // resumen de equipo — se pide UNA sola vez y se reusa para ambos, en vez

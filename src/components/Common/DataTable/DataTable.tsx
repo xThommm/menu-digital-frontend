@@ -1,4 +1,4 @@
-import { Fragment, useId, useMemo, useRef, useState, type ReactNode, type PointerEvent } from "react";
+import { Fragment, useId, useMemo, useRef, useState, type MouseEvent, type ReactNode, type PointerEvent } from "react";
 import Spinner from "../Spinner";
 import s from "./DataTable.module.css";
 
@@ -69,6 +69,8 @@ export interface DataTableProps<T> {
     label?: (row: T) => string;
   };
   rowClassName?: (row: T) => string | undefined;
+  /** Clic derecho sobre una fila (ver features/contextMenu/hooks/useContextMenu). */
+  onRowContextMenu?: (event: MouseEvent<HTMLTableRowElement>, row: T) => void;
 
   loading?: boolean;
   error?: string | null;
@@ -135,6 +137,7 @@ export default function DataTable<T>({
   countLabel,
   expandable,
   rowClassName,
+  onRowContextMenu,
   loading = false,
   error = null,
   onRetry,
@@ -354,7 +357,10 @@ export default function DataTable<T>({
                 const open = expandedId === id;
                 return (
                   <Fragment key={id}>
-                    <tr className={[open ? s.rowOpen : "", rowClassName?.(row) ?? ""].join(" ").trim() || undefined}>
+                    <tr
+                      className={[open ? s.rowOpen : "", rowClassName?.(row) ?? ""].join(" ").trim() || undefined}
+                      onContextMenu={onRowContextMenu && ((event) => onRowContextMenu(event, row))}
+                    >
                       {expandable && (
                         <td className={s.chevronCell}>
                           <button

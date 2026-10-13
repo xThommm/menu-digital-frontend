@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+import { publicThemeStore, type ThemeMode } from "../lib/themeStores";
 
 // ──────────────────────────────────────────────
 // Tema claro/oscuro de las páginas PÚBLICAS que usan los tokens --auth-*:
@@ -17,30 +18,14 @@ import { useEffect, useState } from "react";
 // Los valores del tema claro viven en globals.css bajo
 // [data-auth-theme="light"] (compartidos por los dos .module.css en vez de
 // duplicados).
+//
+// El valor vive en publicThemeStore (lib/themeStores.ts): lo comparten todas
+// las páginas que usan este hook y el menú contextual global.
 // ──────────────────────────────────────────────
 
-export type AuthTheme = "dark" | "light";
-const STORAGE_KEY = "public-theme";
+export type AuthTheme = ThemeMode;
 
 export function useAuthTheme() {
-  const [theme, setTheme] = useState<AuthTheme>(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === "light" ? "light" : "dark";
-    } catch {
-      return "dark";
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, theme);
-    } catch {
-      // localStorage no disponible (modo privado, etc.): el tema igual se
-      // aplica en esta sesión, solo no persiste.
-    }
-  }, [theme]);
-
-  const toggle = () => setTheme(t => (t === "dark" ? "light" : "dark"));
-
-  return { theme, toggle };
+  const theme = useSyncExternalStore(publicThemeStore.subscribe, publicThemeStore.get);
+  return { theme, toggle: publicThemeStore.toggle };
 }

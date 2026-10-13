@@ -120,7 +120,7 @@ export default function AdminLayout() {
   }, [logout, navigate]);
 
   return (
-    <div className={`${s.layoutRoot} admin-panel-graphite`}>
+    <div className={`${s.layoutRoot} admin-panel-graphite`} data-theme-area="panel">
 
       {/* ── Sidebar (desktop) ─────────────────────────────────────────────── */}
       <aside

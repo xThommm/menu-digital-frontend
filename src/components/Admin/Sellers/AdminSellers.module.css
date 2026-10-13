@@ -183,6 +183,35 @@
   margin-top: var(--space-4);
 }
 
+/* Ficha del vendedor ("Ver perfil" del menú contextual). */
+.profileHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.profileAvatar {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--radius-full);
+  background: var(--admin-bg-elevated);
+  color: var(--admin-text-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  object-fit: cover;
+}
+
+a.secondaryButton { text-decoration: none; }
+
+.profileValue {
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
 /* Nombre + DNI en la primera columna. Se trunca en vez de ensanchar la
    columna: el DNI completo esta en el panel desplegable. */
 .rowName {
