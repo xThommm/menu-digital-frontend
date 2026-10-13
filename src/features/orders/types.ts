@@ -727,6 +727,10 @@ export interface CashRegister {
   name: string;
   active: boolean;
   createdAt: string;
+  // Sesión abierta de esa caja (null: está cerrada).
+  openSessionId: number | null;
+  // Lo que quedó en el cajón al cerrarla por última vez: el fondo con el que abriría.
+  suggestedOpening: number;
 }
 
 export interface CashSummary {
@@ -739,8 +743,16 @@ export interface CashSummary {
   returnedAmount: number;
   discountsAmount: number;
   netAmount: number;
+  // Cobrado online (Mercado Pago): no pasa por el cajón.
+  onlineAmount: number;
+  // Lo vendido que se espera en efectivo (neto − online − cobrado con otros medios).
+  cashSalesAmount: number;
+  incomeAmount: number;
+  expenseAmount: number;
+  withdrawalAmount: number;
   expectedCash: number;
   paymentsBreakdown: { method: string; kind: string; count: number; amount: number }[];
+  // Pedidos todavía en curso (quedan en el cierre de esta caja).
   pendingCount: number;
 }
 
@@ -749,14 +761,98 @@ export interface CashSession {
   registerId: number;
   registerName: string;
   shiftId: number | null;
+  // Operador que está en la caja (null: nombre a mano o sin indicar).
+  cashierId: number | null;
   cashierName: string | null;
   openingAmount: number;
   openedAt: string;
+  openedByName: string | null;
   closedAt: string | null;
+  closedByName: string | null;
   cashCounted: number | null;
   difference: number | null;
+  // Arqueo: lo que se retiró al cerrar y lo que quedó en el cajón.
+  cashWithdrawn: number | null;
+  cashLeft: number | null;
   closingNotes: string | null;
   summary: CashSummary | null;
+}
+
+export type CashMovementType = "income" | "expense" | "withdrawal";
+
+export interface CashMovementTypeOption {
+  key: CashMovementType;
+  label: string;
+  categories: { key: string; label: string }[];
+}
+
+// Todo lo que necesita la pantalla de caja (GET /orders/cash/overview).
+export interface CashOverview {
+  registers: CashRegister[];
+  sessions: CashSession[];
+  cashiers: { id: number; name: string }[];
+  movementTypes: CashMovementTypeOption[];
+}
+
+export type CashLedgerType =
+  | "opening" | "payment" | "return" | "income" | "expense" | "withdrawal" | "fund_adjustment" | "closing";
+
+// Una línea del libro de la caja, ya armada por el servidor.
+export interface CashLedgerEntry {
+  key: string;
+  type: CashLedgerType;
+  at: string;
+  amount: number;
+  // in: entra · out: sale · none: no suma ni resta (cambio de fondo, arqueo).
+  direction: "in" | "out" | "none";
+  // false: no pasó por el cajón (tarjeta, transferencia, online).
+  cash: boolean;
+  label: string;
+  detail: string | null;
+  actorName: string | null;
+  voided: boolean;
+  voidReason: string | null;
+  // Presente si el movimiento se puede anular.
+  movementId: number | null;
+}
+
+export interface CashLedger {
+  entries: CashLedgerEntry[];
+  total: number;
+  totals: { in: number; out: number };
+  page: number;
+  pageSize: number;
+}
+
+export type CashCloseResult = "exact" | "short" | "over" | "uncounted";
+
+export interface ClosedCashQuery {
+  page?: number;
+  register?: number;
+  cashier?: string;
+  result?: CashCloseResult;
+  from?: string;
+  to?: string;
+}
+
+export interface ClosedCashResponse {
+  sessions: CashSession[];
+  total: number;
+  page: number;
+  pageSize: number;
+  // De todo lo que cumple el filtro, no solo de la página.
+  totals: {
+    netAmount: number;
+    difference: number;
+    expenseAmount: number;
+    withdrawnAmount: number;
+    exactCount: number;
+    shortCount: number;
+    shortAmount: number;
+    overCount: number;
+    overAmount: number;
+  };
+  filters: { registers: { id: number; name: string }[]; cashiers: string[] };
 }
 
 // Línea que se envía al crear un pedido (el precio lo pone el servidor).
