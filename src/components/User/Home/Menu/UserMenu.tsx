@@ -611,8 +611,11 @@ export default function MenuPage() {
               canOrder={canOrder}
               onOpenItem={(item) => openPreview([item], 0)}
               onOpenCart={() => setCartOpen(true)}
+
             />
           )}
+
+          {inGroup && <GroupBanner group={group} onOpen={() => setCartOpen(true)} />}
 
           <div className={styles.mpShell}>
             {/* ── Contenido del tab activo ── */}
