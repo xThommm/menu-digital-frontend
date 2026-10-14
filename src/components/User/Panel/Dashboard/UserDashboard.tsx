@@ -1,5 +1,5 @@
 import { useSpooky } from "../../../../hooks/useHalloween";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
@@ -22,6 +22,9 @@ import {
 } from "./DashboardWidgets";
 import { AgendaCard } from "./AgendaCard";
 import s from "./UserDashboard.module.css";
+import { useContextMenu } from "../../../../features/contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../../features/contextMenu/hooks/useMenuEnv";
+import { buildStorefrontMenu, buildVisitsMenu, type StorefrontMenuContext } from "./dashboardMenu";
 
 // Con menos de estos días de vigencia, el plan vuelve a destacarse en el inicio.
 const PLAN_WARNING_DAYS = 14;
@@ -226,6 +229,13 @@ export default function UserDashboard() {
     }
   }, [notifyError, notifySuccess, publicUrl]);
 
+  // Menú contextual (dashboardMenu.ts).
+  const menuEnv = useMenuEnv();
+  const storefrontMenu = useMemo(() => buildStorefrontMenu(menuEnv), [menuEnv]);
+  const visitsMenu = useMemo(() => buildVisitsMenu(menuEnv), [menuEnv]);
+  const openStorefrontMenu = useContextMenu(storefrontMenu);
+  const openVisitsMenu = useContextMenu(visitsMenu, { highlightTarget: true });
+
   const handleOpen = useCallback(() => {
     if (!publicUrl) return;
     window.open(publicUrl, "_blank", "noopener,noreferrer");
@@ -401,12 +411,19 @@ export default function UserDashboard() {
       : data.hasDelivery ? "Solo delivery" : data.hasTakeAway ? "Solo take away" : "Apagados"
     : "—";
 
+  const storefrontContext = (): StorefrontMenuContext => ({
+    url: publicUrl,
+    canDownloadQr,
+    generatingQr,
+    actions: { downloadQr: (format) => { void handleDownloadQr(format); } },
+  });
+
   return (
     <div className={s.root}>
       <main className={s.main}>
 
         {/* ── Encabezado: saludo, cifras del día y medidor ───────────────── */}
-        <section className={s.header} aria-label="Resumen">
+        <section className={s.header} aria-label="Resumen" onContextMenu={event => openStorefrontMenu(event, storefrontContext())}>
           {data?.backgroundPicture && (
             <div className={s.headerPhoto} style={{ backgroundImage: `url(${data.backgroundPicture})` }} aria-hidden />
           )}
@@ -525,18 +542,24 @@ export default function UserDashboard() {
               onOpenOrders={() => navigate("/pedidos")}
             />
           ) : (
-            <StorefrontCard
-              url={publicUrl}
-              copied={copied}
-              onCopy={handleCopy}
-              onOpen={handleOpen}
-              data={data}
-              ordersModes={ordersModes}
-            />
+            <div style={{ display: "contents" }} onContextMenu={event => openStorefrontMenu(event, storefrontContext())}>
+              <StorefrontCard
+                url={publicUrl}
+                copied={copied}
+                onCopy={handleCopy}
+                onOpen={handleOpen}
+                data={data}
+                ordersModes={ordersModes}
+              />
+            </div>
           )}
 
           {activity.visits !== null
-            ? <VisitsChartCard visits={activity.visits} onOpen={() => navigate("/estadisticas")} />
+            ? (
+              <div style={{ display: "contents" }} onContextMenu={event => openVisitsMenu(event, undefined)}>
+                <VisitsChartCard visits={activity.visits} onOpen={() => navigate("/estadisticas")} />
+              </div>
+            )
             : <LockedChartCard onUpgrade={openUpgrade} />}
 
           {showOrders && <OrdersBarsCard orders={activity.orders ?? undefined} onOpen={() => navigate("/pedidos")} />}

@@ -11,6 +11,10 @@ import { formatDateTime, formatTime } from "../../lib/format";
 import type { Courier, DeliveryActiveResponse, DeliveryAssignment, DeliveryTrail, Order } from "../../types";
 import { CustomerInfo } from "../panel/OrderCard";
 import DeliveryTabs from "./DeliveryTabs";
+import { buildDeliveryMenu, type DeliveryMenuContext } from "./deliveryMenu";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../contextMenu/hooks/useMenuEnv";
+import { useDialogs } from "../../../../context/useDialogs";
 import p from "../panel/panel.module.css";
 import s from "./Delivery.module.css";
 
@@ -47,6 +51,10 @@ export default function DeliveryPage() {
   const [completing, setCompleting] = useState<Order | null>(null);
   const [trailOrder, setTrailOrder] = useState<Order | null>(null);
   const [revealed, setRevealed] = useState<{ orderId: number; code: string } | null>(null);
+  const dialogs = useDialogs();
+  const menuEnv = useMenuEnv();
+  const deliveryMenu = useMemo(() => buildDeliveryMenu(menuEnv), [menuEnv]);
+  const openDeliveryMenu = useContextMenu(deliveryMenu, { highlightTarget: true });
 
   const refresh = useCallback(async () => {
     try {
@@ -92,6 +100,54 @@ export default function DeliveryPage() {
     }
   };
 
+  // Pedido en camino: reasignarlo o quitarlo pide el motivo (es la confirmación).
+  const askReason = (title: string, confirmLabel: string) => dialogs.prompt({
+    title,
+    message: "El pedido ya salió: el motivo queda registrado en su historial.",
+    confirmLabel,
+    danger: true,
+    field: { label: "Motivo", placeholder: "Ej: se le rompió la moto", maxLength: 200, required: true },
+  });
+
+  // Clic derecho en un pedido. Sin motivo que pedir, los errores los avisa el menú.
+  const deliveryMenuContext = (order: Order, assignment: DeliveryAssignment | null): DeliveryMenuContext => {
+    const pickedUp = assignment?.status === "picked_up";
+    const withReason = (title: string, label: string, action: (reason: string) => Promise<unknown>, fallback: string) => {
+      void askReason(title, label).then(reason => {
+        if (reason) void run(order.id, () => action(reason), fallback);
+      });
+    };
+    return {
+      order,
+      assignment,
+      couriers: activeCouriers,
+      enabled: config?.enabled === true,
+      canComplete: canAdminComplete && pickedUp,
+      busy: busyId === order.id,
+      actions: {
+        detail: () => setTrailOrder(order),
+        assign: courier => {
+          if (pickedUp) {
+            withReason(`¿Pasarle el pedido #${order.number} a ${courier.name}?`, "Reasignar",
+              reason => assignDelivery(order.id, { courierId: courier.id, force: !courier.available, reason }), "No se pudo reasignar el pedido.");
+            return undefined;
+          }
+          return assignDelivery(order.id, { courierId: courier.id, force: !courier.available }).finally(refresh);
+        },
+        unassign: () => {
+          if (pickedUp) {
+            withReason(`¿Quitarle el pedido #${order.number} a ${assignment?.courierName}?`, "Quitar repartidor",
+              reason => unassignDelivery(order.id, reason), "No se pudo quitar el pedido al repartidor.");
+            return undefined;
+          }
+          return unassignDelivery(order.id).finally(refresh);
+        },
+        revealCode: () => reveal(order),
+        complete: () => setCompleting(order),
+      },
+    };
+  };
+
   return (
     <div className={p.page}>
       <header className={p.header}>
@@ -122,7 +178,12 @@ export default function DeliveryPage() {
             <h2 className={s.columnTitle}>Sin repartidor <span className={s.count}>{data.unassigned.length}</span></h2>
             {data.unassigned.length === 0 && <p className={s.empty}>No hay pedidos de delivery esperando repartidor.</p>}
             {data.unassigned.map(order => (
-              <article key={order.id} className={s.card} aria-label={`Pedido ${order.number}`}>
+              <article
+                key={order.id}
+                className={s.card}
+                aria-label={`Pedido ${order.number}`}
+                onContextMenu={event => openDeliveryMenu(event, deliveryMenuContext(order, null))}
+              >
                 <OrderHead order={order} label={deliveryStageLabel(order)} />
                 <CustomerInfo order={order} />
                 {config?.enabled ? (
@@ -158,6 +219,7 @@ export default function DeliveryPage() {
                 onUnassign={reason => run(order.id, () => unassignDelivery(order.id, reason), "No se pudo quitar el pedido al repartidor.")}
                 onComplete={() => setCompleting(order)}
                 onReveal={() => reveal(order)}
+                onContextMenu={event => openDeliveryMenu(event, deliveryMenuContext(order, assignment))}
               />
             ))}
           </section>
@@ -225,7 +287,7 @@ function AssignControl({ couriers, busy, openMode, onAssign }: {
 
 function InProgressCard({
   order, assignment, now, busy, couriers, enabled, canComplete, revealedCode,
-  onDetail, onReassign, onUnassign, onComplete, onReveal,
+  onDetail, onReassign, onUnassign, onComplete, onReveal, onContextMenu,
 }: {
   order: Order;
   assignment: DeliveryAssignment;
@@ -240,6 +302,7 @@ function InProgressCard({
   onUnassign: (reason?: string) => void;
   onComplete: () => void;
   onReveal: () => void;
+  onContextMenu: (event: React.MouseEvent<HTMLElement>) => void;
 }) {
   const [mode, setMode] = useState<"none" | "reassign" | "unassign">("none");
   const [courierId, setCourierId] = useState("");
@@ -254,7 +317,7 @@ function InProgressCard({
   const reset = () => { setMode("none"); setReason(""); setCourierId(""); };
 
   return (
-    <article className={s.card} aria-label={`Pedido ${order.number}`}>
+    <article className={s.card} aria-label={`Pedido ${order.number}`} onContextMenu={onContextMenu}>
       <OrderHead order={order} label={ASSIGNMENT_LABEL[assignment.status]} />
       <dl className={s.facts}>
         <div><dt>Repartidor</dt><dd><strong>{assignment.courierName}</strong>{assignment.assignedVia === "open" ? " (lo tomó)" : ""}</dd></div>

@@ -1,16 +1,25 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bell, BellOff, Plus } from "lucide-react";
 import {
-  assignOrderWaiter, dispatchOrder, getBoard, openShift, removeOrderItem, restoreOrderItem, setOrderItemDelivered, updateOrderStatus,
+  assignOrderWaiter, dispatchOrder, getBoard, getOrderTickets, markOwnerTicketPrinted, openShift, removeOrderItem, restoreOrderItem,
+  setOrderItemDelivered, updateOrderStatus,
 } from "../../api/ordersApi";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../contextMenu/hooks/useMenuEnv";
+import { MenuActionError } from "../../../contextMenu/lib/contextMenu";
 import { ownerHello, useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { useOrderSettings, useWaiters } from "../../hooks/usePanelData";
 import { errorMessage } from "../../lib/errors";
 import { formatTime, placeLabel } from "../../lib/format";
+import { PrintError, printTicket } from "../../lib/print/printers";
+import { reprintOrderTickets, ReprintError } from "../../lib/print/reprint";
 import type { Order, OrderStatus, Shift } from "../../types";
 import { useOwnerAlerts } from "../../../ownerAlerts/useOwnerAlerts";
 import ManualOrderModal from "./ManualOrderModal";
 import OrderCard from "./OrderCard";
+import {
+  buildBoardMenu, buildOrderItemMenu, buildOrderMenu, type OrderItemMenuActions, type OrderMenuActions,
+} from "./ordersBoardMenu";
 import type { ItemActions } from "./OrderItemsList";
 import RefundModal from "./RefundModal";
 import p from "./panel.module.css";
@@ -173,10 +182,49 @@ export default function OrdersBoard() {
 
   const toggleSound = () => setSoundOn(!sound);
 
+  // ── Menú contextual: las mismas acciones de los botones, más copiar, mapas,
+  // reimprimir e ir a la mesa (ordersBoardMenu.ts).
+  const env = useMenuEnv();
+  const orderMenu = useMemo(() => buildOrderMenu(env), [env]);
+  const itemMenu = useMemo(() => buildOrderItemMenu(), []);
+  const boardMenu = useMemo(() => buildBoardMenu(env), [env]);
+  const openOrderMenu = useContextMenu(orderMenu, { highlightTarget: true });
+  const openItemMenu = useContextMenu(itemMenu, { highlightTarget: true });
+  const openBoardMenu = useContextMenu(boardMenu);
+
+  const orderActions: OrderMenuActions = {
+    refunds: true,
+    dispatch: true,
+    setStatus: changeStatus,
+    markDispatched: dispatch,
+    refund: (order, cancel, amount) => setRefunding({ order, cancel, amount }),
+    reprint: async (order) => {
+      try {
+        await reprintOrderTickets(order.id, { load: getOrderTickets, print: printTicket, markPrinted: markOwnerTicketPrinted });
+      } catch (err) {
+        if (err instanceof ReprintError || err instanceof PrintError) throw new MenuActionError(err.message);
+        throw err;
+      }
+    },
+  };
+  const itemMenuActions: OrderItemMenuActions = {
+    remove: itemActions.onRemove,
+    restore: itemActions.onRestore,
+    setDelivered: itemActions.onDelivered,
+  };
+
   const tableCount = settings.data?.settings.tableCount ?? 0;
 
   return (
-    <div className={p.page}>
+    <div
+      className={p.page}
+      onContextMenu={event => openBoardMenu(event, {
+        hasShift: shift !== null,
+        sound,
+        canCreate: Boolean(settings.data),
+        actions: { createOrder: () => setManualOpen(true), openShift: startShift, setSound: setSoundOn, refresh },
+      })}
+    >
       <header className={p.header}>
         <div className={p.titleBlock}>
           <h1 className={p.title}>Panel de pedidos</h1>
@@ -256,6 +304,9 @@ export default function OrdersBoard() {
                         onDispatch={dispatch}
                         onRefund={(target, cancel, amount) => setRefunding({ order: target, cancel, amount })}
                         itemActions={itemActions}
+                        onContextMenu={(event, target) => openOrderMenu(event, { order: target, busy: busyId === target.id, actions: orderActions })}
+                        onItemContextMenu={(event, target, item, removed) =>
+                          openItemMenu(event, { order: target, item, removed, busy: busyId === target.id, actions: itemMenuActions })}
                       />
                     ))
                   )}

@@ -10,17 +10,20 @@ import {
   updateAdminSeller,
   type Seller,
   type SellerCreatePayload,
+  type SellerUpdatePayload,
 } from "../../../api/adminSellers";
 import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
 import { useNotifications } from "../../../context/useNotifications";
 import { formatPaymentDate } from "../../../lib/adminPayments";
 import { formatDateAR } from "../../../lib/dates";
 import { useContextMenu } from "../../../features/contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../features/contextMenu/hooks/useMenuEnv";
 import DataTable, { type DataTableColumn } from "../../Common/DataTable/DataTable";
 import Spinner from "../../Common/Spinner";
 import { buildSellerMenu, buildSellersPageMenu } from "./sellerContextMenu";
 import SellerProfileModal from "./SellerProfileModal";
 import SellerTestUserModal from "./SellerTestUserModal";
+import SellerTestUsersModal from "./SellerTestUsersModal";
 import s from "./AdminSellers.module.css";
 import { useDialogs } from "../../../context/useDialogs";
 
@@ -64,7 +67,15 @@ export default function AdminSellers() {
   });
 
   const [profileSeller, setProfileSeller] = useState<Seller | null>(null);
+  // ?perfil=<id> (ej. "Ver perfil" desde el Ranking): abre su perfil al cargar.
+  const [linkedProfile, setLinkedProfile] = useState(() => new URLSearchParams(window.location.search).get("perfil"));
+  const shownProfile = profileSeller ?? (linkedProfile ? sellers.data?.find((item) => item._id === linkedProfile) ?? null : null);
   const [testUserSeller, setTestUserSeller] = useState<Seller | null>(null);
+  const [testUsersSeller, setTestUsersSeller] = useState<Seller | null>(null);
+  const [resetSeller, setResetSeller] = useState<Seller | null>(null);
+  // Fila con el panel desplegable abierto ("Editar" del menú contextual la abre).
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const menuEnv = useMenuEnv();
   const refetchSellers = sellers.refetch;
 
   const replaceSeller = (updated: Seller) => {
@@ -81,9 +92,22 @@ export default function AdminSellers() {
     // La otra vista del listado (y el selector del panel de vendedores, que
     // comparte la caché) quedan viejas: se marcan sin volver a pedirlas ya.
     const markListsStale = () => queryClient.invalidateQueries({ queryKey: ["admin-sellers"], refetchType: "none" });
+    const saveSeller = async (seller: Seller, patch: SellerUpdatePayload) => {
+      const updated = await updateAdminSeller(seller._id, patch);
+      queryClient.setQueryData<Seller[]>(listKey, (current) =>
+        current?.map((item) => (item._id === updated._id ? updated : item)));
+      void markListsStale();
+    };
     return buildSellerMenu({
       viewProfile: setProfileSeller,
+      edit: (seller) => setExpandedId(seller._id),
+      resetPassword: setResetSeller,
       createTestUser: setTestUserSeller,
+      viewTestUsers: setTestUsersSeller,
+      setAdmin: (seller, admin) => saveSeller(seller, { admin }),
+      setReceivesLeads: (seller, receivesLeads) => saveSeller(seller, { receivesLeads }),
+      openUrl: menuEnv.openUrl,
+      navigate: (path) => menuEnv.navigate(path),
       deactivate: async (seller) => {
         await deactivateAdminSeller(seller._id);
         queryClient.setQueryData<Seller[]>(listKey, (current) => (includeInactive
@@ -98,7 +122,7 @@ export default function AdminSellers() {
         void markListsStale();
       },
     });
-  }, [queryClient, includeInactive]);
+  }, [queryClient, includeInactive, menuEnv]);
   const openSellerMenu = useContextMenu(sellerMenu, { highlightTarget: true });
 
   // Clic derecho en el espacio vacío de la pantalla.
@@ -270,6 +294,8 @@ export default function AdminSellers() {
           }
           onRowContextMenu={openSellerMenu}
           expandable={{
+            expandedId,
+            onExpandedChange: setExpandedId,
             label: (seller) => `Ver detalle de ${seller.name}`,
             renderPanel: (seller) => (
               <SellerEditPanel
@@ -284,12 +310,20 @@ export default function AdminSellers() {
         {creating && (
           <CreateSellerModal onCreated={prependSeller} onClose={() => setCreating(false)} />
         )}
-        {profileSeller && (
-          <SellerProfileModal seller={profileSeller} onClose={() => setProfileSeller(null)} />
+        {shownProfile && (
+          <SellerProfileModal seller={shownProfile} onClose={() => { setProfileSeller(null); setLinkedProfile(null); }} />
         )}
         {testUserSeller && (
           <SellerTestUserModal seller={testUserSeller} onClose={() => setTestUserSeller(null)} />
         )}
+        {testUsersSeller && (
+          <SellerTestUsersModal
+            seller={testUsersSeller}
+            onCreate={() => { setTestUserSeller(testUsersSeller); setTestUsersSeller(null); }}
+            onClose={() => setTestUsersSeller(null)}
+          />
+        )}
+        {resetSeller && <ResetPasswordModal seller={resetSeller} onClose={() => setResetSeller(null)} />}
       </div>
     </main>
   );

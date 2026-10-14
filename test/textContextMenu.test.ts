@@ -23,6 +23,9 @@ function field(overrides: Partial<TextField> = {}) {
   const value: TextField = {
     editable: true,
     insert: (text) => { calls.push(`insert:${text}`); },
+    deleteSelection: () => { calls.push("delete"); },
+    undo: () => { calls.push("undo"); },
+    canUndo: false,
     selectAll: () => { calls.push("select-all"); },
     ...overrides,
   };
@@ -61,12 +64,12 @@ test("con texto seleccionado aparece Copiar y copia exactamente ese texto", asyn
   assert.deepEqual(notices, []);
 });
 
-test("sobre un campo de texto aparecen Pegar y Seleccionar todo; Copiar solo si hay selección", () => {
+test("sobre un campo de texto aparecen Pegar y Seleccionar todo; Cortar y Copiar solo si hay selección", () => {
   const empty = setup({ selectedText: "", field: field().value });
   assert.deepEqual(empty.items.map((item) => item.id), ["text/paste", "text/select-all"]);
 
   const selected = setup({ selectedText: "hola", field: field().value });
-  assert.deepEqual(selected.items.map((item) => item.id), ["text/copy", "text/paste", "text/select-all"]);
+  assert.deepEqual(selected.items.map((item) => item.id), ["text/cut", "text/copy", "text/paste", "text/select-all"]);
 });
 
 test("Pegar inserta en el campo lo que hay en el portapapeles", async () => {
@@ -107,4 +110,23 @@ test("en un campo de solo lectura Pegar queda deshabilitado, pero se puede selec
   await runMenuAction(action(items, "text/copy"), runner().deps);
   assert.deepEqual(target.calls, ["select-all"]);
   assert.deepEqual(calls, ["write:solo lectura"]);
+});
+
+test("Cortar: con texto seleccionado en un campo editable copia y borra; después se ofrece Deshacer", async () => {
+  const input = field();
+  const { calls, items } = setup({ selectedText: "hola", field: input.value });
+  assert.deepEqual(items.map((item) => item.id), ["text/cut", "text/copy", "text/paste", "text/select-all"]);
+  const { deps } = runner();
+  await runMenuAction(action(items, "text/cut"), deps);
+  assert.deepEqual(calls, ["write:hola"]);
+  assert.deepEqual(input.calls, ["delete"]);
+
+  const afterCut = field({ canUndo: true });
+  const again = setup({ selectedText: "", field: afterCut.value });
+  assert.deepEqual(again.items.map((item) => item.id), ["text/paste", "text/undo", "text/select-all"]);
+  await runMenuAction(action(again.items, "text/undo"), deps);
+  assert.deepEqual(afterCut.calls, ["undo"]);
+
+  const readOnly = setup({ selectedText: "hola", field: field({ editable: false }).value });
+  assert.ok(!readOnly.items.some((item) => item.id === "text/cut"), "en solo lectura no se corta");
 });

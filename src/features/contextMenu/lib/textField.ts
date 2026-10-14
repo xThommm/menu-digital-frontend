@@ -13,6 +13,17 @@ const TEXT_INPUT_TYPES = new Set(["text", "search", "email", "url", "tel", "pass
 
 type ValueField = HTMLInputElement | HTMLTextAreaElement;
 
+// Campo donde se usó "Cortar" desde el menú por última vez: ahí se ofrece
+// "Deshacer". Se olvida al deshacer o al cortar en otro campo.
+let lastCut: WeakRef<HTMLElement> | null = null;
+const markCut = (field: HTMLElement) => { lastCut = new WeakRef(field); };
+const wasCut = (field: HTMLElement) => lastCut?.deref() === field;
+const undoIn = (field: HTMLElement) => {
+  field.focus({ preventScroll: true });
+  document.execCommand("undo");
+  lastCut = null;
+};
+
 const isValueField = (element: Element): element is ValueField =>
   element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement;
 
@@ -54,6 +65,19 @@ function adaptValueField(field: ValueField): TextField {
   };
   return {
     editable: !field.disabled && !field.readOnly,
+    canUndo: wasCut(field),
+    undo: () => undoIn(field),
+    deleteSelection: () => {
+      field.focus({ preventScroll: true });
+      restoreSelection();
+      // "delete" deja el cambio en el historial de deshacer (Ctrl + Z y "Deshacer").
+      if (!document.execCommand("delete")) {
+        const from = start ?? field.value.length;
+        const to = end ?? field.value.length;
+        setNativeValue(field, field.value.slice(0, from) + field.value.slice(to));
+      }
+      markCut(field);
+    },
     insert: (text) => {
       field.focus({ preventScroll: true });
       restoreSelection();
@@ -77,8 +101,22 @@ function adaptEditable(field: HTMLElement): TextField {
   const range = selection && selection.rangeCount > 0 && field.contains(selection.anchorNode)
     ? selection.getRangeAt(0).cloneRange()
     : null;
+  const restoreRange = () => {
+    if (!range) return;
+    const current = window.getSelection();
+    current?.removeAllRanges();
+    current?.addRange(range);
+  };
   return {
     editable: true,
+    canUndo: wasCut(field),
+    undo: () => undoIn(field),
+    deleteSelection: () => {
+      field.focus({ preventScroll: true });
+      restoreRange();
+      document.execCommand("delete");
+      markCut(field);
+    },
     insert: (text) => {
       field.focus({ preventScroll: true });
       if (range) {

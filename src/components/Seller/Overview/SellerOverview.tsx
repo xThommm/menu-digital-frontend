@@ -6,6 +6,9 @@ import { getSellerOverview, type SellerOverviewEntry } from "../../../api/seller
 import { listAdminSellers } from "../../../api/adminSellers";
 import { useCrmClients } from "../../../hooks/useCrmClients";
 import { useCrmAlerts } from "../../../hooks/useCrmAlerts";
+import { useContextMenu } from "../../../features/contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../features/contextMenu/hooks/useMenuEnv";
+import { buildAssignmentMenu } from "../sellerPanelMenu";
 import { formatPaymentAmount } from "../../../lib/adminPayments";
 import { formatDateAR } from "../../../lib/dates";
 import { STAGE_META, STAGE_ORDER, timeAgo } from "../Crm/crmHelpers";
@@ -69,6 +72,9 @@ function SellerOverviewSelf() {
   });
   const { clients, attentionSummary, loading: crmLoading } = useCrmClients();
   const { newAssignments } = useCrmAlerts();
+  const menuEnv = useMenuEnv();
+  const assignmentMenu = useMemo(() => buildAssignmentMenu(menuEnv), [menuEnv]);
+  const openAssignmentMenu = useContextMenu(assignmentMenu, { highlightTarget: true });
 
   const self = overview.data?.sellers[0];
 
@@ -255,7 +261,7 @@ function SellerOverviewSelf() {
               {recentAssignments.length > 0 ? (
                 <ul className={d.recentList}>
                   {recentAssignments.map((client) => (
-                    <li key={client._id}>
+                    <li key={client._id} onContextMenu={event => openAssignmentMenu(event, { client, origin: window.location.origin })}>
                       <Link className={d.recentRow} to={`/sellers/crm?client=${client._id}`}>
                         <span className={d.recentAvatar} aria-hidden="true">
                           {(client.businessName || client.username).charAt(0).toUpperCase()}

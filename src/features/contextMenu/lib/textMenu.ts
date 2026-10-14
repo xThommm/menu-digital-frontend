@@ -1,4 +1,4 @@
-import { ClipboardPaste, Copy, TextSelect } from "lucide-react";
+import { ClipboardPaste, Copy, Scissors, TextSelect, Undo2 } from "lucide-react";
 import type { ContextMenuItem } from "../types";
 
 // Opciones de texto del menú contextual: reemplazan a las del menú del
@@ -13,6 +13,12 @@ export interface TextField {
   editable: boolean;
   /** Inserta el texto en el cursor, reemplazando la selección si la hay. */
   insert: (text: string) => void;
+  /** Borra lo seleccionado (Cortar ya lo copió). */
+  deleteSelection: () => void;
+  /** Deshace el último cambio del campo, como Ctrl + Z. */
+  undo: () => void;
+  /** Lo último que se hizo en este campo desde el menú fue Cortar. */
+  canUndo: boolean;
   selectAll: () => void;
 }
 
@@ -29,6 +35,17 @@ export interface TextMenuHandlers {
 
 export function buildTextMenu(handlers: TextMenuHandlers): ContextMenuItem<TextMenuContext>[] {
   return [
+    {
+      id: "cut",
+      label: "Cortar",
+      icon: Scissors,
+      visible: (context) => context.selectedText !== "" && context.field?.editable === true,
+      run: async (context) => {
+        await handlers.writeClipboard(context.selectedText);
+        context.field?.deleteSelection();
+      },
+      errorMessage: "No se pudo cortar el texto.",
+    },
     {
       id: "copy",
       label: "Copiar",
@@ -50,6 +67,13 @@ export function buildTextMenu(handlers: TextMenuHandlers): ContextMenuItem<TextM
       // El navegador puede negar la lectura del portapapeles (permiso
       // rechazado o página sin HTTPS): el teclado sigue funcionando.
       errorMessage: "No se pudo leer el portapapeles. Probá con Ctrl + V.",
+    },
+    {
+      id: "undo",
+      label: "Deshacer",
+      icon: Undo2,
+      visible: (context) => context.field?.editable === true && context.field.canUndo,
+      run: (context) => context.field?.undo(),
     },
     {
       id: "select-all",

@@ -67,6 +67,12 @@ export interface DataTableProps<T> {
   expandable?: {
     renderPanel: (row: T) => ReactNode;
     label?: (row: T) => string;
+    /**
+     * Fila abierta, si la pantalla quiere manejarla (ej. "Editar" del menú
+     * contextual abre su panel). Sin esto, la tabla la maneja sola.
+     */
+    expandedId?: string | null;
+    onExpandedChange?: (id: string | null) => void;
   };
   rowClassName?: (row: T) => string | undefined;
   /** Clic derecho sobre una fila (ver features/contextMenu/hooks/useContextMenu). */
@@ -151,7 +157,12 @@ export default function DataTable<T>({
   const [term, setTerm] = useState("");
   const [sortId, setSortId] = useState(defaultSort?.columnId ?? null);
   const [direction, setDirection] = useState<SortDirection>(defaultSort?.direction ?? "asc");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [ownExpandedId, setOwnExpandedId] = useState<string | null>(null);
+  const expandedId = expandable?.expandedId !== undefined ? expandable.expandedId : ownExpandedId;
+  const setExpandedId = (id: string | null) => {
+    if (expandable?.onExpandedChange) expandable.onExpandedChange(id);
+    else setOwnExpandedId(id);
+  };
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [widths, setWidths] = useState<Record<string, number>>({});
   const tableRef = useRef<HTMLTableElement>(null);

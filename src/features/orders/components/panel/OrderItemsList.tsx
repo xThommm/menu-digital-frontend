@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { Check, HandPlatter, Minus, PackageX, Plus, Undo2 } from "lucide-react";
 import {
   canDeliverItems, canRemoveItem, canRestoreItems, deliveryProgress, ITEM_REMOVE_REASONS, maxRemovable,
@@ -22,9 +22,11 @@ interface Props {
   order: Order;
   busy?: boolean;
   actions?: ItemActions;
+  /** Clic derecho sobre un producto (o uno quitado): menú contextual del tablero. */
+  onItemContextMenu?: (event: MouseEvent<HTMLElement>, item: OrderItem | null, removed: RemovedOrderItem | null) => void;
 }
 
-export default function OrderItemsList({ order, busy = false, actions: offered }: Props) {
+export default function OrderItemsList({ order, busy = false, actions: offered, onItemContextMenu }: Props) {
   // Un backend anterior no manda `removedItems` ni conoce estas acciones: no se ofrecen.
   const actions = order.removedItems === undefined ? undefined : offered;
   // Producto que se está por quitar (se elige motivo y, si hay varias unidades, cuántas).
@@ -51,7 +53,7 @@ export default function OrderItemsList({ order, busy = false, actions: offered }
           const max = maxRemovable(order, item);
           const open = removing?.id === item.id;
           return (
-            <li key={item.id} className={s.itemRow}>
+            <li key={item.id} className={s.itemRow} onContextMenu={onItemContextMenu && (event => onItemContextMenu(event, item, null))}>
               <div className={`${s.item} ${item.deliveredAt ? s.itemDelivered : ""}`}>
                 <span className={s.qty}>{item.quantity}×</span>
                 <div className={s.itemText}>
@@ -147,7 +149,7 @@ export default function OrderItemsList({ order, busy = false, actions: offered }
         })}
 
         {removed.map(item => (
-          <li key={item.id} className={s.itemRow}>
+          <li key={item.id} className={s.itemRow} onContextMenu={onItemContextMenu && (event => onItemContextMenu(event, null, item))}>
             <div className={`${s.item} ${s.itemRemoved}`}>
               <span className={s.qty}>{item.quantity}×</span>
               <div className={s.itemText}>

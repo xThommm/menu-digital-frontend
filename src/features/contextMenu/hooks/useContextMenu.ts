@@ -16,6 +16,11 @@ import type { ContextMenuItem } from "../types";
  * hook aparece el menú global (globalMenu.ts).
  *
  * `items` tiene que ser estable entre renders (constante de módulo o useMemo).
+ *
+ * Con un manejador delegado (uno en el contenedor que mira qué fila se
+ * clickeó) se puede pasar en cada llamada el elemento a resaltar:
+ *
+ *   openMenu(event, row, { highlightElement: rowElement });
  */
 export function useContextMenu<C>(items: ContextMenuItem<C>[], options?: OpenContextMenuOptions) {
   const contextMenu = useContext(ContextMenuContext);
@@ -25,7 +30,7 @@ export function useContextMenu<C>(items: ContextMenuItem<C>[], options?: OpenCon
   const { open } = contextMenu;
   const highlightTarget = options?.highlightTarget === true;
 
-  return useCallback((event: MouseEvent<HTMLElement>, context: C) => {
-    open(event, resolveMenuItems(items, context), { highlightTarget });
+  return useCallback((event: MouseEvent<HTMLElement>, context: C, call?: Pick<OpenContextMenuOptions, "highlightElement">) => {
+    open(event, resolveMenuItems(items, context), { highlightTarget, highlightElement: call?.highlightElement });
   }, [open, items, highlightTarget]);
 }

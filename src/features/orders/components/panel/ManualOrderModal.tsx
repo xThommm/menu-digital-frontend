@@ -14,6 +14,7 @@ import ServiceFields from "../shared/ServiceFields";
 import UnitLinesEditor from "../shared/UnitLinesEditor";
 import p from "./panel.module.css";
 import s from "./OrdersBoard.module.css";
+import type { RepeatDraft } from "../../lib/repeatOrder";
 
 // Alta manual de un pedido desde el panel (ej. un pedido en la barra, por
 // teléfono o un delivery). Entra confirmado.
@@ -21,17 +22,22 @@ import s from "./OrdersBoard.module.css";
 interface Props {
   tableCount: number;
   waiters: Waiter[];
+  // Pedido para una mesa ya elegida (ej. "Agregar pedido" desde Mesas).
+  initialTable?: number;
+  // Pedido ya armado (ej. "Repetir pedido" desde el historial).
+  initial?: RepeatDraft;
   onClose: () => void;
   onCreated: (order: Order) => void;
 }
 
-export default function ManualOrderModal({ tableCount, waiters, onClose, onCreated }: Props) {
+export default function ManualOrderModal({ tableCount, waiters, initialTable, initial, onClose, onCreated }: Props) {
   const { user } = useAuth();
   const menu = useOrderingMenu(user?.slug);
-  const [lines, setLines] = useState<UnitLine[]>([]);
-  const [service, setService] = useState<ServiceDraft>(() => emptyService("counter"));
+  const [lines, setLines] = useState<UnitLine[]>(() => initial?.lines ?? []);
+  const [service, setService] = useState<ServiceDraft>(() =>
+    initial?.service ?? (initialTable ? { ...emptyService("table"), table: String(initialTable) } : emptyService("counter")));
   const [waiterId, setWaiterId] = useState("");
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Mismo contenido = mismo id de envío: un doble clic o un reintento tras

@@ -6,6 +6,7 @@ import BrandMark from "../Common/BrandMark";
 import BrandWordmark from "../Common/BrandWordmark";
 import { useAuthTheme } from "../../hooks/useAuthTheme";
 import { normalizeArPhone, isValidArLocalPhone } from "../../lib/whatsapp";
+import { rememberSellerCodeFromUrl } from "../../lib/sellerCodeLink";
 import styles from "./Register.module.css";
 import Cobweb from "../Halloween/Cobweb";
 import Spider from "../Halloween/Spider";
@@ -29,6 +30,8 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const requestedPlan = readRequestedPlan();
   const [resumePendingRegistration] = useState(shouldResumePendingRegistration);
+  // Link con ?codigo= (de un vendedor o influencer): se usa en el paso del plan.
+  useState(rememberSellerCodeFromUrl);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [username, setUsername] = useState("");

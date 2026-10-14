@@ -5,12 +5,16 @@ import { buildGlobalMenu, type GlobalMenuContext } from "../src/features/context
 import { createThemeStore } from "../src/lib/themeStores.ts";
 import type { ResolvedAction, ResolvedItem } from "../src/features/contextMenu/types.ts";
 
-function menuFor(context: GlobalMenuContext) {
+const NO_FULLSCREEN = { available: false, active: false };
+
+function menuFor(context: Omit<GlobalMenuContext, "fullscreen"> & Partial<Pick<GlobalMenuContext, "fullscreen">>) {
   const calls: string[] = [];
   const items = resolveMenuItems(buildGlobalMenu({
     reload: () => { calls.push("reload"); },
     toggleTheme: (area) => { calls.push(`theme:${area}`); },
-  }), context);
+    openPanelAppearance: () => { calls.push("appearance"); },
+    toggleFullscreen: (active) => { calls.push(`fullscreen:${active}`); },
+  }), { fullscreen: NO_FULLSCREEN, ...context });
   return { calls, items };
 }
 
@@ -26,14 +30,31 @@ const deps = {
   notifyError: (message: string) => assert.fail(message),
 };
 
-test("el menú global ofrece Actualizar y el cambio de tema, que nombra el modo al que pasa", () => {
-  const dark = menuFor({ themeArea: "panel", theme: "dark" }).items;
+test("en las páginas públicas el menú global ofrece Actualizar y el cambio de tema, que nombra el modo al que pasa", () => {
+  const dark = menuFor({ themeArea: "public", theme: "dark" }).items;
   assert.deepEqual(dark.map((item) => item.id), ["reload", "theme"]);
   assert.equal(action(dark, "reload").label, "Actualizar");
   assert.equal(action(dark, "theme").label, "Cambiar a modo claro");
 
   const light = menuFor({ themeArea: "public", theme: "light" }).items;
   assert.equal(action(light, "theme").label, "Cambiar a modo oscuro");
+});
+
+test("en los paneles el tema va dentro de Apariencia del panel (con el acento y la letra)", async () => {
+  const panel = menuFor({ themeArea: "panel", theme: "dark" });
+  assert.deepEqual(panel.items.map((item) => item.id), ["reload", "appearance"]);
+  await runMenuAction(action(panel.items, "appearance"), deps);
+  assert.deepEqual(panel.calls, ["appearance"]);
+});
+
+test("pantalla completa, si el navegador la permite, y salir de ella", async () => {
+  const off = menuFor({ themeArea: null, theme: "dark", fullscreen: { available: true, active: false } });
+  assert.equal(action(off.items, "fullscreen").label, "Pantalla completa");
+  await runMenuAction(action(off.items, "fullscreen"), deps);
+  const on = menuFor({ themeArea: null, theme: "dark", fullscreen: { available: true, active: true } });
+  assert.equal(action(on.items, "fullscreen").label, "Salir de pantalla completa");
+  await runMenuAction(action(on.items, "fullscreen"), deps);
+  assert.deepEqual([...off.calls, ...on.calls], ["fullscreen:false", "fullscreen:true"]);
 });
 
 test("en pantallas sin tema claro/oscuro (la carta de un local) solo queda Actualizar", () => {
@@ -44,8 +65,7 @@ test("en pantallas sin tema claro/oscuro (la carta de un local) solo queda Actua
 test("cada opción ejecuta lo suyo, y el tema cambia el del área donde se hizo clic", async () => {
   const panel = menuFor({ themeArea: "panel", theme: "dark" });
   assert.equal(await runMenuAction(action(panel.items, "reload"), deps), "done");
-  assert.equal(await runMenuAction(action(panel.items, "theme"), deps), "done");
-  assert.deepEqual(panel.calls, ["reload", "theme:panel"]);
+  assert.deepEqual(panel.calls, ["reload"]);
 
   const landing = menuFor({ themeArea: "public", theme: "dark" });
   await runMenuAction(action(landing.items, "theme"), deps);

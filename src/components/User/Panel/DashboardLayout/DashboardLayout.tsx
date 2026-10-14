@@ -14,6 +14,7 @@ import BrandMark from "../../../Common/BrandMark";
 import BrandWordmark from "../../../Common/BrandWordmark";
 import s from "./DashboardLayout.module.css";
 import { ArrowUpRight, CalendarCheck, ChartColumn, ClipboardList, FileText, House, LogOut, MoreHorizontal, Palette, PanelLeft, Settings, Store, Wallet } from "lucide-react";
+import { OPEN_PANEL_APPEARANCE_EVENT } from "../../../../features/contextMenu/globalMenu";
 
 const NAV_ITEMS = [
   { path: "/dashboard",      label: "Inicio",         short: "Inicio",  icon: <House size={20} strokeWidth={1.5} /> },
@@ -60,6 +61,12 @@ function DashboardLayoutInner() {
   const { preferences, setAccent, setFontSize, reset: resetPreferences } = usePanelPreferences();
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const closeAppearance = useCallback(() => setAppearanceOpen(false), []);
+  // "Apariencia del panel…" del menú contextual global.
+  useEffect(() => {
+    const open = () => setAppearanceOpen(true);
+    window.addEventListener(OPEN_PANEL_APPEARANCE_EVENT, open);
+    return () => window.removeEventListener(OPEN_PANEL_APPEARANCE_EVENT, open);
+  }, []);
   const navigate = useNavigate();
   const location = useLocation();
   const { hidden: mobileDockHidden } = useMobileDock();

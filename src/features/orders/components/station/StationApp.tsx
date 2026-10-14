@@ -23,6 +23,11 @@ import {
 import type { Sector, SectorTicketsResponse, Ticket, TicketStatus } from "../../types";
 import p from "../panel/panel.module.css";
 import s from "./Station.module.css";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { buildStationBoardMenu, buildTicketMenu, type TicketMenuContext } from "./stationMenu";
+
+const TICKET_MENU = buildTicketMenu();
+const BOARD_MENU = buildStationBoardMenu();
 
 // Pantalla de comandas de un sector (cocina, barra, postres…), pensada para
 // una PC o tablet fija en el sector. Muestra solo lo que le toca preparar a
@@ -283,6 +288,8 @@ function StationBoard({ api, initialSectorName, businessName, owner, onUnpaired 
   const printQueue = useRef<Promise<void>>(Promise.resolve());
   const prefsRef = useRef(prefs);
   useEffect(() => { prefsRef.current = prefs; }, [prefs]);
+  const openTicketMenu = useContextMenu(TICKET_MENU, { highlightTarget: true });
+  const openBoardMenu = useContextMenu(BOARD_MENU);
 
   const sector = data?.sector ?? null;
   const printMode = sector?.printMode ?? "none";
@@ -419,13 +426,44 @@ function StationBoard({ api, initialSectorName, businessName, owner, onUnpaired 
     onUnpaired(null);
   };
 
+  const toggleSound = () => { if (!prefs.sound) beep(); updatePrefs({ sound: !prefs.sound }); };
+
+  // Clic derecho en una comanda (activa o lista).
+  const ticketMenuContext = (ticket: Ticket): TicketMenuContext => ({
+    ticket,
+    busy: busyId === ticket.id,
+    canPrint: printMode !== "none",
+    actions: {
+      setStatus: status => changeStatus(ticket, status),
+      print: async () => { if (sector) await doPrint(ticket, sector, { manual: true }); },
+    },
+  });
+
+  const openBoard = (event: React.MouseEvent<HTMLElement>) => openBoardMenu(event, {
+    sound: prefs.sound,
+    autoPrint: printMode === "none" ? null : prefs.autoPrint,
+    canConnectPrinter: printMode === "escpos" && escposSupported() && printerReady === false,
+    fullscreen: { available: document.fullscreenEnabled === true, active: document.fullscreenElement !== null },
+    paired: !owner,
+    actions: {
+      toggleSound,
+      toggleAutoPrint: () => updatePrefs({ autoPrint: !prefs.autoPrint }),
+      connectPrinter,
+      toggleFullscreen: () => {
+        if (document.fullscreenElement) void document.exitFullscreen?.().catch(() => {});
+        else void document.documentElement.requestFullscreen?.().catch(() => {});
+      },
+      unpair: unpairDevice,
+    },
+  });
+
   const columns = useMemo(() => [
     { status: "new" as const, title: "Nuevas", empty: "No hay comandas nuevas." },
     { status: "preparing" as const, title: "En preparación", empty: "Nada en preparación." },
   ], []);
 
   return (
-    <div className={`${p.page} ${s.board}`}>
+    <div className={`${p.page} ${s.board}`} onContextMenu={openBoard}>
       <header className={s.header}>
         <div className={s.headTitle}>
           <span className={s.headIcon}><ChefHat size={22} aria-hidden /></span>
@@ -442,7 +480,7 @@ function StationBoard({ api, initialSectorName, businessName, owner, onUnpaired 
             type="button"
             className={p.btn}
             aria-pressed={prefs.sound}
-            onClick={() => { if (!prefs.sound) beep(); updatePrefs({ sound: !prefs.sound }); }}
+            onClick={toggleSound}
           >
             {prefs.sound ? <Bell size={16} aria-hidden /> : <BellOff size={16} aria-hidden />}
             {prefs.sound ? "Sonido" : "Silencio"}
@@ -516,6 +554,7 @@ function StationBoard({ api, initialSectorName, businessName, owner, onUnpaired 
                           canPrint={printMode !== "none"}
                           onStatus={status => changeStatus(ticket, status)}
                           onPrint={() => sector && doPrint(ticket, sector, { manual: true })}
+                          onContextMenu={event => openTicketMenu(event, ticketMenuContext(ticket))}
                         />
                       ))}
                     </div>
@@ -532,7 +571,11 @@ function StationBoard({ api, initialSectorName, businessName, owner, onUnpaired 
             ) : (
               <ul className={s.recentList}>
                 {data.recent.map(ticket => (
-                  <li key={ticket.id} className={`${s.recentRow} ${ticket.status === "cancelled" ? s.recentCancelled : ""}`}>
+                  <li
+                    key={ticket.id}
+                    className={`${s.recentRow} ${ticket.status === "cancelled" ? s.recentCancelled : ""}`}
+                    onContextMenu={ticket.status === "done" ? event => openTicketMenu(event, ticketMenuContext(ticket)) : undefined}
+                  >
                     <strong>#{ticket.order.number}</strong>
                     <span>{placeLabel(ticket.order)}</span>
                     <span className={s.recentItems}>
@@ -564,7 +607,7 @@ function StationBoard({ api, initialSectorName, businessName, owner, onUnpaired 
   );
 }
 
-function TicketCard({ ticket, now, fresh, busy, canPrint, onStatus, onPrint }: {
+function TicketCard({ ticket, now, fresh, busy, canPrint, onStatus, onPrint, onContextMenu }: {
   ticket: Ticket;
   now: number;
   fresh: boolean;
@@ -572,6 +615,7 @@ function TicketCard({ ticket, now, fresh, busy, canPrint, onStatus, onPrint }: {
   canPrint: boolean;
   onStatus: (status: TicketStatus) => void;
   onPrint: () => void;
+  onContextMenu: (event: React.MouseEvent<HTMLElement>) => void;
 }) {
   const late = minutesSince(ticket.createdAt, now) >= LATE_MINUTES;
   const { order } = ticket;
@@ -581,6 +625,7 @@ function TicketCard({ ticket, now, fresh, busy, canPrint, onStatus, onPrint }: {
     <article
       className={`${s.ticket} ${fresh ? s.ticketFresh : ""} ${late ? s.ticketLate : ""} ${ticket.status === "preparing" ? s.ticketPreparing : ""}`}
       aria-label={`Comanda del pedido ${order.number}`}
+      onContextMenu={onContextMenu}
     >
       <header className={s.ticketHead}>
         <span className={s.place}>{placeLabel(order)}</span>

@@ -37,8 +37,8 @@ interface ContextMenuEntryBase<C> {
 export interface ContextMenuAction<C> extends ContextMenuEntryBase<C> {
   type?: "action";
   danger?: boolean;
-  /** Pide confirmación antes de ejecutar. */
-  confirm?: Resolvable<C, ContextMenuConfirm>;
+  /** Pide confirmación antes de ejecutar (null: en este contexto no hace falta). */
+  confirm?: Resolvable<C, ContextMenuConfirm | null>;
   /** Puede ser async: el núcleo maneja la espera y los errores. */
   run: (context: C) => unknown;
   /** Aviso al terminar bien. Sin esto, la acción no notifica nada. */
@@ -49,7 +49,8 @@ export interface ContextMenuAction<C> extends ContextMenuEntryBase<C> {
 
 export interface ContextMenuSubmenu<C> extends ContextMenuEntryBase<C> {
   type: "submenu";
-  items: ContextMenuItem<C>[];
+  /** Fijas, o armadas para el contexto (ej. "Mover a ▸" con las secciones que hay). */
+  items: Resolvable<C, ContextMenuItem<C>[]>;
 }
 
 export interface ContextMenuSeparator {

@@ -32,9 +32,16 @@ function handlers() {
   const calls: string[] = [];
   const value: SellerMenuHandlers = {
     viewProfile: (s) => { calls.push(`profile:${s.name}`); },
+    edit: (s) => { calls.push(`edit:${s.name}`); },
+    resetPassword: (s) => { calls.push(`password:${s.name}`); },
     createTestUser: (s) => { calls.push(`test-user:${s.name}`); },
+    viewTestUsers: (s) => { calls.push(`test-users:${s.name}`); },
+    setAdmin: async (s, admin) => { calls.push(`admin:${s.name}:${admin}`); },
+    setReceivesLeads: async (s, on) => { calls.push(`leads:${s.name}:${on}`); },
     deactivate: async (s) => { calls.push(`deactivate:${s._id}`); },
     reactivate: async (s) => { calls.push(`reactivate:${s._id}`); },
+    openUrl: (url) => { calls.push(`open:${url}`); },
+    navigate: (path) => { calls.push(`go:${path}`); },
   };
   return { calls, value };
 }
@@ -67,7 +74,8 @@ test("un vendedor activo ofrece perfil, copiar, usuario de prueba y dar de baja"
   const items = resolveMenuItems(buildSellerMenu(value), seller());
 
   assert.deepEqual(ids(items), [
-    "profile", "copy", "copy/code", "copy/mail", "copy/number", "test-user", "deactivate",
+    "profile", "edit", "copy", "copy/code", "copy/mail", "copy/number", "whatsapp", "mail-to",
+    "commissions", "clients", "password", "leads", "admin", "test-user", "test-users", "deactivate",
   ]);
   assert.equal(action(items, "test-user").disabled, false);
   assert.equal(action(items, "deactivate").danger, true);
@@ -77,7 +85,9 @@ test("un vendedor dado de baja ofrece deshacer la baja y no deja crearle usuario
   const { value } = handlers();
   const items = resolveMenuItems(buildSellerMenu(value), seller({ active: false, number: null }));
 
-  assert.deepEqual(ids(items), ["profile", "copy", "copy/code", "copy/mail", "test-user", "reactivate"]);
+  assert.deepEqual(ids(items), [
+    "profile", "edit", "copy", "copy/code", "copy/mail", "mail-to", "clients", "password", "test-user", "test-users", "reactivate",
+  ]);
   assert.equal(action(items, "test-user").disabled, true);
   assert.equal(action(items, "test-user").disabledReason, "El vendedor está dado de baja");
 });
@@ -157,6 +167,33 @@ test("el menú general crea, actualiza y cambia la vista, marcando la vista actu
 
   const all = resolveMenuItems(menu, { statusFilter: "" });
   assert.equal(action(all, "status/all").disabled, true);
+});
+
+test("lo que faltaba: editar, contacto, comisiones, CRM, leads y admin (con confirmación)", async () => {
+  const { calls, value } = handlers();
+  const items = resolveMenuItems(buildSellerMenu(value), seller({ receivesLeads: true }));
+  const { deps } = runner();
+  await runMenuAction(action(items, "edit"), deps);
+  await runMenuAction(action(items, "clients"), deps);
+  await runMenuAction(action(items, "commissions"), deps);
+  await runMenuAction(action(items, "mail-to"), deps);
+  await runMenuAction(action(items, "leads"), deps);
+  assert.equal(action(items, "leads").label, "Dejar de recibir leads");
+  assert.deepEqual(calls, [
+    "edit:Carla", "go:/sellers/crm?seller=64f000000000000000000401", "go:/sellers?sellerID=64f000000000000000000401",
+    "open:mailto:carla@example.com", "leads:Carla:false",
+  ]);
+
+  const admin = action(items, "admin");
+  assert.equal(admin.label, "Hacer admin");
+  assert.equal(admin.confirm?.danger, true);
+  assert.equal(await runMenuAction(admin, runner(false).deps), "cancelled");
+  assert.equal(calls.includes("admin:Carla:true"), false);
+  await runMenuAction(admin, runner(true).deps);
+  assert.equal(calls.at(-1), "admin:Carla:true");
+
+  const influencer = resolveMenuItems(buildSellerMenu(value), seller({ influencer: true }));
+  assert.ok(!ids(influencer).includes("leads") && !ids(influencer).includes("commissions"));
 });
 
 test("el usuario de prueba sugerido es válido para el backend (sin guiones)", () => {

@@ -12,6 +12,9 @@ export type ConfirmDialogVariant = "panel" | "menu";
 
 export interface ConfirmDialogField {
   label: string;
+  /** "date": selector de fecha (el valor es AAAA-MM-DD). */
+  type?: "text" | "date";
+  min?: string;
   defaultValue?: string;
   placeholder?: string;
   maxLength?: number;
@@ -55,7 +58,7 @@ export default function ConfirmDialog({
     const input = dialog?.querySelector<HTMLInputElement>("input");
     if (input) {
       input.focus();
-      input.select();
+      if (input.type === "text") input.select();
     } else {
       dialog?.querySelector<HTMLButtonElement>(danger ? "[data-cancel]" : "[data-confirm]")?.focus();
     }
@@ -119,6 +122,8 @@ export default function ConfirmDialog({
             <span className={s.fieldLabel}>{field.label}</span>
             <input
               className={s.input}
+              type={field.type ?? "text"}
+              min={field.min}
               value={value}
               placeholder={field.placeholder}
               maxLength={field.maxLength}

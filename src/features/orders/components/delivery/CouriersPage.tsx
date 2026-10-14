@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { History, Pencil, QrCode, Smartphone, Trash2, X } from "lucide-react";
 import { useAuth } from "../../../../context/useAuth";
@@ -15,6 +15,9 @@ import type { Courier, WaiterDeviceSession } from "../../types";
 import DeliveryTabs from "./DeliveryTabs";
 import p from "../panel/panel.module.css";
 import s from "./Delivery.module.css";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../contextMenu/hooks/useMenuEnv";
+import { buildStaffMenu, buildStaffPageMenu, type StaffMenuContext } from "../panel/staffMenu";
 
 // Repartidores del local: alta, edición, pausa, el QR de vinculación de cada
 // uno y sus dispositivos conectados. Estar vinculado no es estar disponible:
@@ -23,6 +26,7 @@ import s from "./Delivery.module.css";
 // repartidor (no quedan pedidos huérfanos).
 
 const EMPTY_FORM = { name: "", phone: "", notes: "" };
+const PAGE_MENU = buildStaffPageMenu("courier");
 const REFRESH_LIST_MS = 30_000;
 
 const ENDED_REASON: Record<NonNullable<WaiterDeviceSession["endedReason"]>, string> = {
@@ -46,6 +50,12 @@ export default function CouriersPage() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const { reload } = couriers;
+  const slug = useAuth().user?.slug;
+  const nameInput = useRef<HTMLInputElement>(null);
+  const menuEnv = useMenuEnv();
+  const courierMenu = useMemo(() => buildStaffMenu(menuEnv, "courier"), [menuEnv]);
+  const openCourierMenu = useContextMenu(courierMenu, { highlightTarget: true });
+  const openPageMenu = useContextMenu(PAGE_MENU);
 
   // "Conectado hace…" avanza con el reloj local; disponibilidad y dispositivos llegan
   // con el aviso del servidor (sin conexión en vivo, cada REFRESH_LIST_MS).
@@ -127,8 +137,40 @@ export default function CouriersPage() {
     }
   }, "No se pudo eliminar el repartidor.");
 
+  const startAdd = () => {
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    nameInput.current?.focus();
+  };
+
+  // Clic derecho en un repartidor. Pausar y eliminar siguen el camino de los
+  // botones (con entregas sin resolver abren la ventana de reasignar).
+  const courierMenuContext = (courier: Courier): StaffMenuContext => ({
+    member: courier,
+    actions: {
+      edit: () => { startEdit(courier); nameInput.current?.focus(); },
+      showQr: () => setQrCourier(courier),
+      accessLink: async () => {
+        if (!slug) throw new Error("Sin local");
+        return courierQrUrl(slug, (await issueCourierPairingCode(courier.id)).code);
+      },
+      showSessions: () => setHistoryCourier(courier),
+      showDeliveries: () => menuEnv.navigate(`/pedidos/delivery/historial?repartidor=${courier.id}`),
+      setActive: active => (active === courier.active ? undefined : toggleActive(courier)),
+      closeSession: async sessionId => {
+        await revokeCourierSession(courier.id, sessionId);
+        replace(withoutSession(courier, sessionId));
+      },
+      closeAllSessions: async () => {
+        await revokeCourierSessions(courier.id);
+        replace({ ...courier, activeDevices: 0, sessions: [], available: false });
+      },
+      remove: () => requestDelete(courier),
+    },
+  });
+
   return (
-    <div className={p.page}>
+    <div className={p.page} onContextMenu={event => openPageMenu(event, { actions: { add: startAdd } })}>
       <header className={p.header}>
         <div className={p.titleBlock}>
           <h1 className={p.title}>Repartidores</h1>
@@ -145,7 +187,7 @@ export default function CouriersPage() {
           <h2 className={p.cardTitle}>{editing ? `Editar a ${editing.name}` : "Agregar repartidor"}</h2>
           <label className={p.field}>
             <span className={p.label}>Nombre</span>
-            <input className={p.input} value={form.name} maxLength={60} required onChange={e => setForm({ ...form, name: e.target.value })} />
+            <input ref={nameInput} className={p.input} value={form.name} maxLength={60} required onChange={e => setForm({ ...form, name: e.target.value })} />
           </label>
           <label className={p.field}>
             <span className={p.label}>Teléfono (opcional)</span>
@@ -173,7 +215,7 @@ export default function CouriersPage() {
           {!couriers.loading && list.length === 0 && <p className={p.empty}>Todavía no cargaste repartidores.</p>}
 
           {list.map(courier => (
-            <div key={courier.id} className={p.switchRow}>
+            <div key={courier.id} className={p.switchRow} onContextMenu={event => openCourierMenu(event, courierMenuContext(courier))}>
               <div className={p.switchText} style={{ minWidth: 0, flex: 1 }}>
                 <span className={p.switchTitle}>
                   {courier.name}

@@ -12,9 +12,10 @@ import ConfirmDialog from "../../../components/Common/ConfirmDialog";
 import Spinner from "../../../components/Common/Spinner";
 import { ContextMenuContext, type ContextMenuContextValue } from "../ContextMenuContext";
 import {
-  edgeFocusIndex, nextFocusIndex, placeMenu, placeSubmenu, runMenuAction, shouldUseNativeMenu,
+  edgeFocusIndex, MenuActionError, nextFocusIndex, placeMenu, placeSubmenu, runMenuAction, shouldUseNativeMenu,
   type AnchorRect, type Point, type Size,
 } from "../lib/contextMenu";
+import { resolveLinkItems } from "../lib/linkMenu";
 import { resolveTextItems } from "../lib/textField";
 import type { ContextMenuConfirm, ResolvedAction, ResolvedItem } from "../types";
 import s from "./ContextMenu.module.css";
@@ -51,17 +52,18 @@ interface PendingAction {
   label: string;
 }
 
-// Copiar / Pegar / Seleccionar todo van arriba de cualquier menú, el de una
-// zona o el global, cuando el punto del clic tiene texto seleccionado o es un
-// campo de texto.
+// Las opciones de un link (abrir en pestaña nueva, copiar la dirección) y las
+// de texto (Cortar / Copiar / Pegar / Deshacer / Seleccionar todo) van arriba
+// de cualquier menú, el de una zona o el global, cuando el clic cae en un
+// link, en texto seleccionado o en un campo de texto.
 function withTextItems(target: Element | null, items: ResolvedItem[]): ResolvedItem[] {
-  const textItems = resolveTextItems(target);
-  if (textItems.length === 0 || items.length === 0) return [...textItems, ...items];
-  return [...textItems, { type: "separator", id: "text/separator" }, ...items];
+  const groups = [resolveLinkItems(target), resolveTextItems(target), items].filter((group) => group.length > 0);
+  return groups.flatMap((group, index) => (index === 0 ? group : [{ type: "separator" as const, id: `group-${index}/separator` }, ...group]));
 }
 
 function describeError(error: unknown, fallback: string): string {
-  return error instanceof ApiError ? error.message : extractServerMessage(error, fallback);
+  if (error instanceof ApiError || error instanceof MenuActionError) return error.message;
+  return extractServerMessage(error, fallback);
 }
 
 interface ContextMenuProviderProps {
@@ -127,7 +129,7 @@ export function ContextMenuProvider({ children, getGlobalItems }: ContextMenuPro
       { x: event.clientX, y: event.clientY },
       items,
       target ?? event.currentTarget,
-      options?.highlightTarget ? event.currentTarget : null,
+      options?.highlightElement ?? (options?.highlightTarget ? event.currentTarget : null),
     );
   }, [openAt]);
 

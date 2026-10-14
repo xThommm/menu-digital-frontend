@@ -94,6 +94,24 @@ export async function createAdminSellerTestUser(
   return response.data.user;
 }
 
+// Usuarios de prueba del vendedor (para verlos y darlos de baja).
+export interface SellerTestUserSummary {
+  _id: string;
+  username: string;
+  slug: string | null;
+  mail: string;
+  number: number | null;
+  subscription: string;
+  subscriptionExpiresAt: string | null;
+  active: boolean;
+  createdAt: string;
+}
+
+export async function listAdminSellerTestUsers(id: string): Promise<SellerTestUserSummary[]> {
+  const response = await apiClient.get<{ users: SellerTestUserSummary[] }>(`/admin/sellers/${id}/test-user`, { timeout: 10000 });
+  return response.data.users;
+}
+
 export async function resetAdminSellerPassword(id: string, newPassword: string): Promise<void> {
   await apiClient.patch(`/admin/sellers/${id}/password`, { newPassword }, { timeout: 10000 });
 }

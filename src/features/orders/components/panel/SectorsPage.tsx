@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ExternalLink, KeyRound, Monitor, Pencil, Star, Trash2, X } from "lucide-react";
 import {
@@ -9,6 +9,9 @@ import { errorMessage } from "../../lib/errors";
 import { durationLabel, elapsedLabel } from "../../lib/format";
 import type { PaperWidth, PrintMode, Sector } from "../../types";
 import p from "./panel.module.css";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../contextMenu/hooks/useMenuEnv";
+import { buildSectorMenu, buildSectorsPageMenu, PRINT_MODE_LABEL, stationUrl as screenUrlFor, type SectorMenuContext } from "./sectorsMenu";
 
 // Sectores del local (cocina, barra, postres…) y sus comandas.
 //
@@ -19,20 +22,13 @@ import p from "./panel.module.css";
 
 const REFRESH_LIST_MS = 30_000;
 
-const PRINT_MODE_LABEL: Record<PrintMode, string> = {
-  none: "Solo pantalla",
-  browser: "Impresora del equipo",
-  escpos: "Comandera directa (experimental)",
-};
-
 const PRINT_MODE_HINT: Record<PrintMode, string> = {
   none: "Las comandas se ven y se marcan en la pantalla del sector.",
   browser: "Las comandas se imprimen en la impresora del equipo (sirve la comandera con su driver). Para que salgan solas, sin el diálogo de impresión, el navegador tiene que estar en modo kiosco (--kiosk-printing).",
   escpos: "La pantalla habla directo con la comandera por USB. Todavía no se probó con una impresora real.",
 };
 
-const stationUrl = (sectorId?: number) =>
-  `${window.location.origin}/comandas${sectorId ? `?sector=${sectorId}` : ""}`;
+const stationUrl = (sectorId?: number) => screenUrlFor(window.location.origin, sectorId);
 
 export default function SectorsPage() {
   const [sectors, setSectors] = useState<Sector[] | null>(null);
@@ -45,6 +41,12 @@ export default function SectorsPage() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [pairing, setPairing] = useState<Sector | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const nameInput = useRef<HTMLInputElement>(null);
+  const menuEnv = useMenuEnv();
+  const sectorMenu = useMemo(() => buildSectorMenu(menuEnv), [menuEnv]);
+  const pageMenu = useMemo(() => buildSectorsPageMenu(menuEnv), [menuEnv]);
+  const openSectorMenu = useContextMenu(sectorMenu, { highlightTarget: true });
+  const openPageMenu = useContextMenu(pageMenu);
 
   const load = useCallback(async () => {
     try {
@@ -109,8 +111,35 @@ export default function SectorsPage() {
     await load();
   }, "No se pudo eliminar el sector.");
 
+  // Clic derecho en un sector: los errores los avisa el menú.
+  const sectorMenuContext = (sector: Sector): SectorMenuContext => ({
+    sector,
+    screenUrl: stationUrl(sector.id),
+    actions: {
+      rename: () => setEditing({ id: sector.id, name: sector.name }),
+      makeDefault: async () => {
+        await updateSector(sector.id, { isDefault: true });
+        await load();
+      },
+      pair: () => setPairing(sector),
+      setPrintMode: async printMode => replace(await updateSector(sector.id, { printMode })),
+      unpair: async sessionId => {
+        await revokeSectorSession(sector.id, sessionId);
+        const sessions = sector.sessions.filter(item => item.id !== sessionId);
+        replace({ ...sector, sessions, activeDevices: sessions.length });
+      },
+      remove: async () => {
+        await deleteSector(sector.id);
+        await load();
+      },
+    },
+  });
+
   return (
-    <div className={p.page}>
+    <div
+      className={p.page}
+      onContextMenu={event => openPageMenu(event, { screenUrl: stationUrl(), actions: { add: () => nameInput.current?.focus() } })}
+    >
       <header className={p.header}>
         <div className={p.titleBlock}>
           <h1 className={p.title}>Sectores y comandas</h1>
@@ -135,6 +164,7 @@ export default function SectorsPage() {
             <label className={p.field}>
               <span className={p.label}>Nombre</span>
               <input
+                ref={nameInput}
                 className={p.input}
                 value={name}
                 maxLength={40}
@@ -174,7 +204,7 @@ export default function SectorsPage() {
           )}
 
           {list.map(sector => (
-            <div key={sector.id} className={p.switchRow}>
+            <div key={sector.id} className={p.switchRow} onContextMenu={event => openSectorMenu(event, sectorMenuContext(sector))}>
               <div className={p.switchText} style={{ minWidth: 0, flex: 1 }}>
                 {editing?.id === sector.id ? (
                   <form className={p.row} onSubmit={rename}>

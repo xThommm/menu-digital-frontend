@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { readRememberedSellerCode } from "../../lib/sellerCodeLink";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useNotifications } from "../../context/useNotifications";
@@ -128,7 +129,8 @@ export default function RegisterPlansPage() {
   const paymentStatus = new URLSearchParams(window.location.search).get(
     "payment",
   );
-  const [sellerCodeInput, setSellerCodeInput] = useState("");
+  // Viene cargado si se entró con un link de registro con código.
+  const [sellerCodeInput, setSellerCodeInput] = useState(() => readRememberedSellerCode() ?? "");
   const [appliedSellerCode, setAppliedSellerCode] = useState<string | null>(
     null,
   );

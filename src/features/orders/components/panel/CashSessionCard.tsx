@@ -1,6 +1,10 @@
 import { useRef, useState } from "react";
 import { Pencil } from "lucide-react";
-import { addCashMovement, closeCash, updateCash } from "../../api/ordersApi";
+import { addCashMovement, closeCash, exportCashSession, updateCash } from "../../api/ordersApi";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { cashCloseFileName, downloadBlob } from "../../lib/download";
+import { printCashClose } from "../../lib/print/cashClose";
+import { buildOpenCashMenu } from "./cashMenu";
 import { errorMessage } from "../../lib/errors";
 import { formatDateTime, formatMoney } from "../../lib/format";
 import { cashierPayload, parseAmount, type CashierValue } from "../../lib/cash";
@@ -13,6 +17,8 @@ import p from "./panel.module.css";
 // ── Caja abierta ─────────────────────────────
 
 type Panel = "movement" | "ledger" | "close" | null;
+
+const OPEN_CASH_MENU = buildOpenCashMenu();
 
 export default function CashSessionCard({ session, cashiers, movementTypes, onChanged, onError }: {
   session: CashSession;
@@ -29,6 +35,12 @@ export default function CashSessionCard({ session, cashiers, movementTypes, onCh
   // El libro vuelve a consultar cuando se carga un movimiento desde el formulario.
   const [ledgerVersion, setLedgerVersion] = useState(0);
   const summary = session.summary;
+  const openCashMenu = useContextMenu(OPEN_CASH_MENU);
+  const startEditing = () => {
+    setCashier({ id: session.cashierId, name: session.cashierName ?? "" });
+    setOpening(String(session.openingAmount || ""));
+    setEditing(true);
+  };
 
   const saveEdit = async () => {
     setBusy(true);
@@ -49,7 +61,19 @@ export default function CashSessionCard({ session, cashiers, movementTypes, onCh
   const nonCashRows = (summary?.paymentsBreakdown ?? []).map(row => ({ label: row.method, count: row.count, amount: row.amount }));
 
   return (
-    <div className={p.stack} style={{ padding: "1rem", borderRadius: 24, background: "var(--tone-high)" }}>
+    <div
+      className={p.stack}
+      style={{ padding: "1rem", borderRadius: 24, background: "var(--tone-high)" }}
+      onContextMenu={event => openCashMenu(event, {
+        session,
+        actions: {
+          editCashier: startEditing,
+          showPanel: setPanel,
+          exportExcel: async () => downloadBlob(await exportCashSession(session.id), cashCloseFileName(session.registerName, session.openedAt)),
+          print: () => printCashClose(session),
+        },
+      })}
+    >
       <div className={p.header} style={{ margin: 0 }}>
         <div className={p.titleBlock}>
           <span className={p.switchTitle}>{session.registerName}</span>
@@ -61,11 +85,7 @@ export default function CashSessionCard({ session, cashiers, movementTypes, onCh
           <button
             type="button"
             className={`${p.btnGhost} ${p.small}`}
-            onClick={() => {
-              setCashier({ id: session.cashierId, name: session.cashierName ?? "" });
-              setOpening(String(session.openingAmount || ""));
-              setEditing(true);
-            }}
+            onClick={startEditing}
           >
             <Pencil size={14} aria-hidden /> Cajero y fondo
           </button>

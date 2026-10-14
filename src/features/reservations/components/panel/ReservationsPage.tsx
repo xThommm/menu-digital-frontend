@@ -16,6 +16,9 @@ import { codeMessage, formatPeople, formatReservationDate, reservationWhen, STAT
 import type { OwnerAction, OwnerReservation, ReservationSettings, ReservationStatus, SocketMessage } from "../../types";
 import { CancelModal, ConfirmDialog, ConfirmModal, ManualReservationModal, RejectModal } from "./ReservationModals";
 import ReservationsSettings from "./ReservationsSettings";
+import { buildReservationMenu, buildReservationsPageMenu, type ReservationMenuContext } from "./reservationsMenu";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../contextMenu/hooks/useMenuEnv";
 import { useOwnerAlerts } from "../../../ownerAlerts/useOwnerAlerts";
 import OwnerAlertsCard from "../../../ownerAlerts/OwnerAlertsCard";
 import p from "../../../orders/components/panel/panel.module.css";
@@ -56,6 +59,8 @@ const normalize = (value: string) => value.normalize("NFD").replace(/\p{Diacriti
 const searchText = (reservation: OwnerReservation) =>
   `${reservation.name} ${reservation.code} ${reservation.phone ?? ""} ${reservation.tableLabel ?? ""} ${reservation.notes ?? ""}`;
 
+const PAGE_MENU = buildReservationsPageMenu();
+
 const byWhen = (a: OwnerReservation, b: OwnerReservation) =>
   a.date === b.date ? a.time.localeCompare(b.time) : a.date.localeCompare(b.date);
 
@@ -89,6 +94,12 @@ export default function ReservationsPage() {
   useEffect(() => { announceRef.current = announce; }, [announce]);
   const fromRef = useRef(fetchFrom);
   useEffect(() => { fromRef.current = fetchFrom; });
+
+  // Menú contextual (reservationsMenu.ts).
+  const menuEnv = useMenuEnv();
+  const reservationMenu = useMemo(() => buildReservationMenu(menuEnv), [menuEnv]);
+  const openReservationMenu = useContextMenu(reservationMenu, { highlightTarget: true });
+  const openPageMenu = useContextMenu(PAGE_MENU);
 
   const changeView = (next: ViewMode) => {
     setView(next);
@@ -193,6 +204,30 @@ export default function ReservationsPage() {
       setBusyId(null);
     }
   };
+
+  // Para el menú contextual: mismo pedido que los botones, pero el error lo
+  // muestra el aviso del menú.
+  const menuAction = async (reservation: OwnerReservation, action: OwnerAction) => {
+    setBusyId(reservation.id);
+    try {
+      await runReservationAction(reservation.id, action);
+    } finally {
+      setBusyId(null);
+      void refresh();
+    }
+  };
+  const reservationMenuContext = (reservation: OwnerReservation): ReservationMenuContext => ({
+    reservation,
+    busy: busyId === reservation.id,
+    actions: {
+      confirm: setConfirming,
+      reject: setRejecting,
+      cancel: setCancelling,
+      noShow: setNoShowing,
+      complete: target => menuAction(target, "complete"),
+      reopen: target => menuAction(target, "reopen"),
+    },
+  });
 
   const confirmNoShow = async () => {
     if (!noShowing) return;
@@ -318,7 +353,19 @@ export default function ReservationsPage() {
   const clearFilters = () => setFilters(NO_FILTERS);
 
   return (
-    <div className={p.page}>
+    <div
+      className={p.page}
+      onContextMenu={event => openPageMenu(event, {
+        view,
+        activeFilters: activeFilters + (filters.search ? 1 : 0),
+        actions: {
+          create: () => setManualOpen(true),
+          setView: changeView,
+          clearFilters,
+          openSettings: () => setTab("settings"),
+        },
+      })}
+    >
       <header className={p.header}>
         <div className={p.titleBlock}>
           <h1 className={p.title}>Reservas</h1>
@@ -404,6 +451,7 @@ export default function ReservationsPage() {
           activeFilterCount={activeFilters}
           onClearFilters={clearFilters}
           countLabel={visible => `${visible} de ${list?.reservations.length ?? 0} reservas`}
+          onRowContextMenu={(event, item) => openReservationMenu(event, reservationMenuContext(item))}
           emptyMessage={error ? "No se pudo cargar el listado." : "Todavía no hay reservas."}
           noResultsMessage="No hay reservas que coincidan con los filtros."
         />
@@ -431,7 +479,14 @@ export default function ReservationsPage() {
                       <span className={r.kanbanCount}>{items.length}</span>
                     </h2>
                     <div className={r.kanbanCards}>
-                      {items.map(item => <ReservationCard key={item.id} reservation={item} actions={actions(item)} />)}
+                      {items.map(item => (
+                        <ReservationCard
+                          key={item.id}
+                          reservation={item}
+                          actions={actions(item)}
+                          onContextMenu={event => openReservationMenu(event, reservationMenuContext(item))}
+                        />
+                      ))}
                       {items.length === 0 && <p className={r.kanbanEmpty}>{column.empty}</p>}
                     </div>
                   </section>
@@ -516,12 +571,16 @@ function ReservationActions({ reservation, busy, onConfirm, onReject, onCancel, 
 
 // ── Tarjeta de una reserva (kanban) ──
 
-function ReservationCard({ reservation, actions }: { reservation: OwnerReservation; actions: React.ReactNode }) {
+function ReservationCard({ reservation, actions, onContextMenu }: {
+  reservation: OwnerReservation;
+  actions: React.ReactNode;
+  onContextMenu: (event: React.MouseEvent<HTMLElement>) => void;
+}) {
   const { status } = reservation;
   const phone = sanitizePhoneForWa(reservation.phone);
 
   return (
-    <article className={r.item} aria-label={`Reserva de ${reservation.name}`}>
+    <article className={r.item} aria-label={`Reserva de ${reservation.name}`} onContextMenu={onContextMenu}>
       <div className={r.itemTop}>
         <div className={r.when}>
           <span className={r.time}>{reservation.time} hs</span>

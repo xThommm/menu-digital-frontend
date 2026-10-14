@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
+import QRCode from "qrcode";
 import { ChevronDown, ChevronUp, Receipt } from "lucide-react";
 import { useAuth } from "../../../../context/useAuth";
 import DataTable, { type DataTableColumn } from "../../../../components/Common/DataTable/DataTable";
@@ -6,12 +8,19 @@ import {
   closeTableSession, listTableSessions, ownerBillApi, ownerGroupApi, setTableGuests,
 } from "../../api/ordersApi";
 import { ownerHello, useLiveRefresh } from "../../hooks/useLiveRefresh";
+import { useOrderSettings, useWaiters } from "../../hooks/usePanelData";
+import { venueQrUrl } from "../../lib/qrUrls";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../contextMenu/hooks/useMenuEnv";
 import { errorCode, errorMessage } from "../../lib/errors";
 import { durationLabel, elapsedLabel, formatDateTime, formatMoney, formatTime, STATUS_LABEL } from "../../lib/format";
 import type { GroupSession, TableSession } from "../../types";
 import BillPanel from "../shared/BillPanel";
 import GroupPanel, { OpenGroupForm } from "../shared/GroupPanel";
 import TableBill from "../shared/TableBill";
+import ManualOrderModal from "./ManualOrderModal";
+import type { TableFocusState } from "./ordersBoardMenu";
+import { buildTableMenu } from "./tablesMenu";
 import p from "./panel.module.css";
 
 // Mesas: sesiones de mesa abiertas (de la primera comanda hasta que se
@@ -32,6 +41,20 @@ export default function TablesPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [historyVersion, setHistoryVersion] = useState(0);
+  const [addingTo, setAddingTo] = useState<number | null>(null);
+  const settings = useOrderSettings();
+  const waiters = useWaiters();
+  // Se llegó desde el tablero ("Ir a la mesa" / "Abrir la cuenta de la mesa").
+  const focus = (useLocation().state as TableFocusState | null) ?? null;
+
+  // Link de la carta que abre el QR de la mesa (o el QR general, según la configuración).
+  const tableLink = (tableNumber: number): string | null => {
+    const data = settings.data;
+    if (!data) return null;
+    if (data.settings.qrMode === "general") return venueQrUrl(data.slug, data.settings.generalQrToken);
+    const table = data.tables.find(entry => entry.number === tableNumber);
+    return table ? venueQrUrl(data.slug, table.qrToken) : null;
+  };
 
   const refresh = useCallback(async () => {
     try {
@@ -99,6 +122,10 @@ export default function TablesPage() {
                   onError={setError}
                   onReload={refresh}
                   onNotice={setNotice}
+                  tableLink={tableLink(session.tableNumber)}
+                  focused={focus?.tableSessionId === session.id}
+                  openBill={focus?.tableSessionId === session.id && focus.bill === true}
+                  onAddOrder={() => setAddingTo(session.tableNumber)}
                 />
               ))}
             </div>
@@ -125,6 +152,20 @@ export default function TablesPage() {
         </section>
       )}
 
+      {addingTo !== null && (
+        <ManualOrderModal
+          tableCount={settings.data?.settings.tableCount ?? 0}
+          waiters={waiters.data ?? []}
+          initialTable={addingTo}
+          onClose={() => setAddingTo(null)}
+          onCreated={order => {
+            setAddingTo(null);
+            setNotice(`Pedido #${order.number} cargado · Mesa ${order.tableNumber}.`);
+            void refresh();
+          }}
+        />
+      )}
+
       <section className={p.card} style={{ marginTop: "1.5rem" }}>
         <h2 className={p.cardTitle}>Mesas cerradas</h2>
         <ClosedTables version={historyVersion} onError={setError} />
@@ -133,7 +174,9 @@ export default function TablesPage() {
   );
 }
 
-function OpenTableCard({ session, group, slug, now, onUpdated, onClosed, onError, onReload, onNotice }: {
+function OpenTableCard({
+  session, group, slug, now, onUpdated, onClosed, onError, onReload, onNotice, tableLink, focused, openBill, onAddOrder,
+}: {
   session: TableSession;
   group: GroupSession | null;
   slug: string;
@@ -143,9 +186,29 @@ function OpenTableCard({ session, group, slug, now, onUpdated, onClosed, onError
   onError: (message: string | null) => void;
   onReload: () => void;
   onNotice: (message: string) => void;
+  tableLink: string | null;
+  focused: boolean;
+  openBill: boolean;
+  onAddOrder: () => void;
 }) {
   const [showOrders, setShowOrders] = useState(false);
-  const [showBill, setShowBill] = useState(false);
+  const [showBill, setShowBill] = useState(openBill);
+  const cardRef = useRef<HTMLElement>(null);
+  const env = useMenuEnv();
+  const tableMenu = useMemo(() => buildTableMenu(env), [env]);
+  const openTableMenu = useContextMenu(tableMenu, { highlightTarget: true });
+
+  useEffect(() => {
+    if (focused) cardRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [focused]);
+
+  const downloadQr = async () => {
+    if (!tableLink) return;
+    const link = document.createElement("a");
+    link.href = await QRCode.toDataURL(tableLink, { width: 480, margin: 1 });
+    link.download = `qr-${slug}-mesa-${session.tableNumber}.png`;
+    link.click();
+  };
   const paid = session.paidAmount ?? 0;
   const [confirm, setConfirm] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -175,7 +238,26 @@ function OpenTableCard({ session, group, slug, now, onUpdated, onClosed, onError
   };
 
   return (
-    <article className={p.tableCard} aria-label={`Mesa ${session.tableNumber}`}>
+    <article
+      ref={cardRef}
+      className={`${p.tableCard} ${focused ? p.tableCardFocus : ""}`}
+      aria-label={`Mesa ${session.tableNumber}`}
+      onContextMenu={event => openTableMenu(event, {
+        session,
+        group,
+        showingOrders: showOrders,
+        tableLink,
+        busy,
+        actions: {
+          toggleOrders: () => setShowOrders(v => !v),
+          openBill: () => setShowBill(true),
+          addOrder: onAddOrder,
+          openGroup: async () => { await ownerGroupApi.open(session.tableNumber); onReload(); },
+          downloadQr,
+          closeTable: () => close(false),
+        },
+      })}
+    >
       <div className={p.tableHead}>
         <div className={p.titleBlock}>
           <span className={p.tableName}>Mesa {session.tableNumber}</span>

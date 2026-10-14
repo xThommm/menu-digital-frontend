@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { Download, Plus, Printer, RefreshCw, Trash2 } from "lucide-react";
 import { regenerateQr, updateOrderSettings } from "../../api/ordersApi";
@@ -11,6 +11,15 @@ import PaymentsSection from "./PaymentsSection";
 import p from "./panel.module.css";
 import OwnerAlertsCard from "../../../ownerAlerts/OwnerAlertsCard";
 import { useDialogs } from "../../../../context/useDialogs";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../contextMenu/hooks/useMenuEnv";
+import {
+  buildOrdersSettingsPageMenu, buildQrMenu, buildQrSectionMenu, buildShiftEntryMenu,
+} from "./ordersSettingsMenu";
+
+const PAGE_MENU = buildOrdersSettingsPageMenu();
+const QR_SECTION_MENU = buildQrSectionMenu();
+const SHIFT_ENTRY_MENU = buildShiftEntryMenu();
 
 // Configuración de Gestión de pedidos: QR general o por mesa, cantidad de
 // mesas, si los comensales pueden pedir solos, historial en su navegador y
@@ -37,6 +46,7 @@ export default function OrdersSettingsPage() {
   const [saved, setSaved] = useState(false);
   // Estado de la cuenta de Mercado Pago (lo informa la sección de pagos).
   const [mp, setMp] = useState<MpConnection | null>(null);
+  const openPageMenu = useContextMenu(PAGE_MENU);
 
   // El borrador arranca de lo guardado (ajuste de estado durante el render,
   // no en un efecto).
@@ -66,6 +76,11 @@ export default function OrdersSettingsPage() {
     }
   };
 
+  // Sin preguntar (el menú contextual confirma por su cuenta).
+  const regenerateNow = async (target: string) => {
+    settings.setData(await regenerateQr(target));
+  };
+
   const regenerate = async (target: string, question: string) => {
     if (!(await dialogs.confirm({
       title: target === "all" ? "¿Regenerar los QR?" : "¿Regenerar el QR?",
@@ -74,7 +89,7 @@ export default function OrdersSettingsPage() {
       danger: true,
     }))) return;
     try {
-      settings.setData(await regenerateQr(target));
+      await regenerateNow(target);
     } catch (err) {
       setError(errorMessage(err, "No se pudo regenerar el QR."));
     }
@@ -89,7 +104,7 @@ export default function OrdersSettingsPage() {
   const dirty = JSON.stringify(draft) !== JSON.stringify(toDraft(saved_.settings));
 
   return (
-    <div className={p.page}>
+    <div className={p.page} onContextMenu={event => openPageMenu(event, { dirty, saving, actions: { save: () => { void save(); } } })}>
       <header className={p.header}>
         <div className={p.titleBlock}>
           <h1 className={p.title}>Configuración de pedidos</h1>
@@ -366,7 +381,7 @@ export default function OrdersSettingsPage() {
         </section>
       </div>
 
-      <QrSection data={saved_} onRegenerate={regenerate} pendingChanges={dirty && (draft.qrMode !== saved_.settings.qrMode || draft.tableCount !== saved_.settings.tableCount)} />
+      <QrSection data={saved_} onRegenerate={regenerate} onRegenerateNow={regenerateNow} pendingChanges={dirty && (draft.qrMode !== saved_.settings.qrMode || draft.tableCount !== saved_.settings.tableCount)} />
     </div>
   );
 }
@@ -391,6 +406,7 @@ function Segmented<T extends string>({ value, onChange, options }: { value: T; o
 }
 
 function ScheduleEditor({ value, onChange }: { value: ShiftScheduleEntry[]; onChange: (value: ShiftScheduleEntry[]) => void }) {
+  const openEntryMenu = useContextMenu(SHIFT_ENTRY_MENU, { highlightTarget: true });
   const set = (index: number, patch: Partial<ShiftScheduleEntry>) =>
     onChange(value.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)));
 
@@ -398,7 +414,11 @@ function ScheduleEditor({ value, onChange }: { value: ShiftScheduleEntry[]; onCh
     <div className={p.stack} style={{ gap: "0.6rem" }}>
       {value.length === 0 && <p className={p.switchHint}>Sin horarios cargados: cada turno se nombra con la fecha y hora de apertura.</p>}
       {value.map((entry, index) => (
-        <div key={index} className={p.shiftEntry}>
+        <div
+          key={index}
+          className={p.shiftEntry}
+          onContextMenu={event => openEntryMenu(event, { entry, actions: { remove: () => onChange(value.filter((_, i) => i !== index)) } })}
+        >
           <label className={p.field}>
             <span className={p.label}>Nombre</span>
             <input className={p.input} value={entry.name} maxLength={40} onChange={e => set(index, { name: e.target.value })} placeholder="Mediodía" />
@@ -432,13 +452,18 @@ function ScheduleEditor({ value, onChange }: { value: ShiftScheduleEntry[]; onCh
 
 interface QrItem { label: string; url: string; image: string; target: string }
 
-function QrSection({ data, onRegenerate, pendingChanges }: {
+function QrSection({ data, onRegenerate, onRegenerateNow, pendingChanges }: {
   data: SettingsResponse;
   onRegenerate: (target: string, question: string) => void;
+  onRegenerateNow: (target: string) => Promise<void>;
   pendingChanges: boolean;
 }) {
   const [items, setItems] = useState<QrItem[]>([]);
   const { settings, tables, slug } = data;
+  const menuEnv = useMenuEnv();
+  const qrMenu = useMemo(() => buildQrMenu(menuEnv), [menuEnv]);
+  const openQrMenu = useContextMenu(qrMenu, { highlightTarget: true });
+  const openSectionMenu = useContextMenu(QR_SECTION_MENU);
 
   useEffect(() => {
     let cancelled = false;
@@ -459,7 +484,8 @@ function QrSection({ data, onRegenerate, pendingChanges }: {
     link.click();
   };
 
-  const printAll = () => {
+  // Todos los QR, o uno solo (menú contextual).
+  const printAll = (only: QrItem[] = items) => {
     const win = window.open("", "_blank");
     if (!win) return;
     const doc = win.document;
@@ -468,7 +494,7 @@ function QrSection({ data, onRegenerate, pendingChanges }: {
     style.textContent = "body{font-family:sans-serif;margin:0;padding:16px}main{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}figure{margin:0;border:1px dashed #999;padding:12px;text-align:center;break-inside:avoid}img{width:100%;max-width:220px}figcaption{font-size:20px;font-weight:700;margin-top:6px}small{display:block;color:#555}";
     doc.head.appendChild(style);
     const main = doc.createElement("main");
-    for (const item of items) {
+    for (const item of only) {
       const figure = doc.createElement("figure");
       const img = doc.createElement("img");
       img.src = item.image;
@@ -485,7 +511,15 @@ function QrSection({ data, onRegenerate, pendingChanges }: {
   };
 
   return (
-    <section className={p.card} style={{ marginTop: "1rem" }}>
+    <section
+      className={p.card}
+      style={{ marginTop: "1rem" }}
+      onContextMenu={event => openSectionMenu(event, {
+        general: settings.qrMode === "general",
+        count: items.length,
+        actions: { printAll: () => printAll(), regenerateAll: () => onRegenerateNow(settings.qrMode === "general" ? "general" : "all") },
+      })}
+    >
       <div className={p.header} style={{ marginBottom: "0.75rem" }}>
         <div className={p.titleBlock}>
           <h2 className={p.cardTitle} style={{ margin: 0 }}>QR para imprimir</h2>
@@ -495,7 +529,7 @@ function QrSection({ data, onRegenerate, pendingChanges }: {
           </p>
         </div>
         <div className={p.headerActions}>
-          <button type="button" className={p.btn} onClick={printAll} disabled={items.length === 0}><Printer size={16} aria-hidden /> Imprimir</button>
+          <button type="button" className={p.btn} onClick={() => printAll()} disabled={items.length === 0}><Printer size={16} aria-hidden /> Imprimir</button>
           <button
             type="button"
             className={p.btnGhost}
@@ -511,7 +545,16 @@ function QrSection({ data, onRegenerate, pendingChanges }: {
       {pendingChanges && <p className={p.notice} style={{ marginBottom: "0.75rem" }}>Guardá los cambios para ver los QR actualizados.</p>}
       <div className={p.qrGrid}>
         {items.map(item => (
-          <div key={item.target} className={p.qrCard}>
+          <div
+            key={item.target}
+            className={p.qrCard}
+            onContextMenu={event => openQrMenu(event, {
+              label: item.label,
+              target: item.target,
+              url: item.url,
+              actions: { download: () => download(item), print: () => printAll([item]), regenerate: () => onRegenerateNow(item.target) },
+            })}
+          >
             <img src={item.image} alt={item.label} className={p.qrImage} />
             <span className={p.qrLabel}>{item.label}</span>
             <div className={p.headerActions} style={{ justifyContent: "center" }}>

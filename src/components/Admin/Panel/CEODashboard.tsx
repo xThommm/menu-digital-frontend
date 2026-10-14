@@ -1,6 +1,6 @@
 import Cobweb from "../../Halloween/Cobweb";
 import { useSpooky } from "../../../hooks/useHalloween";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import apiClient from "../../../api/client";
 import { listAdminPayments } from "../../../api/adminPayments";
@@ -15,6 +15,11 @@ import type {
   CrmSummary,
 } from "../../../types";
 import s from "./CEODashboard.module.css";
+import { useContextMenu } from "../../../features/contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../features/contextMenu/hooks/useMenuEnv";
+import { buildIndicatorMenu, buildRecentClientMenu, INDICATOR, type IndicatorTarget } from "./dashboardAdminMenu";
+
+type MenuHandler = (event: MouseEvent<HTMLElement>) => void;
 
 // Genera los cortes del conic-gradient del donut a partir del desglose por
 // plan. Usa las mismas variables --admin-plan-* que ya pintan los pills y
@@ -59,6 +64,13 @@ export default function CEODashboard() {
   const [paymentsData, setPaymentsData] = useState<AdminPaymentsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const menuEnv = useMenuEnv();
+  const indicatorMenu = useMemo(() => buildIndicatorMenu(menuEnv), [menuEnv]);
+  const recentMenu = useMemo(() => buildRecentClientMenu(menuEnv), [menuEnv]);
+  const openIndicatorMenu = useContextMenu(indicatorMenu, { highlightTarget: true });
+  const openRecentMenu = useContextMenu(recentMenu, { highlightTarget: true });
+  // Clic derecho en un indicador: ir al detalle.
+  const goTo = (targets: IndicatorTarget[]): MenuHandler => event => openIndicatorMenu(event, { targets });
 
   useEffect(() => {
     let cancelled = false;
@@ -134,12 +146,14 @@ export default function CEODashboard() {
           <KpiCard
             icon={<UsersIcon />}
             label="Clientes"
+            onContextMenu={goTo(INDICATOR.clients)}
             value={stats ? stats.usuarios.total : "—"}
             detail={stats ? `${stats.usuarios.activos} cuentas activas` : "Dato no disponible"}
           />
           <KpiCard
             icon={<MenuIcon />}
             label="Menús publicados"
+            onContextMenu={goTo(INDICATOR.clients)}
             value={stats ? stats.usuarios.conMenuPublicado : "—"}
             detail={stats ? `${publishedPercent}% de las cuentas` : "Dato no disponible"}
             tone="success"
@@ -153,6 +167,7 @@ export default function CEODashboard() {
           <KpiCard
             icon={<PaymentsIcon />}
             label="Importe acreditado"
+            onContextMenu={goTo(INDICATOR.payments)}
             value={payments ? formatPaymentAmount(payments.appliedAmount, payments.currency) : "—"}
             detail={payments ? `${payments.applied} pagos con plan aplicado` : "Dato no disponible"}
             tone="gold"
@@ -188,16 +203,16 @@ export default function CEODashboard() {
               to="/sellers/crm"
             />
             <div className={s.attentionList}>
-              <AttentionRow label="Problemas de pago" value={attention?.paymentIssues} tone="danger" />
-              <AttentionRow label="Suscripciones vencidas" value={attention?.expiredSubscriptions} tone="danger" />
-              <AttentionRow label="Vencen en los próximos 30 días" value={attention?.expiringSubscriptions} tone="warning" />
-              <AttentionRow label="Planes sin vencimiento registrado" value={attention?.missingExpirySubscriptions} tone="warning" />
-              <AttentionRow label="Seguimientos vencidos" value={attention?.overdueFollowUps} tone="warning" />
-              <AttentionRow label="Onboarding incompleto" value={attention?.incompleteOnboarding} />
+              <AttentionRow label="Problemas de pago" value={attention?.paymentIssues} tone="danger" onContextMenu={goTo(INDICATOR.attention("payment_issue"))} />
+              <AttentionRow label="Suscripciones vencidas" value={attention?.expiredSubscriptions} tone="danger" onContextMenu={goTo(INDICATOR.attention("subscription_expired"))} />
+              <AttentionRow label="Vencen en los próximos 30 días" value={attention?.expiringSubscriptions} tone="warning" onContextMenu={goTo(INDICATOR.attention("subscription_expiring"))} />
+              <AttentionRow label="Planes sin vencimiento registrado" value={attention?.missingExpirySubscriptions} tone="warning" onContextMenu={goTo(INDICATOR.attention("subscription_missing_expiry"))} />
+              <AttentionRow label="Seguimientos vencidos" value={attention?.overdueFollowUps} tone="warning" onContextMenu={goTo(INDICATOR.attention("follow_up_overdue"))} />
+              <AttentionRow label="Onboarding incompleto" value={attention?.incompleteOnboarding} onContextMenu={goTo(INDICATOR.attention("onboarding_incomplete"))} />
             </div>
           </article>
 
-          <article className={s.panel}>
+          <article className={s.panel} onContextMenu={goTo(INDICATOR.payments)}>
             <PanelHeader
               eyebrow="Estado financiero"
               title="Pagos"
@@ -237,7 +252,7 @@ export default function CEODashboard() {
                   const count = planBreakdown[plan];
                   const percent = totalClients ? Math.round((count / totalClients) * 100) : 0;
                   return (
-                    <li className={s.legendRow} key={plan}>
+                    <li className={s.legendRow} key={plan} onContextMenu={goTo(INDICATOR.plan(plan))}>
                       <span className={`${s.legendDot} ${s[`planFill_${plan}`]}`} />
                       <span className={s.legendLabel}>{PLAN_LABEL[plan]}</span>
                       <span className={s.legendValue}>{crmSummary ? `${count} · ${percent}%` : "—"}</span>
@@ -267,7 +282,12 @@ export default function CEODashboard() {
           {recentClients.length > 0 ? (
             <div className={s.recentList}>
               {recentClients.map((client) => (
-                <Link className={s.recentRow} to={`/sellers/crm?client=${client._id}`} key={client._id}>
+                <Link
+                  className={s.recentRow}
+                  to={`/sellers/crm?client=${client._id}`}
+                  key={client._id}
+                  onContextMenu={event => openRecentMenu(event, { client, origin: window.location.origin })}
+                >
                   <span className={s.avatar} aria-hidden="true">
                     {(client.businessName || client.username).charAt(0).toUpperCase()}
                   </span>
@@ -304,11 +324,12 @@ interface KpiCardProps {
   value: string | number;
   detail: string;
   tone?: "neutral" | "success" | "gold";
+  onContextMenu?: MenuHandler;
 }
 
-function KpiCard({ icon, label, value, detail, tone = "neutral" }: KpiCardProps) {
+function KpiCard({ icon, label, value, detail, tone = "neutral", onContextMenu }: KpiCardProps) {
   return (
-    <article className={`${s.kpiCard} ${s[`kpi_${tone}`]}`}>
+    <article className={`${s.kpiCard} ${s[`kpi_${tone}`]}`} onContextMenu={onContextMenu}>
       <Cobweb corner="br" size={58} />
       <div className={s.kpiHeader}>
         <span>{label}</span>
@@ -362,13 +383,14 @@ function PanelHeader({ eyebrow, title, action, to }: {
   );
 }
 
-function AttentionRow({ label, value, tone = "neutral" }: {
+function AttentionRow({ label, value, tone = "neutral", onContextMenu }: {
   label: string;
   value?: number;
   tone?: "neutral" | "warning" | "danger";
+  onContextMenu?: MenuHandler;
 }) {
   return (
-    <div className={s.attentionRow}>
+    <div className={s.attentionRow} onContextMenu={onContextMenu}>
       <span className={`${s.attentionDot} ${s[`dot_${value ? tone : "neutral"}`]}`} />
       <span>{label}</span>
       <strong>{value ?? "—"}</strong>

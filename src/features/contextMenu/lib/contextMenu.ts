@@ -66,7 +66,7 @@ export function resolveMenuItems<C>(
     };
 
     if (item.type === "submenu") {
-      const children = resolveMenuItems(item.items, context, `${base.id}/`);
+      const children = resolveMenuItems(resolveValue(item.items, context), context, `${base.id}/`);
       // Un submenú sin opciones visibles no se muestra vacío.
       if (children.length > 0) resolved.push({ ...base, type: "submenu", items: children });
       return;
@@ -76,7 +76,7 @@ export function resolveMenuItems<C>(
       ...base,
       type: "action",
       danger: item.danger === true,
-      confirm: item.confirm ? resolveValue(item.confirm, context) : null,
+      confirm: item.confirm ? resolveValue(item.confirm, context) ?? null : null,
       run: () => item.run(context),
       successMessage: item.successMessage ? resolveValue(item.successMessage, context) : null,
       errorMessage: item.errorMessage ? resolveValue(item.errorMessage, context) : null,
@@ -181,6 +181,18 @@ export function shouldUseNativeMenu(pointerType: string): boolean {
 // ── Ejecución centralizada ──────────────────────────────────────────────────
 
 export const DEFAULT_ACTION_ERROR = "No se pudo completar la acción. Intentá de nuevo.";
+
+/**
+ * Error con un mensaje pensado para mostrar tal cual (ej. "Este pedido
+ * todavía no tiene comandas"). El aviso de error del menú usa ese texto en
+ * lugar del `errorMessage` genérico de la acción.
+ */
+export class MenuActionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MenuActionError";
+  }
+}
 
 export type ActionOutcome = "done" | "cancelled" | "failed";
 

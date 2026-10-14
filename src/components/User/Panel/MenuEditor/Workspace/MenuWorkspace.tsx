@@ -428,7 +428,8 @@ function BoardSectionBody({
   const sectionKey = seccion?._id ?? LOOSE_SECTION;
 
   return (
-    <div ref={setNode} style={style} className={cx(ws.sectionGroup, isDragging && rs.placeholder)}>
+    // data-section-id: lo usa el menú contextual del tablero (MenuEditor).
+    <div ref={setNode} style={style} className={cx(ws.sectionGroup, isDragging && rs.placeholder)} data-section-id={seccion?._id}>
       {showHeader && (
         <WorkspaceSection
           title={title}

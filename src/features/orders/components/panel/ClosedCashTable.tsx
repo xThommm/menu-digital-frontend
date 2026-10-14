@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
 import DataTable, { type DataTableColumn } from "../../../../components/Common/DataTable/DataTable";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { exportCashSession } from "../../api/ordersApi";
+import { cashCloseFileName, downloadBlob } from "../../lib/download";
+import { printCashClose } from "../../lib/print/cashClose";
+import { buildClosedCashMenu } from "./cashMenu";
+
+const CLOSED_CASH_MENU = buildClosedCashMenu();
 import { listClosedCash } from "../../api/ordersApi";
 import { errorMessage } from "../../lib/errors";
 import { formatDateTime, formatMoney } from "../../lib/format";
@@ -27,6 +34,7 @@ export default function ClosedCashTable({ version, onError }: { version: number;
   const [to, setTo] = useState("");
   const [data, setData] = useState<ClosedCashResponse | null>(null);
   const [selected, setSelected] = useState<CashSession | null>(null);
+  const openRowMenu = useContextMenu(CLOSED_CASH_MENU, { highlightTarget: true });
 
   useEffect(() => {
     let cancelled = false;
@@ -83,6 +91,14 @@ export default function ClosedCashTable({ version, onError }: { version: number;
         rows={data?.sessions ?? []}
         columns={columns}
         getRowId={s => String(s.id)}
+        onRowContextMenu={(event, row) => openRowMenu(event, {
+          session: row,
+          actions: {
+            showDetail: () => setSelected(row),
+            exportExcel: async () => downloadBlob(await exportCashSession(row.id), cashCloseFileName(row.registerName, row.closedAt ?? row.openedAt)),
+            print: () => printCashClose(row),
+          },
+        })}
         minWidth={1000}
         loading={!data}
         emptyMessage={activeFilters > 0 ? "Ningún cierre cumple ese filtro." : "Todavía no se cerró ninguna caja."}
