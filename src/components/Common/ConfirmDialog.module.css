@@ -1,0 +1,124 @@
+/* Ventana de confirmación propia (ConfirmDialog.tsx). */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal) + 60);
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--admin-bg-base) 72%, transparent);
+  font-family: var(--font-sans);
+}
+
+.dialog {
+  width: min(100%, 400px);
+  padding: var(--space-5);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--admin-radius-xl);
+  background: var(--admin-bg-raised);
+  box-shadow: var(--admin-shadow-popover);
+}
+
+.title {
+  margin: 0;
+  color: var(--admin-text-primary);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.message {
+  margin: var(--space-2) 0 0;
+  color: var(--admin-text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+.cancel,
+.accept,
+.danger {
+  composes: md-button from global;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-min-size);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--control-radius);
+  background: var(--admin-bg-elevated);
+  color: var(--admin-text-secondary);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.accept {
+  border-color: var(--admin-gold);
+  background: var(--admin-gold);
+  color: var(--admin-gold-ink);
+}
+
+.danger {
+  border-color: var(--admin-red-border);
+  background: var(--admin-red-bg);
+  color: var(--admin-red-text);
+}
+
+.cancel:hover:not(:disabled) { border-color: var(--admin-gold); }
+.accept:hover:not(:disabled) { background: var(--admin-gold-hover); }
+.danger:hover:not(:disabled) { border-color: currentColor; }
+
+.cancel:focus-visible,
+.accept:focus-visible,
+.danger:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 3px;
+}
+
+.cancel:disabled,
+.accept:disabled,
+.danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Campo de texto (lo que antes era window.prompt) ── */
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+}
+
+.fieldLabel {
+  color: var(--admin-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.input {
+  min-height: var(--control-min-size);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--admin-border-default);
+  border-radius: var(--control-radius);
+  background: var(--admin-bg-elevated);
+  color: var(--admin-text-primary);
+  font-family: inherit;
+  font-size: var(--text-base);
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 1px;
+  border-color: var(--admin-gold);
+}

@@ -7,6 +7,7 @@ import type { DuelGame as DuelConfig, DuelState } from "../types";
 import GameProduct from "./GameProduct";
 import v from "../../orders/components/customer/VenueOrder.module.css";
 import s from "./Games.module.css";
+import { useDialogs } from "../../../context/useDialogs";
 
 // Duelo de la carta: juego competitivo, cada uno desde su celular. Uno crea la
 // sala y los demás se suman con el código o el enlace. Rondas cortas de opción
@@ -29,6 +30,7 @@ interface Props {
 }
 
 export default function DuelGame({ slug, game, room, items, hidePrices, canOrder, onOpenItem, initialCode }: Props) {
+  const dialogs = useDialogs();
   const { state } = room;
 
   if (!state) {
@@ -49,7 +51,9 @@ export default function DuelGame({ slug, game, room, items, hidePrices, canOrder
       )}
       {state.status === "finished" && <Finished state={state} room={room} />}
 
-      <button type="button" className={v.bannerLeave} onClick={() => { if (window.confirm("¿Salir de la partida?")) room.leave(); }}>
+      <button type="button" className={v.bannerLeave} onClick={async () => {
+          if (await dialogs.confirm({ title: "¿Salir de la partida?", confirmLabel: "Salir", danger: true })) room.leave();
+        }}>
         Salir de la partida
       </button>
     </>

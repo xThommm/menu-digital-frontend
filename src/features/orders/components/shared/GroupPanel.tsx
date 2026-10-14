@@ -9,6 +9,7 @@ import { uuid } from "../../lib/storage";
 import type { GroupSession, GroupStaffApi } from "../../types";
 import p from "../panel/panel.module.css";
 import s from "./Bill.module.css";
+import { useDialogs } from "../../../../context/useDialogs";
 
 // Pedido grupal de una mesa, visto por el personal (app del operador y Mesas
 // del panel): abrirlo, mostrar el QR / código para que los comensales se
@@ -28,6 +29,7 @@ interface Props {
 }
 
 export default function GroupPanel({ api, slug, tableNumber, group, onChanged, onAuthError, onNotice }: Props) {
+  const dialogs = useDialogs();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showJoin, setShowJoin] = useState(false);
@@ -77,9 +79,14 @@ export default function GroupPanel({ api, slug, tableNumber, group, onChanged, o
     }, "No se pudo enviar el pedido del grupo.");
   };
 
-  const close = () => {
-    const pending = group.cart.length > 0 ? " Lo que cargaron y no se envió se descarta." : "";
-    if (!window.confirm(`¿Cerrar el pedido grupal de la mesa ${tableNumber}?${pending} La mesa sigue abierta.`)) return;
+  const close = async () => {
+    const pending = group.cart.length > 0 ? "Lo que cargaron y no se envió se descarta. " : "";
+    if (!(await dialogs.confirm({
+      title: `¿Cerrar el pedido grupal de la mesa ${tableNumber}?`,
+      message: `${pending}La mesa sigue abierta.`,
+      confirmLabel: "Cerrar pedido grupal",
+      danger: group.cart.length > 0,
+    }))) return;
     void run(() => api.close(group.id), "No se pudo cerrar el pedido grupal.");
   };
 

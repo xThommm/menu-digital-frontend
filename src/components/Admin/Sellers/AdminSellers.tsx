@@ -22,6 +22,7 @@ import { buildSellerMenu, buildSellersPageMenu } from "./sellerContextMenu";
 import SellerProfileModal from "./SellerProfileModal";
 import SellerTestUserModal from "./SellerTestUserModal";
 import s from "./AdminSellers.module.css";
+import { useDialogs } from "../../../context/useDialogs";
 
 const ADMIN_SELLERS_QUERY_KEY = (includeInactive: boolean) => ["admin-sellers", includeInactive] as const;
 
@@ -489,6 +490,7 @@ function SellerEditPanel({
   const [receivesLeads, setReceivesLeads] = useState(seller.receivesLeads ?? false);
   const [error, setError] = useFeedbackMessage("error");
   const [saving, setSaving] = useState(false);
+  const dialogs = useDialogs();
   const [deactivating, setDeactivating] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const submitting = useRef(false);
@@ -550,7 +552,12 @@ function SellerEditPanel({
 
   const toggleActive = async () => {
     if (!seller.active) return; // reactivar se hace editando (o no está soportado aún)
-    if (!window.confirm(`¿Dar de baja a ${seller.name}? Deja de poder iniciar sesión, pero se conserva su historial.`)) {
+    if (!(await dialogs.confirm({
+      title: `¿Dar de baja a ${seller.name}?`,
+      message: "Deja de poder iniciar sesión, pero se conserva su historial.",
+      confirmLabel: "Dar de baja",
+      danger: true,
+    }))) {
       return;
     }
     setDeactivating(true);

@@ -6,6 +6,7 @@ import { errorMessage } from "../../lib/errors";
 import { formatDateTime } from "../../lib/format";
 import type { MpConnection } from "../../types";
 import p from "./panel.module.css";
+import { useDialogs } from "../../../../context/useDialogs";
 
 // Configuración → Pagos: conectar la cuenta de Mercado Pago del local para
 // cobrar pedidos de take away / delivery. El dinero entra directo a esa
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export default function PaymentsSection({ onChange }: Props) {
+  const dialogs = useDialogs();
   const [params, setParams] = useSearchParams();
   const [connection, setConnection] = useState<MpConnection | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,7 +77,12 @@ export default function PaymentsSection({ onChange }: Props) {
   };
 
   const disconnect = async () => {
-    if (!window.confirm("Se desconecta tu cuenta de Mercado Pago y los clientes dejan de poder pagar online. Para devolver pagos anteriores vas a tener que volver a conectarla. ¿Desconectar?")) return;
+    if (!(await dialogs.confirm({
+      title: "¿Desconectar Mercado Pago?",
+      message: "Se desconecta tu cuenta y los clientes dejan de poder pagar online. Para devolver pagos anteriores vas a tener que volver a conectarla.",
+      confirmLabel: "Desconectar",
+      danger: true,
+    }))) return;
     setBusy(true);
     setError(null);
     try {

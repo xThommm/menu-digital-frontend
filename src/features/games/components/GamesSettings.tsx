@@ -8,6 +8,7 @@ import {
 import type { GamePool, GamesCatalog, GamesSettings as Settings, GamesSettingsPayload } from "../types";
 import p from "../../orders/components/panel/panel.module.css";
 import s from "./GamesSettings.module.css";
+import { useDialogs } from "../../../context/useDialogs";
 
 // Sección "Juegos" de Configuración: habilitar cada juego para comensales y
 // administrar sus opciones (productos y categorías que participan, preguntas,
@@ -123,6 +124,7 @@ function NumberField({ label, value, min, max, onChange, disabled }: {
 }
 
 export default function GamesSettings() {
+  const dialogs = useDialogs();
   const [payload, setPayload] = useState<GamesSettingsPayload | null>(null);
   const [draft, setDraft] = useState<Settings | null>(null);
   // Las preguntas se editan como texto (una por renglón) y se pasan a lista al guardar.
@@ -266,10 +268,14 @@ export default function GamesSettings() {
                   type="button"
                   className={`${p.btnGhost} ${p.small}`}
                   disabled={saving}
-                  onClick={() => {
-                    if (window.confirm(`¿Eliminar la categoría "${category.name || "nueva"}" con sus preguntas?`)) {
-                      setCategories(questions.categories.filter((_, i) => i !== index));
-                    }
+                  onClick={async () => {
+                    const accepted = await dialogs.confirm({
+                      title: `¿Eliminar la categoría "${category.name || "nueva"}"?`,
+                      message: "Se eliminan también sus preguntas. El cambio se aplica al guardar.",
+                      confirmLabel: "Eliminar categoría",
+                      danger: true,
+                    });
+                    if (accepted) setCategories(questions.categories.filter((_, i) => i !== index));
                   }}
                 >
                   Eliminar categoría

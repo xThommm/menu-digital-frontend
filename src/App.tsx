@@ -2,6 +2,7 @@ import { BrowserRouter } from "react-router-dom";
 import { Suspense } from "react";
 import { AuthProvider } from "./context/AuthProvider";
 import { NotificationProvider } from "./context/NotificationProvider";
+import { DialogProvider } from "./context/DialogProvider";
 import { ContextMenuProvider } from "./features/contextMenu/components/ContextMenuProvider";
 import { getGlobalMenuItems } from "./features/contextMenu/globalMenu";
 import AppRoutes from "./routes/AppRoutes";
@@ -13,13 +14,15 @@ export default function App() {
     <BrowserRouter>
       <HalloweenEffects />
       <NotificationProvider>
-        <ContextMenuProvider getGlobalItems={getGlobalMenuItems}>
-          <AuthProvider>
-            <Suspense fallback={<FullScreenLoader />}>
-              <AppRoutes />
-            </Suspense>
-          </AuthProvider>
-        </ContextMenuProvider>
+        <DialogProvider>
+          <ContextMenuProvider getGlobalItems={getGlobalMenuItems}>
+            <AuthProvider>
+              <Suspense fallback={<FullScreenLoader />}>
+                <AppRoutes />
+              </Suspense>
+            </AuthProvider>
+          </ContextMenuProvider>
+        </DialogProvider>
       </NotificationProvider>
     </BrowserRouter>
   );

@@ -10,6 +10,7 @@ import type { DeliveryAssignMode, DeliveryConfirmBy, MpConnection, OrderSettings
 import PaymentsSection from "./PaymentsSection";
 import p from "./panel.module.css";
 import OwnerAlertsCard from "../../../ownerAlerts/OwnerAlertsCard";
+import { useDialogs } from "../../../../context/useDialogs";
 
 // Configuración de Gestión de pedidos: QR general o por mesa, cantidad de
 // mesas, si los comensales pueden pedir solos, historial en su navegador y
@@ -28,6 +29,7 @@ const toDraft = (settings: OrderSettings): Draft => ({
 });
 
 export default function OrdersSettingsPage() {
+  const dialogs = useDialogs();
   const settings = useOrderSettings();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
@@ -65,7 +67,12 @@ export default function OrdersSettingsPage() {
   };
 
   const regenerate = async (target: string, question: string) => {
-    if (!window.confirm(question)) return;
+    if (!(await dialogs.confirm({
+      title: target === "all" ? "¿Regenerar los QR?" : "¿Regenerar el QR?",
+      message: question,
+      confirmLabel: "Regenerar",
+      danger: true,
+    }))) return;
     try {
       settings.setData(await regenerateQr(target));
     } catch (err) {
@@ -494,7 +501,7 @@ function QrSection({ data, onRegenerate, pendingChanges }: {
             className={p.btnGhost}
             onClick={() => onRegenerate(
               settings.qrMode === "general" ? "general" : "all",
-              "Los QR impresos actuales van a dejar de servir para pedir. ¿Regenerar?",
+              "Los QR impresos actuales van a dejar de servir para pedir.",
             )}
           >
             <RefreshCw size={16} aria-hidden /> Regenerar {settings.qrMode === "general" ? "QR" : "todos"}
@@ -515,7 +522,7 @@ function QrSection({ data, onRegenerate, pendingChanges }: {
                 <button
                   type="button"
                   className={`${p.btnGhost} ${p.small}`}
-                  onClick={() => onRegenerate(item.target, `El QR impreso de la ${item.label} va a dejar de servir. ¿Regenerar?`)}
+                  onClick={() => onRegenerate(item.target, `El QR impreso de la ${item.label} va a dejar de servir.`)}
                   aria-label={`Regenerar ${item.label}`}
                 >
                   <RefreshCw size={14} aria-hidden />

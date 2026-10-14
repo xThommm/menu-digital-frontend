@@ -38,6 +38,7 @@ import {
 } from "./crmHelpers";
 import { EventDotIcon } from "./crmIcons";
 import s from "./SellerCrm.module.css";
+import { useDialogs } from "../../../context/useDialogs";
 
 // ══════════════════════════════════════════════════════════════════
 // Drawer de detalle — perfil + controles de CRM + actividad (notas + eventos)
@@ -70,6 +71,7 @@ export default function ClientDrawer({
   const [changingActive, setChangingActive] = useState(false);
   const [copyingLink, setCopyingLink] = useState(false);
   const { success: notifySuccess, error: notifyError } = useNotifications();
+  const dialogs = useDialogs();
   const receivers = useQuery({
     queryKey: ["admin-sellers", false],
     queryFn: ({ signal }) => listAdminSellers(false, signal),
@@ -244,11 +246,9 @@ export default function ClientDrawer({
   const toggleClientActive = async () => {
     if (!detail || changingActive) return;
     const nextActive = !detail.user.active;
-    const confirmed = window.confirm(
-      nextActive
-        ? "¿Activar esta cuenta y permitir el acceso público?"
-        : "¿Desactivar esta cuenta? El cliente y su carta dejarán de estar accesibles."
-    );
+    const confirmed = await dialogs.confirm(nextActive
+      ? { title: "¿Activar esta cuenta?", message: "La cuenta y su carta vuelven a estar accesibles al público.", confirmLabel: "Activar" }
+      : { title: "¿Desactivar esta cuenta?", message: "El cliente y su carta dejarán de estar accesibles.", confirmLabel: "Desactivar", danger: true });
     if (!confirmed) return;
 
     setChangingActive(true);

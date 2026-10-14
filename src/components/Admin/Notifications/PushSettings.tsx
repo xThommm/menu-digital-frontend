@@ -21,6 +21,7 @@ import { extractServerMessage } from "../../../lib/apiErrors";
 import { formatDateAR } from "../../../lib/dates";
 import { describeDevice } from "../../../lib/pushDevices";
 import s from "./PushSettings.module.css";
+import { useDialogs } from "../../../context/useDialogs";
 
 // Tipos que se pueden silenciar, en el orden en que se muestran. El backend
 // manda la lista vigente: lo que no esté acá se muestra con su clave.
@@ -43,6 +44,7 @@ const formatSeen = (iso: string | null) => (iso
 export default function PushSettings() {
   const push = useAdminPush();
   const toast = useNotifications();
+  const dialogs = useDialogs();
   const queryClient = useQueryClient();
   const [removingID, setRemovingID] = useState<string | null>(null);
   const [savingPreferences, setSavingPreferences] = useState(false);
@@ -57,7 +59,12 @@ export default function PushSettings() {
 
   const removeDevice = async (device: AdminPushDevice, isCurrent: boolean) => {
     const name = describeDevice(device.userAgent);
-    if (!window.confirm(`¿Dejar de mandar avisos a "${name}"?`)) return;
+    if (!(await dialogs.confirm({
+      title: "¿Quitar este dispositivo?",
+      message: `Se dejan de mandar avisos a "${name}".`,
+      confirmLabel: "Quitar",
+      danger: true,
+    }))) return;
 
     setRemovingID(device.id);
     try {

@@ -38,6 +38,7 @@ import { extractServerMessage } from "../../../lib/apiErrors";
 import { formatDateAR } from "../../../lib/dates";
 import PushSettings from "./PushSettings";
 import s from "./AdminNotifications.module.css";
+import { useDialogs } from "../../../context/useDialogs";
 
 const PAGE_SIZE = 20;
 
@@ -83,6 +84,7 @@ export default function AdminNotifications() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useNotifications();
+  const dialogs = useDialogs();
   const [box, setBox] = useState<AdminNotificationBox>("inbox");
   const [status, setStatus] = useState<AdminNotificationStatus>("all");
   const [page, setPage] = useState(1);
@@ -180,8 +182,13 @@ export default function AdminNotifications() {
     await refreshAll();
   }, "No se pudo archivar la notificación.");
 
-  const remove = (notification: AdminNotification) => {
-    if (!window.confirm(`¿Eliminar "${notification.title}"? No se puede deshacer.`)) return;
+  const remove = async (notification: AdminNotification) => {
+    if (!(await dialogs.confirm({
+      title: `¿Eliminar "${notification.title}"?`,
+      message: "No se puede deshacer.",
+      confirmLabel: "Eliminar",
+      danger: true,
+    }))) return;
     return run(async () => {
       await deleteAdminNotification(notification.id);
       if (openID === notification.id) setOpenID(null);
@@ -196,12 +203,15 @@ export default function AdminNotifications() {
     }, "No se pudo eliminar la notificación.");
   };
 
-  const applyBulk = (action: AdminNotificationBulkAction) => {
+  const applyBulk = async (action: AdminNotificationBulkAction) => {
     const ids = [...selected];
     if (ids.length === 0) return;
-    if (action === "delete" && !window.confirm(
-      `¿Eliminar ${ids.length} notificación(es)? No se puede deshacer.`
-    )) return;
+    if (action === "delete" && !(await dialogs.confirm({
+      title: `¿Eliminar ${ids.length} notificación(es)?`,
+      message: "No se puede deshacer.",
+      confirmLabel: "Eliminar",
+      danger: true,
+    }))) return;
 
     return run(async () => {
       await bulkUpdateAdminNotifications(ids, action);
