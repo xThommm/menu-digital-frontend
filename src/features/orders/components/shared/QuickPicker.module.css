@@ -25,7 +25,8 @@
   gap: 0.4rem;
   margin-inline: -0.25rem;
   padding: 0.5rem 0.25rem;
-  background: var(--admin-bg-base);
+  /* Del color de lo que hay detrás (el modal del panel lo cambia). */
+  background: var(--qp-bar-bg, var(--admin-bg-base));
 }
 
 .chips {

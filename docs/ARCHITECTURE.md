@@ -2593,13 +2593,19 @@ del panel y queda en el historial. Los pedidos del mozo y del panel entran
   (localStorage tolerante, `uuid`, `deviceId`), `units.ts` (aclaraciones **por
   unidad** → líneas agrupadas por aclaración), `venueSession.ts` (sesión "en el
   local" 4 h, mesa elegida e historial del comensal: 30 pedidos / 30 días),
-  `waiterSession.ts`, `qrUrls.ts`, `errors.ts`.
+  `waiterSession.ts`, `qrUrls.ts`, `errors.ts`, `floor.ts` (el salón: qué hay en
+  cada mesa de la 1 a la cantidad configurada, y sus filtros), `quickPick.ts`
+  (carga del personal: categorías, simple/variante con el mismo criterio que las
+  tarjetas de la carta, sumar al pedido y "Otra vuelta" con lo que la mesa ya pidió)
+  y `waiterDrafts.ts` (lo cargado sin enviar en cada mesa, en el dispositivo del
+  operador, 12 h).
 - `hooks/usePanelData.ts` — configuración, mozos y carta para las páginas del panel.
 - `hooks/useVenueSession.ts` — lee `?mesa=<token>` al montar, lo saca de la URL,
   lo valida con `/public/:slug/context` y guarda la sesión.
-- `components/shared/` — `ProductPicker` (buscador sobre la carta v2, mismo
-  criterio simple/variante que las tarjetas) y `UnitLinesEditor` (cantidades y una
-  aclaración por unidad). Colores por variables `--ol-*` que define cada contenedor.
+- `components/shared/` — `QuickPicker` (la carta v2 como botones grandes por
+  categoría, con buscador; un toque suma una unidad, una variante es un botón), `TableFloor`
+  (grilla del salón y `FloorSheet`) y `UnitLinesEditor` (cantidades y una
+  aclaración por unidad, colores por variables `--ol-*` que define cada contenedor).
 - `components/panel/` — `OrdersLayout` (barra lateral propia reusando
   `DashboardLayout.module.css`, dock móvil y bloqueo si no es Pro),
   `OrdersBoard` (columnas Sin confirmar / En preparación / Listos, consulta cada
@@ -2615,7 +2621,12 @@ del panel y queda en el historial. Los pedidos del mozo y del panel entran
   mozo", "Mis pedidos") y `VenueOrderDrawer` (carrito del comensal en el local:
   aclaraciones por unidad, mesa si el QR es general, envío al panel y
   confirmación).
-- `components/waiter/WaiterApp` — tomador de pedidos en `/:slug/mozo`.
+- `components/waiter/WaiterApp` — tomador de pedidos en `/:slug/mozo`. Cada vista
+  es una entrada del historial (el "atrás" del celular vuelve a la anterior).
+  `WaiterTables` es el salón (`GET /waiter/tables` trae también `occupied`: las
+  mesas de otros operadores, sin su cuenta) y `WaiterTableScreen` la pantalla de una
+  mesa: "Cargar" (`QuickPicker` + barra para revisar o enviar) y "Cuenta"
+  (`WaiterTableCard`).
 
 Rutas (`routes/AppRoutes.tsx`): `/pedidos`, `/pedidos/historial`,
 `/pedidos/mozos`, `/pedidos/caja` y `/pedidos/configuracion` dentro de

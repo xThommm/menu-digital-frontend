@@ -77,6 +77,8 @@ export default function TablesPage() {
   const selectedSession = selected === null ? null : (open ?? []).find(session => session.tableNumber === selected) ?? null;
   const selectedGroup = selected === null ? null : groupOf(selected);
 
+  const newOrderSession = newOrderTable === null ? null : (open ?? []).find(session => session.tableNumber === newOrderTable) ?? null;
+
   const select = (table: FloorTable) => {
     setNotice(null);
     if (table.kind === "free" && !table.group) setNewOrderTable(table.tableNumber);
@@ -159,6 +161,8 @@ export default function TablesPage() {
           tableCount={tableCount}
           waiters={waiters.data ?? []}
           initialTable={newOrderTable}
+          initialWaiterId={newOrderSession?.waiterId ?? null}
+          tableOrders={newOrderSession?.orders}
           onClose={() => setNewOrderTable(null)}
           onCreated={order => {
             setNewOrderTable(null);
