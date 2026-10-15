@@ -3,7 +3,7 @@ import type { PublicMenuPayload } from "../../../types";
 import type {
   Bill, BillApi, GroupLineInput, GroupMemberView, GroupSession, GroupStaffApi,
   CourierOrder, CourierPanel, CourierSessionInfo, CustomerDeliveryInfo,
-  CustomerOrderReceipt, OnlineCheckout, OnlineCheckoutStatus, OnlineOrderingConfig, OnlineServiceType, Order, OrderLineInput, SectorTicketsResponse, ServiceInput, StationSessionInfo, TableSession,
+  CustomerOrderReceipt, OccupiedTable, OnlineCheckout, OnlineCheckoutStatus, OnlineOrderingConfig, OnlineServiceType, Order, OrderLineInput, SectorTicketsResponse, ServiceInput, StationSessionInfo, TableSession,
   Ticket, TicketStatus, VenueContext, WaiterSessionInfo,
 } from "../types";
 
@@ -128,9 +128,10 @@ export const sendWaiterOrder = (token: string, body: ServiceInput & {
   timeoutMs: 15_000,
 });
 
-// "Mis mesas": mesas abiertas del operador (y las que no tomó nadie), con sus pedidos.
+// Salón: mesas abiertas del operador (y las que no tomó nadie), con sus pedidos.
 export const getWaiterTables = (token: string, signal?: AbortSignal) =>
-  apiFetch<{ sessions: TableSession[] }>("/api/orders/waiter/tables", { headers: waiterAuth(token), signal });
+  // occupied: ausente con un backend anterior.
+  apiFetch<{ sessions: TableSession[]; occupied?: OccupiedTable[] }>("/api/orders/waiter/tables", { headers: waiterAuth(token), signal });
 
 export const closeWaiterTable = (token: string, id: number, force = false) =>
   apiFetch<{ session: TableSession }>(`/api/orders/waiter/tables/${id}/close`, waiterJson(token, { force }));

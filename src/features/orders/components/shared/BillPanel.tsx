@@ -18,7 +18,7 @@ const GUEST_MENU = buildBillGuestMenu();
 const PAYMENT_MENU = buildBillPaymentMenu();
 
 // Cuenta de una mesa: dividirla (por productos, partes iguales o importes) y
-// registrar pagos parciales. La usan la app del operador ("Mis mesas") y Mesas
+// registrar pagos parciales. La usan la app del operador (el salón) y Mesas
 // en el panel, cada una con su API (misma forma, distinta sesión).
 //
 // Acá no se cobra nada: el personal anota lo que cobró, con qué medio y quién

@@ -23,11 +23,12 @@ import type { TableFocusState } from "./ordersBoardMenu";
 import { buildTableMenu } from "./tablesMenu";
 import p from "./panel.module.css";
 
-// Mesas: sesiones de mesa abiertas (de la primera comanda hasta que se
-// cierra la cuenta) con su consumo, y el historial de las cerradas. Desde
-// acá se puede cerrar cualquier mesa, dividir su cuenta, registrar los pagos y
-// manejar su pedido grupal; el operador hace lo mismo con las suyas desde su
-// tomador de pedidos.
+// Mesas: el salón con todas las mesas del local y su estado (una sesión de
+// mesa va de la primera comanda hasta que se cierra la cuenta), y el
+// historial de las cerradas. Al tocar una abierta se puede sumarle un pedido,
+// cerrarla, dividir su cuenta, registrar los pagos y manejar su pedido
+// grupal; una libre abre el alta de pedido con la mesa elegida. El operador
+// hace lo mismo con las suyas desde su tomador de pedidos.
 
 const POLL_MS = 15_000;
 // Avisos del cierre que piden confirmar: pedidos sin entregar o cuenta sin terminar de cobrar.
@@ -79,14 +80,29 @@ export default function TablesPage() {
     setOpen(prev => (prev ?? []).map(session => (session.id === updated.id ? { ...session, ...updated } : session)));
 
   const closed = (session: TableSession) => {
+    setSelected(null);
     setOpen(prev => (prev ?? []).filter(s => s.id !== session.id));
     setNotice(`Mesa ${session.tableNumber} cerrada · ${formatMoney(session.totalAmount)} en ${session.ordersCount} pedido(s).`);
     setHistoryVersion(v => v + 1);
   };
 
-  // Pedidos grupales de mesas que todavía no tienen ningún pedido.
-  const openTables = new Set((open ?? []).map(session => session.tableNumber));
-  const waiting = groups.filter(group => !openTables.has(group.tableNumber));
+  const closeSheet = useCallback(() => setSelected(null), []);
+  const groupOf = (tableNumber: number) => groups.find(group => group.tableNumber === tableNumber) ?? null;
+  const selectedSession = selected === null ? null : (open ?? []).find(session => session.tableNumber === selected) ?? null;
+  const selectedGroup = selected === null ? null : groupOf(selected);
+
+  const newOrderSession = newOrderTable === null ? null : (open ?? []).find(session => session.tableNumber === newOrderTable) ?? null;
+
+  const select = (table: FloorTable) => {
+    setNotice(null);
+    if (table.kind === "free" && !table.group) setNewOrderTable(table.tableNumber);
+    else setSelected(table.tableNumber);
+  };
+
+  const addOrder = (tableNumber: number) => {
+    setSelected(null);
+    setNewOrderTable(tableNumber);
+  };
 
   return (
     <div className={p.page}>
@@ -104,10 +120,10 @@ export default function TablesPage() {
       {open === null && !error && <p className={p.loading}>Cargando…</p>}
 
       {open !== null && (
-        <section aria-label="Mesas abiertas" style={{ marginTop: "1rem" }}>
-          <h2 className={p.cardTitle}>Abiertas ({open.length})</h2>
-          {open.length === 0 ? (
-            <p className={`${p.card} ${p.empty}`}>No hay mesas abiertas.</p>
+        <section className={p.card} aria-label="Salón" style={{ marginTop: "1rem" }}>
+          <h2 className={p.cardTitle}>Salón</h2>
+          {settings.loading && !settings.data ? (
+            <p className={p.loading}>Cargando…</p>
           ) : (
             <div className={p.tableGrid}>
               {open.map(session => (
@@ -130,25 +146,20 @@ export default function TablesPage() {
               ))}
             </div>
           )}
+          <p className={p.switchHint} style={{ marginTop: "0.75rem" }}>
+            Tocá una mesa libre para cargarle un pedido, o una ocupada para ver su cuenta, cobrarla o cerrarla.
+          </p>
         </section>
       )}
 
       {open !== null && (
-        <section className={p.card} style={{ marginTop: "1.5rem" }} aria-label="Pedidos grupales">
-          <h2 className={p.cardTitle}>Pedidos grupales</h2>
+        <section className={p.card} style={{ marginTop: "1.5rem" }} aria-label="Pedido grupal">
+          <h2 className={p.cardTitle}>Pedido grupal</h2>
           <p className={p.switchHint} style={{ marginBottom: "0.75rem" }}>
             Los comensales de una mesa arman el pedido entre todos, cada uno desde su celular, y sale como un solo pedido con el nombre de quién pidió cada cosa.
-            Abrilo acá para una mesa que todavía no pidió nada; en las mesas abiertas está dentro de cada una.
+            Abrilo acá para una mesa que todavía no pidió nada; en el salón, las mesas con uno abierto lo muestran al tocarlas.
           </p>
-          <div className={p.stack}>
-            {waiting.map(group => (
-              <div key={group.id} className={p.stack} style={{ gap: "0.4rem" }}>
-                <span className={p.tableName}>Mesa {group.tableNumber}</span>
-                <GroupPanel api={ownerGroupApi} slug={slug} tableNumber={group.tableNumber} group={group} onChanged={refresh} onNotice={setNotice} />
-              </div>
-            ))}
-            <OpenGroupForm api={ownerGroupApi} onOpened={refresh} />
-          </div>
+          <OpenGroupForm api={ownerGroupApi} onOpened={refresh} />
         </section>
       )}
 
@@ -183,7 +194,6 @@ function OpenTableCard({
   now: number;
   onUpdated: (session: TableSession) => void;
   onClosed: (session: TableSession) => void;
-  onError: (message: string | null) => void;
   onReload: () => void;
   onNotice: (message: string) => void;
   tableLink: string | null;
@@ -212,16 +222,18 @@ function OpenTableCard({
   const paid = session.paidAmount ?? 0;
   const [confirm, setConfirm] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Dentro de la hoja: el error de la página quedaría tapado.
+  const [error, setError] = useState<string | null>(null);
   const [guests, setGuests] = useState(session.guests === null ? "" : String(session.guests));
 
   const close = async (force: boolean) => {
     setBusy(true);
-    onError(null);
+    setError(null);
     try {
       onClosed(await closeTableSession(session.id, force));
     } catch (err) {
       if (CLOSE_WARNINGS.includes(errorCode(err) ?? "")) setConfirm(errorMessage(err, "La mesa tiene pedidos sin entregar."));
-      else onError(errorMessage(err, "No se pudo cerrar la mesa."));
+      else setError(errorMessage(err, "No se pudo cerrar la mesa."));
     } finally {
       setBusy(false);
     }
@@ -233,7 +245,7 @@ function OpenTableCard({
     try {
       onUpdated(await setTableGuests(session.id, value));
     } catch (err) {
-      onError(errorMessage(err, "No se pudo guardar la cantidad de comensales."));
+      setError(errorMessage(err, "No se pudo guardar la cantidad de comensales."));
     }
   };
 
@@ -260,7 +272,7 @@ function OpenTableCard({
     >
       <div className={p.tableHead}>
         <div className={p.titleBlock}>
-          <span className={p.tableName}>Mesa {session.tableNumber}</span>
+          {/* El número de mesa ya está en el título de la hoja. */}
           <span className={p.tableMeta}>
             {session.waiterName ?? "Sin operador"} · abierta {elapsedLabel(session.openedAt, now)} ({formatTime(session.openedAt)})
           </span>
@@ -315,6 +327,8 @@ function OpenTableCard({
 
       <GroupPanel api={ownerGroupApi} slug={slug} tableNumber={session.tableNumber} group={group} onChanged={onReload} onNotice={onNotice} />
 
+      {error && <p className={p.error} role="alert">{error}</p>}
+
       {confirm ? (
         <div className={p.error}>
           {confirm} ¿Cerrar la mesa igual?
@@ -324,9 +338,14 @@ function OpenTableCard({
           </div>
         </div>
       ) : (
-        <button type="button" className={p.btnPrimary} disabled={busy} onClick={() => close(false)}>
-          {busy ? "Cerrando…" : "Cerrar mesa"}
-        </button>
+        <div className={p.headerActions}>
+          <button type="button" className={p.btn} onClick={onAddOrder}>
+            <Plus size={16} aria-hidden /> Agregar pedido
+          </button>
+          <button type="button" className={p.btnPrimary} style={{ flex: 1 }} disabled={busy} onClick={() => close(false)}>
+            {busy ? "Cerrando…" : "Cerrar mesa"}
+          </button>
+        </div>
       )}
 
       {showBill && (
