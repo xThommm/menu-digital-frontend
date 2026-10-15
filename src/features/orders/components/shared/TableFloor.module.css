@@ -1,0 +1,118 @@
+/* Salón: una baldosa por mesa. La libre casi no pesa; la ocupada sube de
+   tono, la propia lleva el acento y lo que pide atención (pedidos sin
+   entregar) va en naranja de advertencia. */
+
+.floor { display: flex; flex-direction: column; gap: 0.9rem; }
+
+/* Filtros en una sola fila: en el celular se deslizan en vez de partirse. */
+.filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -0.25rem; padding-inline: 0.25rem; }
+.filters > * { flex-shrink: 0; }
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+}
+
+.tile {
+  composes: md-button from global;
+  width: 100%;
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.7rem 0.75rem;
+  border: none;
+  border-radius: 20px;
+  background: var(--tone-low);
+  color: var(--admin-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tile:focus-visible { outline: 3px solid var(--tone-focus); outline-offset: 2px; }
+
+.number {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.total { margin-top: auto; font-size: 0.9rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.meta { display: flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; opacity: 0.8; }
+
+.guests { display: inline-flex; align-items: center; gap: 0.2rem; }
+
+.pending {
+  margin-top: 0.15rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--admin-warning-core, #e08b45) 22%, transparent);
+  color: color-mix(in srgb, var(--admin-warning-core, #e08b45) 75%, var(--admin-text-primary));
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Cuánto de la cuenta ya se cobró. */
+.paidBar {
+  width: 100%;
+  height: 4px;
+  margin-top: 0.3rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  overflow: hidden;
+}
+
+.paidBar > span { display: block; height: 100%; border-radius: inherit; background: var(--admin-success-core); }
+
+/* ── Estados ── */
+/* Libre: solo el contorno punteado, sin relleno. */
+.free {
+  background: transparent;
+  border: 1.5px dashed color-mix(in srgb, var(--admin-text-warm) 38%, transparent);
+  color: var(--admin-text-warm);
+}
+
+.free .number { color: var(--admin-text-secondary); }
+
+.open { background: var(--tone-highest); }
+
+.mine { background: var(--tone-primary-container); color: var(--tone-on-primary-container); }
+.mine .number { color: var(--admin-text-primary); }
+
+/* Abierta desde el QR o el panel: nadie la tomó todavía. */
+.unassigned {
+  background: var(--tone-high);
+  box-shadow: inset 0 0 0 1.5px var(--tone-outline);
+}
+
+.other { background: var(--tone); color: var(--admin-text-warm); }
+
+/* Productos cargados en este dispositivo que todavía no se mandaron. */
+.draft {
+  margin-top: 0.15rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--admin-gold);
+  color: var(--admin-gold-ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}

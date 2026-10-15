@@ -383,11 +383,15 @@
 .manualBody {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  /* La carta tiene su propio scroll (alto mínimo 0): sin esto, en una columna
+     la grilla le da una fila más baja que su alto y el pedido se le monta. */
+  grid-auto-rows: max-content;
   gap: 1.5rem;
   align-items: start;
 }
 
-.manualPicker { max-height: 62dvh; overflow-y: auto; padding-right: 0.5rem; }
+/* La barra de categorías de la carga rápida queda pegada arriba: va del tono del modal. */
+.manualPicker { max-height: 62dvh; overflow-y: auto; padding-right: 0.5rem; --qp-bar-bg: var(--tone-float); }
 
 .manualCart { display: flex; flex-direction: column; gap: 1rem; }
 

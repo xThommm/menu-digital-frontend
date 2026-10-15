@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "../../../../context/useAuth";
 import { createPanelOrder } from "../../api/ordersApi";
@@ -6,9 +6,10 @@ import { useOrderingMenu } from "../../hooks/usePanelData";
 import { errorMessage } from "../../lib/errors";
 import { formatMoney } from "../../lib/format";
 import { uuid } from "../../lib/storage";
+import { addPicked, repeatCandidates, type PickedProduct } from "../../lib/quickPick";
 import { lineKey, toOrderLines, unitsCount, unitsTotal, type UnitLine } from "../../lib/units";
 import type { Order, Waiter } from "../../types";
-import ProductPicker, { type PickedProduct } from "../shared/ProductPicker";
+import QuickPicker from "../shared/QuickPicker";
 import { emptyService, serviceReady, toServiceInput, type ServiceDraft } from "../../lib/service";
 import ServiceFields from "../shared/ServiceFields";
 import UnitLinesEditor from "../shared/UnitLinesEditor";
@@ -16,21 +17,28 @@ import p from "./panel.module.css";
 import s from "./OrdersBoard.module.css";
 
 // Alta manual de un pedido desde el panel (ej. un pedido en la barra, por
-// teléfono o un delivery). Entra confirmado.
+// teléfono o un delivery). Entra confirmado. Desde el salón llega con la
+// mesa (y su operador) ya elegidos y con lo que la mesa ya pidió para
+// "Otra vuelta".
 
 interface Props {
   tableCount: number;
   waiters: Waiter[];
+  initialTable?: number;
+  initialWaiterId?: number | null;
+  // Pedidos de la mesa: "Otra vuelta" ofrece repetir lo que ya pidió.
+  tableOrders?: Order[];
   onClose: () => void;
   onCreated: (order: Order) => void;
 }
 
-export default function ManualOrderModal({ tableCount, waiters, onClose, onCreated }: Props) {
+export default function ManualOrderModal({ tableCount, waiters, initialTable, initialWaiterId, tableOrders, onClose, onCreated }: Props) {
   const { user } = useAuth();
   const menu = useOrderingMenu(user?.slug);
   const [lines, setLines] = useState<UnitLine[]>([]);
-  const [service, setService] = useState<ServiceDraft>(() => emptyService("counter"));
-  const [waiterId, setWaiterId] = useState("");
+  const [service, setService] = useState<ServiceDraft>(() =>
+    initialTable ? { ...emptyService("table"), table: String(initialTable) } : emptyService("counter"));
+  const [waiterId, setWaiterId] = useState(initialWaiterId ? String(initialWaiterId) : "");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,14 +47,12 @@ export default function ManualOrderModal({ tableCount, waiters, onClose, onCreat
   const request = useRef<{ key: string; id: string } | null>(null);
   const hidePrices = menu.data?.user.menuDisplay?.hidePrices === true;
 
-  const addProduct = (product: PickedProduct) => {
-    setLines(prev => {
-      const key = lineKey(product.itemId, product.option);
-      const existing = prev.find(line => lineKey(line.itemId, line.option) === key);
-      if (existing) return prev.map(line => (line === existing ? { ...line, quantity: Math.min(20, line.quantity + 1) } : line));
-      return [...prev, { ...product, quantity: 1, unitNotes: [] }];
-    });
-  };
+  const addProduct = (product: PickedProduct) => setLines(prev => addPicked(prev, product));
+  const counts = useMemo(() => new Map(lines.map(line => [lineKey(line.itemId, line.option), line.quantity])), [lines]);
+  const repeat = useMemo(
+    () => (menu.data && tableOrders ? repeatCandidates(tableOrders, menu.data.menu, hidePrices) : []),
+    [menu.data, tableOrders, hidePrices]
+  );
 
   const submit = async () => {
     if (lines.length === 0 || !serviceReady(service)) return;
@@ -71,7 +77,7 @@ export default function ManualOrderModal({ tableCount, waiters, onClose, onCreat
     <div className={p.overlay} role="dialog" aria-modal="true" aria-label="Nuevo pedido" onClick={onClose}>
       <div className={`${p.modal} ${s.manualModal}`} onClick={event => event.stopPropagation()}>
         <header className={p.modalHeader}>
-          <h2 className={p.modalTitle}>Nuevo pedido</h2>
+          <h2 className={p.modalTitle}>{initialTable ? `Nuevo pedido · Mesa ${initialTable}` : "Nuevo pedido"}</h2>
           <button type="button" className={p.iconBtn} onClick={onClose} aria-label="Cerrar"><X size={18} aria-hidden /></button>
         </header>
 
@@ -79,7 +85,7 @@ export default function ManualOrderModal({ tableCount, waiters, onClose, onCreat
           <section className={s.manualPicker} aria-label="Productos">
             {menu.loading && <p className={p.loading}>Cargando carta…</p>}
             {menu.error && <p className={p.error}>{menu.error}</p>}
-            {menu.data && <ProductPicker menu={menu.data.menu} hidePrices={hidePrices} onPick={addProduct} />}
+            {menu.data && <QuickPicker menu={menu.data.menu} hidePrices={hidePrices} counts={counts} repeat={repeat} onPick={addProduct} />}
           </section>
 
           <section className={s.manualCart} aria-label="Pedido">

@@ -1,0 +1,219 @@
+/* Carga rápida: botones grandes para el dedo. El producto que ya está en el
+   pedido en curso sube al acento con su cantidad en una pastilla. */
+
+.picker { display: flex; flex-direction: column; gap: 1rem; }
+
+.rowTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-gold);
+}
+
+/* Barra de categorías: queda pegada arriba al bajar por la carta. */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-inline: -0.25rem;
+  padding: 0.5rem 0.25rem;
+  /* Del color de lo que hay detrás (el modal del panel lo cambia). */
+  background: var(--qp-bar-bg, var(--admin-bg-base));
+}
+
+.chips {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-width: 0;
+}
+
+.chip {
+  composes: md-button from global;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 40px;
+  padding: 0 0.95rem;
+  border: none;
+  background: var(--tone-secondary);
+  color: var(--tone-on-secondary);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chipActive { background: var(--admin-gold); color: var(--admin-gold-ink); font-weight: 600; }
+
+.searchBtn { padding: 0; width: 40px; justify-content: center; }
+
+.repeatChip { background: var(--tone-high); color: var(--admin-text-primary); }
+
+.chipOption { color: var(--admin-text-warm); }
+
+.chipCount {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 0.3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--admin-gold);
+  color: var(--admin-gold-ink);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 0.4rem 0 1rem;
+  border-radius: var(--control-radius);
+  background: var(--tone-highest);
+  color: var(--admin-text-warm);
+}
+
+.search:focus-within { outline: 2px solid var(--tone-focus); outline-offset: 1px; }
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.searchClose {
+  composes: md-button from global;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.empty { color: var(--admin-text-warm); font-size: 0.85rem; text-align: center; padding: 1rem 0; }
+
+.category { display: flex; flex-direction: column; }
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+/* Producto con variantes: toda la fila, un botón por variante. */
+.wide { grid-column: 1 / -1; }
+
+.tile {
+  composes: md-button from global;
+  position: relative;
+  width: 100%;
+  min-height: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 0.7rem 0.8rem;
+  border: none;
+  border-radius: 18px;
+  background: var(--tone);
+  color: var(--admin-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tile:focus-visible, .chip:focus-visible, .variant:focus-visible { outline: 3px solid var(--tone-focus); outline-offset: 2px; }
+
+.tile:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.tileOn { background: var(--tone-primary-container); }
+
+.tileTitle { font-size: 0.88rem; font-weight: 600; line-height: 1.25; padding-right: 1.6rem; }
+
+.tilePrice { font-size: 0.8rem; color: var(--admin-text-warm); font-variant-numeric: tabular-nums; }
+
+.tileOn .tilePrice { color: var(--tone-on-primary-container); }
+
+.tileCount {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--admin-gold);
+  color: var(--admin-gold-ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.off { font-size: 0.72rem; color: var(--admin-text-warm); }
+
+.variantTile { cursor: default; }
+
+.variantTile[aria-disabled] { opacity: 0.5; }
+
+.variants { display: flex; flex-wrap: wrap; gap: 0.4rem; width: 100%; }
+
+.variant {
+  composes: md-button from global;
+  position: relative;
+  flex: 1 1 120px;
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0.4rem 2rem 0.4rem 0.75rem;
+  border: none;
+  border-radius: 14px;
+  background: var(--tone-high);
+  color: var(--admin-text-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.variant:disabled { cursor: not-allowed; }
+
+.variantOn { background: var(--tone-primary-container); }
+
+.variantPrice { font-size: 0.75rem; font-weight: 400; color: var(--admin-text-warm); }
+
+.variant .tileCount { top: 50%; transform: translateY(-50%); }

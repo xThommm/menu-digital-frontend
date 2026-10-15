@@ -4,7 +4,7 @@ import p from "../panel/panel.module.css";
 
 // Cuenta de una mesa: todos los productos de sus pedidos, agrupados, con el
 // total. No suma lo cancelado ni lo devuelto. La usan el panel (Mesas) y el
-// tomador del operador (Mis mesas) para cobrar.
+// tomador del operador (el salón) para cobrar.
 
 interface BillLine {
   key: string;

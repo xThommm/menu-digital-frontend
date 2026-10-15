@@ -10,14 +10,17 @@ import { errorMessage, errorStatus } from "../../lib/errors";
 import { durationLabel, formatMoney, placeLabel } from "../../lib/format";
 import { emptyService, serviceReady, toServiceInput, type ServiceDraft } from "../../lib/service";
 import { uuid } from "../../lib/storage";
+import { addPicked, emptyDraft, type PickedProduct, type TableDraft } from "../../lib/quickPick";
+import { readDrafts, saveDrafts, type StoredDrafts } from "../../lib/waiterDrafts";
 import { lineKey, toOrderLines, unitsCount, unitsTotal, type UnitLine } from "../../lib/units";
 import { clearWaiterSession, readWaiterSession, saveWaiterSession } from "../../lib/waiterSession";
 import type { WaiterSessionInfo } from "../../types";
 import type { PublicMenuPayload } from "../../../../types";
-import ProductPicker, { type PickedProduct } from "../shared/ProductPicker";
+import QuickPicker from "../shared/QuickPicker";
 import ServiceFields from "../shared/ServiceFields";
 import UnitLinesEditor from "../shared/UnitLinesEditor";
 import WaiterHistory from "./WaiterHistory";
+import WaiterTableScreen from "./WaiterTableScreen";
 import WaiterTables from "./WaiterTables";
 import p from "../panel/panel.module.css";
 import s from "./WaiterApp.module.css";
@@ -29,19 +32,30 @@ import s from "./WaiterApp.module.css";
 // sesión del dueño en cada dispositivo.
 //
 // No es solo para tomar pedidos: al entrar muestra tres accesos grandes,
-// "Nuevo pedido", "Mis mesas" (la cuenta de cada mesa abierta, dividirla y
-// registrar los pagos, su pedido grupal y el cierre) e "Historial".
+// "Nuevo pedido", "Salón" (todas las mesas con su estado; cada una abre su
+// pantalla para cargarle productos y manejar su cuenta) e "Historial".
 
 type Phase =
   | { kind: "loading" }
   | { kind: "locked"; message: string }
   | { kind: "ready"; token: string; info: WaiterSessionInfo };
 
-type View = "home" | "new" | "tables" | "history";
+type View = "home" | "new" | "tables" | "table" | "history";
 
-const VIEW_TITLE: Record<Exclude<View, "home">, string> = {
+// Cada vista es una entrada del historial del navegador: el "atrás" del
+// celular vuelve a la vista anterior en vez de salir de la app.
+interface NavState { waiterView: View; table: number | null }
+
+const VIEWS: View[] = ["home", "new", "tables", "table", "history"];
+const navState = (state: unknown): NavState | null => {
+  if (!state || typeof state !== "object") return null;
+  const { waiterView, table } = state as Partial<NavState>;
+  return waiterView && VIEWS.includes(waiterView) ? { waiterView, table: typeof table === "number" ? table : null } : null;
+};
+
+const VIEW_TITLE: Record<Exclude<View, "home" | "table">, string> = {
   new: "Nuevo pedido",
-  tables: "Mis mesas",
+  tables: "Salón",
   history: "Historial",
 };
 
@@ -141,6 +155,10 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [openTables, setOpenTables] = useState<number | null>(null);
+  // Mesa abierta en la vista "table" y lo cargado sin enviar en cada mesa.
+  const [tableNumber, setTableNumber] = useState<number | null>(null);
+  const [drafts, setDrafts] = useState<StoredDrafts>(() => readDrafts(slug));
+  const [floorNotice, setFloorNotice] = useState<string | null>(null);
   const request = useRef<{ key: string; id: string } | null>(null);
   const hidePrices = menu?.user.menuDisplay?.hidePrices === true;
 
@@ -161,7 +179,7 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
     return false;
   }, [onLocked]);
 
-  // En el inicio, cuántas mesas abiertas atiende (para el acceso "Mis mesas").
+  // En el inicio, cuántas mesas abiertas atiende (para el acceso "Salón").
   useEffect(() => {
     if (view !== "home") return;
     const controller = new AbortController();
@@ -171,6 +189,27 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
     return () => controller.abort();
   }, [view, token, info.waiter.id, handleAuthError]);
 
+  // La entrada actual del historial es el inicio; cada vista nueva suma una.
+  useEffect(() => {
+    window.history.replaceState({ ...window.history.state, waiterView: "home", table: null } satisfies NavState, "");
+    const onPop = (event: PopStateEvent) => {
+      const nav = navState(event.state);
+      if (!nav) return;
+      if (nav.table !== null) setTableNumber(nav.table);
+      setView(nav.waiterView);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  useEffect(() => saveDrafts(slug, drafts), [slug, drafts]);
+
+  const go = (next: View, table: number | null = null) => {
+    window.history.pushState({ ...window.history.state, waiterView: next, table } satisfies NavState, "");
+    if (table !== null) setTableNumber(table);
+    setView(next);
+  };
+
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(null), 3500);
@@ -178,20 +217,28 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
   }, [toast]);
 
   const addProduct = (product: PickedProduct) => {
-    setLines(prev => {
-      const key = lineKey(product.itemId, product.option);
-      const existing = prev.find(line => lineKey(line.itemId, line.option) === key);
-      if (existing) return prev.map(line => (line === existing ? { ...line, quantity: Math.min(20, line.quantity + 1) } : line));
-      return [...prev, { ...product, quantity: 1, unitNotes: [] }];
-    });
+    setLines(prev => addPicked(prev, product));
     setToast(`+1 ${product.title}${product.option ? ` · ${product.option}` : ""}`);
   };
 
-  // Desde "Mis mesas": pedido nuevo con la mesa ya elegida.
-  const newOrderForTable = (tableNumber: number) => {
-    setService({ ...emptyService("table"), table: String(tableNumber) });
-    setView("new");
+  const openTable = (table: number) => {
+    setFloorNotice(null);
+    go("table", table);
   };
+
+  // La flecha hace lo mismo que el "atrás" del celular: desde la mesa vuelve
+  // al salón; desde el resto, al inicio.
+  const goBack = () => window.history.back();
+
+  const setDraft = (table: number, draft: TableDraft) =>
+    setDrafts(prev => {
+      const next = { ...prev };
+      if (draft.lines.length === 0 && !draft.notes) delete next[table];
+      else next[table] = { ...draft, savedAt: Date.now() };
+      return next;
+    });
+
+  const draftCounts = new Map(Object.entries(drafts).map(([table, draft]) => [Number(table), unitsCount(draft.lines)]));
 
   const send = async () => {
     if (!serviceReady(service) || lines.length === 0) return;
@@ -241,10 +288,10 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
           </div>
         ) : (
           <div className={s.viewTitle}>
-            <button type="button" className={p.iconBtn} onClick={() => setView("home")} aria-label="Volver al inicio">
+            <button type="button" className={p.iconBtn} onClick={goBack} aria-label={view === "table" ? "Volver al salón" : "Volver al inicio"}>
               <ArrowLeft size={20} aria-hidden />
             </button>
-            <h1 className={p.title}>{VIEW_TITLE[view]}</h1>
+            <h1 className={p.title}>{view === "table" ? `Mesa ${tableNumber}` : VIEW_TITLE[view]}</h1>
           </div>
         )}
         <button type="button" className={p.iconBtn} onClick={logout} aria-label="Cerrar sesión en este dispositivo">
@@ -254,7 +301,7 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
 
       {view === "home" && (
         <nav className={s.homeGrid} aria-label="Inicio">
-          <button type="button" className={`${s.homeBtn} ${s.homeBtnPrimary}`} onClick={() => setView("new")}>
+          <button type="button" className={`${s.homeBtn} ${s.homeBtnPrimary}`} onClick={() => go("new")}>
             <span className={s.homeIcon}><Plus size={26} aria-hidden /></span>
             <span className={s.homeText}>
               <span className={s.homeLabel}>Nuevo pedido</span>
@@ -263,16 +310,16 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
             {lines.length > 0 && <span className={s.homeBadge}>{unitsCount(lines)}</span>}
             <ChevronRight size={20} aria-hidden className={s.homeChevron} />
           </button>
-          <button type="button" className={s.homeBtn} onClick={() => setView("tables")}>
+          <button type="button" className={s.homeBtn} onClick={() => go("tables")}>
             <span className={s.homeIcon}><LayoutGrid size={26} aria-hidden /></span>
             <span className={s.homeText}>
-              <span className={s.homeLabel}>Mis mesas</span>
-              <span className={s.homeHint}>La cuenta, los cobros y el pedido grupal de cada mesa</span>
+              <span className={s.homeLabel}>Salón</span>
+              <span className={s.homeHint}>Todas las mesas: cuáles están libres, la cuenta y los cobros de las tuyas</span>
             </span>
             {openTables !== null && openTables > 0 && <span className={s.homeBadge}>{openTables}</span>}
             <ChevronRight size={20} aria-hidden className={s.homeChevron} />
           </button>
-          <button type="button" className={s.homeBtn} onClick={() => setView("history")}>
+          <button type="button" className={s.homeBtn} onClick={() => go("history")}>
             <span className={s.homeIcon}><History size={26} aria-hidden /></span>
             <span className={s.homeText}>
               <span className={s.homeLabel}>Historial</span>
@@ -287,7 +334,7 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
         <>
           {menuError && <p className={p.error}>{menuError}</p>}
           {!menu && !menuError && <p className={p.loading}>Cargando carta…</p>}
-          {menu && <ProductPicker menu={menu.menu} hidePrices={hidePrices} onPick={addProduct} />}
+          {menu && <QuickPicker menu={menu.menu} hidePrices={hidePrices} counts={new Map(lines.map(line => [lineKey(line.itemId, line.option), line.quantity]))} onPick={addProduct} />}
 
           {lines.length > 0 && (
             <button type="button" className={s.cartBar} onClick={() => setSheetOpen(true)}>
@@ -301,12 +348,34 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
 
       {view === "tables" && (
         <WaiterTables
-          slug={info.business.slug || slug}
           token={token}
           waiterId={info.waiter.id}
+          tableCount={tableCount}
+          hidePrices={hidePrices}
+          drafts={draftCounts}
+          notice={floorNotice}
           onAuthError={handleAuthError}
-          onNewOrder={newOrderForTable}
+          onOpenTable={openTable}
           onCountChange={setOpenTables}
+        />
+      )}
+
+      {view === "table" && tableNumber !== null && (
+        <WaiterTableScreen
+          key={tableNumber}
+          slug={info.business.slug || slug}
+          token={token}
+          tableNumber={tableNumber}
+          menu={menu}
+          menuError={menuError}
+          draft={drafts[tableNumber] ?? emptyDraft()}
+          onDraftChange={draft => setDraft(tableNumber, draft)}
+          onAuthError={handleAuthError}
+          onDone={message => {
+            setFloorNotice(message);
+            // La mesa se abrió desde el salón: volver es la entrada anterior.
+            window.history.back();
+          }}
         />
       )}
 
