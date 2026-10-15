@@ -1,5 +1,5 @@
 import {
-  Copy, Eye, FlaskConical, KeyRound, ListFilter, Mail, MessageCircle, Pencil, RefreshCw, RotateCcw, ShieldCheck, Shuffle,
+  Copy, Eye, FlaskConical, KeyRound, ListFilter, Mail, MessageCircle, Pencil, RefreshCw, RotateCcw, Shuffle,
   UserMinus, UserPlus, Users, Wallet,
 } from "lucide-react";
 import { buildWaLink } from "../../../lib/whatsapp.ts";
@@ -19,7 +19,6 @@ export interface SellerMenuHandlers {
   createTestUser: (seller: Seller) => void;
   /** Ver (y dar de baja) sus usuarios de prueba. */
   viewTestUsers: (seller: Seller) => void;
-  setAdmin: (seller: Seller, admin: boolean) => Promise<void>;
   setReceivesLeads: (seller: Seller, receivesLeads: boolean) => Promise<void>;
   deactivate: (seller: Seller) => Promise<void>;
   reactivate: (seller: Seller) => Promise<void>;
@@ -90,29 +89,6 @@ export function buildSellerMenu(handlers: SellerMenuHandlers): ContextMenuItem<S
       run: (seller) => handlers.setReceivesLeads(seller, !seller.receivesLeads),
       successMessage: (seller) => (seller.receivesLeads ? `${seller.name} deja de recibir leads.` : `${seller.name} recibe leads por turnos.`),
       errorMessage: "No se pudo cambiar el reparto de leads.",
-    },
-    {
-      id: "admin",
-      label: (seller) => (seller.admin ? "Quitar admin" : "Hacer admin"),
-      icon: ShieldCheck,
-      danger: true,
-      visible: (seller) => seller.active,
-      confirm: (seller) => (seller.admin
-        ? {
-          title: `¿Quitarle los permisos de admin a ${seller.name}?`,
-          message: "Deja de poder entrar al panel de administración. Sigue siendo vendedor.",
-          confirmLabel: "Quitar admin",
-          danger: true,
-        }
-        : {
-          title: `¿Hacer admin a ${seller.name}?`,
-          message: "Va a poder ver y cambiar todo el panel de administración: vendedores, pagos, planes y clientes.",
-          confirmLabel: "Hacer admin",
-          danger: true,
-        }),
-      run: (seller) => handlers.setAdmin(seller, !seller.admin),
-      successMessage: (seller) => (seller.admin ? `${seller.name} ya no es admin.` : `${seller.name} ahora es admin.`),
-      errorMessage: "No se pudieron cambiar los permisos.",
     },
     { type: "separator" },
     {

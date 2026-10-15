@@ -104,7 +104,6 @@ export default function AdminSellers() {
       resetPassword: setResetSeller,
       createTestUser: setTestUserSeller,
       viewTestUsers: setTestUsersSeller,
-      setAdmin: (seller, admin) => saveSeller(seller, { admin }),
       setReceivesLeads: (seller, receivesLeads) => saveSeller(seller, { receivesLeads }),
       openUrl: menuEnv.openUrl,
       navigate: (path) => menuEnv.navigate(path),
@@ -519,7 +518,6 @@ function SellerEditPanel({
   const [mail, setMail] = useState(seller.mail);
   const [number, setNumber] = useState(seller.number ? String(seller.number) : "");
   const [startDate, setStartDate] = useState(toDateInputValue(seller.startDate));
-  const [admin, setAdmin] = useState(seller.admin);
   const [influencer, setInfluencer] = useState(seller.influencer ?? false);
   const [receivesLeads, setReceivesLeads] = useState(seller.receivesLeads ?? false);
   const [error, setError] = useFeedbackMessage("error");
@@ -537,7 +535,6 @@ function SellerEditPanel({
     mail !== seller.mail ||
     number !== (seller.number ? String(seller.number) : "") ||
     startDate !== toDateInputValue(seller.startDate) ||
-    admin !== seller.admin ||
     influencer !== (seller.influencer ?? false) ||
     receivesLeads !== (seller.receivesLeads ?? false);
 
@@ -554,7 +551,6 @@ function SellerEditPanel({
         mail: normalizeText(mail),
         number: number.trim() ? Number(number) : null,
         startDate: startDate || null,
-        admin,
         influencer,
         receivesLeads,
       });
@@ -684,16 +680,6 @@ function SellerEditPanel({
               disabled={saving}
               onChange={(event) => setStartDate(event.target.value)}
             />
-          </label>
-          <label className={s.inlineCheckbox} htmlFor={`seller-${seller._id}-admin`}>
-            <input
-              id={`seller-${seller._id}-admin`}
-              type="checkbox" className="md-check"
-              checked={admin}
-              disabled={saving}
-              onChange={(event) => setAdmin(event.target.checked)}
-            />
-            Admin
           </label>
           <SellerLeadOptions
             idPrefix={`seller-${seller._id}`}

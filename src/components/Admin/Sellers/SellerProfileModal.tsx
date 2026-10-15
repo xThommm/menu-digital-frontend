@@ -25,7 +25,6 @@ export default function SellerProfileModal({ seller, onClose }: { seller: Seller
     ["Mail", seller.mail],
     ["Teléfono", seller.number ? String(seller.number) : "Sin cargar"],
     ["Perfil", seller.influencer ? role : `${role} · ${seller.receivesLeads ? "recibe leads" : "sin reparto de leads"}`],
-    ["Admin", seller.admin ? "Sí" : "No"],
     ["Vendedor desde", formatDateAR(seller.startDate, { calendarDate: true, fallback: "Sin definir" })],
     ["Alta", formatPaymentDate(seller.createdAt)],
   ];

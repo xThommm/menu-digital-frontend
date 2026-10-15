@@ -36,7 +36,6 @@ function handlers() {
     resetPassword: (s) => { calls.push(`password:${s.name}`); },
     createTestUser: (s) => { calls.push(`test-user:${s.name}`); },
     viewTestUsers: (s) => { calls.push(`test-users:${s.name}`); },
-    setAdmin: async (s, admin) => { calls.push(`admin:${s.name}:${admin}`); },
     setReceivesLeads: async (s, on) => { calls.push(`leads:${s.name}:${on}`); },
     deactivate: async (s) => { calls.push(`deactivate:${s._id}`); },
     reactivate: async (s) => { calls.push(`reactivate:${s._id}`); },
@@ -75,7 +74,7 @@ test("un vendedor activo ofrece perfil, copiar, usuario de prueba y dar de baja"
 
   assert.deepEqual(ids(items), [
     "profile", "edit", "copy", "copy/code", "copy/mail", "copy/number", "whatsapp", "mail-to",
-    "commissions", "clients", "password", "leads", "admin", "test-user", "test-users", "deactivate",
+    "commissions", "clients", "password", "leads", "test-user", "test-users", "deactivate",
   ]);
   assert.equal(action(items, "test-user").disabled, false);
   assert.equal(action(items, "deactivate").danger, true);
@@ -169,7 +168,7 @@ test("el menú general crea, actualiza y cambia la vista, marcando la vista actu
   assert.equal(action(all, "status/all").disabled, true);
 });
 
-test("lo que faltaba: editar, contacto, comisiones, CRM, leads y admin (con confirmación)", async () => {
+test("lo que faltaba: editar, contacto, comisiones, CRM y leads", async () => {
   const { calls, value } = handlers();
   const items = resolveMenuItems(buildSellerMenu(value), seller({ receivesLeads: true }));
   const { deps } = runner();
@@ -183,14 +182,6 @@ test("lo que faltaba: editar, contacto, comisiones, CRM, leads y admin (con conf
     "edit:Carla", "go:/sellers/crm?seller=64f000000000000000000401", "go:/sellers?sellerID=64f000000000000000000401",
     "open:mailto:carla@example.com", "leads:Carla:false",
   ]);
-
-  const admin = action(items, "admin");
-  assert.equal(admin.label, "Hacer admin");
-  assert.equal(admin.confirm?.danger, true);
-  assert.equal(await runMenuAction(admin, runner(false).deps), "cancelled");
-  assert.equal(calls.includes("admin:Carla:true"), false);
-  await runMenuAction(admin, runner(true).deps);
-  assert.equal(calls.at(-1), "admin:Carla:true");
 
   const influencer = resolveMenuItems(buildSellerMenu(value), seller({ influencer: true }));
   assert.ok(!ids(influencer).includes("leads") && !ids(influencer).includes("commissions"));

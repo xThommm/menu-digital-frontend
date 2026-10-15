@@ -25,7 +25,6 @@ export interface SellerCreatePayload {
   number?: number | null;
   startDate?: string | null;
   active?: boolean;
-  admin?: boolean;
   influencer?: boolean;
   receivesLeads?: boolean;
 }
@@ -37,7 +36,6 @@ export interface SellerUpdatePayload {
   number?: number | null;
   startDate?: string | null;
   active?: boolean;
-  admin?: boolean;
   influencer?: boolean;
   receivesLeads?: boolean;
 }
