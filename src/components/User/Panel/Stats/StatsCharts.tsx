@@ -1,9 +1,13 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import DataTable from "../../../Common/DataTable/DataTable";
 import s from "./UserStats.module.css";
 import { parseLocalDate } from "./statsInsights";
 import { niceMax } from "./salesReport";
 import { formatDay, formatDayLong, formatPercent } from "./statsFormat";
+import { useContextMenu } from "../../../../features/contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../../features/contextMenu/hooks/useMenuEnv";
+import { buildChartMenu } from "./statsMenu";
+import { chartFileName, chartSvg, downloadChartPng } from "./chartImage";
 
 // Piezas de gráfico compartidas por Visitas, Ventas y Caja. Sin librería: son
 // barras en CSS, con el detalle exacto en un tooltip y en una tabla.
@@ -47,6 +51,9 @@ export function DailyChart({ days, previousDays, average, format, formatAxis, no
   valueHeader: string;
   detailLabel: string;
 }) {
+  const menuEnv = useMenuEnv();
+  const chartMenu = useMemo(() => buildChartMenu(menuEnv), [menuEnv]);
+  const openChartMenu = useContextMenu(chartMenu);
   // Un índice activo en vez del atributo `title` nativo: `title` no existe en
   // touch, así que en el celular —que es donde el dueño mira esto— el detalle
   // de cada día no se podía ver. Con estado, el mismo tooltip sirve para
@@ -58,8 +65,27 @@ export function DailyChart({ days, previousDays, average, format, formatAxis, no
   const shownPrevious = active !== null ? previous?.[active] : undefined;
   const withNoun = (value: number) => [format(value), noun(value)].filter(Boolean).join(" ");
 
+  // Clic derecho: copiar la barra de abajo del cursor (o todas) y descargar el gráfico.
+  const onChartMenu = (event: React.MouseEvent<HTMLElement>) => {
+    const bar = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-chart-index]") : null;
+    const day = bar ? days[Number(bar.dataset.chartIndex)] : undefined;
+    const title = `${valueHeader} por día`;
+    openChartMenu(event, {
+      point: day ? `${formatDayLong(day.date)}: ${withNoun(day.value)}` : null,
+      table: [`Día\t${valueHeader}`, ...days.map(d => `${formatDayLong(d.date)}\t${format(d.value)}`)].join("\n"),
+      actions: {
+        downloadImage: () => downloadChartPng(chartSvg({
+          title,
+          subtitle: days.length ? `${formatDayLong(days[0].date)} al ${formatDayLong(days[days.length - 1].date)}` : undefined,
+          points: days.map(d => ({ label: formatDay(d.date), value: d.value })),
+          formatAxis,
+        }), chartFileName(title)),
+      },
+    });
+  };
+
   return (
-    <div className={s.chartBlock}>
+    <div className={s.chartBlock} onContextMenu={onChartMenu}>
       <div className={s.chartFrame}>
         <YAxis max={max} format={formatAxis} />
         <div
@@ -90,6 +116,7 @@ export function DailyChart({ days, previousDays, average, format, formatAxis, no
               <button
                 type="button"
                 key={d.date}
+                data-chart-index={i}
                 aria-label={`${formatDayLong(d.date)}: ${withNoun(d.value)}${
                   before ? `; ${format(before.value)} el ${formatDayLong(before.date)}` : ""}`}
                 aria-pressed={active === i}

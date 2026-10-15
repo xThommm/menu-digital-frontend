@@ -7,6 +7,10 @@ import { formatPaymentAmount } from "../../../lib/adminPayments";
 import { formatDateAR } from "../../../lib/dates";
 import DataTable, { type DataTableColumn } from "../../Common/DataTable/DataTable";
 import s from "../sellerPanel.module.css";
+import { useMemo } from "react";
+import { useContextMenu } from "../../../features/contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../features/contextMenu/hooks/useMenuEnv";
+import { buildInfluencerCodeMenu, buildReferralMenu } from "../sellerPanelMenu";
 
 const columns: DataTableColumn<InfluencerLead>[] = [
   {
@@ -50,6 +54,11 @@ export default function InfluencerOverview() {
     gcTime: 0,
   });
   const data = overview.data;
+  const menuEnv = useMenuEnv();
+  const codeMenu = useMemo(() => buildInfluencerCodeMenu(menuEnv), [menuEnv]);
+  const referralMenu = useMemo(() => buildReferralMenu(menuEnv), [menuEnv]);
+  const openCodeMenu = useContextMenu(codeMenu);
+  const openReferralMenu = useContextMenu(referralMenu, { highlightTarget: true });
 
   const copyCode = async () => {
     if (!data) return;
@@ -72,7 +81,7 @@ export default function InfluencerOverview() {
 
         {data && !overview.isError && (
           <section className={s.section} aria-label="Resumen de referidos">
-            <div className={s.toolbar}>
+            <div className={s.toolbar} onContextMenu={(event) => openCodeMenu(event, { code: data.profile.code, origin: window.location.origin })}>
               <span>Tu código: <strong>{data.profile.code}</strong></span>
               <button className={s.secondaryButton} type="button" onClick={() => void copyCode()}>Copiar código</button>
             </div>
@@ -90,6 +99,7 @@ export default function InfluencerOverview() {
             rows={data?.leads ?? []}
             columns={columns}
             getRowId={(lead) => lead._id}
+            onRowContextMenu={(event, lead) => openReferralMenu(event, { lead, origin: window.location.origin })}
             minWidth={760}
             defaultSort={{ columnId: "createdAt", direction: "desc" }}
             search={{ accessor: (lead) => `${lead.businessName} ${lead.username} ${lead.slug}`, placeholder: "Buscar local" }}

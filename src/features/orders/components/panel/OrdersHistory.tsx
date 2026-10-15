@@ -12,6 +12,15 @@ import { CustomerInfo } from "./OrderCard";
 import { isRefundable } from "../../lib/payment";
 import PaymentBadge from "./PaymentBadge";
 import RefundModal from "./RefundModal";
+import ManualOrderModal from "./ManualOrderModal";
+import { buildHistoryOrderMenu, buildHistoryPageMenu } from "./ordersHistoryMenu";
+import { useOrderSettings, useWaiters } from "../../hooks/usePanelData";
+import { repeatOrderDraft, type RepeatDraft } from "../../lib/repeatOrder";
+import { useDialogs } from "../../../../context/useDialogs";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../contextMenu/hooks/useMenuEnv";
+
+const PAGE_MENU = buildHistoryPageMenu();
 import p from "./panel.module.css";
 
 // Historial de pedidos. Por defecto muestra el turno abierto (o el último,
@@ -70,12 +79,14 @@ type Scope = "shift" | "all";
 export default function OrdersHistory({ deliveryOnly = false, tabs = null }: { deliveryOnly?: boolean; tabs?: React.ReactNode }) {
   const [params, setParams] = useSearchParams();
   const paramShift = params.get("turno");
-  const [scope, setScope] = useState<Scope>("shift");
+  // ?repartidor=<id> (menú contextual de Repartidores): todas sus entregas.
+  const paramCourier = params.get("repartidor");
+  const [scope, setScope] = useState<Scope>(paramCourier ? "all" : "shift");
   // Turno actual o, si no hay uno abierto, el último (undefined: cargando).
   const [latestShift, setLatestShift] = useState<Shift | null | undefined>(undefined);
   const [status, setStatus] = useState<OrderStatus | "">("");
   const [serviceType, setServiceType] = useState<ServiceType | "">(deliveryOnly ? "delivery" : "");
-  const [courier, setCourier] = useState("");
+  const [courier, setCourier] = useState(paramCourier ?? "");
   const [couriers, setCouriers] = useState<Courier[]>([]);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -86,6 +97,16 @@ export default function OrdersHistory({ deliveryOnly = false, tabs = null }: { d
   const [busyId, setBusyId] = useState<number | null>(null);
   const [returning, setReturning] = useState<{ id: number; reason: string } | null>(null);
   const [refunding, setRefunding] = useState<Order | null>(null);
+  // Menú contextual (ordersHistoryMenu.ts).
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [repeating, setRepeating] = useState<RepeatDraft | null>(null);
+  const dialogs = useDialogs();
+  const settings = useOrderSettings();
+  const waiters = useWaiters();
+  const menuEnv = useMenuEnv();
+  const orderMenu = useMemo(() => buildHistoryOrderMenu(menuEnv), [menuEnv]);
+  const openOrderMenu = useContextMenu(orderMenu, { highlightTarget: true });
+  const openPageMenu = useContextMenu(PAGE_MENU);
 
   useEffect(() => {
     if (!deliveryOnly) return;
@@ -167,6 +188,8 @@ export default function OrdersHistory({ deliveryOnly = false, tabs = null }: { d
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   const expandable = useMemo(() => ({
+    expandedId,
+    onExpandedChange: setExpandedId,
     label: (order: Order) => `Detalle del pedido ${order.number}`,
     renderPanel: (order: Order) => (
       <div className={p.stack} style={{ gap: "0.6rem" }}>
@@ -268,7 +291,29 @@ export default function OrdersHistory({ deliveryOnly = false, tabs = null }: { d
         )}
       </div>
     ),
-  }), [busyId, changeStatus, returning]);
+  }), [busyId, changeStatus, returning, expandedId]);
+
+  // Para el menú: el mismo cambio de estado, pero el error lo muestra el aviso del menú.
+  const reopenFromMenu = async (order: Order) => {
+    setBusyId(order.id);
+    try {
+      const updated = await updateOrderStatus(order.id, "pending");
+      setData(prev => prev && { ...prev, orders: prev.orders.map(o => (o.id === updated.id ? updated : o)) });
+    } finally {
+      setBusyId(null);
+    }
+  };
+  const markReturnedFromMenu = async (order: Order) => {
+    const reason = await dialogs.prompt({
+      title: `¿Marcar el pedido #${order.number} como devuelto?`,
+      message: "No suma a la venta y se descuenta en la caja que esté abierta.",
+      confirmLabel: "Marcar como devuelto",
+      danger: true,
+      field: { label: "Motivo (opcional)", placeholder: "Ej: llegó frío, producto equivocado", maxLength: 200 },
+    });
+    if (reason === null) return;
+    void changeStatus(order, "returned", reason || undefined);
+  };
 
   const subtitle = paramShift
     ? "Pedidos de un turno puntual."
@@ -279,7 +324,14 @@ export default function OrdersHistory({ deliveryOnly = false, tabs = null }: { d
         : latestShift === null ? "Todavía no hay turnos." : "Cargando turno…";
 
   return (
-    <div className={p.page}>
+    <div
+      className={p.page}
+      onContextMenu={event => openPageMenu(event, {
+        scope: paramShift ? "param" : scope,
+        shiftLabel: latestShift?.closedAt ? "Último turno" : "Turno actual",
+        actions: { showCurrent, showAll },
+      })}
+    >
       <header className={p.header}>
         <div className={p.titleBlock}>
           <h1 className={p.title}>{deliveryOnly ? "Historial de envíos" : "Historial de pedidos"}</h1>
@@ -369,6 +421,18 @@ export default function OrdersHistory({ deliveryOnly = false, tabs = null }: { d
         activeFilterCount={[status, deliveryOnly ? "" : serviceType, courier, from, to, table].filter(Boolean).length}
         onClearFilters={clearFilters}
         expandable={expandable}
+        onRowContextMenu={(event, order) => openOrderMenu(event, {
+          order,
+          expanded: expandedId === String(order.id),
+          busy: busyId === order.id,
+          actions: {
+            toggleDetails: target => setExpandedId(current => (current === String(target.id) ? null : String(target.id))),
+            reopen: reopenFromMenu,
+            markReturned: target => { void markReturnedFromMenu(target); },
+            refund: setRefunding,
+            repeat: target => setRepeating(repeatOrderDraft(target)),
+          },
+        })}
         loading={!data && !error}
         error={data ? null : error}
         onRetry={() => void load()}
@@ -384,6 +448,15 @@ export default function OrdersHistory({ deliveryOnly = false, tabs = null }: { d
 
       {refunding && (
         <RefundModal order={refunding} onClose={() => setRefunding(null)} onChanged={() => void load()} />
+      )}
+      {repeating && (
+        <ManualOrderModal
+          tableCount={settings.data?.settings.tableCount ?? 0}
+          waiters={waiters.data ?? []}
+          initial={repeating}
+          onClose={() => setRepeating(null)}
+          onCreated={() => { setRepeating(null); void load(); }}
+        />
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { listAdminPayments } from "../../../api/adminPayments";
 import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
@@ -17,7 +17,12 @@ import type {
   AdminPaymentOperation,
   AdminPaymentsResponse,
 } from "../../../types";
+import { useContextMenu } from "../../../features/contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../features/contextMenu/hooks/useMenuEnv";
+import { buildPaymentMenu, buildPaymentsPageMenu, crmClientPath } from "./paymentsMenu";
 import s from "./AdminPayments.module.css";
+
+const PAGE_MENU = buildPaymentsPageMenu();
 
 const paymentTone = (status: string | null) => {
   if (status === "approved") return s.toneSuccess;
@@ -84,13 +89,41 @@ export default function AdminPayments() {
     setPage(1);
   };
 
+  // Menú contextual (paymentsMenu.ts).
+  const menuEnv = useMenuEnv();
+  const paymentMenu = useMemo(() => buildPaymentMenu(menuEnv), [menuEnv]);
+  const openPaymentMenu = useContextMenu(paymentMenu, { highlightTarget: true });
+  const openPageMenu = useContextMenu(PAGE_MENU);
+  const filterByClient = (userID: string) => {
+    const next = new URLSearchParams(urlParams);
+    next.set("userID", userID);
+    setUrlParams(next, { replace: true });
+    setPage(1);
+  };
+  const clearFilters = () => {
+    setDraftSearch("");
+    setSearch("");
+    setStatus("all");
+    setEntitlement("all");
+    setOperation("all");
+    setPage(1);
+  };
+  const activeFilters = [search, status !== "all", entitlement !== "all", operation !== "all"].filter(Boolean).length;
+
   const payments = data?.payments || [];
   const summary = data?.summary;
   const pagination = data?.pagination;
   const selectedCustomer = payments.find((payment) => payment.customer)?.customer;
 
   return (
-    <div className={s.wrap}>
+    <div
+      className={s.wrap}
+      onContextMenu={(event) => openPageMenu(event, {
+        filteredByClient: Boolean(clientID),
+        activeFilters,
+        actions: { showAll: clearClientFilter, clearFilters },
+      })}
+    >
       <header className={s.topBar}>
         <div className={s.topBarInner}>
           <div>
@@ -199,11 +232,20 @@ export default function AdminPayments() {
               {payments.map((payment) => {
                 const expanded = expandedID === payment.id;
                 return (
-                  <article className={s.paymentRow} key={payment.id || payment.paymentID}>
+                  <article
+                    className={s.paymentRow}
+                    key={payment.id || payment.paymentID}
+                    onContextMenu={(event) => openPaymentMenu(event, {
+                      payment,
+                      expanded,
+                      filteredByClient: Boolean(clientID),
+                      actions: { filterByClient, toggleDetails: () => setExpandedID(expanded ? null : payment.id) },
+                    })}
+                  >
                     <div className={s.paymentMain}>
                       <div className={s.customerCell} data-label="Cliente">
                         {payment.customer?.id ? (
-                          <Link to={`/admin/crm?client=${payment.customer.id}`} className={s.customerLink}>
+                          <Link to={crmClientPath(payment.customer.id)} className={s.customerLink}>
                             {payment.customer.businessName || `@${payment.customer.username}`}
                           </Link>
                         ) : (

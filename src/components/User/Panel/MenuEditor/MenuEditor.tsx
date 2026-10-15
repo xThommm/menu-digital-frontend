@@ -43,12 +43,18 @@ import { countWorkspaceItems, matchesWorkspaceFilter, type WorkspaceFilter } fro
 import DragHandle from "./Reorder/DragHandle";
 import MenuReorderProvider from "./Reorder/MenuReorderProvider";
 import {
-  LOOSE_SECTION, allCategories, categoryDndId, findCategory, itemDndId, sectionDndId,
+  LOOSE_SECTION, allCategories, categoryDndId, findCategory, findItem, itemDndId, sectionDndId,
 } from "./Reorder/menuReorder";
 import { useReorderState } from "./Reorder/reorderContext";
 import { useMenuReorder } from "./Reorder/useMenuReorder";
 import { useReorderList, useReorderSortable } from "./Reorder/useReorderSortable";
 import { useMenuSectors, type SectorLink } from "../../../../features/orders/hooks/useMenuSectors";
+import { useContextMenu } from "../../../../features/contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../../features/contextMenu/hooks/useMenuEnv";
+import { MenuActionError } from "../../../../features/contextMenu/lib/contextMenu";
+import {
+  buildCategoryMenu, buildEditorBoardMenu, buildItemMenu, buildSectionMenu, buildSelectionMenu, locateInMenu, visibleInMenu,
+} from "./menuEditorMenu";
 import SectorField from "../../../../features/orders/components/shared/SectorField";
 import type { SectorTargetType } from "../../../../features/orders/types";
 import styles from "./MenuEditor.module.css";
@@ -1051,8 +1057,24 @@ export default function MenuEditorPage() {
         // puedan gestionar (reactivar) desde el editor.
         const menuRes  = await fetch("/api/users/me/menu", { headers: { Authorization: `Bearer ${token}` } });
         const menuJson = await parseApiResponse(menuRes, "No se pudo cargar el menú. Intentá recargar la página.");
-        setMenuData(menuJson.menu as MenuData);
+        const menu = menuJson.menu as MenuData;
+        setMenuData(menu);
         setLimits((menuJson.limits as typeof limits) ?? null);
+        // ?producto=<id> (ej. desde el ranking de Estadísticas): se despliega su
+        // categoría y el producto se resalta y se trae a la vista.
+        const params = new URLSearchParams(window.location.search);
+        const linked = params.get("producto");
+        const found = linked ? findItem(menu, linked) : null;
+        if (linked && found) {
+          unfoldCategory(found.catId, findCategory(menu, found.catId)?.sectionKey);
+          setExpandedCats(prev => new Set(prev).add(found.catId));
+          setFlashItemId(linked);
+        }
+        if (linked) {
+          params.delete("producto");
+          const query = params.toString();
+          window.history.replaceState(window.history.state, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "No se pudo cargar el menú. Intentá recargar la página.");
       } finally {
@@ -1060,7 +1082,7 @@ export default function MenuEditorPage() {
       }
     };
     fetchMenu();
-  }, [token, setError, parseApiResponse]);
+  }, [token, setError, parseApiResponse, unfoldCategory]);
 
   // ── Refresca el menú desde el backend ──────────────────────────────────────
 
@@ -2259,6 +2281,30 @@ export default function MenuEditorPage() {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [itemFormDirty]);
+
+  // ── Menú contextual (escritorio, ver menuEditorMenu.ts) ──────────────────
+  // Un solo manejador en el tablero decide qué se clickeó (onBoardContextMenu,
+  // más abajo): las filas y tarjetas memorizadas no reciben props nuevas.
+  const menuEnv = useMenuEnv();
+  const itemContextMenu = useMemo(() => buildItemMenu(menuEnv), [menuEnv]);
+  const selectionContextMenu = useMemo(() => buildSelectionMenu(), []);
+  const categoryContextMenu = useMemo(() => buildCategoryMenu(), []);
+  const sectionContextMenu = useMemo(() => buildSectionMenu(), []);
+  const boardContextMenu = useMemo(() => buildEditorBoardMenu(menuEnv), [menuEnv]);
+  const openItemContextMenu = useContextMenu(itemContextMenu);
+  const openSelectionContextMenu = useContextMenu(selectionContextMenu);
+  const openCategoryContextMenu = useContextMenu(categoryContextMenu);
+  const openSectionContextMenu = useContextMenu(sectionContextMenu);
+  const openBoardContextMenu = useContextMenu(boardContextMenu);
+
+  // "Cambiar imagen" desde el menú: al abrirse el formulario de ese producto
+  // se abre el selector de archivo.
+  const pendingImagePickRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!pendingImagePickRef.current || view !== "item-form" || activeItem?._id !== pendingImagePickRef.current) return;
+    pendingImagePickRef.current = null;
+    itemImageInputRef.current?.click();
+  }, [view, activeItem]);
 
   // ── Pantalla de carga ─────────────────────────────────────────────────────
 
@@ -3491,6 +3537,187 @@ export default function MenuEditorPage() {
       );
     });
 
+    // ── Menú contextual del tablero ──
+    // Pedido de una acción nueva del menú: el error del backend se muestra tal
+    // cual en el aviso (MenuActionError).
+    const editorRequest = async (url: string, init: RequestInit, fallback: string) => {
+      try {
+        return await parseApiResponse(await fetch(url, { headers: authHeaders, ...init }), fallback);
+      } catch (err) {
+        throw new MenuActionError(err instanceof Error ? err.message : fallback);
+      }
+    };
+    const startSelection = (itemIds: string[], menuIds: string[] = []) => guarded(() => {
+      setView("menu");
+      setSelectionMode(true);
+      setSelection({ items: new Set(itemIds), menus: new Set(menuIds) });
+    });
+    const deleteDisabled = limits?.disableMenuDelete === true;
+    const publicMenuLink = publicMenuUrl ? `${window.location.origin}${publicMenuUrl}` : null;
+
+    const onBoardContextMenu = (event: React.MouseEvent<HTMLElement>) => {
+      if (!menuData || !(event.target instanceof Element)) return;
+      const row = event.target.closest<HTMLElement>("[data-item-id]");
+      const card = event.target.closest<HTMLElement>("[data-cat-id]");
+      const group = event.target.closest<HTMLElement>("[data-section-id]");
+      const place = locateInMenu(menuData, {
+        itemId: row?.dataset.itemId, catId: card?.dataset.catId, sectionId: group?.dataset.sectionId,
+      });
+
+      if (selectionMode) {
+        openSelectionContextMenu(event, {
+          item: place.item,
+          itemSelected: place.item !== null && selectedIds.has(place.item._id),
+          selectedItems: selectedIds.size,
+          hasSelection: selectedIds.size > 0 || selectedMenuIds.size > 0,
+          busy: bulkBusy,
+          deleteDisabled,
+          actions: {
+            toggleItem: item => toggleSelectItem(item._id),
+            setAvailable: available => { void bulkSetAvailable(available); },
+            setHidden: hidden => { void bulkSetHidden(hidden); },
+            remove: () => setBulkDeleteConfirmOpen(true),
+            cancel: toggleSelectionMode,
+          },
+        }, { highlightElement: place.item ? row : null });
+        return;
+      }
+
+      if (place.item && place.cat && row) {
+        const { item, cat } = place;
+        openItemContextMenu(event, {
+          item,
+          cat,
+          visibleInMenu: visibleInMenu(place),
+          publicMenuUrl: publicMenuLink,
+          duplicating: duplicatingId === item._id,
+          deleteDisabled,
+          actions: {
+            edit: editItemFromBoard,
+            duplicate: duplicateItemFromBoard,
+            toggleAvailable: target => { void toggleItemAvailable(target); },
+            toggleHidden: target => { void toggleItemHidden(target); },
+            toggleRecommended: async target => {
+              const recommended = !target.recommended;
+              await editorRequest(`/api/items/${target._id}`, { method: "PUT", body: JSON.stringify({ recommended }) }, "No se pudo cambiar el destacado.");
+              setMenuData(prev => prev && patchMenuItem(prev, target._id, { recommended }));
+              syncOpenItemFlags(target._id, { recommended });
+            },
+            changeImage: (target, targetCat) => {
+              pendingImagePickRef.current = target._id;
+              editItemFromBoard(target, targetCat);
+            },
+            removeImage: async target => {
+              await editorRequest(`/api/items/${target._id}`, { method: "PUT", body: JSON.stringify({ image: "" }) }, "No se pudo quitar la imagen.");
+              setMenuData(prev => prev && patchMenuItem(prev, target._id, { image: "" }));
+              syncOpenItemFlags(target._id, { image: "" });
+            },
+            select: target => startSelection([target._id]),
+            remove: target => setDeleteModal({ type: "item", id: target._id, name: target.title }),
+          },
+        }, { highlightElement: row });
+        return;
+      }
+
+      if (place.cat && card) {
+        const { cat } = place;
+        openCategoryContextMenu(event, {
+          cat,
+          sectionId: place.section?._id ?? null,
+          sections: menuData.secciones.map(sec => ({ _id: sec._id, title: sec.title })),
+          collapsed: collapsedCats.has(cat._id),
+          atItemLimit,
+          deleteDisabled,
+          actions: {
+            addItem: newItemFromBoard,
+            edit: editCategoriaFromBoard,
+            toggleHidden: target => { void toggleCategoriaHidden(target); },
+            setAllAvailable: async (target, available) => {
+              const ids = (target.items ?? []).filter(item => item.available !== available).map(item => item._id);
+              let result: { updated: number; failed: number };
+              try {
+                result = await sendInChunks("/api/items/bulk/available", "PATCH", "itemIds", ids, { available }, "No se pudo cambiar la disponibilidad.");
+              } catch (err) {
+                throw new MenuActionError(err instanceof Error ? err.message : "No se pudo cambiar la disponibilidad.");
+              } finally {
+                await refetch();
+              }
+              const verb = available ? (result.updated === 1 ? "activado" : "activados") : (result.updated === 1 ? "pausado" : "pausados");
+              if (result.failed > 0) throw new MenuActionError(`${countLabel(result.failed, "producto", "productos")} no se pudo actualizar.`);
+              notifySuccess(`${countLabel(result.updated, "producto", "productos")} ${verb}.`);
+            },
+            move: async (target, sectionId) => {
+              await editorRequest(`/api/menus/${target._id}/move`, { method: "PATCH", body: JSON.stringify({ sectionID: sectionId }) }, "No se pudo mover la categoría.");
+              await refetch();
+            },
+            duplicate: async target => {
+              try {
+                const data = await editorRequest(`/api/menus/${target._id}/duplicate`, { method: "POST" }, "No se pudo duplicar la categoría.");
+                await refetch();
+                const copyId = (data.menu as { _id?: string } | undefined)?._id;
+                if (copyId) scrollToCategory(copyId);
+              } catch (err) {
+                // Tope de productos del plan: el mismo modal que al crear uno.
+                if (err instanceof MenuActionError && /límite/i.test(err.message)) setUpgradeReason("items");
+                throw err;
+              }
+            },
+            selectAll: target => startSelection((target.items ?? []).map(item => item._id), canSelectMenus ? [target._id] : []),
+            toggleCollapsed: toggleCategoriaCollapsed,
+            remove: deleteCategoriaFromBoard,
+          },
+        }, { highlightElement: card });
+        return;
+      }
+
+      if (place.section && group) {
+        const { section } = place;
+        openSectionContextMenu(event, {
+          sec: section,
+          collapsed: collapsedSecs.has(section._id),
+          deleteDisabled,
+          actions: {
+            addCategory: sec => newCategoriaInSection(sec._id),
+            edit: editSeccionFromBoard,
+            toggleHidden: sec => { void toggleSeccionHidden(sec); },
+            toggleCollapsed: sec => toggleSeccionCollapsed(sec._id),
+            remove: sec => setDeleteModal({ type: "seccion", id: sec._id, name: sec.title }),
+          },
+        }, { highlightElement: group });
+        return;
+      }
+
+      const categorias = allCategories(menuData);
+      openBoardContextMenu(event, {
+        hasCategories: categorias.length > 0,
+        canCollapse: menuData.secciones.some(sec => !collapsedSecs.has(sec._id)) || categorias.some(cat => !collapsedCats.has(cat._id)),
+        canExpand: menuData.secciones.some(sec => collapsedSecs.has(sec._id)) || categorias.some(cat => collapsedCats.has(cat._id)),
+        tools: {
+          templates: limits?.canUseTemplates === true,
+          images: limits?.canUseImageManager === true,
+          excel: limits?.canImportExcel === true,
+          pdf: canExportPdf,
+        },
+        exporting: exporting || exportingPdf,
+        publicMenuUrl: publicMenuLink,
+        actions: {
+          newSection: () => guarded(openNewSeccion),
+          newCategory: () => guarded(() => openNewCategoria()),
+          newItem: () => {
+            const target = categorias.find(cat => cat._id === focusedCatId) ?? categorias[0];
+            if (target) newItemFromBoard(target);
+          },
+          collapseAll,
+          expandAll,
+          openTemplates: () => (limits?.canUseTemplates ? guarded(() => setView("template-picker")) : setUpgradeReason("templates")),
+          openImageManager: () => (limits?.canUseImageManager ? guarded(() => setView("image-manager")) : setUpgradeReason("images")),
+          importExcel: () => (limits?.canImportExcel ? guarded(() => setView("massive-import")) : setUpgradeReason("excel")),
+          exportExcel: () => { void exportMenu(); },
+          exportPdf: () => { void exportMenuPdf(); },
+        },
+      });
+    };
+
     return (
       <MenuReorderProvider reorder={reorder} available={reorderAvailable} disabledReason={reorderDisabledReason}>
       <div className={`${styles.me} ${styles.meWide} ${ws.shell} ${selectionMode ? ws.shellBulk : ""}`}>
@@ -3594,7 +3821,7 @@ export default function MenuEditorPage() {
             />
           )}
 
-          <div className={ws.board} ref={boardRef}>
+          <div className={ws.board} ref={boardRef} onContextMenu={onBoardContextMenu}>
             {!panelOpen && errorBanner}
 
             {searchActive ? searchResultsSection : (

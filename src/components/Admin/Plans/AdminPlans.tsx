@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { listAdminPlans, listAdminPlanUsage, updateAdminPlan, type AdminPlanUsage } from "../../../api/adminPlans";
@@ -12,6 +12,9 @@ import { TEMPLATES } from "../../../lib/templates";
 import DataTable from "../../Common/DataTable/DataTable";
 import Spinner from "../../Common/Spinner";
 import s from "./AdminPlans.module.css";
+import { useContextMenu } from "../../../features/contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../features/contextMenu/hooks/useMenuEnv";
+import { buildPlanMenu } from "./plansMenu";
 
 // Fila de la vista previa de totales por período.
 interface PreviewRow {
@@ -136,7 +139,11 @@ function PlanCard({ plan, usage, onUpdated }: {
   const [saving, setSaving] = useState(false);
   const [reloading, setReloading] = useState(false);
   const submitting = useRef(false);
+  const form = useRef<HTMLFormElement>(null);
   const notifications = useNotifications();
+  const menuEnv = useMenuEnv();
+  const planMenu = useMemo(() => buildPlanMenu(menuEnv), [menuEnv]);
+  const openPlanMenu = useContextMenu(planMenu);
   const free = plan.name === "free";
   const parsedPrice = free ? 0 : parsePrice(price);
   const parsedDiscount = discountPrice.trim() ? parsePrice(discountPrice) : null;
@@ -237,7 +244,14 @@ function PlanCard({ plan, usage, onUpdated }: {
   };
 
   return (
-    <article className={`${s.card}${free ? ` ${s.freeCard}` : ""}`} aria-labelledby={`${plan.name}-title`}>
+    <article
+      className={`${s.card}${free ? ` ${s.freeCard}` : ""}`}
+      aria-labelledby={`${plan.name}-title`}
+      onContextMenu={event => openPlanMenu(event, {
+        plan, dirty, busy, conflict,
+        actions: { save: () => form.current?.requestSubmit(), reset: resetDraft },
+      })}
+    >
       <header className={s.cardHeader}>
         <div>
           <p className={s.eyebrow}>{plan.name}</p>
@@ -287,7 +301,7 @@ function PlanCard({ plan, usage, onUpdated }: {
       </>}
 
       {
-        <form className={s.priceForm} onSubmit={submit} noValidate>
+        <form ref={form} className={s.priceForm} onSubmit={submit} noValidate>
           <div className={s.fields}>
             <label htmlFor={`${plan.name}-label`}>Nombre visible
               <input id={`${plan.name}-label`} value={label} maxLength={60} disabled={busy} onChange={event => setLabel(event.target.value)} />

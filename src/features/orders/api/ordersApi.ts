@@ -213,6 +213,10 @@ export const voidCashMovement = async (movementId: number, reason?: string): Pro
   (await apiClient.post<{ session: CashSession }>(`/orders/cash/movements/${movementId}/void`, { reason })).data.session;
 
 // Libro de una caja, filtrado y paginado por el servidor.
+// Excel del cierre de una caja (resumen, cobros por medio y libro).
+export const exportCashSession = async (sessionId: number): Promise<Blob> =>
+  (await apiClient.get<Blob>(`/orders/cash/sessions/${sessionId}/export`, { responseType: "blob" })).data;
+
 export const getCashLedger = async (
   sessionId: number, query: { type?: CashLedgerType; cashOnly?: boolean; page?: number } = {},
 ): Promise<CashLedger> =>
@@ -288,6 +292,10 @@ export const updateOwnerTicketStatus = async (sectorId: number, ticketId: number
 
 export const markOwnerTicketPrinted = async (sectorId: number, ticketId: number): Promise<Ticket> =>
   (await apiClient.post<{ ticket: Ticket }>(`/orders/sectors/${sectorId}/tickets/${ticketId}/printed`)).data.ticket;
+
+// Comandas vigentes de un pedido y la impresora de sus sectores (para reimprimir desde el panel).
+export const getOrderTickets = async (orderId: number): Promise<{ tickets: Ticket[]; sectors: Sector[] }> =>
+  (await apiClient.get<{ tickets: Ticket[]; sectors: Sector[] }>(`/orders/orders/${orderId}/tickets`)).data;
 
 // ── Delivery / repartidores ──
 export const getDeliveryActive = async (): Promise<DeliveryActiveResponse> =>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../../context/useAuth";
@@ -6,6 +6,9 @@ import { getSellerRanking, type RankingPeriod, type SellerRankingEntry } from ".
 import { formatPaymentAmount } from "../../../lib/adminPayments";
 import Spinner from "../../Common/Spinner";
 import s from "../sellerPanel.module.css";
+import { useContextMenu } from "../../../features/contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../features/contextMenu/hooks/useMenuEnv";
+import { buildRankingSellerMenu } from "../sellerPanelMenu";
 
 const PERIOD_LABEL: Record<RankingPeriod, string> = {
   current: "Ciclo actual",
@@ -90,6 +93,9 @@ function RankingChart({
     .sort((a, b) => b.value - a.value);
 
   const max = Math.max(1, ...rows.map((row) => row.value));
+  const menuEnv = useMenuEnv();
+  const sellerMenu = useMemo(() => buildRankingSellerMenu(menuEnv), [menuEnv]);
+  const openSellerMenu = useContextMenu(sellerMenu, { highlightTarget: true });
 
   return (
     <section className={`${s.section} ${s.chartCard}`}>
@@ -105,7 +111,7 @@ function RankingChart({
       ) : (
         <div className={s.barList}>
           {rows.map((row) => (
-            <div className={s.barRow} key={row.sellerID}>
+            <div className={s.barRow} key={row.sellerID} onContextMenu={(event) => openSellerMenu(event, { seller: row })}>
               <span className={s.barRowName} title={row.name}>{row.name}</span>
               <div className={s.barTrack}>
                 {mode !== "pro" && row.basic > 0 && (

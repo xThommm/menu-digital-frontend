@@ -11,6 +11,10 @@ import {
 } from "../../../api/adminPush";
 import type { AdminNotificationType } from "../../../api/adminNotifications";
 import { useNotifications } from "../../../context/useNotifications";
+import { useContextMenu } from "../../../features/contextMenu/hooks/useContextMenu";
+import { buildPushDeviceMenu } from "./notificationsMenu";
+
+const DEVICE_MENU = buildPushDeviceMenu();
 import {
   adminPushDevicesKey,
   adminPushPreferencesKey,
@@ -21,6 +25,7 @@ import { extractServerMessage } from "../../../lib/apiErrors";
 import { formatDateAR } from "../../../lib/dates";
 import { describeDevice } from "../../../lib/pushDevices";
 import s from "./PushSettings.module.css";
+import { useDialogs } from "../../../context/useDialogs";
 
 // Tipos que se pueden silenciar, en el orden en que se muestran. El backend
 // manda la lista vigente: lo que no esté acá se muestra con su clave.
@@ -43,6 +48,7 @@ const formatSeen = (iso: string | null) => (iso
 export default function PushSettings() {
   const push = useAdminPush();
   const toast = useNotifications();
+  const dialogs = useDialogs();
   const queryClient = useQueryClient();
   const [removingID, setRemovingID] = useState<string | null>(null);
   const [savingPreferences, setSavingPreferences] = useState(false);
@@ -55,10 +61,21 @@ export default function PushSettings() {
     queryFn: getAdminPushFingerprint,
   });
 
+  const openDeviceMenu = useContextMenu(DEVICE_MENU, { highlightTarget: true });
+
   const removeDevice = async (device: AdminPushDevice, isCurrent: boolean) => {
     const name = describeDevice(device.userAgent);
-    if (!window.confirm(`¿Dejar de mandar avisos a "${name}"?`)) return;
+    if (!(await dialogs.confirm({
+      title: "¿Quitar este dispositivo?",
+      message: `Se dejan de mandar avisos a "${name}".`,
+      confirmLabel: "Quitar",
+      danger: true,
+    }))) return;
+    await removeConfirmed(device, isCurrent);
+  };
 
+  // Ya confirmado (por la ventana del botón o la del menú contextual).
+  const removeConfirmed = async (device: AdminPushDevice, isCurrent: boolean) => {
     setRemovingID(device.id);
     try {
       await removeAdminPushDevice(device.id);
@@ -156,7 +173,16 @@ export default function PushSettings() {
               const isCurrent = Boolean(fingerprint.data) && device.fingerprint === fingerprint.data;
               const name = describeDevice(device.userAgent);
               return (
-                <li key={device.id} className={s.device}>
+                <li
+                  key={device.id}
+                  className={s.device}
+                  onContextMenu={(event) => openDeviceMenu(event, {
+                    name,
+                    canTest: isCurrent && push.active,
+                    busy: removingID !== null,
+                    actions: { sendTest: () => { void push.sendTest(); }, remove: () => { void removeConfirmed(device, isCurrent); } },
+                  })}
+                >
                   <span className={s.deviceIcon} aria-hidden><MonitorSmartphone size={18} strokeWidth={1.5} /></span>
                   <span className={s.deviceText}>
                     <span className={s.deviceName}>

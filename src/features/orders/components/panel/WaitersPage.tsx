@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { History, Pencil, QrCode, Smartphone, Trash2, X } from "lucide-react";
 import { useAuth } from "../../../../context/useAuth";
@@ -12,6 +12,9 @@ import { durationLabel, elapsedLabel, formatDateTime } from "../../lib/format";
 import { waiterQrUrl } from "../../lib/qrUrls";
 import type { Waiter, WaiterDeviceSession } from "../../types";
 import p from "./panel.module.css";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../contextMenu/hooks/useMenuEnv";
+import { buildStaffMenu, buildStaffPageMenu, type StaffMenuContext } from "./staffMenu";
 
 // Operadores (antes "mozos"): quien toma pedidos, atiende mesas o está en la
 // barra. Alta, edición, pausa, el QR de acceso de cada uno al tomador de
@@ -20,6 +23,7 @@ import p from "./panel.module.css";
 // desde el panel (una foto vieja no sirve).
 
 const EMPTY_FORM = { name: "", phone: "", notes: "" };
+const PAGE_MENU = buildStaffPageMenu("waiter");
 const REFRESH_LIST_MS = 30_000;
 
 const ENDED_REASON: Record<NonNullable<WaiterDeviceSession["endedReason"]>, string> = {
@@ -40,6 +44,12 @@ export default function WaitersPage() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const { reload } = waiters;
+  const slug = useAuth().user?.slug;
+  const nameInput = useRef<HTMLInputElement>(null);
+  const menuEnv = useMenuEnv();
+  const waiterMenu = useMemo(() => buildStaffMenu(menuEnv, "waiter"), [menuEnv]);
+  const openWaiterMenu = useContextMenu(waiterMenu, { highlightTarget: true });
+  const openPageMenu = useContextMenu(PAGE_MENU);
 
   // "Conectado hace…" avanza con el reloj local; los dispositivos que se vinculan o
   // se cierran llegan con el aviso del servidor (sin conexión en vivo, cada REFRESH_LIST_MS).
@@ -92,8 +102,45 @@ export default function WaitersPage() {
     return { ...waiter, sessions, activeDevices: sessions.length };
   };
 
+  const startAdd = () => {
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    nameInput.current?.focus();
+  };
+
+  // Clic derecho en un operador: los errores los avisa el menú.
+  const waiterMenuContext = (waiter: Waiter): StaffMenuContext => ({
+    member: waiter,
+    actions: {
+      edit: () => { startEdit(waiter); nameInput.current?.focus(); },
+      showQr: () => setQrWaiter(waiter),
+      accessLink: async () => {
+        if (!slug) throw new Error("Sin local");
+        return waiterQrUrl(slug, (await issuePairingCode(waiter.id)).code);
+      },
+      showSessions: () => setHistoryWaiter(waiter),
+      setActive: async active => {
+        replace(await updateWaiter(waiter.id, { active }));
+        if (!active) reload();
+      },
+      closeSession: async sessionId => {
+        await revokeWaiterSession(waiter.id, sessionId);
+        replace(withoutSession(waiter, sessionId));
+      },
+      closeAllSessions: async () => {
+        await revokeWaiterSessions(waiter.id);
+        replace({ ...waiter, activeDevices: 0, sessions: [] });
+      },
+      remove: async () => {
+        await deleteWaiter(waiter.id);
+        waiters.setData(list.filter(w => w.id !== waiter.id));
+        if (editing?.id === waiter.id) startAdd();
+      },
+    },
+  });
+
   return (
-    <div className={p.page}>
+    <div className={p.page} onContextMenu={event => openPageMenu(event, { actions: { add: startAdd } })}>
       <header className={p.header}>
         <div className={p.titleBlock}>
           <h1 className={p.title}>Operadores</h1>
@@ -108,7 +155,7 @@ export default function WaitersPage() {
           <h2 className={p.cardTitle}>{editing ? `Editar a ${editing.name}` : "Agregar operador"}</h2>
           <label className={p.field}>
             <span className={p.label}>Nombre</span>
-            <input className={p.input} value={form.name} maxLength={60} required onChange={e => setForm({ ...form, name: e.target.value })} />
+            <input ref={nameInput} className={p.input} value={form.name} maxLength={60} required onChange={e => setForm({ ...form, name: e.target.value })} />
           </label>
           <label className={p.field}>
             <span className={p.label}>Teléfono (opcional)</span>
@@ -136,7 +183,7 @@ export default function WaitersPage() {
           {!waiters.loading && list.length === 0 && <p className={p.empty}>Todavía no cargaste operadores.</p>}
 
           {list.map(waiter => (
-            <div key={waiter.id} className={p.switchRow}>
+            <div key={waiter.id} className={p.switchRow} onContextMenu={event => openWaiterMenu(event, waiterMenuContext(waiter))}>
               <div className={p.switchText} style={{ minWidth: 0, flex: 1 }}>
                 <span className={p.switchTitle}>{waiter.name}{!waiter.active && " (pausado)"}</span>
                 <span className={p.switchHint}>

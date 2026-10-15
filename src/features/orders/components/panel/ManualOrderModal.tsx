@@ -15,6 +15,7 @@ import ServiceFields from "../shared/ServiceFields";
 import UnitLinesEditor from "../shared/UnitLinesEditor";
 import p from "./panel.module.css";
 import s from "./OrdersBoard.module.css";
+import type { RepeatDraft } from "../../lib/repeatOrder";
 
 // Alta manual de un pedido desde el panel (ej. un pedido en la barra, por
 // teléfono o un delivery). Entra confirmado. Desde el salón llega con la
@@ -24,22 +25,22 @@ import s from "./OrdersBoard.module.css";
 interface Props {
   tableCount: number;
   waiters: Waiter[];
+  // Pedido para una mesa ya elegida (ej. "Agregar pedido" desde Mesas).
   initialTable?: number;
-  initialWaiterId?: number | null;
-  // Pedidos de la mesa: "Otra vuelta" ofrece repetir lo que ya pidió.
-  tableOrders?: Order[];
+  // Pedido ya armado (ej. "Repetir pedido" desde el historial).
+  initial?: RepeatDraft;
   onClose: () => void;
   onCreated: (order: Order) => void;
 }
 
-export default function ManualOrderModal({ tableCount, waiters, initialTable, initialWaiterId, tableOrders, onClose, onCreated }: Props) {
+export default function ManualOrderModal({ tableCount, waiters, initialTable, initial, onClose, onCreated }: Props) {
   const { user } = useAuth();
   const menu = useOrderingMenu(user?.slug);
-  const [lines, setLines] = useState<UnitLine[]>([]);
+  const [lines, setLines] = useState<UnitLine[]>(() => initial?.lines ?? []);
   const [service, setService] = useState<ServiceDraft>(() =>
-    initialTable ? { ...emptyService("table"), table: String(initialTable) } : emptyService("counter"));
-  const [waiterId, setWaiterId] = useState(initialWaiterId ? String(initialWaiterId) : "");
-  const [notes, setNotes] = useState("");
+    initial?.service ?? (initialTable ? { ...emptyService("table"), table: String(initialTable) } : emptyService("counter")));
+  const [waiterId, setWaiterId] = useState("");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Mismo contenido = mismo id de envío: un doble clic o un reintento tras

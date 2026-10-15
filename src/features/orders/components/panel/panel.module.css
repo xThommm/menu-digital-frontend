@@ -469,6 +469,12 @@
   background: var(--tone);
 }
 
+/* Mesa a la que se llegó desde el tablero ("Ir a la mesa"). */
+.tableCardFocus {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
+}
+
 .tableHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
 
 .tableName {

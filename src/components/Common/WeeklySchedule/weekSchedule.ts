@@ -92,6 +92,40 @@ export function writeWeek(state: WeekState): WeekRanges {
   }, {} as WeekRanges);
 }
 
+// ── Acciones sobre un día (menú contextual del horario) ──
+
+/**
+ * El horario de `day` pasa a los otros días: a los que ya abren
+ * ("open"), o a todos, abriendo también los cerrados ("all").
+ */
+export function copyDayToOthers(value: WeekRanges, day: DayKey, scope: "open" | "all"): WeekRanges {
+  const ranges = value[day] ?? [];
+  return WEEK_DAYS.reduce((acc, other) => {
+    const current = value[other] ?? [];
+    acc[other] = other === day || (scope === "open" && current.length === 0)
+      ? cloneRanges(current)
+      : cloneRanges(ranges);
+    return acc;
+  }, {} as WeekRanges);
+}
+
+/** El día no abre. */
+export function closeDay(value: WeekRanges, day: DayKey): WeekRanges {
+  return WEEK_DAYS.reduce((acc, other) => {
+    acc[other] = other === day ? [] : cloneRanges(value[other] ?? []);
+    return acc;
+  }, {} as WeekRanges);
+}
+
+/** El día abre con el horario general (el que comparten más días). */
+export function openDay(value: WeekRanges, day: DayKey): WeekRanges {
+  const { base } = readWeek(value);
+  return WEEK_DAYS.reduce((acc, other) => {
+    acc[other] = other === day ? cloneRanges(base) : cloneRanges(value[other] ?? []);
+    return acc;
+  }, {} as WeekRanges);
+}
+
 export function formatRange(range: TimeRange): string {
   if (isAllDay(range)) return "las 24 h";
   return `${range.from} a ${range.to}${range.to < range.from ? " (+1 día)" : ""}`;

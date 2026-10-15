@@ -86,6 +86,20 @@ interface PreviewState {
   index: number;
 }
 
+// ?producto=<id>: la carta abre ese producto ("Ver en la carta pública" del
+// editor del menú). El parámetro se saca enseguida: recargar no lo vuelve a
+// abrir. Un producto oculto o pausado no está en la carta: no se abre nada.
+function deepLinkPreview(menu: Parameters<typeof buildMenuTabs>[0]): PreviewState | null {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("producto");
+  if (!id) return null;
+  params.delete("producto");
+  const search = params.toString();
+  window.history.replaceState(window.history.state, "", `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`);
+  const item = buildMenuTabs(menu).flatMap(tab => tab.categorias.flatMap(cat => cat.items)).find(entry => entry._id === id);
+  return item ? { items: [item], index: 0 } : null;
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function MenuPage() {
@@ -214,7 +228,7 @@ export default function MenuPage() {
         // la carta anterior.
         setOpenCats(new Set());
         setActiveTab(0);
-        setPreview(null);
+        setPreview(deepLinkPreview(data.menu));
         setMenuSlug(slug ?? "");
       } catch (err) {
         if ((err as Error).name === "AbortError") return;

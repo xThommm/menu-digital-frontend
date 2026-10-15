@@ -7,12 +7,15 @@ import { ChevronRight } from "lucide-react";
 import { ApiError } from "../../../api/apiClient";
 import { useNotifications } from "../../../context/useNotifications";
 import { extractServerMessage } from "../../../lib/apiErrors";
+import { themeScopeOf } from "../../../lib/themeScope";
+import ConfirmDialog from "../../../components/Common/ConfirmDialog";
 import Spinner from "../../../components/Common/Spinner";
 import { ContextMenuContext, type ContextMenuContextValue } from "../ContextMenuContext";
 import {
-  edgeFocusIndex, nextFocusIndex, placeMenu, placeSubmenu, runMenuAction, shouldUseNativeMenu,
+  edgeFocusIndex, MenuActionError, nextFocusIndex, placeMenu, placeSubmenu, runMenuAction, shouldUseNativeMenu,
   type AnchorRect, type Point, type Size,
 } from "../lib/contextMenu";
+import { resolveLinkItems } from "../lib/linkMenu";
 import { resolveTextItems } from "../lib/textField";
 import type { ContextMenuConfirm, ResolvedAction, ResolvedItem } from "../types";
 import s from "./ContextMenu.module.css";
@@ -28,11 +31,6 @@ import s from "./ContextMenu.module.css";
 
 const ROOT_ATTRIBUTE = "data-context-menu-root";
 const TARGET_ATTRIBUTE = "data-context-menu-target";
-
-// El portal cuelga de <body>, fuera del layout que define los tokens del
-// panel: se le copia la clase de tema de la zona donde se hizo clic. Un panel
-// con tema propio suma acá su clase.
-const THEME_SCOPE_CLASSES = ["admin-panel-graphite"];
 
 const SUBMENU_HOVER_DELAY_MS = 140;
 // Alinea la primera opción del submenú con la opción que lo abre (padding de .menu).
@@ -54,21 +52,18 @@ interface PendingAction {
   label: string;
 }
 
-function themeScopeOf(element: Element): string {
-  return THEME_SCOPE_CLASSES.find((scope) => element.closest(`.${scope}`)) ?? "";
-}
-
-// Copiar / Pegar / Seleccionar todo van arriba de cualquier menú, el de una
-// zona o el global, cuando el punto del clic tiene texto seleccionado o es un
-// campo de texto.
+// Las opciones de un link (abrir en pestaña nueva, copiar la dirección) y las
+// de texto (Cortar / Copiar / Pegar / Deshacer / Seleccionar todo) van arriba
+// de cualquier menú, el de una zona o el global, cuando el clic cae en un
+// link, en texto seleccionado o en un campo de texto.
 function withTextItems(target: Element | null, items: ResolvedItem[]): ResolvedItem[] {
-  const textItems = resolveTextItems(target);
-  if (textItems.length === 0 || items.length === 0) return [...textItems, ...items];
-  return [...textItems, { type: "separator", id: "text/separator" }, ...items];
+  const groups = [resolveLinkItems(target), resolveTextItems(target), items].filter((group) => group.length > 0);
+  return groups.flatMap((group, index) => (index === 0 ? group : [{ type: "separator" as const, id: `group-${index}/separator` }, ...group]));
 }
 
 function describeError(error: unknown, fallback: string): string {
-  return error instanceof ApiError ? error.message : extractServerMessage(error, fallback);
+  if (error instanceof ApiError || error instanceof MenuActionError) return error.message;
+  return extractServerMessage(error, fallback);
 }
 
 interface ContextMenuProviderProps {
@@ -110,7 +105,7 @@ export function ContextMenuProvider({ children, getGlobalItems }: ContextMenuPro
     targetRef.current?.setAttribute(TARGET_ATTRIBUTE, "");
     restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
-    setThemeScope(scope ? themeScopeOf(scope) : "");
+    setThemeScope(themeScopeOf(scope));
     setMenu({ anchor, items });
   }, [close]);
 
@@ -134,7 +129,7 @@ export function ContextMenuProvider({ children, getGlobalItems }: ContextMenuPro
       { x: event.clientX, y: event.clientY },
       items,
       target ?? event.currentTarget,
-      options?.highlightTarget ? event.currentTarget : null,
+      options?.highlightElement ?? (options?.highlightTarget ? event.currentTarget : null),
     );
   }, [openAt]);
 
@@ -240,7 +235,7 @@ export function ContextMenuProvider({ children, getGlobalItems }: ContextMenuPro
           )}
           {confirmState && (
             <ConfirmDialog
-              confirm={confirmState.confirm}
+              {...confirmState.confirm}
               busy={confirmState.busy}
               onAnswer={answerConfirm}
             />
@@ -417,73 +412,5 @@ function MenuList({ items, place, initialActive, onActivate, onBack, onPointerIn
         />
       )}
     </>
-  );
-}
-
-// ── Confirmación de acciones sensibles ──────────────────────────────────────
-
-function ConfirmDialog({
-  confirm, busy, onAnswer,
-}: {
-  confirm: ContextMenuConfirm;
-  busy: boolean;
-  onAnswer: (accepted: boolean) => void;
-}) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  // En una acción destructiva el foco arranca en "Cancelar": un Enter de más
-  // no la confirma.
-  useEffect(() => {
-    dialogRef.current
-      ?.querySelector<HTMLButtonElement>(confirm.danger ? "[data-cancel]" : "[data-confirm]")
-      ?.focus();
-  }, [confirm.danger]);
-
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "Escape") {
-      event.stopPropagation();
-      onAnswer(false);
-      return;
-    }
-    if (event.key !== "Tab") return;
-    // Dos botones: el foco alterna entre ellos y no se va al fondo.
-    const buttons = [...(dialogRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? [])];
-    if (buttons.length === 0) return;
-    event.preventDefault();
-    const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
-    buttons[(current + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length].focus();
-  };
-
-  return (
-    <div className={s.confirmOverlay} onClick={() => onAnswer(false)} onKeyDown={onKeyDown}>
-      <div
-        ref={dialogRef}
-        className={s.confirmDialog}
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="context-menu-confirm-title"
-        aria-describedby={confirm.message ? "context-menu-confirm-message" : undefined}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h2 id="context-menu-confirm-title" className={s.confirmTitle}>{confirm.title}</h2>
-        {confirm.message && (
-          <p id="context-menu-confirm-message" className={s.confirmMessage}>{confirm.message}</p>
-        )}
-        <div className={s.confirmActions}>
-          <button type="button" data-cancel className={s.confirmCancel} disabled={busy} onClick={() => onAnswer(false)}>
-            {confirm.cancelLabel ?? "Cancelar"}
-          </button>
-          <button
-            type="button"
-            data-confirm
-            className={confirm.danger ? s.confirmDanger : s.confirmAccept}
-            disabled={busy}
-            onClick={() => onAnswer(true)}
-          >
-            {busy && <Spinner />} {confirm.confirmLabel ?? "Confirmar"}
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }

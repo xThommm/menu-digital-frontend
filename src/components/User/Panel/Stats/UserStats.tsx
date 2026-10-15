@@ -23,6 +23,11 @@ import { useSalesReport, type SalesState } from "./useSalesReport";
 import SalesView from "./SalesView";
 import CashView from "./CashView";
 import ExportDialog from "./ExportDialog";
+import { useContextMenu } from "../../../../features/contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../../features/contextMenu/hooks/useMenuEnv";
+import { buildRankingItemMenu, buildStatsPageMenu } from "./statsMenu";
+
+const PAGE_MENU = buildStatsPageMenu();
 
 const WEEKDAY_PLURAL = ["domingos", "lunes", "martes", "miércoles", "jueves", "viernes", "sábados"];
 
@@ -68,6 +73,7 @@ function UserStatsPanel() {
   const [retry, setRetry] = useState(0);
   const [windowDays, setWindowDays] = useState<7 | 30>(30);
   const [tab, setTab] = useState<Tab>("visits");
+  const openPageMenu = useContextMenu(PAGE_MENU);
   const [exportOpen, setExportOpen] = useState(false);
   const [serviceType, setServiceType] = useState<ServiceType | null>(null);
   const sales = useSalesReport(windowDays, serviceType, isPro && !locked && tab !== "visits");
@@ -194,7 +200,7 @@ function UserStatsPanel() {
   const today = stats?.todayDate ?? formatDateAR(new Date(), { output: "date-input" });
 
   return (
-    <div className={s.root}>
+    <div className={s.root} onContextMenu={event => openPageMenu(event, { tab, actions: { exportExcel: () => setExportOpen(true), setTab } })}>
       <main className={s.main}>
         <header className={`${s.welcome} ${s.welcomeSplit}`}>
           <div>
@@ -618,6 +624,9 @@ function ItemRanking({ items, metric, comparisonAvailable, showOrders }: {
   comparisonAvailable: boolean;
   showOrders: boolean;
 }) {
+  const menuEnv = useMenuEnv();
+  const itemMenu = useMemo(() => buildRankingItemMenu(menuEnv), [menuEnv]);
+  const openItemMenu = useContextMenu(itemMenu, { highlightTarget: true });
   const valueOf = (item: TopItemStat) => (metric === "views" ? item.totalViews : item.orders ?? 0);
   const max = valueOf(items[0]) || 1;
   const hint = metric === "views" && showOrders ? lowConversionItem(items) : null;
@@ -629,7 +638,7 @@ function ItemRanking({ items, metric, comparisonAvailable, showOrders }: {
           const value = valueOf(item);
           const trend = metric === "views" ? itemTrend(item, comparisonAvailable) : null;
           return (
-            <li key={item.itemID} className={s.topItemRow}>
+            <li key={item.itemID} className={s.topItemRow} onContextMenu={event => openItemMenu(event, { item })}>
               <span className={s.topItemRank}>{i + 1}</span>
               <ItemThumb image={item.image} title={item.title} />
               <div className={s.topItemMain}>

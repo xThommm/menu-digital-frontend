@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { Minus, Plus, X } from "lucide-react";
 import { errorMessage } from "../../lib/errors";
 import { formatDateTime, formatTime } from "../../lib/format";
@@ -10,6 +10,12 @@ import { uuid } from "../../lib/storage";
 import type { Bill, BillApi, BillGuest, BillItem, PaymentKind, SplitMode } from "../../types";
 import p from "../panel/panel.module.css";
 import s from "./Bill.module.css";
+import { useDialogs } from "../../../../context/useDialogs";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { buildBillGuestMenu, buildBillPaymentMenu } from "./billMenu";
+
+const GUEST_MENU = buildBillGuestMenu();
+const PAYMENT_MENU = buildBillPaymentMenu();
 
 // Cuenta de una mesa: dividirla (por productos, partes iguales o importes) y
 // registrar pagos parciales. La usan la app del operador (el salón) y Mesas
@@ -33,10 +39,13 @@ interface Props {
 }
 
 export default function BillPanel({ api, sessionId, tableNumber, refreshKey = 0, onClose, onChanged, onAuthError }: Props) {
+  const dialogs = useDialogs();
   const [bill, setBill] = useState<Bill | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const openGuestMenu = useContextMenu(GUEST_MENU, { highlightTarget: true });
+  const openPaymentMenu = useContextMenu(PAYMENT_MENU, { highlightTarget: true });
 
   const fail = useCallback((err: unknown, fallback: string) => {
     if (!onAuthError?.(err)) setError(errorMessage(err, fallback));
@@ -69,20 +78,34 @@ export default function BillPanel({ api, sessionId, tableNumber, refreshKey = 0,
   const readOnly = bill?.closed === true;
   const locked = busy || readOnly;
 
-  const rename = (guest: BillGuest) => {
-    const name = window.prompt("Nombre del comensal", guest.name)?.trim();
+  const rename = async (guest: BillGuest) => {
+    const name = await dialogs.prompt({
+      title: "Cambiar nombre",
+      confirmLabel: "Guardar",
+      field: { label: "Nombre del comensal", defaultValue: guest.name, maxLength: 40, required: true },
+    });
     if (name && name !== guest.name) void run(() => api.renameGuest(sessionId, guest.id, name), "No se pudo cambiar el nombre.");
   };
 
-  const remove = (guest: BillGuest) => {
-    if (!window.confirm(`¿Quitar a ${guest.name} de la cuenta? Lo que tenía asignado queda sin asignar.`)) return;
+  const remove = async (guest: BillGuest) => {
+    if (!(await dialogs.confirm({
+      title: `¿Quitar a ${guest.name} de la cuenta?`,
+      message: "Lo que tenía asignado queda sin asignar.",
+      confirmLabel: "Quitar",
+      danger: true,
+    }))) return;
     void run(() => api.removeGuest(sessionId, guest.id), "No se pudo quitar al comensal.");
   };
 
-  const voidPayment = (paymentId: number) => {
-    const reason = window.prompt("¿Por qué se anula el pago? (opcional)");
+  const voidPayment = async (paymentId: number) => {
+    const reason = await dialogs.prompt({
+      title: "¿Anular este pago?",
+      confirmLabel: "Anular pago",
+      danger: true,
+      field: { label: "Motivo (opcional)", maxLength: 200 },
+    });
     if (reason === null) return;
-    void run(() => api.voidPayment(sessionId, paymentId, reason.trim() || undefined), "No se pudo anular el pago.");
+    void run(() => api.voidPayment(sessionId, paymentId, reason || undefined), "No se pudo anular el pago.");
   };
 
   return (
@@ -139,6 +162,7 @@ export default function BillPanel({ api, sessionId, tableNumber, refreshKey = 0,
                   onAdd={body => run(() => api.addGuests(sessionId, body), "No se pudo agregar al comensal.")}
                   onRename={rename}
                   onRemove={remove}
+                  onGuestContextMenu={(event, guest) => openGuestMenu(event, { guest, locked, actions: { rename, remove } })}
                 />
               )}
 
@@ -185,7 +209,11 @@ export default function BillPanel({ api, sessionId, tableNumber, refreshKey = 0,
                   <h3 className={s.sectionTitle}>Pagos registrados</h3>
                   <ul className={s.list}>
                     {bill.payments.map(payment => (
-                      <li key={payment.id} className={`${s.row} ${payment.status === "voided" ? s.voided : ""}`}>
+                      <li
+                        key={payment.id}
+                        className={`${s.row} ${payment.status === "voided" ? s.voided : ""}`}
+                        onContextMenu={event => openPaymentMenu(event, { payment, locked: busy || readOnly, actions: { voidPayment } })}
+                      >
                         <div className={s.rowHead}>
                           <span className={s.rowTitle}>
                             {payment.methodName}{payment.payerName && <em> · {payment.payerName}</em>}
@@ -235,12 +263,13 @@ export default function BillPanel({ api, sessionId, tableNumber, refreshKey = 0,
   );
 }
 
-function GuestsSection({ bill, locked, onAdd, onRename, onRemove }: {
+function GuestsSection({ bill, locked, onAdd, onRename, onRemove, onGuestContextMenu }: {
   bill: Bill;
   locked: boolean;
   onAdd: (body: { name: string } | { count: number }) => Promise<boolean>;
   onRename: (guest: BillGuest) => void;
   onRemove: (guest: BillGuest) => void;
+  onGuestContextMenu: (event: MouseEvent<HTMLElement>, guest: BillGuest) => void;
 }) {
   const [name, setName] = useState("");
   const [count, setCount] = useState("2");
@@ -255,7 +284,7 @@ function GuestsSection({ bill, locked, onAdd, onRename, onRemove }: {
       {bill.guests.length > 0 && (
         <ul className={s.list}>
           {bill.guests.map(guest => (
-            <li key={guest.id} className={s.row}>
+            <li key={guest.id} className={s.row} onContextMenu={bill.closed ? undefined : event => onGuestContextMenu(event, guest)}>
               <div className={s.rowHead}>
                 <span className={s.rowTitle}>{guest.name}{guest.fromGroup && <em> · pedido grupal</em>}</span>
                 <span className={s.rowAmount}>{formatAmount(guest.owed)}</span>

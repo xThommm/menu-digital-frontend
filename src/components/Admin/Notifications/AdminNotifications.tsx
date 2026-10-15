@@ -38,6 +38,13 @@ import { extractServerMessage } from "../../../lib/apiErrors";
 import { formatDateAR } from "../../../lib/dates";
 import PushSettings from "./PushSettings";
 import s from "./AdminNotifications.module.css";
+import { useDialogs } from "../../../context/useDialogs";
+import { useContextMenu } from "../../../features/contextMenu/hooks/useContextMenu";
+import { buildNotificationMenu, buildNotificationSelectionMenu, buildNotificationsPageMenu } from "./notificationsMenu";
+
+const NOTIFICATION_MENU = buildNotificationMenu();
+const SELECTION_MENU = buildNotificationSelectionMenu();
+const PAGE_MENU = buildNotificationsPageMenu();
 
 const PAGE_SIZE = 20;
 
@@ -83,6 +90,7 @@ export default function AdminNotifications() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useNotifications();
+  const dialogs = useDialogs();
   const [box, setBox] = useState<AdminNotificationBox>("inbox");
   const [status, setStatus] = useState<AdminNotificationStatus>("all");
   const [page, setPage] = useState(1);
@@ -90,6 +98,9 @@ export default function AdminNotifications() {
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const openNotificationMenu = useContextMenu(NOTIFICATION_MENU, { highlightTarget: true });
+  const openSelectionMenu = useContextMenu(SELECTION_MENU, { highlightTarget: true });
+  const openPageMenu = useContextMenu(PAGE_MENU);
 
   const listKey = [...ADMIN_NOTIFICATIONS_KEY, "list", box, status, page] as const;
   const list = useQuery({
@@ -180,8 +191,18 @@ export default function AdminNotifications() {
     await refreshAll();
   }, "No se pudo archivar la notificación.");
 
-  const remove = (notification: AdminNotification) => {
-    if (!window.confirm(`¿Eliminar "${notification.title}"? No se puede deshacer.`)) return;
+  const remove = async (notification: AdminNotification) => {
+    if (!(await dialogs.confirm({
+      title: `¿Eliminar "${notification.title}"?`,
+      message: "No se puede deshacer.",
+      confirmLabel: "Eliminar",
+      danger: true,
+    }))) return;
+    return removeConfirmed(notification);
+  };
+
+  // Ya confirmado (por la ventana del botón o la del menú contextual).
+  const removeConfirmed = (notification: AdminNotification) => {
     return run(async () => {
       await deleteAdminNotification(notification.id);
       if (openID === notification.id) setOpenID(null);
@@ -196,12 +217,21 @@ export default function AdminNotifications() {
     }, "No se pudo eliminar la notificación.");
   };
 
-  const applyBulk = (action: AdminNotificationBulkAction) => {
+  const applyBulk = async (action: AdminNotificationBulkAction) => {
+    if (selected.size === 0) return;
+    if (action === "delete" && !(await dialogs.confirm({
+      title: `¿Eliminar ${selected.size} notificación(es)?`,
+      message: "No se puede deshacer.",
+      confirmLabel: "Eliminar",
+      danger: true,
+    }))) return;
+    return applyBulkConfirmed(action);
+  };
+
+  // Eliminar ya confirmado (por la ventana del botón o la del menú contextual).
+  const applyBulkConfirmed = (action: AdminNotificationBulkAction) => {
     const ids = [...selected];
     if (ids.length === 0) return;
-    if (action === "delete" && !window.confirm(
-      `¿Eliminar ${ids.length} notificación(es)? No se puede deshacer.`
-    )) return;
 
     return run(async () => {
       await bulkUpdateAdminNotifications(ids, action);
@@ -242,7 +272,23 @@ export default function AdminNotifications() {
         : "Todavía no hay notificaciones. Acá vas a ver los registros, los pagos y los vencimientos de planes.";
 
   return (
-    <div className={s.wrap}>
+    <div
+      className={s.wrap}
+      onContextMenu={(event) => openPageMenu(event, {
+        unreadCount,
+        hasNotifications: notifications.length > 0,
+        allSelected,
+        box,
+        settingsOpen,
+        busy,
+        actions: {
+          markAllRead: () => { void markAllRead(); },
+          toggleSelectAll,
+          setBox: (next) => { setBox(next); resetView(); },
+          toggleSettings: () => setSettingsOpen((open) => !open),
+        },
+      })}
+    >
       <header className={s.topBar}>
         <div className={s.topBarInner}>
           <div>
@@ -386,6 +432,29 @@ export default function AdminNotifications() {
                     key={notification.id}
                     className={`${s.row} ${notification.read ? "" : s.rowUnread} ${open ? s.rowOpen : ""} ${selected.has(notification.id) ? s.rowSelected : ""}`}
                     style={{ "--i": Math.min(index, 12) } as CSSProperties}
+                    onContextMenu={(event) => {
+                      // Sobre una seleccionada, con más de una marcada: las acciones en lote.
+                      if (selected.has(notification.id) && selected.size > 1) {
+                        openSelectionMenu(event, {
+                          count: selected.size,
+                          box,
+                          busy,
+                          actions: { apply: (action) => { void applyBulkConfirmed(action); }, clear: () => setSelected(new Set()) },
+                        });
+                        return;
+                      }
+                      openNotificationMenu(event, {
+                        notification,
+                        hasTarget: Boolean(notification.url && notification.url !== "/admin/notifications"),
+                        busy,
+                        actions: {
+                          setRead: (target, read) => { void setRead(target, read); },
+                          setArchived: (target, archived) => { void setArchived(target, archived); },
+                          remove: (target) => { void removeConfirmed(target); },
+                          openTarget: (target) => navigate(target.url),
+                        },
+                      });
+                    }}
                   >
                     <div className={s.rowMain}>
                       <label className={s.checkboxLabel}>

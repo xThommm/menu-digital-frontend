@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { QrCode, Send, Users, X } from "lucide-react";
 import { errorCode, errorMessage } from "../../lib/errors";
@@ -9,6 +9,10 @@ import { uuid } from "../../lib/storage";
 import type { GroupSession, GroupStaffApi } from "../../types";
 import p from "../panel/panel.module.css";
 import s from "./Bill.module.css";
+import { useDialogs } from "../../../../context/useDialogs";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../contextMenu/hooks/useMenuEnv";
+import { buildGroupMenu } from "./groupMenu";
 
 // Pedido grupal de una mesa, visto por el personal (app del operador y Mesas
 // del panel): abrirlo, mostrar el QR / código para que los comensales se
@@ -28,11 +32,15 @@ interface Props {
 }
 
 export default function GroupPanel({ api, slug, tableNumber, group, onChanged, onAuthError, onNotice }: Props) {
+  const dialogs = useDialogs();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showJoin, setShowJoin] = useState(false);
   // Mismo carrito = mismo id de envío: un reintento no duplica el pedido.
   const request = useRef<{ key: string; id: string } | null>(null);
+  const env = useMenuEnv();
+  const groupMenu = useMemo(() => buildGroupMenu(env), [env]);
+  const openGroupMenu = useContextMenu(groupMenu, { highlightTarget: true });
 
   const run = async (action: () => Promise<unknown>, fallback: string) => {
     setBusy(true);
@@ -77,14 +85,32 @@ export default function GroupPanel({ api, slug, tableNumber, group, onChanged, o
     }, "No se pudo enviar el pedido del grupo.");
   };
 
-  const close = () => {
-    const pending = group.cart.length > 0 ? " Lo que cargaron y no se envió se descarta." : "";
-    if (!window.confirm(`¿Cerrar el pedido grupal de la mesa ${tableNumber}?${pending} La mesa sigue abierta.`)) return;
-    void run(() => api.close(group.id), "No se pudo cerrar el pedido grupal.");
+  // Ya confirmado (por la ventana del botón o la del menú contextual).
+  const closeGroup = () => { void run(() => api.close(group.id), "No se pudo cerrar el pedido grupal."); };
+
+  const close = async () => {
+    const pending = group.cart.length > 0 ? "Lo que cargaron y no se envió se descarta. " : "";
+    if (!(await dialogs.confirm({
+      title: `¿Cerrar el pedido grupal de la mesa ${tableNumber}?`,
+      message: `${pending}La mesa sigue abierta.`,
+      confirmLabel: "Cerrar pedido grupal",
+      danger: group.cart.length > 0,
+    }))) return;
+    closeGroup();
   };
 
   return (
-    <div className={s.group} aria-label={`Pedido grupal de la mesa ${tableNumber}`}>
+    <div
+      className={s.group}
+      aria-label={`Pedido grupal de la mesa ${tableNumber}`}
+      onContextMenu={event => openGroupMenu(event, {
+        group,
+        tableNumber,
+        joinUrl: groupJoinUrl(slug, group.joinToken),
+        busy,
+        actions: { showQr: () => setShowJoin(true), send, close: closeGroup },
+      })}
+    >
       <div className={s.groupHead}>
         <span className={s.groupTitle}>
           <Users size={15} aria-hidden /> Pedido grupal · {group.members.length} {group.members.length === 1 ? "integrante" : "integrantes"}

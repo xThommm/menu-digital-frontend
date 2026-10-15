@@ -19,6 +19,7 @@ import type { GroupCartItem, GroupSession } from "../../types";
 import UnitLinesEditor from "../shared/UnitLinesEditor";
 import cart from "../../../../components/User/Home/Menu/CartDrawer.module.css";
 import s from "./VenueOrder.module.css";
+import { useDialogs } from "../../../../context/useDialogs";
 
 // Pedido grupal del comensal: varios de la mesa arman un pedido entre todos,
 // cada uno desde su celular.
@@ -181,6 +182,7 @@ interface DrawerProps {
 }
 
 export function GroupOrderDrawer({ open, onClose, slug, group, hidePrices }: DrawerProps) {
+  const dialogs = useDialogs();
   const { clearCart } = useCart();
   const { lines, onLinesChange, resetNotes } = useCartUnitLines();
   const [busy, setBusy] = useState(false);
@@ -262,8 +264,13 @@ export function GroupOrderDrawer({ open, onClose, slug, group, hidePrices }: Dra
     }
   };
 
-  const leave = () => {
-    if (!window.confirm("¿Salir del pedido grupal? Lo que cargaste y todavía no se envió se saca.")) return;
+  const leave = async () => {
+    if (!(await dialogs.confirm({
+      title: "¿Salir del pedido grupal?",
+      message: "Lo que cargaste y todavía no se envió se saca.",
+      confirmLabel: "Salir",
+      danger: true,
+    }))) return;
     void run(async () => {
       await leaveGroup(token).catch(() => { /* igual sale en este celular */ });
       group.drop();

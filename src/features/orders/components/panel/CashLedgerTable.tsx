@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import DataTable, { type DataTableColumn } from "../../../../components/Common/DataTable/DataTable";
+import { useDialogs } from "../../../../context/useDialogs";
 import { getCashLedger, voidCashMovement } from "../../api/ordersApi";
 import { errorMessage } from "../../lib/errors";
 import { formatDateTime, formatMoney } from "../../lib/format";
@@ -30,6 +31,7 @@ export default function CashLedgerTable({ sessionId, version = 0, onChanged, onE
   onChanged?: () => void;
   onError: (message: string | null) => void;
 }) {
+  const dialogs = useDialogs();
   const [type, setType] = useState<CashLedgerType | "">("");
   const [cashOnly, setCashOnly] = useState(false);
   const [page, setPage] = useState(1);
@@ -46,7 +48,12 @@ export default function CashLedgerTable({ sessionId, version = 0, onChanged, onE
 
   const voidEntry = async (entry: CashLedgerEntry) => {
     if (entry.movementId === null) return;
-    if (!window.confirm(`¿Anular "${entry.label}" por ${formatMoney(entry.amount)}? Queda en el libro como anulado.`)) return;
+    if (!(await dialogs.confirm({
+      title: `¿Anular "${entry.label}" por ${formatMoney(entry.amount)}?`,
+      message: "Queda en el libro como anulado.",
+      confirmLabel: "Anular",
+      danger: true,
+    }))) return;
     onError(null);
     try {
       await voidCashMovement(entry.movementId);

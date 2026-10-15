@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
 import { Bike, Check, ChefHat, HandPlatter, MapPin, MessageCircle, MessageSquareText, Phone, QrCode, Smartphone, Undo2, UserRound, X } from "lucide-react";
 import { buildWaLink } from "../../../../lib/whatsapp";
 import { elapsedLabel, formatMoney, formatTime, placeLabel, STATUS_LABEL } from "../../lib/format";
 import { CANCEL_REASONS, stockNoticeMessage } from "../../lib/orderItems";
-import type { Order, OrderStatus, TicketStatus, Waiter } from "../../types";
-import { isRefundable } from "../../lib/payment";
+import { orderFlow } from "../../lib/orderFlow";
+import type { Order, OrderItem, OrderStatus, RemovedOrderItem, TicketStatus, Waiter } from "../../types";
 import OrderItemsList, { type ItemActions } from "./OrderItemsList";
 import PaymentBadge from "./PaymentBadge";
 import p from "./panel.module.css";
@@ -31,6 +31,9 @@ interface Props {
   onRefund?: (order: Order, cancel: boolean, amount?: number) => void;
   // Quitar, restaurar o entregar productos sueltos del pedido.
   itemActions?: ItemActions;
+  // Clic derecho en la tarjeta o en uno de sus productos (menú contextual).
+  onContextMenu?: (event: MouseEvent<HTMLElement>, order: Order) => void;
+  onItemContextMenu?: (event: MouseEvent<HTMLElement>, order: Order, item: OrderItem | null, removed: RemovedOrderItem | null) => void;
 }
 
 const SOURCE_ICON = {
@@ -85,7 +88,9 @@ function SectorProgress({ order }: { order: Order }) {
   );
 }
 
-export default function OrderCard({ order, waiters, now, highlight = false, busy = false, onStatus, onWaiter, onDispatch, onRefund, itemActions }: Props) {
+export default function OrderCard({
+  order, waiters, now, highlight = false, busy = false, onStatus, onWaiter, onDispatch, onRefund, itemActions, onContextMenu, onItemContextMenu,
+}: Props) {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState<string | null>(null);
   // Productos quitados: lo que falta devolver (si se pagó online) y el aviso al cliente por WhatsApp.
@@ -94,16 +99,17 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
   const noticeHref = removedCount > 0 && order.customerPhone ? buildWaLink(order.customerPhone, stockNoticeMessage(order)) : null;
   const minutes = Math.floor((now - new Date(order.createdAt).getTime()) / 60_000);
   const late = order.status !== "ready" && minutes >= 20;
-  // Pedido ya cobrado online: cancelarlo implica decidir la devolución.
-  const paid = onRefund !== undefined && isRefundable(order);
-  // Delivery listo que todavía no salió: el siguiente paso es «Salió el pedido», no «Entregado».
-  // Con repartidor asignado, la salida y la entrega las registra él (con el código del cliente).
-  const courierActive = order.delivery?.status === "assigned" || order.delivery?.status === "picked_up";
-  const toDispatch = order.status === "ready" && order.serviceType === "delivery" && !order.dispatchedAt && !courierActive && onDispatch !== undefined;
+  // Pagado online (cancelarlo implica decidir la devolución), con repartidor, o
+  // delivery listo que todavía no salió (el paso siguiente es «Salió el pedido»).
+  const { paid, courierActive, toDispatch } = orderFlow(order, { refunds: onRefund !== undefined, dispatch: onDispatch !== undefined });
   const statusLabel = order.status === "ready" && order.dispatchedAt ? "En camino" : STATUS_LABEL[order.status];
 
   return (
-    <article className={`${s.card} ${highlight ? s.cardNew : ""} ${late ? s.cardLate : ""}`} aria-label={`Pedido ${order.number}`}>
+    <article
+      className={`${s.card} ${highlight ? s.cardNew : ""} ${late ? s.cardLate : ""}`}
+      aria-label={`Pedido ${order.number}`}
+      onContextMenu={onContextMenu && (event => onContextMenu(event, order))}
+    >
       <header className={s.cardHead}>
         <div className={s.cardId}>
           <span className={s.cardNumber}>#{order.number}</span>
@@ -120,7 +126,12 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
         <span className={s.cardTime} title={formatTime(order.createdAt)}>{formatTime(order.createdAt)} · {elapsedLabel(order.createdAt, now)}</span>
       </div>
 
-      <OrderItemsList order={order} busy={busy} actions={itemActions} />
+      <OrderItemsList
+        order={order}
+        busy={busy}
+        actions={itemActions}
+        onItemContextMenu={onItemContextMenu && ((event, item, removed) => onItemContextMenu(event, order, item, removed))}
+      />
 
       {removedCount > 0 && (refundDue > 0 || noticeHref) && (
         <div className={s.itemsNotice}>
@@ -220,7 +231,7 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
               </button>
             )}
             {toDispatch && (
-              <button type="button" className={p.btnPrimary} disabled={busy} onClick={() => onDispatch(order)}>
+              <button type="button" className={p.btnPrimary} disabled={busy} onClick={() => onDispatch?.(order)}>
                 <Bike size={16} aria-hidden /> Salió el pedido
               </button>
             )}
@@ -238,13 +249,13 @@ export default function OrderCard({ order, waiters, now, highlight = false, busy
               type="button"
               className={`${p.btnGhost} ${s.cancelBtn}`}
               disabled={busy}
-              onClick={() => (paid ? onRefund(order, true) : setConfirmCancel(true))}
+              onClick={() => (paid ? onRefund?.(order, true) : setConfirmCancel(true))}
               aria-label={paid ? `Rechazar pedido ${order.number} y devolver el pago` : `Cancelar pedido ${order.number}`}
             >
               <X size={16} aria-hidden /> {paid ? "Rechazar y devolver" : "Cancelar"}
             </button>
             {paid && (
-              <button type="button" className={p.btnGhost} disabled={busy} onClick={() => onRefund(order, false)}>
+              <button type="button" className={p.btnGhost} disabled={busy} onClick={() => onRefund?.(order, false)}>
                 <Undo2 size={16} aria-hidden /> Reembolsar
               </button>
             )}

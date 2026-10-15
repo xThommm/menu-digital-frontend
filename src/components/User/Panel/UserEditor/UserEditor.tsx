@@ -27,6 +27,13 @@ import {
 import ws from "../MenuEditor/Workspace/MenuWorkspace.module.css";
 import bw from "./Workspace/BusinessWorkspace.module.css";
 import styles from "./UserEditor.module.css";
+import { useContextMenu } from "../../../../features/contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../../features/contextMenu/hooks/useMenuEnv";
+import { MenuActionError } from "../../../../features/contextMenu/lib/contextMenu";
+import { closeDay, copyDayToOthers, DAY_LABEL as WEEK_DAY_LABEL, openDay } from "../../../Common/WeeklySchedule/weekSchedule";
+import {
+  buildBusinessPageMenu, buildGalleryPhotoMenu, buildMediaMenu, buildScheduleDayMenu, buildWhatsAppRowMenu,
+} from "./businessEditorMenu";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1193,6 +1200,19 @@ export default function UserEditorPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   });
 
+  // ── Menú contextual (escritorio, businessEditorMenu.ts) ──
+  const menuEnv = useMenuEnv();
+  const pageMenu = useMemo(() => buildBusinessPageMenu(menuEnv), [menuEnv]);
+  const galleryMenu = useMemo(() => buildGalleryPhotoMenu(menuEnv), [menuEnv]);
+  const mediaMenu = useMemo(() => buildMediaMenu(menuEnv), [menuEnv]);
+  const waMenu = useMemo(() => buildWhatsAppRowMenu(menuEnv), [menuEnv]);
+  const dayMenu = useMemo(() => buildScheduleDayMenu(), []);
+  const openPageMenu = useContextMenu(pageMenu);
+  const openGalleryMenu = useContextMenu(galleryMenu);
+  const openMediaMenu = useContextMenu(mediaMenu);
+  const openWaMenu = useContextMenu(waMenu);
+  const openDayMenu = useContextMenu(dayMenu);
+
   if (loading) {
     return (
       <div className="pageLoaderScreen">
@@ -1391,7 +1411,7 @@ export default function UserEditorPage() {
             {waNumbers.length > 0 && (
               <ul className={styles.waList}>
                 {waNumbers.map((w, i) => (
-                  <li key={i} className={styles.waRow}>
+                  <li key={i} className={styles.waRow} data-wa-index={i}>
                     <input
                       type="text"
                       placeholder={waNumbers.length > 1 ? "Nombre (ej: Sucursal Centro)" : "Nombre (opcional)"}
@@ -1603,6 +1623,7 @@ export default function UserEditorPage() {
           <div className={styles.mediaSection}>
             {!isDesktop && <p className={styles.mediaLabel}>Imagen de portada</p>}
             <div
+              data-media="portada"
               className={`${styles.bgPreview} ${uploading === "bg" ? styles.uploading : ""}`}
               style={backgroundPicture ? { backgroundImage: `url(${backgroundPicture})` } : undefined}
               onClick={() => uploading === null && bgInputRef.current?.click()}
@@ -1663,7 +1684,7 @@ export default function UserEditorPage() {
                 {removeLogoButton}
               </div>
             )}
-            <div className={styles.faviconRow}>
+            <div className={styles.faviconRow} data-media="logo">
               <button
                 className={`${styles.faviconPreview} ${uploading === "favicon" ? styles.uploading : ""}`}
                 onClick={() => faviconInputRef.current?.click()}
@@ -1742,7 +1763,7 @@ export default function UserEditorPage() {
               onDrop={handleGalleryDrop}
             >
               {pictures.map((url, i) => (
-                <div key={`${url}-${i}`} className={styles.galleryItem}>
+                <div key={`${url}-${i}`} className={styles.galleryItem} data-picture-index={i}>
                   <img src={url} alt={`Foto del negocio ${i + 1}`} loading="lazy" />
                   <button
                     className={styles.galleryItemRemove}
@@ -2075,8 +2096,104 @@ export default function UserEditorPage() {
       { block: "redes", label: "Redes sociales", done: Boolean(form.instagram.trim() || form.facebook.trim()) },
     ];
 
+    // Pedido de una acción nueva del menú: el error del backend sale en el aviso.
+    const mediaRequest = async (url: string, init: RequestInit, fallback: string) => {
+      const res = await fetch(url, { headers: authHeaders, ...init });
+      if (res.status === 401) {
+        logout();
+        window.location.href = "/login";
+        throw new MenuActionError("Sesión vencida");
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new MenuActionError(data.message || fallback);
+      return data as { media?: { backgroundPicture?: string } };
+    };
+
+    const onEditorContextMenu = (event: React.MouseEvent<HTMLElement>) => {
+      if (!(event.target instanceof Element)) return;
+      const photo = event.target.closest<HTMLElement>("[data-picture-index]");
+      const media = event.target.closest<HTMLElement>("[data-media]");
+      const wa = event.target.closest<HTMLElement>("[data-wa-index]");
+      const dayElement = event.target.closest<HTMLElement>("[data-day]");
+      const busy = uploading !== null;
+
+      if (photo) {
+        const index = Number(photo.dataset.pictureIndex);
+        const url = pictures[index];
+        if (url === undefined) return;
+        openGalleryMenu(event, {
+          url,
+          index,
+          isBackground: url === backgroundPicture,
+          busy,
+          actions: {
+            useAsBackground: async (target) => {
+              const data = await mediaRequest("/api/users/background/from-gallery", { method: "PATCH", body: JSON.stringify({ index: target }) }, "No se pudo cambiar la portada.");
+              setBackground(data.media?.backgroundPicture ?? pictures[target]);
+            },
+            remove: (target) => { void removeImage(target); },
+          },
+        }, { highlightElement: photo });
+        return;
+      }
+
+      if (media) {
+        const kind = media.dataset.media === "logo" ? "logo" : "portada";
+        openMediaMenu(event, {
+          kind,
+          url: kind === "logo" ? favicon : backgroundPicture,
+          busy,
+          actions: kind === "logo"
+            ? { change: () => faviconInputRef.current?.click(), remove: () => { void removeFavicon(); } }
+            : {
+              change: () => bgInputRef.current?.click(),
+              remove: async () => {
+                await mediaRequest("/api/users/background", { method: "DELETE" }, "No se pudo quitar la portada.");
+                setBackground("");
+              },
+            },
+        }, { highlightElement: media });
+        return;
+      }
+
+      if (wa) {
+        const index = Number(wa.dataset.waIndex);
+        const row = waNumbers[index];
+        if (!row) return;
+        openWaMenu(event, {
+          name: row.name,
+          number: row.number,
+          actions: { remove: () => setWaNumbers(list => list.filter((_, j) => j !== index)) },
+        }, { highlightElement: wa });
+        return;
+      }
+
+      if (dayElement && dayElement.closest("[data-business-block='horario']")) {
+        const day = dayElement.dataset.day as DayKey;
+        const week = scheduleToWeek(schedule);
+        openDayMenu(event, {
+          dayLabel: WEEK_DAY_LABEL[day],
+          open: (week[day] ?? []).length > 0,
+          otherOpenDays: Object.entries(week).some(([other, ranges]) => other !== day && ranges.length > 0),
+          actions: {
+            copyTo: scope => handleScheduleChange(copyDayToOthers(week, day, scope)),
+            close: () => handleScheduleChange(closeDay(week, day)),
+            open: () => handleScheduleChange(openDay(week, day)),
+          },
+        }, { highlightElement: dayElement });
+        return;
+      }
+
+      openPageMenu(event, {
+        dirty: isDirty,
+        canSave,
+        pageUrl: user?.slug ? `${window.location.origin}/${user.slug}` : null,
+        actions: { save: handleSaveClick, discard: discardChanges },
+      });
+    };
+
     return (
-      <div className={`${styles.ne} ${styles.neWide} ${ws.shell}`}>
+      <div className={`${styles.ne} ${styles.neWide} ${ws.shell}`} onContextMenu={onEditorContextMenu}>
         <header className={ws.header}>
           <div className={ws.headerTitle}>
             <h1>Mi negocio</h1>

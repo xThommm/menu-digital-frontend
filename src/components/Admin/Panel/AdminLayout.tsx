@@ -10,6 +10,11 @@ import BrandMark from "../../Common/BrandMark";
 import BrandWordmark from "../../Common/BrandWordmark";
 import s from "./AdminLayout.module.css";
 import { Bell, BellOff, BellRing, ChevronDown,PanelLeft , DollarSign, Inbox, LayoutPanelLeft, LogOut, MoreHorizontal, Palette, PlayingCards, Speech } from "lucide-react";
+import { OPEN_PANEL_APPEARANCE_EVENT } from "../../../features/contextMenu/globalMenu";
+import { useContextMenu } from "../../../features/contextMenu/hooks/useContextMenu";
+import { buildAdminSidebarMenu } from "./adminSidebarMenu";
+
+const SIDEBAR_MENU = buildAdminSidebarMenu();
 
 // Preferencia del CEO de ocultar la sidebar (desktop). Persistida para que no
 // tenga que volver a colapsarla en cada visita al panel.
@@ -54,8 +59,15 @@ export default function AdminLayout() {
   const { preferences, setAccent, setFontSize, reset: resetPreferences } = usePanelPreferences();
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const closeAppearance = useCallback(() => setAppearanceOpen(false), []);
+  // "Apariencia del panel…" del menú contextual global.
+  useEffect(() => {
+    const open = () => setAppearanceOpen(true);
+    window.addEventListener(OPEN_PANEL_APPEARANCE_EVENT, open);
+    return () => window.removeEventListener(OPEN_PANEL_APPEARANCE_EVENT, open);
+  }, []);
   useAdminPushBootstrap();
   const push = useAdminPush();
+  const openSidebarMenu = useContextMenu(SIDEBAR_MENU);
   const { unreadCount } = useAdminNotifications();
   const badgeFor = (path: string) => (path === NOTIFICATIONS_PATH ? unreadCount : 0);
   const navAriaLabel = (item: { path: string; label: string }) => (
@@ -128,6 +140,20 @@ export default function AdminLayout() {
         className={`${s.sidebar} ${sidebarCollapsed ? s.sidebarCollapsed : ""}`}
         aria-label="Navegación del panel CEO"
         inert={sidebarCollapsed}
+        onContextMenu={(event) => openSidebarMenu(event, {
+          push: {
+            known: push.status !== "loading",
+            available: push.available,
+            active: push.active,
+            busy: push.busy,
+            help: push.help,
+          },
+          actions: {
+            togglePush: () => { void push.toggle(); },
+            sendTest: () => { void push.sendTest(); },
+            openAppearance: () => setAppearanceOpen(true),
+          },
+        })}
       >
 
         <button type="button" className={s.brand} onClick={() => navigate("/admin")} aria-label="Ir al panel general">

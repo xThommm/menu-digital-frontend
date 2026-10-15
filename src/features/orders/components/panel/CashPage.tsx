@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import DataTable from "../../../../components/Common/DataTable/DataTable";
@@ -15,6 +15,12 @@ import { CashierField, MiniTable, Pager, Stat } from "./CashParts";
 import CashSessionCard from "./CashSessionCard";
 import ClosedCashTable from "./ClosedCashTable";
 import ProLock from "./ProLock";
+import { buildCashPageMenu, buildClosedShiftMenu, buildShiftMenu } from "./cashMenu";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../contextMenu/hooks/useMenuEnv";
+
+const PAGE_MENU = buildCashPageMenu();
+const SHIFT_MENU = buildShiftMenu();
 import p from "./panel.module.css";
 
 // Caja y turnos, por separado:
@@ -52,6 +58,8 @@ function CashPanel() {
   const [notice, setNotice] = useState<string | null>(null);
   const [historyTab, setHistoryTab] = useState<"cash" | "shifts">("cash");
   const [historyVersion, setHistoryVersion] = useState(0);
+  const [addingRegister, setAddingRegister] = useState(false);
+  const openPageMenu = useContextMenu(PAGE_MENU);
 
   const load = useCallback(async () => {
     try {
@@ -79,7 +87,7 @@ function CashPanel() {
   const closedRegisters = (overview?.registers ?? []).filter(register => register.active && register.openSessionId === null);
 
   return (
-    <div className={p.page}>
+    <div className={p.page} onContextMenu={event => openPageMenu(event, { actions: { addRegister: () => setAddingRegister(true) } })}>
       <header className={p.header}>
         <div className={p.titleBlock}>
           <h1 className={p.title}>Caja y turnos</h1>
@@ -117,7 +125,7 @@ function CashPanel() {
             {closedRegisters.length > 0 && (
               <OpenCashForm registers={closedRegisters} cashiers={overview.cashiers} onOpened={afterChange} onError={setError} />
             )}
-            <AddRegister onAdded={() => afterChange(null)} onError={setError} />
+            <AddRegister open={addingRegister} onOpenChange={setAddingRegister} onAdded={() => afterChange(null)} onError={setError} />
           </section>
 
           <ShiftSection data={shiftData} onChanged={afterChange} onError={setError} />
@@ -210,8 +218,13 @@ function OpenCashForm({ registers, cashiers, onOpened, onError }: {
   );
 }
 
-function AddRegister({ onAdded, onError }: { onAdded: () => void; onError: (message: string | null) => void }) {
-  const [open, setOpen] = useState(false);
+function AddRegister({ open, onOpenChange: setOpen, onAdded, onError }: {
+  // Abierto desde acá o desde "Agregar otra caja" del menú contextual.
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAdded: () => void;
+  onError: (message: string | null) => void;
+}) {
   const [name, setName] = useState("");
 
   const submit = async (event: React.FormEvent) => {
@@ -259,6 +272,18 @@ function ShiftSection({ data, onChanged, onError }: {
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [needsForce, setNeedsForce] = useState<string | null>(null);
+  const menuEnv = useMenuEnv();
+  const openShiftMenu = useContextMenu(SHIFT_MENU);
+  const shiftMenuContext = () => ({
+    shift: data.shift,
+    busy,
+    actions: {
+      open: () => start(),
+      // Ya confirmado: si hay pedidos sin entregar, aparece el aviso de siempre.
+      close: () => close(false),
+      showOrders: () => menuEnv.navigate("/pedidos/historial"),
+    },
+  });
 
   const start = async () => {
     onError(null);
@@ -288,7 +313,7 @@ function ShiftSection({ data, onChanged, onError }: {
 
   if (!data.shift || !data.summary) {
     return (
-      <section className={p.card} aria-label="Turno">
+      <section className={p.card} aria-label="Turno" onContextMenu={event => openShiftMenu(event, shiftMenuContext())}>
         <h2 className={p.cardTitle}>Turno</h2>
         <p className={p.empty} style={{ padding: "0.5rem 0 1rem" }}>No hay un turno abierto. Se abre solo con el primer pedido.</p>
         <div style={{ textAlign: "center" }}>
@@ -299,7 +324,7 @@ function ShiftSection({ data, onChanged, onError }: {
   }
 
   return (
-    <section className={`${p.card} ${p.stack}`} aria-label="Turno">
+    <section className={`${p.card} ${p.stack}`} aria-label="Turno" onContextMenu={event => openShiftMenu(event, shiftMenuContext())}>
       <div>
         <h2 className={p.cardTitle}>Turno: {data.shift.label}</h2>
         <p className={p.cardDesc}>Abierto el {formatDateTime(data.shift.openedAt)}. Cerrar el turno no cierra la caja.</p>
@@ -337,6 +362,9 @@ function ClosedShiftsTable({ version, onError }: { version: number; onError: (me
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{ shifts: Shift[]; total: number; pageSize: number } | null>(null);
   const [selected, setSelected] = useState<{ shift: Shift; summary: ShiftSummary } | null>(null);
+  const menuEnv = useMenuEnv();
+  const closedShiftMenu = useMemo(() => buildClosedShiftMenu(menuEnv), [menuEnv]);
+  const openShiftRowMenu = useContextMenu(closedShiftMenu, { highlightTarget: true });
 
   useEffect(() => {
     let cancelled = false;
@@ -384,6 +412,7 @@ function ClosedShiftsTable({ version, onError }: { version: number; onError: (me
           },
         ]}
         getRowId={shift => String(shift.id)}
+        onRowContextMenu={(event, shift) => openShiftRowMenu(event, { shift, actions: { showSummary: () => { void show(shift); } } })}
         minWidth={900}
         loading={!data}
         emptyMessage="Todavía no se cerró ningún turno."

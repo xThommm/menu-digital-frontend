@@ -194,6 +194,7 @@ export default function WeeklySchedule({
               <button
                 key={day}
                 type="button"
+                data-day={day}
                 className={`${styles.dayPill} ${on ? styles.dayPillOn : ""}`}
                 aria-pressed={on}
                 aria-label={DAY_LABEL[day]}
@@ -251,7 +252,7 @@ export default function WeeklySchedule({
               {state.active.map(day => {
                 const ranges = state.custom[day];
                 return (
-                  <li key={day} className={styles.exceptionRow}>
+                  <li key={day} className={styles.exceptionRow} data-day={day}>
                     <div className={styles.exceptionHead}>
                       <span className={styles.exceptionDay}>{DAY_LABEL[day]}</span>
                       {ranges

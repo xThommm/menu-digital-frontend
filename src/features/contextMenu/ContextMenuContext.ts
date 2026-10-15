@@ -4,6 +4,11 @@ import type { ResolvedItem } from "./types";
 export interface OpenContextMenuOptions {
   /** Marca el elemento que recibió el clic mientras el menú está abierto. */
   highlightTarget?: boolean;
+  /**
+   * Marca este elemento en lugar del que recibió el clic: para un manejador
+   * delegado (uno en el contenedor que decide qué fila se clickeó).
+   */
+  highlightElement?: HTMLElement | null;
 }
 
 export interface ContextMenuContextValue {

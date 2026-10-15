@@ -6,12 +6,18 @@ import type {
   CrmStage,
 } from "../../../types";
 import {
-  updateCrmProfile,
+  addCrmNote,
   exportCrmClients,
+  setCrmClientActive,
+  updateCrmProfile,
 } from "../../../api/crm";
 import { listAdminSellers } from "../../../api/adminSellers";
 import { useAuth } from "../../../context/useAuth";
 import { useNotifications } from "../../../context/useNotifications";
+import { useDialogs } from "../../../context/useDialogs";
+import { useContextMenu } from "../../../features/contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../features/contextMenu/hooks/useMenuEnv";
+import { buildCrmClientMenu, buildCrmPageMenu, followUpDate, type CrmClientMenuContext } from "./crmContextMenu";
 import { useFeedbackMessage } from "../../../hooks/useFeedbackMessage";
 import { useCrmClients } from "../../../hooks/useCrmClients";
 import { useCrmAlerts } from "../../../hooks/useCrmAlerts";
@@ -37,6 +43,8 @@ import { ListIcon, KanbanIcon, DownloadIcon } from "./crmIcons";
 import ClientDrawer from "./ClientDrawer";
 import s from "./SellerCrm.module.css";
 
+const PAGE_MENU = buildCrmPageMenu();
+
 // ══════════════════════════════════════════════════════════════════
 // Componente principal — lista/kanban de clientes + filtros + drawer de
 // detalle. Compartido por admin (ve y filtra a todos) y por cada vendedor
@@ -61,7 +69,11 @@ export default function SellerCrm() {
   const [error, setError] = useFeedbackMessage("error");
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<CrmStage | "all">("all");
-  const [planFilter, setPlanFilter] = useState<CrmClient["subscription"] | "all">("all");
+  // ?plan=<nombre> (ej. desde Planes del admin): arranca filtrado por ese plan.
+  const [planFilter, setPlanFilter] = useState<CrmClient["subscription"] | "all">(() => {
+    const plan = urlParams.get("plan");
+    return plan === "free" || plan === "basic" || plan === "pro" ? plan : "all";
+  });
   const [accountFilter, setAccountFilter] = useState<"all" | "active" | "inactive">("all");
   // El dashboard linkea a las tarjetas de alerta con ?attention=<code> — se
   // toma solo como valor inicial (mismo criterio que viewMode más abajo).
@@ -69,7 +81,8 @@ export default function SellerCrm() {
     const fromUrl = urlParams.get("attention");
     return fromUrl && fromUrl in ATTENTION_META ? (fromUrl as CrmAttentionCode) : "all";
   });
-  const [sellerFilter, setSellerFilter] = useState("all");
+  // ?seller=<id> ("Ver sus clientes en el CRM" desde Vendedores): solo valor inicial.
+  const [sellerFilter, setSellerFilter] = useState(() => urlParams.get("seller") || "all");
   const [leadFilter, setLeadFilter] = useState<"all" | "influencer" | "seller" | "pending">("all");
   const selectedId = urlParams.get("client");
   // En celular la tabla (pensada para desktop, con scroll horizontal) es
@@ -141,7 +154,103 @@ export default function SellerCrm() {
     }
   }, [clients, movingClientId, notifyError, notifySuccess, patchClient, refreshClients]);
 
-  // Conteo por etapa (para los chips de filtro).
+  // ── Menú contextual (crmContextMenu.ts) ──
+  const dialogs = useDialogs();
+  const menuEnv = useMenuEnv();
+  const clientMenu = useMemo(() => buildCrmClientMenu(menuEnv), [menuEnv]);
+  const openClientMenu = useContextMenu(clientMenu, { highlightTarget: true });
+  const openPageMenu = useContextMenu(PAGE_MENU);
+  // Etiquetas en uso, de la más usada a la menos (para sumarlas con un clic).
+  const knownTags = useMemo(() => {
+    const count = new Map<string, number>();
+    clients.forEach(client => client.tags.forEach(tag => count.set(tag, (count.get(tag) ?? 0) + 1)));
+    return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es")).map(([tag]) => tag);
+  }, [clients]);
+  const receivers = (sellersList.data ?? [])
+    .filter(seller => seller.active && seller.receivesLeads && !seller.influencer)
+    .map(seller => ({ _id: seller._id, name: seller.name }));
+
+  const withError = async (fallback: string, task: () => Promise<void>) => {
+    try {
+      await task();
+    } catch (err) {
+      notifyError(extractServerMessage(err, fallback));
+    }
+  };
+  const clientMenuContext = (client: CrmClient): CrmClientMenuContext => {
+    const saveTags = async (target: CrmClient, tags: string[]) => {
+      const updated = await updateCrmProfile(target._id, { tags });
+      patchClient(target._id, { tags: updated.tags });
+    };
+    return {
+      client,
+      isAdmin,
+      stages: STAGE_ORDER.map(value => ({ value, label: STAGE_META[value].label })),
+      knownTags,
+      receivers,
+      busy: movingClientId === client._id,
+      origin: window.location.origin,
+      actions: {
+        open: target => openDrawer(target._id),
+        setStage: async (target, stage) => {
+          await updateCrmProfile(target._id, { stage });
+          patchClient(target._id, { stage });
+          await refreshClients();
+        },
+        setFollowUp: async (target, date) => {
+          const updated = await updateCrmProfile(target._id, { nextFollowUp: date });
+          patchClient(target._id, { nextFollowUp: updated.nextFollowUp });
+        },
+        pickFollowUp: target => void withError("No se pudo agendar el seguimiento.", async () => {
+          const date = await dialogs.prompt({
+            title: `Seguimiento de ${target.businessName || `@${target.username}`}`,
+            confirmLabel: "Agendar",
+            field: {
+              label: "Fecha",
+              type: "date",
+              min: followUpDate(0),
+              defaultValue: target.nextFollowUp?.slice(0, 10) || followUpDate(1),
+              required: true,
+            },
+          });
+          if (!date) return;
+          const updated = await updateCrmProfile(target._id, { nextFollowUp: date });
+          patchClient(target._id, { nextFollowUp: updated.nextFollowUp });
+          notifySuccess("Seguimiento agendado.");
+        }),
+        addNote: target => void withError("No se pudo guardar la nota.", async () => {
+          const text = await dialogs.prompt({
+            title: `Nota para ${target.businessName || `@${target.username}`}`,
+            confirmLabel: "Guardar nota",
+            field: { label: "Nota", maxLength: 500, required: true },
+          });
+          if (!text) return;
+          await addCrmNote(target._id, text);
+          notifySuccess("Nota guardada.");
+        }),
+        addTag: (target, tag) => saveTags(target, [...target.tags, tag]),
+        newTag: target => void withError("No se pudo agregar la etiqueta.", async () => {
+          const tag = await dialogs.prompt({
+            title: "Nueva etiqueta",
+            confirmLabel: "Agregar",
+            field: { label: "Etiqueta", maxLength: 30, required: true },
+          });
+          if (!tag) return;
+          if (target.tags.includes(tag)) return;
+          await saveTags(target, [...target.tags, tag]);
+          notifySuccess(`Etiqueta "${tag}" agregada.`);
+        }),
+        assign: async (target, sellerId) => {
+          await updateCrmProfile(target._id, { assignedSeller: sellerId || null });
+          await refreshClients();
+        },
+        setActive: async (target, active) => {
+          const result = await setCrmClientActive(target._id, active);
+          patchClient(target._id, { active: result });
+        },
+      },
+    };
+  };
 
 
   const filtered = clients.filter((c) => {
@@ -464,7 +573,16 @@ export default function SellerCrm() {
   }
 
   return (
-    <div className={s.wrap}>
+    <div
+      className={s.wrap}
+      onContextMenu={event => openPageMenu(event, {
+        isAdmin,
+        view: viewMode,
+        activeFilters: activeFilters + (search ? 1 : 0),
+        exporting,
+        actions: { exportExcel: () => { void handleExport(); }, clearFilters, setView: setViewMode },
+      })}
+    >
       {/* ── Top bar ── */}
       <header className={s.topBar}>
         <div className={s.topBarInner}>
@@ -522,6 +640,7 @@ export default function SellerCrm() {
             activeFilterCount={activeFilters}
             onClearFilters={clearFilters}
             countLabel={visible => `${visible} de ${clients.length} clientes`}
+            onRowContextMenu={(event, client) => openClientMenu(event, clientMenuContext(client))}
             rowClassName={(client) => [
               s.clientTableRow,
               client.active ? "" : s.clientTableRowInactive,
@@ -567,6 +686,7 @@ export default function SellerCrm() {
                         draggable={movingClientId !== c._id}
                         onDragStart={(e) => e.dataTransfer.setData("text/plain", c._id)}
                         onClick={() => openDrawer(c._id)}
+                        onContextMenu={(event) => openClientMenu(event, clientMenuContext(c))}
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => { if (e.key === "Enter") openDrawer(c._id); }}

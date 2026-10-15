@@ -8,7 +8,12 @@ import {
 import { useMobileDock } from "../../../../../context/useMobileDock";
 import type { ItemLite, ImageAssignChange } from "../../../../../types";
 import Spinner from "../../../../Common/Spinner";
+import { useContextMenu } from "../../../../../features/contextMenu/hooks/useContextMenu";
+import { useMenuEnv } from "../../../../../features/contextMenu/hooks/useMenuEnv";
+import { buildImageManagerMenu, buildImageTileMenu } from "./imageManagerMenu";
 import styles from "./ImageManager.module.css";
+
+const PAGE_MENU = buildImageManagerMenu();
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
@@ -292,7 +297,7 @@ function ImageTile({
   const canAddRow = tile.pickerRows.length > 0 && tile.pickerRows[tile.pickerRows.length - 1] !== "";
 
   return (
-    <div className={styles.tile}>
+    <div className={styles.tile} data-tile-id={tile.clientId}>
       <div className={styles.tileThumbWrap}>
         {tile.imageUrl
           ? <img src={tile.imageUrl} alt="" className={styles.tileThumb} />
@@ -431,6 +436,11 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
   const [pendingDeleteTile, setPendingDeleteTile] = useState<TileState | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const menuEnv = useMenuEnv();
+  const tileMenu = useMemo(() => buildImageTileMenu(menuEnv), [menuEnv]);
+  const openTileMenu = useContextMenu(tileMenu);
+  const openPageMenu = useContextMenu(PAGE_MENU);
 
   useEffect(() => {
     localStorage.setItem(GRID_COLUMNS_STORAGE_KEY, String(gridColumns));
@@ -688,8 +698,48 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
 
   const errorMessage = loadState.error || saveState.error || deleteState.error;
 
+  // Menú contextual (imageManagerMenu.ts): un solo manejador para la página;
+  // sobre una imagen, el de esa imagen.
+  const focusLastPicker = (clientId: string) => window.requestAnimationFrame(() => {
+    const pickers = gridRef.current?.querySelectorAll<HTMLInputElement>(`[data-tile-id="${CSS.escape(clientId)}"] input`);
+    pickers?.[pickers.length - 1]?.focus();
+  });
+  const onPageContextMenu = (event: React.MouseEvent<HTMLElement>) => {
+    const tileElement = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-tile-id]") : null;
+    const tile = tileElement ? tiles.find((entry) => entry.clientId === tileElement.dataset.tileId) : undefined;
+    if (tile && tile.imageUrl) {
+      openTileMenu(event, {
+        imageUrl: tile.imageUrl,
+        isPreset: tile.isPreset,
+        ready: tile.status === "ready",
+        assigned: tile.pickerRows
+          .map((itemID, rowIndex) => ({ rowIndex, title: itemById.get(itemID)?.title ?? "" }))
+          .filter((row) => row.title !== ""),
+        actions: {
+          assign: () => {
+            if (tile.pickerRows[tile.pickerRows.length - 1] !== "") addProductRow(tile.clientId);
+            focusLastPicker(tile.clientId);
+          },
+          unassign: (rowIndex) => removeProductRow(tile.clientId, rowIndex),
+          remove: () => requestDelete(tile),
+        },
+      }, { highlightElement: tileElement });
+      return;
+    }
+    openPageMenu(event, {
+      view: viewMode,
+      pending: dirtyTiles.length,
+      saving: saveState.loading || anyUploading,
+      actions: {
+        addImages: () => { setViewMode("mine"); fileInputRef.current?.click(); },
+        setView: setViewMode,
+        save: () => { void handleSave(); },
+      },
+    });
+  };
+
   return (
-    <div className={styles.page}>
+    <div className={styles.page} onContextMenu={onPageContextMenu}>
       <header className={styles.header}>
         <button type="button" className={styles.backBtn} onClick={onBack} aria-label="Volver al menú" title="Volver">
           {icons.back}
@@ -807,7 +857,7 @@ export default function ImageManager({ onBack, onSuccess }: ImageManagerProps) {
           </span>
         </div>
       ) : (
-        <div className={styles.grid} style={{ "--tile-columns": gridColumns } as CSSProperties}>
+        <div ref={gridRef} className={styles.grid} style={{ "--tile-columns": gridColumns } as CSSProperties}>
           {searchFilteredTiles.map((tile) => (
             <ImageTile
               key={tile.clientId}

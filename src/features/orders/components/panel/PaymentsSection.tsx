@@ -6,6 +6,11 @@ import { errorMessage } from "../../lib/errors";
 import { formatDateTime } from "../../lib/format";
 import type { MpConnection } from "../../types";
 import p from "./panel.module.css";
+import { useContextMenu } from "../../../contextMenu/hooks/useContextMenu";
+import { buildMpMenu } from "./ordersSettingsMenu";
+import { useDialogs } from "../../../../context/useDialogs";
+
+const MP_MENU = buildMpMenu();
 
 // Configuración → Pagos: conectar la cuenta de Mercado Pago del local para
 // cobrar pedidos de take away / delivery. El dinero entra directo a esa
@@ -26,6 +31,8 @@ interface Props {
 }
 
 export default function PaymentsSection({ onChange }: Props) {
+  const dialogs = useDialogs();
+  const openMenu = useContextMenu(MP_MENU);
   const [params, setParams] = useSearchParams();
   const [connection, setConnection] = useState<MpConnection | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,26 +81,44 @@ export default function PaymentsSection({ onChange }: Props) {
     }
   };
 
-  const disconnect = async () => {
-    if (!window.confirm("Se desconecta tu cuenta de Mercado Pago y los clientes dejan de poder pagar online. Para devolver pagos anteriores vas a tener que volver a conectarla. ¿Desconectar?")) return;
+  // Sin preguntar: el botón confirma acá y el menú contextual, por su cuenta.
+  const disconnectNow = async () => {
     setBusy(true);
     setError(null);
     try {
       await disconnectMpConnection();
       setNotice({ ok: true, text: "Mercado Pago quedó desconectado." });
       await load();
-    } catch (err) {
-      setError(errorMessage(err, "No se pudo desconectar Mercado Pago."));
     } finally {
       setBusy(false);
     }
   };
 
+  const disconnect = async () => {
+    if (!(await dialogs.confirm({
+      title: "¿Desconectar Mercado Pago?",
+      message: "Se desconecta tu cuenta y los clientes dejan de poder pagar online. Para devolver pagos anteriores vas a tener que volver a conectarla.",
+      confirmLabel: "Desconectar",
+      danger: true,
+    }))) return;
+    try {
+      await disconnectNow();
+    } catch (err) {
+      setError(errorMessage(err, "No se pudo desconectar Mercado Pago."));
+    }
+  };
+
   const connected = connection?.connected === true;
   const needsReconnect = connection?.status === "revoked" || connection?.status === "error";
+  const available = !loading && !(connection && !connection.configured);
 
   return (
-    <section className={p.card}>
+    <section
+      className={p.card}
+      onContextMenu={event => {
+        if (available) openMenu(event, { connected, needsReconnect, busy, actions: { connect, disconnect: disconnectNow } });
+      }}
+    >
       <h2 className={p.cardTitle}>Pagos con Mercado Pago</h2>
       <p className={p.cardDesc}>
         Tus clientes pagan los pedidos de take away y delivery con Mercado Pago y la plata se acredita directo en tu cuenta.
