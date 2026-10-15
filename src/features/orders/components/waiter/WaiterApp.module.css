@@ -237,3 +237,61 @@
 }
 
 .orderTime { font-size: 0.75rem; color: var(--admin-text-warm); }
+
+/* ── Pantalla de la mesa ── */
+.tableScreen { padding-bottom: 5rem; }
+
+.tableSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: -0.5rem;
+}
+
+/* Barra fija con lo cargado: revisar a la izquierda, enviar (lo principal) a la derecha. */
+.sendBar {
+  position: fixed;
+  left: 1rem;
+  right: 1rem;
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  z-index: var(--z-overlay);
+  max-width: 688px;
+  margin: 0 auto;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sendReview,
+.sendBtn {
+  composes: md-button from global;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: none;
+  font: inherit;
+  font-weight: 700;
+  box-shadow: var(--tone-shadow);
+  cursor: pointer;
+}
+
+.sendReview {
+  padding: 0 1rem 0 0.6rem;
+  background: var(--tone-float);
+  color: var(--admin-text-primary);
+}
+
+.sendReview .cartCount { background: var(--admin-gold); color: var(--admin-gold-ink); }
+
+.sendBtn {
+  flex: 1;
+  padding: 0 1.25rem;
+  background: var(--admin-gold);
+  color: var(--admin-gold-ink);
+}
+
+.sendBtn:disabled { opacity: 0.7; cursor: progress; }
+
+.sendReview:focus-visible,
+.sendBtn:focus-visible { outline: 3px solid var(--tone-focus); outline-offset: 2px; }

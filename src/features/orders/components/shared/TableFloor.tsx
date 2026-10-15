@@ -19,10 +19,12 @@ interface Props {
   // Operador que mira el salón (en el panel no hay): suma el filtro "Mías".
   waiterId?: number;
   hidePrices?: boolean;
+  // Unidades cargadas en el dispositivo y todavía sin enviar, por mesa.
+  drafts?: Map<number, number>;
   onSelect: (table: FloorTable) => void;
 }
 
-export default function TableFloor({ tableCount, sessions, occupied = [], groups, now, waiterId, hidePrices = false, onSelect }: Props) {
+export default function TableFloor({ tableCount, sessions, occupied = [], groups, now, waiterId, hidePrices = false, drafts, onSelect }: Props) {
   const [filter, setFilter] = useState<FloorFilter>("all");
   const tables = buildFloor(tableCount, sessions, occupied, groups);
   const busy = tables.filter(table => table.kind !== "free").length;
@@ -64,7 +66,7 @@ export default function TableFloor({ tableCount, sessions, occupied = [], groups
         <ul className={s.grid} aria-label="Mesas del salón">
           {visible.map(table => (
             <li key={table.tableNumber}>
-              <TableTile table={table} now={now} mine={isMine(table, waiterId)} hidePrices={hidePrices} onSelect={onSelect} />
+              <TableTile table={table} now={now} mine={isMine(table, waiterId)} hidePrices={hidePrices} draft={drafts?.get(table.tableNumber) ?? 0} onSelect={onSelect} />
             </li>
           ))}
         </ul>
@@ -73,11 +75,12 @@ export default function TableFloor({ tableCount, sessions, occupied = [], groups
   );
 }
 
-function TableTile({ table, now, mine, hidePrices, onSelect }: {
+function TableTile({ table, now, mine, hidePrices, draft, onSelect }: {
   table: FloorTable;
   now: number;
   mine: boolean;
   hidePrices: boolean;
+  draft: number;
   onSelect: (table: FloorTable) => void;
 }) {
   let state: string;
@@ -122,10 +125,16 @@ function TableTile({ table, now, mine, hidePrices, onSelect }: {
   }
 
   return (
-    <button type="button" className={`${s.tile} ${state}`} aria-label={label} onClick={() => onSelect(table)}>
+    <button
+      type="button"
+      className={`${s.tile} ${state}`}
+      aria-label={draft > 0 ? `${label}, ${draft} sin enviar` : label}
+      onClick={() => onSelect(table)}
+    >
       <span className={s.number}>{table.tableNumber}</span>
       <span className={s.status}>{status}</span>
       {detail}
+      {draft > 0 && <span className={s.draft}>{draft} sin enviar</span>}
     </button>
   );
 }

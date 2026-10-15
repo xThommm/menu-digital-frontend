@@ -104,3 +104,15 @@
 }
 
 .other { background: var(--tone); color: var(--admin-text-warm); }
+
+/* Productos cargados en este dispositivo que todavía no se mandaron. */
+.draft {
+  margin-top: 0.15rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--admin-gold);
+  color: var(--admin-gold-ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}

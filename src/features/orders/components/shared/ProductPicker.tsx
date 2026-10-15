@@ -1,22 +1,16 @@
 import { useMemo, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import type { PublicMenuData, PublicMenuItem } from "../../../../types";
-import { buildMenuTabs, isItemUnavailable } from "../../../../lib/publicMenu";
-import { cartUnitPrice } from "../../../../lib/cartPricing";
-import { isOfferActive } from "../../../../lib/offers";
+import { isItemUnavailable } from "../../../../lib/publicMenu";
 import { formatMoney } from "../../lib/format";
+import { normalizeSearch, pickChoices, pickerCategories, pickProduct, type PickedProduct } from "../../lib/quickPick";
 import s from "./ProductPicker.module.css";
 
 // Buscador de productos de la carta para cargar pedidos a mano (tomador de
 // pedidos del operador y alta manual del panel). Trabaja sobre la carta pública
 // v2: solo lo visible, con los no disponibles marcados.
 
-export interface PickedProduct {
-  itemId: string;
-  title: string;
-  option?: string;
-  unitPrice: number;
-}
+export type { PickedProduct };
 
 interface Props {
   menu: PublicMenuData;
@@ -24,29 +18,20 @@ interface Props {
   onPick: (product: PickedProduct) => void;
 }
 
-const normalize = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-
 export default function ProductPicker({ menu, hidePrices = false, onPick }: Props) {
   const [search, setSearch] = useState("");
-  const categories = useMemo(
-    () => buildMenuTabs(menu).flatMap(tab => tab.categorias.map(cat => ({
-      title: tab.categorias.length > 1 || tab.label === cat.title ? cat.title : `${tab.label} · ${cat.title}`,
-      items: cat.items,
-    }))),
-    [menu]
-  );
+  const categories = useMemo(() => pickerCategories(menu), [menu]);
 
-  const query = normalize(search.trim());
+  const query = normalizeSearch(search.trim());
   const visible = query
     ? categories
-      .map(cat => ({ ...cat, items: cat.items.filter(item => normalize(item.title).includes(query)) }))
+      .map(cat => ({ ...cat, items: cat.items.filter(item => normalizeSearch(item.title).includes(query)) }))
       .filter(cat => cat.items.length > 0)
     : categories;
 
   const pick = (item: PublicMenuItem, option?: string) => {
-    const unitPrice = cartUnitPrice(item, option, { hidePrices });
-    if (unitPrice === null) return;
-    onPick({ itemId: item._id, title: item.title, option, unitPrice });
+    const product = pickProduct(item, option, hidePrices);
+    if (product) onPick(product);
   };
 
   return (
@@ -70,14 +55,7 @@ export default function ProductPicker({ menu, hidePrices = false, onPick }: Prop
           <ul className={s.items}>
             {cat.items.map(item => {
               const unavailable = isItemUnavailable(item);
-              const options = Object.entries(item.options ?? {});
-              // Mismo criterio que las tarjetas de la carta (UserMenu): con
-              // una oferta vigente se pide como producto simple; si no, un
-              // producto con variantes se pide por variante.
-              const onOffer = isOfferActive(item);
-              const simplePrice = cartUnitPrice(item, undefined, { hidePrices });
-              const showSimple = (options.length === 0 || onOffer) && simplePrice != null;
-              const showVariants = options.length > 0 && !onOffer;
+              const { simple: simplePrice, variants } = pickChoices(item, hidePrices);
               return (
                 <li key={item._id} className={`${s.item} ${unavailable ? s.itemOff : ""}`}>
                   <div className={s.itemHead}>
@@ -85,13 +63,13 @@ export default function ProductPicker({ menu, hidePrices = false, onPick }: Prop
                     {unavailable && <span className={s.badge}>No disponible</span>}
                   </div>
                   <div className={s.actions}>
-                    {showSimple && (
+                    {simplePrice !== null && (
                       <button type="button" className={s.add} disabled={unavailable} onClick={() => pick(item)}>
                         <Plus size={14} aria-hidden />
                         <span>{hidePrices ? "Agregar" : formatMoney(simplePrice)}</span>
                       </button>
                     )}
-                    {showVariants && options.map(([name, price]) => (
+                    {variants.map(([name, price]) => (
                       <button
                         key={name}
                         type="button"
