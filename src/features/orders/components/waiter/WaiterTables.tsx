@@ -6,18 +6,21 @@ import {
 import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { errorCode, errorMessage } from "../../lib/errors";
 import { elapsedLabel, formatMoney, formatTime } from "../../lib/format";
-import type { BillApi, GroupSession, GroupStaffApi, TableSession } from "../../types";
+import type { BillApi, GroupSession, GroupStaffApi, OccupiedTable, TableSession } from "../../types";
 import BillPanel from "../shared/BillPanel";
 import GroupPanel, { OpenGroupForm } from "../shared/GroupPanel";
 import TableBill from "../shared/TableBill";
+import type { FloorTable } from "../../lib/floor";
+import TableFloor, { FloorSheet } from "../shared/TableFloor";
 import WaiterOrderCard from "./WaiterOrderCard";
 import p from "../panel/panel.module.css";
 import s from "./WaiterApp.module.css";
 
-// "Mis mesas": las mesas abiertas que atiende el operador (y las que todavía
-// no tomó nadie, ej. abiertas por un pedido desde el QR). Para cada una, la
-// cuenta con el total, los pedidos, cuántos comensales hay, la cuenta
-// dividida con sus cobros, el pedido grupal y el cierre de la mesa.
+// Salón del operador: todas las mesas del local con su estado. Al tocar una
+// abierta (suya o sin operador) se abre su cuenta con el total, los pedidos,
+// los comensales, la cuenta dividida con sus cobros, el pedido grupal y el
+// cierre; una libre va directo a cargarle un pedido. Las de otros operadores
+// se ven ocupadas, sin su cuenta.
 
 const POLL_MS = 15_000;
 // Avisos del cierre que piden confirmar: pedidos sin entregar o cuenta sin terminar de cobrar.
@@ -27,14 +30,18 @@ interface Props {
   slug: string;
   token: string;
   waiterId: number;
+  tableCount: number;
+  hidePrices?: boolean;
   onAuthError: (err: unknown) => boolean;
   onNewOrder: (tableNumber: number) => void;
   onCountChange: (count: number) => void;
 }
 
-export default function WaiterTables({ slug, token, waiterId, onAuthError, onNewOrder, onCountChange }: Props) {
+export default function WaiterTables({ slug, token, waiterId, tableCount, hidePrices = false, onAuthError, onNewOrder, onCountChange }: Props) {
   const [sessions, setSessions] = useState<TableSession[] | null>(null);
+  const [occupied, setOccupied] = useState<OccupiedTable[]>([]);
   const [groups, setGroups] = useState<GroupSession[]>([]);
+  const [selected, setSelected] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -44,84 +51,101 @@ export default function WaiterTables({ slug, token, waiterId, onAuthError, onNew
   const load = useCallback(async () => {
     try {
       const [result, openGroups] = await Promise.all([
-        getWaiterTables(token).then(response => response.sessions),
+        getWaiterTables(token),
         // Con un backend anterior no hay pedidos grupales: las mesas se ven igual.
         groupApi.list().catch(() => [] as GroupSession[]),
       ]);
-      setSessions(result);
+      setSessions(result.sessions);
+      setOccupied(result.occupied ?? []);
       setGroups(openGroups);
-      onCountChange(result.filter(session => session.waiterId === waiterId).length);
+      onCountChange(result.sessions.filter(session => session.waiterId === waiterId).length);
       setNow(Date.now());
       setError(null);
     } catch (err) {
-      if (!onAuthError(err)) setError(errorMessage(err, "No se pudieron cargar tus mesas."));
+      if (!onAuthError(err)) setError(errorMessage(err, "No se pudieron cargar las mesas."));
     }
   }, [token, waiterId, onAuthError, onCountChange, groupApi]);
 
   // Las mesas se actualizan con los avisos del servidor; sin conexión en vivo, cada POLL_MS.
   useLiveRefresh({ hello: { type: "auth", role: "waiter", token }, refresh: load, offlineMs: POLL_MS });
 
+  const closeSheet = useCallback(() => setSelected(null), []);
+
   if (sessions === null && !error) return <p className={p.loading}>Cargando…</p>;
 
-  const mine = (sessions ?? []).filter(session => session.waiterId === waiterId);
-  const unassigned = (sessions ?? []).filter(session => session.waiterId === null);
   const groupOf = (tableNumber: number) => groups.find(group => group.tableNumber === tableNumber) ?? null;
-  // Pedidos grupales de mesas que todavía no tienen ningún pedido (no hay mesa abierta que mostrar).
-  const openTables = new Set((sessions ?? []).map(session => session.tableNumber));
-  const waiting = groups.filter(group => !openTables.has(group.tableNumber));
+  const selectedSession = selected === null ? null : (sessions ?? []).find(session => session.tableNumber === selected) ?? null;
+  const selectedGroup = selected === null ? null : groupOf(selected);
+
+  const select = (table: FloorTable) => {
+    setNotice(null);
+    if (table.kind === "other") {
+      setNotice(`La mesa ${table.tableNumber} la atiende ${table.occupied.waiterName ?? "otro operador"}.`);
+    } else if (table.kind === "free" && !table.group) {
+      onNewOrder(table.tableNumber);
+    } else {
+      setSelected(table.tableNumber);
+    }
+  };
 
   const onClosed = (session: TableSession) => {
+    setSelected(null);
     setNotice(`Mesa ${session.tableNumber} cerrada · ${formatMoney(session.totalAmount)}.`);
     load();
   };
-
-  const card = (session: TableSession) => (
-    <TableCard
-      key={session.id}
-      session={session}
-      group={groupOf(session.tableNumber)}
-      now={now}
-      slug={slug}
-      token={token}
-      billApi={billApi}
-      groupApi={groupApi}
-      onAuthError={onAuthError}
-      onNewOrder={onNewOrder}
-      onClosed={onClosed}
-      onReload={load}
-      onNotice={setNotice}
-      onUpdated={updated => setSessions(prev => (prev ?? []).map(s2 => (s2.id === updated.id ? updated : s2)))}
-    />
-  );
 
   return (
     <section className={p.stack}>
       {error && <p className={p.error} role="alert">{error}</p>}
       {notice && <p className={p.success} role="status">{notice}</p>}
-      {mine.length === 0 && <p className={p.empty}>No tenés mesas abiertas. Se abren solas cuando cargás el primer pedido de una mesa.</p>}
-      {mine.map(card)}
 
-      {unassigned.length > 0 && (
-        <>
-          <h2 className={s.sectionTitle}>Mesas sin operador</h2>
-          <p className={p.switchHint} style={{ marginTop: "-0.5rem" }}>
-            Se abrieron con un pedido desde el QR o el panel. Si les cargás un pedido pasan a ser tuyas.
-          </p>
-          {unassigned.map(card)}
-        </>
-      )}
+      <TableFloor
+        tableCount={tableCount}
+        sessions={sessions ?? []}
+        occupied={occupied}
+        groups={groups}
+        now={now}
+        waiterId={waiterId}
+        hidePrices={hidePrices}
+        onSelect={select}
+      />
+      <p className={p.switchHint}>Tocá una mesa libre para cargarle el primer pedido, o una ocupada para ver su cuenta.</p>
 
-      <h2 className={s.sectionTitle}>Pedidos grupales</h2>
+      <h2 className={s.sectionTitle}>Pedido grupal</h2>
       <p className={p.switchHint} style={{ marginTop: "-0.5rem" }}>
         Los comensales de una mesa arman el pedido entre todos, cada uno desde su celular. Abrilo acá para una mesa que todavía no pidió nada.
       </p>
-      {waiting.map(group => (
-        <article key={group.id} className={p.tableCard} aria-label={`Pedido grupal de la mesa ${group.tableNumber}`}>
-          <span className={p.tableName}>Mesa {group.tableNumber}</span>
-          <GroupPanel api={groupApi} slug={slug} tableNumber={group.tableNumber} group={group} onChanged={load} onAuthError={onAuthError} onNotice={setNotice} />
-        </article>
-      ))}
       <OpenGroupForm api={groupApi} onOpened={load} onAuthError={onAuthError} />
+
+      {selected !== null && (selectedSession || selectedGroup) && (
+        <FloorSheet title={`Mesa ${selected}`} onClose={closeSheet}>
+          {selectedSession ? (
+            <TableCard
+              key={selectedSession.id}
+              session={selectedSession}
+              group={selectedGroup}
+              now={now}
+              slug={slug}
+              token={token}
+              billApi={billApi}
+              groupApi={groupApi}
+              onAuthError={onAuthError}
+              onNewOrder={onNewOrder}
+              onClosed={onClosed}
+              onReload={load}
+              onNotice={setNotice}
+              onUpdated={updated => setSessions(prev => (prev ?? []).map(s2 => (s2.id === updated.id ? updated : s2)))}
+            />
+          ) : (
+            <>
+              <GroupPanel api={groupApi} slug={slug} tableNumber={selected} group={selectedGroup} onChanged={load} onAuthError={onAuthError} onNotice={setNotice} />
+              <button type="button" className={p.btnPrimary} onClick={() => onNewOrder(selected)}>
+                <Plus size={16} aria-hidden /> Cargar pedido
+              </button>
+            </>
+          )}
+        </FloorSheet>
+      )}
     </section>
   );
 }
@@ -177,7 +201,7 @@ function TableCard({ session, group, now, slug, token, billApi, groupApi, onAuth
     <article className={p.tableCard} aria-label={`Mesa ${session.tableNumber}`}>
       <div className={p.tableHead}>
         <div className={p.titleBlock}>
-          <span className={p.tableName}>Mesa {session.tableNumber}</span>
+          {/* El número de mesa ya está en el título de la hoja. */}
           <span className={p.tableMeta}>
             Abierta {elapsedLabel(session.openedAt, now)} ({formatTime(session.openedAt)}) · {session.ordersCount} pedido(s)
             {session.activeOrders > 0 && ` · ${session.activeOrders} sin entregar`}

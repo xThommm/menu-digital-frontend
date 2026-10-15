@@ -3,7 +3,7 @@
 
 .shell { max-width: 720px; padding-bottom: 7rem; }
 
-/* Título de una sección (Nuevo pedido, Mis mesas…) con la flecha al inicio. */
+/* Título de una sección (Nuevo pedido, Salón…) con la flecha al inicio. */
 .viewTitle { display: flex; align-items: center; gap: 0.35rem; min-width: 0; margin-left: -0.5rem; }
 
 .sectionTitle {

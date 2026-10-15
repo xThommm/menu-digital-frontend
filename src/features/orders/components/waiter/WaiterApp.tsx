@@ -29,8 +29,9 @@ import s from "./WaiterApp.module.css";
 // sesión del dueño en cada dispositivo.
 //
 // No es solo para tomar pedidos: al entrar muestra tres accesos grandes,
-// "Nuevo pedido", "Mis mesas" (la cuenta de cada mesa abierta, dividirla y
-// registrar los pagos, su pedido grupal y el cierre) e "Historial".
+// "Nuevo pedido", "Salón" (todas las mesas con su estado; en cada abierta la
+// cuenta, dividirla y registrar los pagos, su pedido grupal y el cierre) e
+// "Historial".
 
 type Phase =
   | { kind: "loading" }
@@ -41,7 +42,7 @@ type View = "home" | "new" | "tables" | "history";
 
 const VIEW_TITLE: Record<Exclude<View, "home">, string> = {
   new: "Nuevo pedido",
-  tables: "Mis mesas",
+  tables: "Salón",
   history: "Historial",
 };
 
@@ -141,6 +142,8 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [openTables, setOpenTables] = useState<number | null>(null);
+  // El pedido se empezó desde el salón: al enviarlo se vuelve ahí.
+  const [fromFloor, setFromFloor] = useState(false);
   const request = useRef<{ key: string; id: string } | null>(null);
   const hidePrices = menu?.user.menuDisplay?.hidePrices === true;
 
@@ -161,7 +164,7 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
     return false;
   }, [onLocked]);
 
-  // En el inicio, cuántas mesas abiertas atiende (para el acceso "Mis mesas").
+  // En el inicio, cuántas mesas abiertas atiende (para el acceso "Salón").
   useEffect(() => {
     if (view !== "home") return;
     const controller = new AbortController();
@@ -187,10 +190,16 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
     setToast(`+1 ${product.title}${product.option ? ` · ${product.option}` : ""}`);
   };
 
-  // Desde "Mis mesas": pedido nuevo con la mesa ya elegida.
+  // Desde el salón: pedido nuevo con la mesa ya elegida.
   const newOrderForTable = (tableNumber: number) => {
     setService({ ...emptyService("table"), table: String(tableNumber) });
+    setFromFloor(true);
     setView("new");
+  };
+
+  const goHome = () => {
+    setFromFloor(false);
+    setView("home");
   };
 
   const send = async () => {
@@ -209,6 +218,10 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
       setSheetOpen(false);
       request.current = null;
       setToast(`Pedido #${order.number} enviado · ${placeLabel(order)}.`);
+      if (fromFloor) {
+        setFromFloor(false);
+        setView("tables");
+      }
     } catch (err) {
       if (!handleAuthError(err)) setError(errorMessage(err, "No se pudo enviar el pedido. Probá de nuevo."));
     } finally {
@@ -241,7 +254,7 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
           </div>
         ) : (
           <div className={s.viewTitle}>
-            <button type="button" className={p.iconBtn} onClick={() => setView("home")} aria-label="Volver al inicio">
+            <button type="button" className={p.iconBtn} onClick={goHome} aria-label="Volver al inicio">
               <ArrowLeft size={20} aria-hidden />
             </button>
             <h1 className={p.title}>{VIEW_TITLE[view]}</h1>
@@ -254,7 +267,7 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
 
       {view === "home" && (
         <nav className={s.homeGrid} aria-label="Inicio">
-          <button type="button" className={`${s.homeBtn} ${s.homeBtnPrimary}`} onClick={() => setView("new")}>
+          <button type="button" className={`${s.homeBtn} ${s.homeBtnPrimary}`} onClick={() => { setFromFloor(false); setView("new"); }}>
             <span className={s.homeIcon}><Plus size={26} aria-hidden /></span>
             <span className={s.homeText}>
               <span className={s.homeLabel}>Nuevo pedido</span>
@@ -266,8 +279,8 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
           <button type="button" className={s.homeBtn} onClick={() => setView("tables")}>
             <span className={s.homeIcon}><LayoutGrid size={26} aria-hidden /></span>
             <span className={s.homeText}>
-              <span className={s.homeLabel}>Mis mesas</span>
-              <span className={s.homeHint}>La cuenta, los cobros y el pedido grupal de cada mesa</span>
+              <span className={s.homeLabel}>Salón</span>
+              <span className={s.homeHint}>Todas las mesas: cuáles están libres, la cuenta y los cobros de las tuyas</span>
             </span>
             {openTables !== null && openTables > 0 && <span className={s.homeBadge}>{openTables}</span>}
             <ChevronRight size={20} aria-hidden className={s.homeChevron} />
@@ -304,6 +317,8 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
           slug={info.business.slug || slug}
           token={token}
           waiterId={info.waiter.id}
+          tableCount={tableCount}
+          hidePrices={hidePrices}
           onAuthError={handleAuthError}
           onNewOrder={newOrderForTable}
           onCountChange={setOpenTables}

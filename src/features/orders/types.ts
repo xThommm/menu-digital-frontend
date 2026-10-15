@@ -539,6 +539,13 @@ export interface TableSession {
   orders?: Order[];
 }
 
+// Mesa abierta de otro operador, para el salón del operador: cuál y quién, sin la cuenta.
+export interface OccupiedTable {
+  tableNumber: number;
+  waiterName: string | null;
+  openedAt: string;
+}
+
 // ── Cuenta de la mesa (dividirla y registrar pagos) ──
 // none: sin dividir · items: cada uno lo que tiene asignado · equal: partes iguales · custom: importes a mano.
 export type SplitMode = "none" | "items" | "equal" | "custom";

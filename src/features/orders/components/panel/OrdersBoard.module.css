@@ -383,6 +383,9 @@
 .manualBody {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  /* La carta tiene su propio scroll (alto mínimo 0): sin esto, en una columna
+     la grilla le da una fila más baja que su alto y el pedido se le monta. */
+  grid-auto-rows: max-content;
   gap: 1.5rem;
   align-items: start;
 }

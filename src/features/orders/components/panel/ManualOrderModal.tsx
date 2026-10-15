@@ -16,20 +16,23 @@ import p from "./panel.module.css";
 import s from "./OrdersBoard.module.css";
 
 // Alta manual de un pedido desde el panel (ej. un pedido en la barra, por
-// teléfono o un delivery). Entra confirmado.
+// teléfono o un delivery). Entra confirmado. Desde el salón llega con la
+// mesa ya elegida.
 
 interface Props {
   tableCount: number;
   waiters: Waiter[];
+  initialTable?: number;
   onClose: () => void;
   onCreated: (order: Order) => void;
 }
 
-export default function ManualOrderModal({ tableCount, waiters, onClose, onCreated }: Props) {
+export default function ManualOrderModal({ tableCount, waiters, initialTable, onClose, onCreated }: Props) {
   const { user } = useAuth();
   const menu = useOrderingMenu(user?.slug);
   const [lines, setLines] = useState<UnitLine[]>([]);
-  const [service, setService] = useState<ServiceDraft>(() => emptyService("counter"));
+  const [service, setService] = useState<ServiceDraft>(() =>
+    initialTable ? { ...emptyService("table"), table: String(initialTable) } : emptyService("counter"));
   const [waiterId, setWaiterId] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
