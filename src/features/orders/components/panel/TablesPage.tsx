@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import QRCode from "qrcode";
-import { ChevronDown, ChevronUp, Receipt } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Receipt } from "lucide-react";
 import { useAuth } from "../../../../context/useAuth";
 import DataTable, { type DataTableColumn } from "../../../../components/Common/DataTable/DataTable";
 import {
@@ -18,6 +18,8 @@ import type { GroupSession, TableSession } from "../../types";
 import BillPanel from "../shared/BillPanel";
 import GroupPanel, { OpenGroupForm } from "../shared/GroupPanel";
 import TableBill from "../shared/TableBill";
+import type { FloorTable } from "../../lib/floor";
+import TableFloor, { FloorSheet } from "../shared/TableFloor";
 import ManualOrderModal from "./ManualOrderModal";
 import type { TableFocusState } from "./ordersBoardMenu";
 import { buildTableMenu } from "./tablesMenu";
@@ -42,9 +44,11 @@ export default function TablesPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [historyVersion, setHistoryVersion] = useState(0);
-  const [addingTo, setAddingTo] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [newOrderTable, setNewOrderTable] = useState<number | null>(null);
   const settings = useOrderSettings();
   const waiters = useWaiters();
+  const tableCount = settings.data?.settings.tableCount ?? 0;
   // Se llegó desde el tablero ("Ir a la mesa" / "Abrir la cuenta de la mesa").
   const focus = (useLocation().state as TableFocusState | null) ?? null;
 
@@ -91,6 +95,16 @@ export default function TablesPage() {
   const selectedSession = selected === null ? null : (open ?? []).find(session => session.tableNumber === selected) ?? null;
   const selectedGroup = selected === null ? null : groupOf(selected);
 
+  // Desde el tablero se abre la hoja de esa mesa, una sola vez por navegación.
+  const [focusHandled, setFocusHandled] = useState<number | null>(null);
+  if (focus && open && focusHandled !== focus.tableSessionId) {
+    const target = open.find(session => session.id === focus.tableSessionId);
+    if (target) {
+      setFocusHandled(focus.tableSessionId);
+      setSelected(target.tableNumber);
+    }
+  }
+
   const newOrderSession = newOrderTable === null ? null : (open ?? []).find(session => session.tableNumber === newOrderTable) ?? null;
 
   const select = (table: FloorTable) => {
@@ -125,26 +139,7 @@ export default function TablesPage() {
           {settings.loading && !settings.data ? (
             <p className={p.loading}>Cargando…</p>
           ) : (
-            <div className={p.tableGrid}>
-              {open.map(session => (
-                <OpenTableCard
-                  key={session.id}
-                  session={session}
-                  group={groups.find(group => group.tableNumber === session.tableNumber) ?? null}
-                  slug={slug}
-                  now={now}
-                  onUpdated={replace}
-                  onClosed={closed}
-                  onError={setError}
-                  onReload={refresh}
-                  onNotice={setNotice}
-                  tableLink={tableLink(session.tableNumber)}
-                  focused={focus?.tableSessionId === session.id}
-                  openBill={focus?.tableSessionId === session.id && focus.bill === true}
-                  onAddOrder={() => setAddingTo(session.tableNumber)}
-                />
-              ))}
-            </div>
+            <TableFloor tableCount={tableCount} sessions={open} groups={groups} now={now} onSelect={select} />
           )}
           <p className={p.switchHint} style={{ marginTop: "0.75rem" }}>
             Tocá una mesa libre para cargarle un pedido, o una ocupada para ver su cuenta, cobrarla o cerrarla.
@@ -163,16 +158,46 @@ export default function TablesPage() {
         </section>
       )}
 
-      {addingTo !== null && (
+      {selected !== null && (selectedSession || selectedGroup) && (
+        <FloorSheet title={`Mesa ${selected}`} onClose={closeSheet}>
+          {selectedSession ? (
+            <OpenTableCard
+              key={selectedSession.id}
+              session={selectedSession}
+              group={selectedGroup}
+              slug={slug}
+              now={now}
+              onUpdated={replace}
+              onClosed={closed}
+              onReload={refresh}
+              onNotice={setNotice}
+              onAddOrder={() => addOrder(selectedSession.tableNumber)}
+              tableLink={tableLink(selectedSession.tableNumber)}
+              openBill={focus?.tableSessionId === selectedSession.id && focus.bill === true}
+            />
+          ) : (
+            <>
+              <GroupPanel api={ownerGroupApi} slug={slug} tableNumber={selected} group={selectedGroup} onChanged={refresh} onNotice={setNotice} />
+              <button type="button" className={p.btnPrimary} onClick={() => addOrder(selected)}>
+                <Plus size={16} aria-hidden /> Cargar pedido
+              </button>
+            </>
+          )}
+        </FloorSheet>
+      )}
+
+      {newOrderTable !== null && (
         <ManualOrderModal
-          tableCount={settings.data?.settings.tableCount ?? 0}
+          tableCount={tableCount}
           waiters={waiters.data ?? []}
-          initialTable={addingTo}
-          onClose={() => setAddingTo(null)}
+          initialTable={newOrderTable}
+          initialWaiterId={newOrderSession?.waiterId ?? null}
+          tableOrders={newOrderSession?.orders}
+          onClose={() => setNewOrderTable(null)}
           onCreated={order => {
-            setAddingTo(null);
-            setNotice(`Pedido #${order.number} cargado · Mesa ${order.tableNumber}.`);
-            void refresh();
+            setNewOrderTable(null);
+            setNotice(`Pedido #${order.number} cargado en la mesa ${order.tableNumber ?? newOrderTable}.`);
+            refresh();
           }}
         />
       )}
@@ -186,7 +211,7 @@ export default function TablesPage() {
 }
 
 function OpenTableCard({
-  session, group, slug, now, onUpdated, onClosed, onError, onReload, onNotice, tableLink, focused, openBill, onAddOrder,
+  session, group, slug, now, onUpdated, onClosed, onReload, onNotice, onAddOrder, tableLink, openBill,
 }: {
   session: TableSession;
   group: GroupSession | null;
@@ -196,21 +221,15 @@ function OpenTableCard({
   onClosed: (session: TableSession) => void;
   onReload: () => void;
   onNotice: (message: string) => void;
-  tableLink: string | null;
-  focused: boolean;
-  openBill: boolean;
   onAddOrder: () => void;
+  tableLink: string | null;
+  openBill: boolean;
 }) {
   const [showOrders, setShowOrders] = useState(false);
   const [showBill, setShowBill] = useState(openBill);
-  const cardRef = useRef<HTMLElement>(null);
   const env = useMenuEnv();
   const tableMenu = useMemo(() => buildTableMenu(env), [env]);
   const openTableMenu = useContextMenu(tableMenu, { highlightTarget: true });
-
-  useEffect(() => {
-    if (focused) cardRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
-  }, [focused]);
 
   const downloadQr = async () => {
     if (!tableLink) return;
@@ -251,8 +270,7 @@ function OpenTableCard({
 
   return (
     <article
-      ref={cardRef}
-      className={`${p.tableCard} ${focused ? p.tableCardFocus : ""}`}
+      className={p.tableCard}
       aria-label={`Mesa ${session.tableNumber}`}
       onContextMenu={event => openTableMenu(event, {
         session,
