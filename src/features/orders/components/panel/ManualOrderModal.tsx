@@ -27,19 +27,24 @@ interface Props {
   waiters: Waiter[];
   // Pedido para una mesa ya elegida (ej. "Agregar pedido" desde Mesas).
   initialTable?: number;
+  initialWaiterId?: number | null;
+  // Pedidos de la mesa: "Otra vuelta" ofrece repetir lo que ya pidió.
+  tableOrders?: Order[];
   // Pedido ya armado (ej. "Repetir pedido" desde el historial).
   initial?: RepeatDraft;
   onClose: () => void;
   onCreated: (order: Order) => void;
 }
 
-export default function ManualOrderModal({ tableCount, waiters, initialTable, initial, onClose, onCreated }: Props) {
+export default function ManualOrderModal({
+  tableCount, waiters, initialTable, initialWaiterId, tableOrders, initial, onClose, onCreated,
+}: Props) {
   const { user } = useAuth();
   const menu = useOrderingMenu(user?.slug);
   const [lines, setLines] = useState<UnitLine[]>(() => initial?.lines ?? []);
   const [service, setService] = useState<ServiceDraft>(() =>
     initial?.service ?? (initialTable ? { ...emptyService("table"), table: String(initialTable) } : emptyService("counter")));
-  const [waiterId, setWaiterId] = useState("");
+  const [waiterId, setWaiterId] = useState(initialWaiterId ? String(initialWaiterId) : "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
