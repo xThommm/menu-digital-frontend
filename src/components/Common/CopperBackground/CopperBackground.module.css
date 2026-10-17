@@ -1,0 +1,88 @@
+/* Recreación en CSS del look "Copper Current" de pryzm.design (forma
+   Warped Field + grano). Cada veta es una elipse con degradé radial,
+   rotada y difuminada; la intensidad de cada una es un % del acento
+   mezclado con la base, escalado por --copper-k (1 en oscuro, menos en
+   claro, donde el mismo % se ve mucho más fuerte sobre la crema). */
+
+.root {
+  --copper-base: var(--admin-bg-base);
+  --copper-accent: var(--admin-gold);
+  --copper-k: 1;
+  --copper-grain: 0.07;
+
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--copper-base);
+}
+
+.field {
+  position: absolute;
+  inset: -6%;
+  filter: blur(34px);
+}
+
+.streak {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--copper-accent) calc(var(--copper-k) * var(--strength)), var(--copper-base)) 0%,
+    color-mix(in srgb, var(--copper-accent) calc(var(--copper-k) * var(--strength) * 0.55), var(--copper-base)) 38%,
+    color-mix(in srgb, var(--copper-accent) calc(var(--copper-k) * var(--strength) * 0.18), transparent) 70%,
+    transparent 100%
+  );
+}
+
+/* Las vetas dibujan una "Y": un tronco que sube desde abajo, y dos brazos
+   que se abren hacia arriba a la derecha (el más encendido) y a la izquierda. */
+
+/* Brazo derecho: diagonal que sube hacia la esquina superior derecha. */
+.main {
+  --strength: 78%;
+  width: 58%; height: 15%;
+  left: 40%; top: 30%;
+  transform: rotate(-36deg);
+}
+
+/* Tronco: baja desde el cruce hacia el borde inferior. */
+.low {
+  --strength: 52%;
+  width: 46%; height: 13%;
+  left: 30%; top: 66%;
+  transform: rotate(-72deg);
+}
+
+/* Brazo izquierdo: sube desde el cruce hacia arriba, más tenue. */
+.far {
+  --strength: 40%;
+  width: 44%; height: 14%;
+  left: 18%; top: 22%;
+  transform: rotate(48deg);
+}
+
+/* Mancha de la esquina superior izquierda. */
+.corner {
+  --strength: 50%;
+  width: 30%; height: 20%;
+  left: -4%; top: -6%;
+  transform: rotate(30deg);
+}
+
+/* Resplandor de la esquina inferior izquierda. */
+.foot {
+  --strength: 46%;
+  width: 40%; height: 24%;
+  left: -10%; top: 84%;
+  transform: rotate(-10deg);
+}
+
+/* Grano: ruido fractal en escala de grises, en mosaico. */
+.grain {
+  position: absolute;
+  inset: 0;
+  opacity: var(--copper-grain);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+}

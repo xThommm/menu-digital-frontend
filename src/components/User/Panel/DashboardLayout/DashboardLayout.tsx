@@ -12,6 +12,7 @@ import { MobileDockProvider } from "../../../../context/MobileDockProvider";
 import { useMobileDock } from "../../../../context/useMobileDock";
 import BrandMark from "../../../Common/BrandMark";
 import BrandWordmark from "../../../Common/BrandWordmark";
+import CopperBackground from "../../../Common/CopperBackground/CopperBackground";
 import s from "./DashboardLayout.module.css";
 import { ArrowUpRight, CalendarCheck, ChartColumn, ClipboardList, FileText, House, LogOut, MoreHorizontal, Palette, PanelLeft, Settings, Store, Wallet } from "lucide-react";
 import { OPEN_PANEL_APPEARANCE_EVENT } from "../../../../features/contextMenu/globalMenu";
@@ -123,6 +124,7 @@ function DashboardLayoutInner() {
 
   return (
     <div className={s.layoutRoot} data-theme-area="panel">
+      <CopperBackground className={s.backdrop} />
 
       {/* ── Sidebar (desktop) ─────────────────────────────────────────────── */}
       <aside

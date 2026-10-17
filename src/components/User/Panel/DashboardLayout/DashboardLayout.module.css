@@ -7,10 +7,28 @@
   display: flex;
   min-height: 100vh;
   background: var(--admin-bg-base);
+  /* Contexto propio: el fondo (.backdrop, z-index -1) queda detrás del
+     contenido sin tener que posicionar cada página. */
+  isolation: isolate;
   font-family: var(--font-sans);
   font-size: var(--text-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Fondo "Copper Current" / "Sunset Haze" (ver CopperBackground): fijo al
+   viewport, en el acento del panel, así sigue la preferencia de color.
+   Más tenue que en la landing para no competir con las tarjetas. Va con
+   .layoutRoot delante para ganarle a .root de CopperBackground, que puede
+   cargarse después. */
+.layoutRoot .backdrop {
+  position: fixed;
+  z-index: -1;
+  --copper-k: 0.8;
+}
+:global(:root[data-theme="light"]) .layoutRoot .backdrop {
+  --copper-k: 0.5;
+  --copper-grain: 0.08;
 }
 
 /* ── Sidebar (desktop) — identidad "cálida" del panel del dueño ──
