@@ -44,6 +44,7 @@ import { useAuthTheme } from "../../../hooks/useAuthTheme";
 import { getPlanCardSummary, PRO_EXTRA_LABELS } from "../../../lib/plans";
 import type { BooleanPlanFeature } from "../../../types";
 import Spinner from "../../Common/Spinner";
+import ScrollStory from "./ScrollStory/ScrollStory";
 import { BLOG_PATH, MENU_QR_GUIDE } from "../../../pages/Blog/blogContent";
 
 const SITE_URL = "https://www.menudigitalapp.com.ar";
@@ -162,55 +163,98 @@ const ABOUT_CARDS: IconCard[] = [
   { icon: Wallet, title: "Sin sorpresas", desc: "Precio fijo mensual. Sin comisiones por venta ni costos ocultos." },
 ];
 
+// Anillos de vapor del hero: se sortean una vez por carga y los pinta React
+// (antes se agregaban al DOM a mano y se duplicaban al volver a montar).
+const STEAM_RINGS: React.CSSProperties[] = Array.from({ length: 10 }, () => {
+  const size = 30 + Math.random() * 80;
+  return {
+    width: size,
+    height: size,
+    left: `${10 + Math.random() * 80}%`,
+    top: `${20 + Math.random() * 60}%`,
+    animationDuration: `${8 + Math.random() * 8}s`,
+    animationDelay: `-${Math.random() * 12}s`,
+  };
+});
+
 // ─────────────────────────────────────────────
 // HOOK: PARALLAX
 // ─────────────────────────────────────────────
+// Un solo cuadro por scroll (rAF) y la posición del banner medida aparte:
+// leer offsetTop en cada evento forzaba un layout. El contenido de arriba
+// cambia de alto (llegan los planes, el relato), así que se vuelve a medir
+// cuando cambia el tamaño de la página. Con reduced-motion no se mueve nada.
 function useParallax() {
-  const scrollY = useRef(0);
-
   useEffect(() => {
-    const onScroll = () => {
-      scrollY.current = window.scrollY;
-      const heroBg = document.getElementById("heroBg");
-      const heroGrid = document.getElementById("heroGrid");
-      const parBg = document.getElementById("parBg");
-      const parGrid = document.getElementById("parGrid");
-      const y = scrollY.current;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const heroBg = document.getElementById("heroBg");
+    const heroGrid = document.getElementById("heroGrid");
+    const parBg = document.getElementById("parBg");
+    const parGrid = document.getElementById("parGrid");
+    const banner = parBg?.closest<HTMLElement>(`.${styles.parBanner}`) ?? null;
+    let bannerTop = 0;
+    let frame = 0;
 
-      if (heroBg) heroBg.style.transform = `translateY(${y * 0.3}px)`;
-      if (heroGrid) heroGrid.style.transform = `translateY(${y * 0.12}px)`;
-
-      const bannerEl = parBg?.closest(`.${styles.parBanner}`) as HTMLElement | null;
-      if (parBg && bannerEl) {
-        const rel = y - bannerEl.offsetTop;
-        parBg.style.transform = `translateY(${rel * 0.35}px)`;
+    const apply = () => {
+      frame = 0;
+      const y = window.scrollY;
+      // El hero ya no se ve: no tiene sentido seguir moviéndolo.
+      if (y < window.innerHeight * 1.5) {
+        if (heroBg) heroBg.style.transform = `translateY(${y * 0.3}px)`;
+        if (heroGrid) heroGrid.style.transform = `translateY(${y * 0.12}px)`;
       }
-      if (parGrid && bannerEl) {
-        const rel = y - bannerEl.offsetTop;
-        parGrid.style.transform = `perspective(700px) rotateX(28deg) translateY(${rel * 0.18}px)`;
+      if (banner) {
+        const rel = y - bannerTop;
+        if (parBg) parBg.style.transform = `translateY(${rel * 0.35}px)`;
+        if (parGrid) parGrid.style.transform = `perspective(700px) rotateX(28deg) translateY(${rel * 0.18}px)`;
       }
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(apply); };
+    const measure = () => {
+      bannerTop = banner ? banner.getBoundingClientRect().top + window.scrollY : 0;
+      schedule();
+    };
+
+    const resize = new ResizeObserver(measure);
+    resize.observe(document.body);
+    window.addEventListener("scroll", schedule, { passive: true });
+    measure();
+    return () => {
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      window.removeEventListener("scroll", schedule);
+    };
   }, []);
 }
 
 // ─────────────────────────────────────────────
 // HOOK: REVEAL ON SCROLL
+// IntersectionObserver en vez de medir cada .reveal en cada scroll; los que
+// aparecen después (las tarjetas de planes cuando llega el catálogo) se
+// suman al vuelo.
 // ─────────────────────────────────────────────
-function useReveal() {
+function useReveal(rootRef: React.RefObject<HTMLElement | null>) {
   useEffect(() => {
-    const check = () => {
-      document.querySelectorAll(`.${styles.reveal}`).forEach((el) => {
-        if (el.getBoundingClientRect().top < window.innerHeight - 60) {
-          el.classList.add(styles.revealed);
-        }
+    const root = rootRef.current;
+    if (!root) return;
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add(styles.revealed);
+        observer.unobserve(entry.target);
       });
+    }, { rootMargin: "0px 0px -60px 0px" });
+    const watch = () => {
+      root.querySelectorAll(`.${styles.reveal}:not(.${styles.revealed})`).forEach((el) => observer.observe(el));
     };
-    check();
-    window.addEventListener("scroll", check, { passive: true });
-    return () => window.removeEventListener("scroll", check);
-  }, []);
+    const added = new MutationObserver(watch);
+    added.observe(root, { childList: true, subtree: true });
+    watch();
+    return () => {
+      observer.disconnect();
+      added.disconnect();
+    };
+  }, [rootRef]);
 }
 
 // ─────────────────────────────────────────────
@@ -227,75 +271,69 @@ function useDocumentTitle(title: string) {
 }
 
 // ─────────────────────────────────────────────
-// HOOK: DATOS ESTRUCTURADOS DEL FAQ
-// Arma el FAQPage desde FAQS (así no se desincroniza del texto visible) y lo
-// saca al desmontar, igual que RouteSeo con el del blog.
-// ─────────────────────────────────────────────
-function useFaqSchema() {
-  useEffect(() => {
-    const schema = document.createElement("script");
-    schema.type = "application/ld+json";
-    schema.textContent = JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "@id": `${SITE_URL}/#faq`,
-      inLanguage: "es-AR",
-      mainEntity: FAQS.map((faq) => ({
-        "@type": "Question",
-        name: faq.question,
-        acceptedAnswer: { "@type": "Answer", text: faq.answer },
-      })),
-    });
-    document.head.appendChild(schema);
-    return () => schema.remove();
-  }, []);
-}
-
-// ─────────────────────────────────────────────
 // SUBCOMPONENTE: CURSOR PERSONALIZADO
 // ─────────────────────────────────────────────
+// Solo con mouse (en táctil no hay puntero que seguir). El cuadro se pide
+// mientras el anillo todavía alcanza al punto, no en un bucle permanente, y
+// el agrandado sobre enlaces va por delegación: así también lo tienen los
+// elementos que se montan después (planes, menú mobile).
+const INTERACTIVE = "a,button,[data-hover]";
+
 function CustomCursor() {
   const dotRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
+  const [enabled] = useState(() => window.matchMedia("(pointer: fine)").matches);
 
   useEffect(() => {
-    let mx = 0, my = 0, rx = 0, ry = 0;
-    const onMove = (e: MouseEvent) => { mx = e.clientX; my = e.clientY; };
-    document.addEventListener("mousemove", onMove);
+    if (!enabled) return;
+    const follow = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 1 : 0.11;
+    let mx = -100, my = -100, rx = -100, ry = -100, raf = 0;
 
-    let raf: number;
-    const animate = () => {
+    const tick = () => {
       if (dotRef.current) {
         dotRef.current.style.left = mx + "px";
         dotRef.current.style.top = my + "px";
       }
-      rx += (mx - rx) * 0.11;
-      ry += (my - ry) * 0.11;
+      rx += (mx - rx) * follow;
+      ry += (my - ry) * follow;
       if (ringRef.current) {
         ringRef.current.style.left = rx + "px";
         ringRef.current.style.top = ry + "px";
       }
-      raf = requestAnimationFrame(animate);
+      raf = Math.abs(mx - rx) + Math.abs(my - ry) > 0.5 ? requestAnimationFrame(tick) : 0;
     };
-    animate();
+    const onMove = (e: MouseEvent) => {
+      mx = e.clientX;
+      my = e.clientY;
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
 
-    const expand = () => {
-      if (dotRef.current) { dotRef.current.style.width = "12px"; dotRef.current.style.height = "12px"; }
-      if (ringRef.current) { ringRef.current.style.width = "52px"; ringRef.current.style.height = "52px"; ringRef.current.style.borderColor = "color-mix(in srgb, var(--auth-amber) 75%, transparent)"; }
+    const size = (dot: number, ring: number, alpha: number) => {
+      if (dotRef.current) { dotRef.current.style.width = `${dot}px`; dotRef.current.style.height = `${dot}px`; }
+      if (ringRef.current) {
+        ringRef.current.style.width = `${ring}px`;
+        ringRef.current.style.height = `${ring}px`;
+        ringRef.current.style.borderColor = `color-mix(in srgb, var(--auth-amber) ${alpha}%, transparent)`;
+      }
     };
-    const contract = () => {
-      if (dotRef.current) { dotRef.current.style.width = "7px"; dotRef.current.style.height = "7px"; }
-      if (ringRef.current) { ringRef.current.style.width = "32px"; ringRef.current.style.height = "32px"; ringRef.current.style.borderColor = "color-mix(in srgb, var(--auth-amber) 45%, transparent)"; }
+    const interactive = (target: EventTarget | null) => target instanceof Element && !!target.closest(INTERACTIVE);
+    const onOver = (e: MouseEvent) => { if (interactive(e.target)) size(12, 52, 75); };
+    const onOut = (e: MouseEvent) => {
+      if (interactive(e.target) && !interactive(e.relatedTarget)) size(7, 32, 45);
     };
-    const interactiveEls = document.querySelectorAll("a,button,[data-hover]");
-    interactiveEls.forEach((el) => { el.addEventListener("mouseenter", expand); el.addEventListener("mouseleave", contract); });
 
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseover", onOver);
+    document.addEventListener("mouseout", onOut);
     return () => {
-      document.removeEventListener("mousemove", onMove);
       cancelAnimationFrame(raf);
-      interactiveEls.forEach((el) => { el.removeEventListener("mouseenter", expand); el.removeEventListener("mouseleave", contract); });
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseover", onOver);
+      document.removeEventListener("mouseout", onOut);
     };
-  }, []);
+  }, [enabled]);
+
+  if (!enabled) return null;
 
   return (
     <>
@@ -543,64 +581,6 @@ function ContactFab() {
 // ─────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────
-const FAQS = [
-  {
-    question: "¿Qué es un menú digital QR?",
-    answer:
-      "Es una carta online a la que los clientes acceden escaneando un código QR con su celular. Permite mostrar productos, categorías, precios, imágenes y otra información del negocio sin depender únicamente de una carta impresa.",
-  },
-  {
-    question: "¿Cómo funciona un menú QR para restaurantes?",
-    answer:
-      "Creás tu menú digital, cargás los productos y compartís el código QR generado. El cliente escanea el código con la cámara de su celular y la carta se abre directamente en el navegador.",
-  },
-  {
-    question: "¿Tengo que cambiar el código QR si modifico los precios?",
-    answer:
-      "No. Podés modificar productos, precios, ofertas y disponibilidad sin cambiar el código QR. Los clientes que vuelvan a escanearlo accederán al menú actualizado.",
-  },
-  {
-    question: "¿El cliente tiene que descargar una aplicación?",
-    answer:
-      "No. El menú funciona desde el navegador del celular, por lo que el cliente no necesita instalar ninguna aplicación ni crear una cuenta.",
-  },
-  {
-    question: "¿Puedo recibir pedidos por WhatsApp?",
-    answer:
-      "Sí. Tus clientes arman el pedido desde la carta y lo envían por WhatsApp a tu negocio, eligiendo delivery o take away según las modalidades que ofrezcas. No cobramos comisión por pedido.",
-  },
-  {
-    question: "¿Puedo recibir pedidos desde la mesa?",
-    answer:
-      "Sí, con el plan Pro. Imprimís un QR general o uno por mesa: el cliente pide desde el celular y el pedido entra a tu panel y a la pantalla del sector que lo prepara. Tus mozos también pueden tomar pedidos desde su celular.",
-  },
-  {
-    question: "¿Puedo cobrar los pedidos de delivery y take away online?",
-    answer:
-      "Sí, con el plan Pro conectás tu propia cuenta de Mercado Pago y el cliente paga desde la carta. La plata va directo a tu cuenta: Menú Digital App no cobra comisión, solo aplican las tarifas de Mercado Pago.",
-  },
-  {
-    question: "¿Mis clientes pueden reservar mesa online?",
-    answer:
-      "Sí, con el plan Pro tu página suma el botón «Reservar mesa». El cliente completa el formulario, recibe un código y ve en vivo cuando confirmás su reserva. Vos las manejás desde el panel y, si el horario no está disponible, podés proponerle otro.",
-  },
-  {
-    question: "¿Puedo usar el mismo QR en todas las mesas?",
-    answer:
-      "Sí. Podés imprimir el mismo código QR y colocarlo en distintas mesas, en la barra, en la puerta o compartir el enlace del menú por WhatsApp e Instagram.",
-  },
-  {
-    question: "¿Puedo cargar muchos productos de una sola vez?",
-    answer:
-      "Según el plan disponible, podés utilizar la carga masiva mediante Excel para incorporar o actualizar una gran cantidad de productos de forma más rápida.",
-  },
-  {
-    question: "¿Sirve para cafeterías y bares además de restaurantes?",
-    answer:
-      "Sí. Menú Digital App está pensado para restaurantes, cafeterías, bares, rotiserías y otros negocios gastronómicos que necesiten publicar y actualizar su carta online.",
-  },
-];
-
 export default function HomePage() {
   const catalog = usePlans();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -609,11 +589,11 @@ export default function HomePage() {
   const { theme, toggle: toggleTheme } = useAuthTheme();
   const themeLabel = theme === "dark" ? "Activar tema claro" : "Activar tema oscuro";
   const spooky = useSpooky();
+  const pageRef = useRef<HTMLDivElement>(null);
 
   useParallax();
-  useReveal();
+  useReveal(pageRef);
   useDocumentTitle("Menú Digital QR, Pedidos y Reservas | Menú Digital App");
-  useFaqSchema();
 
   // Plan más barato que incluye la función (el catálogo viene ordenado
   // free → basic → pro). null si ya la trae el gratuito o si el catálogo
@@ -626,23 +606,6 @@ export default function HomePage() {
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 80);
     return () => clearTimeout(t);
-  }, []);
-
-  // Steam rings
-  useEffect(() => {
-    const steamEl = document.getElementById("steamContainer");
-    if (!steamEl) return;
-    for (let i = 0; i < 10; i++) {
-      const r = document.createElement("div");
-      r.className = styles.steamRing;
-      const size = 30 + Math.random() * 80;
-      const x = 10 + Math.random() * 80;
-      const y = 20 + Math.random() * 60;
-      const dur = 8 + Math.random() * 8;
-      const delay = Math.random() * 12;
-      r.style.cssText = `width:${size}px;height:${size}px;left:${x}%;top:${y}%;animation-duration:${dur}s;animation-delay:-${delay}s`;
-      steamEl.appendChild(r);
-    }
   }, []);
 
   useEffect(() => {
@@ -673,7 +636,7 @@ useEffect(() => {
     <>
       <CustomCursor />
 
-      <div className={styles.hpage} data-auth-theme={theme}>
+      <div className={styles.hpage} data-auth-theme={theme} ref={pageRef}>
 
         {/* ── NAV ── */}
         <nav className={styles.nav} ref={navRef}>
@@ -774,7 +737,11 @@ useEffect(() => {
           <div id="heroBg" className={styles.heroBg} />
           <div id="heroGrid" className={styles.heroGrid} />
           <HalloweenSky />
-          <div id="steamContainer" className={styles.steam} />
+          <div className={styles.steam} aria-hidden>
+            {STEAM_RINGS.map((ring, i) => (
+              <div key={i} className={styles.steamRing} style={ring} />
+            ))}
+          </div>
 
           <div className={styles.heroInner}>
             <div className={styles.heroText}>
@@ -838,6 +805,9 @@ useEffect(() => {
             </div>
           ))}
         </div>
+
+{/* ── RELATO POR SCROLL: del QR a la cocina ── */}
+        <ScrollStory theme={theme} />
 
 {/* ── AMBER LINE ── */}
         <div className={styles.amberLine} />
@@ -972,51 +942,6 @@ useEffect(() => {
         <div className={styles.amberLine} />
 
 
-            {/* ── SEO CONTENT ── */}
-            <section className={styles.seoSection} id="menu-digital-qr">
-              <div className={styles.sectionInner}>
-                <div className={styles.seoIntro}>
-                  <div className={styles.reveal}>
-                    <h2 className={styles.sectionH2}>
-                      ¿Qué es un menú digital QR<br />
-                      y por qué usarlo en tu <em>restaurante?</em>
-                    </h2>
-                  </div>
-
-                  <div className={`${styles.seoText} ${styles.reveal}`}>
-                    <p>
-                      Un <strong>menú digital QR</strong> reemplaza o complementa la carta
-                      impresa de un restaurante, bar o cafetería con una versión online
-                      que los clientes pueden abrir directamente desde su celular.
-                      Solo tienen que escanear un código QR ubicado en la mesa, la barra,
-                      la vidriera o cualquier otro punto del local.
-                    </p>
-
-                    <p>
-                      Con Menú Digital App podés crear una{" "}
-                      <strong>carta digital para tu restaurante</strong> y modificar
-                      productos, precios, fotografías, ofertas y disponibilidad sin tener
-                      que imprimir nuevamente el menú cada vez que algo cambia.
-                    </p>
-
-                    <p>
-                      El cliente no necesita descargar ninguna aplicación ni registrarse.
-                      Escanea el QR con la cámara del celular y accede inmediatamente a la
-                      carta actualizada desde el navegador.
-                    </p>
-                  </div>
-                </div>
-
-                <Link className={styles.btnPrimary} to={MENU_QR_GUIDE.path}>
-                  Leé la guía sobre menús digitales QR →
-                </Link>
-              </div>
-            </section>
-
-            {/* ── AMBER LINE ── */}
-        <div className={styles.amberLine} />
-
-
         {/* ── PLANS ── */}
         <section className={styles.pricing} id="plans">
           <Cobweb corner="tl" size={170} />
@@ -1117,41 +1042,26 @@ useEffect(() => {
         <div className={styles.amberLine} />
 
 
-                  {/* ── FAQ ── */}
-          <section className={styles.faqSection} id="faq">
-            <div className={styles.faqInner}>
-              <div className={`${styles.faqHeader} ${styles.reveal}`}>
-                <h2 className={styles.sectionH2}>
-                  Preguntas<br />
-                  <em>frecuentes.</em>
-                </h2>
-
-                <p className={styles.faqIntro}>
-                  Todo lo que necesitás saber sobre la carta digital, los pedidos y
-                  las reservas de tu restaurante, bar o cafetería.
-                </p>
-              </div>
-
-              <div className={styles.faqList}>
-                {FAQS.map((faq) => (
-                  <details
-                    key={faq.question}
-                    className={`${styles.faqItem} ${styles.reveal}`}
-                  >
-                    <summary>{faq.question}</summary>
-
-                    <div className={styles.faqAnswer}>
-                      <p>{faq.answer}</p>
-                    </div>
-                  </details>
-                ))}
-              </div>
-              <Link className={styles.btnPrimary} to={BLOG_PATH}>
-                Explorar guías y preguntas →
+        {/* ── DUDAS: las preguntas viven en /blog ── */}
+        <section className={styles.faqSection} id="faq">
+          <div className={`${styles.faqInner} ${styles.reveal}`}>
+            <h2 className={styles.sectionH2}>
+              ¿Te quedó<br /><em>alguna duda?</em>
+            </h2>
+            <p className={styles.faqIntro}>
+              Juntamos las preguntas frecuentes y guías paso a paso sobre la
+              carta QR, los pedidos, los cobros y las reservas de tu local.
+            </p>
+            <div className={styles.faqActions}>
+              <Link className={styles.btnPrimary} to={`${BLOG_PATH}#preguntas`}>
+                Ver preguntas frecuentes →
+              </Link>
+              <Link className={styles.btnSecondary} to={MENU_QR_GUIDE.path}>
+                Leer la guía del menú QR
               </Link>
             </div>
-          </section>
-
+          </div>
+        </section>
 
           {/* ── AMBER LINE ── */}
         <div className={styles.amberLine} />

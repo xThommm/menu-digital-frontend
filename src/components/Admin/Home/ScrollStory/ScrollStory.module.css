@@ -1,0 +1,89 @@
+/* Relato por scroll de la landing. Cada .scene publica --p (0 → 1, avance
+   del scroll dentro de la sección, ver useScrollScene) y los textos entran
+   y salen calculando su opacidad a partir de --p. Necesita que ningún
+   ancestro tenga overflow hidden/auto (rompe el position: sticky): por eso
+   .hpage usa overflow-x: clip. */
+
+.story {
+  position: relative;
+}
+
+.scene {
+  --p: 0;
+  position: relative;
+  height: 320vh;
+}
+
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.copy {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Dos "tiempos" por escena: el primero se va antes de la mitad y el segundo
+   entra después, con el canvas haciendo la transición en el medio. */
+.beat {
+  position: absolute;
+  left: clamp(1rem, 7vw, 7rem);
+  top: 50%;
+  width: min(34rem, 40vw);
+  opacity: var(--in);
+  transform: translateY(calc(-50% + (1 - var(--in)) * 28px));
+}
+.beatFirst  { --in: clamp(0, calc((0.44 - var(--p)) * 9), 1); }
+.beatSecond { --in: clamp(0, calc((var(--p) - 0.56) * 9), 1); }
+
+.title {
+  font-family: var(--font-auth-display);
+  font-weight: 900;
+  font-size: clamp(2.3rem, 5.2vw, 4.6rem);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--auth-cream);
+  margin: 0 0 1.2rem;
+}
+
+.text {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--auth-cream-mid);
+  max-width: 38ch;
+  margin: 0;
+}
+
+/* En pantallas angostas el texto va arriba y el canvas ocupa el resto. */
+@media (max-width: 899px) {
+  .beat {
+    top: 5.5rem;
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+    transform: translateY(calc((1 - var(--in)) * 20px));
+  }
+  .title { font-size: clamp(1.9rem, 8.5vw, 2.6rem); margin-bottom: 0.8rem; }
+  .text { font-size: 0.95rem; line-height: 1.55; }
+}
+
+@media (prefers-reduced-motion: reduce) and (min-width: 900px) {
+  .beat { transform: translateY(-50%); }
+}
+@media (prefers-reduced-motion: reduce) and (max-width: 899px) {
+  .beat { transform: none; }
+}

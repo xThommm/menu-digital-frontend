@@ -103,6 +103,8 @@
 
 .faqSection { display: grid; grid-template-columns: 1fr 1.5fr; gap: clamp(2rem, 6vw, 5rem); padding-block: clamp(3.5rem, 7vw, 6rem); }
 .faqSection h2 { margin-bottom: 1rem; }
+.faqGroup + .faqGroup { margin-top: 2.5rem; }
+.faqGroupTitle { margin-bottom: .75rem; font-family: var(--font-auth-mono); font-size: .78rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--auth-amber-text); }
 .faqList { border-top: 1px solid var(--auth-border); }
 .faqItem { border-bottom: 1px solid var(--auth-border); }
 .faqItem summary { display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; min-height: var(--control-min-size); padding-block: 1.3rem; font-weight: 500; list-style: none; cursor: pointer; }
