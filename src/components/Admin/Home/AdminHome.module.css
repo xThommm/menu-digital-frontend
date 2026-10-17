@@ -149,15 +149,23 @@
 
 .heroBg {
   position: absolute; inset: -12%; z-index: 0;
-  background:
-    radial-gradient(ellipse 70% 55% at 55% 45%, color-mix(in srgb, var(--auth-amber) 12%, transparent) 0%, transparent 55%),
-    /* rgba(255,58,110,*) es un acento rosa secundario, solo usado acá y en
-       qrFrame::before. No tiene token en --auth-* todavía: si se vuelve a
-       usar en un tercer lugar, vale la pena darle uno (ej. --auth-accent-2). */
-    radial-gradient(ellipse 40% 35% at 15% 75%, rgba(255,58,110,.07) 0%, transparent 50%),
-    radial-gradient(ellipse 30% 25% at 85% 15%, color-mix(in srgb, var(--auth-amber) 6%, transparent) 0%, transparent 50%),
-    var(--auth-bg);
+  background: var(--auth-bg);
   will-change: transform;
+  /* El hero termina en el fondo liso de la sección siguiente: las vetas se
+     apagan antes del borde para que no quede un corte. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent 92%);
+  mask-image: linear-gradient(to bottom, #000 70%, transparent 92%);
+}
+
+/* Fondo "Copper Current" / "Sunset Haze" (ver CopperBackground). Con
+   .heroBg delante para ganarle a .root del componente. */
+.heroBg .heroCopper {
+  --copper-base: var(--auth-bg);
+  --copper-accent: var(--gold);
+}
+[data-auth-theme="light"] .heroBg .heroCopper {
+  --copper-k: 0.6;
+  --copper-grain: 0.08;
 }
 
 .heroGrid {

@@ -44,6 +44,7 @@ import { useAuthTheme } from "../../../hooks/useAuthTheme";
 import { getPlanCardSummary, PRO_EXTRA_LABELS } from "../../../lib/plans";
 import type { BooleanPlanFeature } from "../../../types";
 import Spinner from "../../Common/Spinner";
+import CopperBackground from "../../Common/CopperBackground/CopperBackground";
 import ScrollStory from "./ScrollStory/ScrollStory";
 import { BLOG_PATH, MENU_QR_GUIDE } from "../../../pages/Blog/blogContent";
 
@@ -734,7 +735,9 @@ useEffect(() => {
         {/* ── HERO ── */}
         <section className={styles.hero}>
           {/* parallax layers */}
-          <div id="heroBg" className={styles.heroBg} />
+          <div id="heroBg" className={styles.heroBg}>
+            <CopperBackground className={styles.heroCopper} />
+          </div>
           <div id="heroGrid" className={styles.heroGrid} />
           <HalloweenSky />
           <div className={styles.steam} aria-hidden>
