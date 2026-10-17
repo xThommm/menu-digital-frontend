@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { BLOG_META, BLOG_PATH, MENU_QR_GUIDE } from "../../pages/Blog/blogContent";
+import { BLOG_FAQS, BLOG_META, BLOG_PATH, MENU_QR_GUIDE } from "../../pages/Blog/blogContent";
 
 const SITE_URL = "https://www.menudigitalapp.com.ar";
 
@@ -89,6 +89,17 @@ function getSeoConfig(pathname: string): SeoConfig {
               ...(isArticle ? [{ "@type": "ListItem", position: 3, name: MENU_QR_GUIDE.title, item: canonical }] : []),
             ],
           },
+          // Las preguntas frecuentes se muestran en /blog#preguntas.
+          ...(isArticle ? [] : [{
+            "@type": "FAQPage",
+            "@id": `${canonical}#preguntas`,
+            inLanguage: "es-AR",
+            mainEntity: BLOG_FAQS.map((faq) => ({
+              "@type": "Question",
+              name: faq.question,
+              acceptedAnswer: { "@type": "Answer", text: faq.answer },
+            })),
+          }]),
         ],
       },
     };

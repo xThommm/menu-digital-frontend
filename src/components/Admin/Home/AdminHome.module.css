@@ -17,7 +17,11 @@
   font-family: var(--font-sans);
   background: var(--auth-bg);
   color: var(--auth-cream);
+  /* clip y no hidden: hidden vuelve a .hpage un contenedor de scroll y
+     rompe el position: sticky del relato (ScrollStory). hidden queda de
+     respaldo para navegadores sin clip. */
   overflow-x: hidden;
+  overflow-x: clip;
   transition: background .25s ease, color .25s ease;
 }
 
@@ -36,15 +40,17 @@
 }
 
 /* ── CURSOR ── */
+/* Arrancan fuera de pantalla: sin esto quedaban en la esquina superior
+   izquierda hasta el primer movimiento del mouse. */
 .curDot {
-  position: fixed; width: 7px; height: 7px; border-radius: 50%;
+  position: fixed; left: -100px; top: -100px; width: 7px; height: 7px; border-radius: 50%;
   background: var(--auth-amber); pointer-events: none; z-index: calc(var(--z-toast) - 1);
   transform: translate(-50%, -50%);
   box-shadow: 0 0 10px var(--auth-amber);
   transition: width .15s, height .15s;
 }
 .curRing {
-  position: fixed; width: 32px; height: 32px; border-radius: 50%;
+  position: fixed; left: -100px; top: -100px; width: 32px; height: 32px; border-radius: 50%;
   border: 1px solid color-mix(in srgb, var(--auth-amber) 45%, transparent); pointer-events: none; z-index: calc(var(--z-toast) - 2);
   transform: translate(-50%, -50%);
   transition: width .2s, height .2s, border-color .2s;
@@ -536,106 +542,12 @@
 .resCode strong { font-family: var(--font-auth-mono); font-size: 1.3rem; letter-spacing: .2em; color: var(--auth-amber-text); }
 
 /* ─────────────────────────────────────────────
-   SEO CONTENT — MENÚ DIGITAL QR
-───────────────────────────────────────────── */
-
-.seoSection {
-  position: relative;
-  background:
-    radial-gradient(
-      ellipse 65% 45% at 80% 15%,
-      color-mix(in srgb, var(--auth-amber) 7%, transparent) 0%,
-      transparent 65%
-    ),
-    linear-gradient(
-      180deg,
-      var(--auth-bg-card) 0%,
-      var(--auth-bg) 100%
-    );
-
-  border-top: 1px solid
-    color-mix(in srgb, var(--auth-amber) 8%, transparent);
-
-  border-bottom: 1px solid
-    color-mix(in srgb, var(--auth-amber) 8%, transparent);
-
-  overflow: hidden;
-}
-
-.seoSection::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-
-  background-image:
-    linear-gradient(
-      color-mix(in srgb, var(--auth-amber) 2%, transparent) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--auth-amber) 2%, transparent) 1px,
-      transparent 1px
-    );
-
-  background-size: 80px 80px;
-  mask-image: linear-gradient(
-    to bottom,
-    transparent,
-    rgba(0, 0, 0, 0.65),
-    transparent
-  );
-
-  opacity: 0.65;
-}
-
-.seoSection .sectionInner {
-  position: relative;
-  z-index: 1;
-}
-
-.seoIntro {
-  display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-  gap: 5rem;
-  align-items: start;
-  margin-bottom: 4rem;
-}
-
-.seoIntro .sectionH2 {
-  margin-bottom: 0;
-}
-
-.seoText {
-  max-width: 680px;
-}
-
-.seoText p {
-  margin-bottom: 1.15rem;
-
-  font-size: 1rem;
-  line-height: 1.8;
-
-  color: var(--auth-cream-mid);
-}
-
-.seoText p:last-child {
-  margin-bottom: 0;
-}
-
-.seoText strong {
-  color: var(--auth-cream);
-  font-weight: 600;
-}
-
-/* ─────────────────────────────────────────────
-   FAQ — PREGUNTAS FRECUENTES
+   DUDAS — las preguntas frecuentes viven en /blog#preguntas; acá queda
+   solo un bloque que informa y lleva hasta allá.
 ───────────────────────────────────────────── */
 
 .faqSection {
   position: relative;
-
   background:
     radial-gradient(
       ellipse 60% 45% at 15% 35%,
@@ -643,148 +555,30 @@
       transparent 65%
     ),
     var(--auth-bg-card);
-
-  border-top: 1px solid
-    color-mix(in srgb, var(--auth-amber) 8%, transparent);
-
-  border-bottom: 1px solid
-    color-mix(in srgb, var(--auth-amber) 8%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--auth-amber) 8%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--auth-amber) 8%, transparent);
 }
 
 .faqInner {
   max-width: 1000px;
   margin: 0 auto;
-  padding: 7rem 3rem;
-}
-
-.faqHeader {
-  margin-bottom: 3rem;
+  padding: 6rem 3rem;
 }
 
 .faqIntro {
   max-width: 650px;
   margin-top: 1.25rem;
-
   font-size: 1rem;
   line-height: 1.75;
-
   color: var(--auth-cream-mid);
 }
 
-.faqList {
+.faqActions {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 2rem;
-}
-
-.faqItem {
-  position: relative;
-
-  border: 1px solid
-    color-mix(in srgb, var(--auth-amber) 8%, transparent);
-
-  background:
-    color-mix(in srgb, var(--auth-amber) 2%, transparent);
-
-  overflow: hidden;
-
-  transition:
-    border-color 0.25s ease,
-    background 0.25s ease;
-}
-
-.faqItem:hover {
-  border-color:
-    color-mix(in srgb, var(--auth-amber) 20%, transparent);
-}
-
-.faqItem[open] {
-  border-color:
-    color-mix(in srgb, var(--auth-amber) 28%, transparent);
-
-  background:
-    color-mix(in srgb, var(--auth-amber) 4%, transparent);
-}
-
-.faqItem summary {
-  position: relative;
-
-  min-height: var(--control-min-size);
-  padding: 1.45rem 4rem 1.45rem 1.6rem;
-
-  cursor: pointer;
-  list-style: none;
-
-  font-family: var(--font-auth-display);
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1.35;
-
-  color: var(--auth-cream);
-
-  transition: color 0.25s ease;
-}
-
-.faqItem summary::-webkit-details-marker {
-  display: none;
-}
-
-.faqItem summary::marker {
-  content: "";
-}
-
-.faqItem summary::after {
-  content: "+";
-
-  position: absolute;
-  top: 50%;
-  right: 1.6rem;
-
-  transform: translateY(-50%);
-
-  font-family: var(--font-auth-mono);
-  font-size: 1.5rem;
-  font-weight: 400;
-  line-height: 1;
-
-  color: var(--auth-amber-text);
-
-  text-shadow:
-    0 0 12px
-    color-mix(in srgb, var(--auth-amber) 40%, transparent);
-
-  transition:
-    transform 0.25s ease,
-    opacity 0.25s ease;
-}
-
-.faqItem[open] summary::after {
-  content: "−";
-}
-
-.faqItem summary:hover {
-  color:
-    color-mix(in srgb, var(--auth-cream) 92%, var(--auth-amber));
-}
-
-.faqItem summary:focus-visible {
-  outline: 1px solid var(--auth-amber);
-  outline-offset: -3px;
-}
-
-.faqAnswer {
-  padding: 0 4rem 1.6rem 1.6rem;
-}
-
-.faqAnswer p {
-  max-width: 780px;
-  margin: 0;
-
-  font-size: 0.92rem;
-  line-height: 1.8;
-
-  color: var(--auth-cream-mid);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
 }
 
 /* ── QR SECTION ── */
@@ -1165,19 +959,7 @@
   .finalCta { padding: 5rem 1.5rem; }
   .pricingInner { padding: 5rem 1.5rem; }
   .plansGrid { grid-template-columns: 1fr; }
-    .seoIntro {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    margin-bottom: 3rem;
-  }
-
-  .faqInner {
-    padding: 4rem 1.5rem;
-  }
-
-  .faqHeader {
-    margin-bottom: 2.5rem;
-  }
+  .faqInner { padding: 4rem 1.5rem; }
 }
 
 @media (max-width: 599px) {
@@ -1191,25 +973,6 @@
     justify-content: center;
     gap: var(--space-3) var(--space-4);
   }
-
-  .seoText p {
-    font-size: 0.95rem;
-  }
-
-
-  .faqItem summary {
-    padding: 1.25rem 3.4rem 1.25rem 1.25rem;
-    font-size: 1rem;
-  }
-
-  .faqItem summary::after {
-    right: 1.25rem;
-  }
-
-  .faqAnswer {
-    padding: 0 1.25rem 1.35rem;
-  }
-
 }
 
 @media (pointer: coarse) {

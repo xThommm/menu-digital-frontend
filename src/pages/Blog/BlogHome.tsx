@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import BlogLayout from "./BlogLayout";
 import GifClip from "../../components/Common/GifClip/GifClip";
-import { BLOG_FAQS, MENU_QR_GUIDE } from "./blogContent";
+import { BLOG_FAQ_GROUPS, MENU_QR_GUIDE } from "./blogContent";
 import styles from "./Blog.module.css";
 
 export default function BlogHome() {
@@ -42,16 +42,23 @@ export default function BlogHome() {
       <section className={styles.faqSection} id="preguntas" aria-labelledby="preguntas-titulo">
         <div>
           <p className={styles.eyebrow}>Respuestas simples</p>
-          <h2 id="preguntas-titulo">Antes de crear tu carta</h2>
-          <p>Las dudas más comunes sobre cómo compartir y consultar un menú digital QR.</p>
+          <h2 id="preguntas-titulo">Preguntas frecuentes</h2>
+          <p>Las dudas más comunes sobre la carta QR, los pedidos, los cobros y las reservas de tu local.</p>
           <Link className={styles.textLink} to="/contacto">Contactanos si te quedó una duda <ArrowRight size={18} aria-hidden="true" /></Link>
         </div>
-        <div className={styles.faqList}>
-          {BLOG_FAQS.map((faq) => (
-            <details key={faq.question} className={styles.faqItem}>
-              <summary>{faq.question}<ChevronDown size={20} aria-hidden="true" /></summary>
-              <p>{faq.answer}</p>
-            </details>
+        <div>
+          {BLOG_FAQ_GROUPS.map((group) => (
+            <div key={group.title} className={styles.faqGroup}>
+              <h3 className={styles.faqGroupTitle}>{group.title}</h3>
+              <div className={styles.faqList}>
+                {group.items.map((faq) => (
+                  <details key={faq.question} className={styles.faqItem}>
+                    <summary>{faq.question}<ChevronDown size={20} aria-hidden="true" /></summary>
+                    <p>{faq.answer}</p>
+                  </details>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </section>
