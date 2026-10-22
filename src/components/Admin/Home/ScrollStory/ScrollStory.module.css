@@ -71,7 +71,7 @@
 /* En pantallas angostas el texto va arriba y el canvas ocupa el resto. */
 @media (max-width: 899px) {
   .beat {
-    top: 5.5rem;
+    top: calc(5.5rem + var(--safe-top, 0px));
     left: 1rem;
     right: 1rem;
     width: auto;
