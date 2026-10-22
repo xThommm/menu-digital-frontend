@@ -23,6 +23,11 @@
   overflow-x: hidden;
   overflow-x: clip;
   transition: background .25s ease, color .25s ease;
+  /* Con viewport-fit=cover (ver AdminHome.tsx) la página llega hasta debajo
+     de la barra de estado y del notch en horizontal. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 /* Tema claro: los valores viven en globals.css bajo
@@ -60,7 +65,7 @@
 .nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-modal);
   display: flex; align-items: center; justify-content: space-between;
-  padding: 1.25rem 3rem;
+  padding: calc(1.25rem + var(--safe-top)) max(3rem, env(safe-area-inset-right, 0px)) 1.25rem max(3rem, env(safe-area-inset-left, 0px));
   background: var(--auth-bg);
   border-bottom: 1px solid color-mix(in srgb, var(--auth-amber) 8%, transparent);
 }
@@ -823,7 +828,7 @@
 
   /* ── Nav base mobile ── */
   .nav {
-    padding: 1rem 1.5rem;
+    padding: calc(1rem + var(--safe-top)) max(1.5rem, env(safe-area-inset-right, 0px)) 1rem max(1.5rem, env(safe-area-inset-left, 0px));
     position: fixed;
   }
   .navLinks  { display: none; }
@@ -870,7 +875,7 @@
     display: flex;                          /* siempre flex en mobile */
     flex-direction: column;
     position: fixed;
-    top: 65px;                             /* altura del nav */
+    top: calc(65px + var(--safe-top));     /* altura del nav */
     left: 0;
     right: 0;
     z-index: calc(var(--z-modal) - 1);
@@ -889,7 +894,7 @@
      corte contra el borde inferior en celulares en horizontal, donde
      100vh es mucho menor a 440px. */
   .mobileMenuOpen {
-    max-height: min(440px, calc(100vh - 65px));
+    max-height: min(440px, calc(100vh - 65px - var(--safe-top)));
     overflow-y: auto;
     opacity: 1;
     pointer-events: auto;
@@ -941,13 +946,18 @@
 
 @media (max-width: 900px) {
   /* ── Resto del responsive ── */
-  .hero { padding: 6rem 1.5rem 5.5rem; }
+  .hero { padding: calc(6rem + var(--safe-top)) 1.5rem 5.5rem; }
   .heroInner { grid-template-columns: 1fr; gap: 3rem; text-align: center; }
   .heroSub { max-width: 100%; }
   .heroBtns { justify-content: center; }
   .heroVisual { order: -1; }
   .sectionInner { padding: 4rem 1.5rem; }
-  .stats { grid-template-columns: repeat(2,1fr); }
+  /* minmax(0,1fr): con 1fr a secas la palabra más larga ("Reservas")
+     ensanchaba la columna y la grilla se salía por la derecha. */
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat { padding: 2rem .75rem; }
+  .statN { font-size: clamp(1.6rem, 8.5vw, 2.6rem); }
+  .statL { letter-spacing: .18em; }
   .steps, .featGrid, .revGrid { grid-template-columns: 1fr; }
   .opsSplit { grid-template-columns: 1fr; gap: 3rem; }
   .opsSplitReverse { margin-top: 4rem; }

@@ -609,6 +609,18 @@ export default function HomePage() {
     return () => clearTimeout(t);
   }, []);
 
+  // En iPhone, Safari pinta la página detrás de la barra de estado. Con
+  // viewport-fit=cover el nav fijo arranca en el borde real de la pantalla y
+  // tapa esa franja (el CSS le suma env(safe-area-inset-top)). Solo en la
+  // landing: el resto de la app no reserva ese espacio.
+  useEffect(() => {
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+    if (!meta) return;
+    const original = meta.content;
+    if (!/viewport-fit/.test(original)) meta.content = `${original}, viewport-fit=cover`;
+    return () => { meta.content = original; };
+  }, []);
+
   useEffect(() => {
   if (!menuOpen) return;
   const handleClick = (e: MouseEvent | TouchEvent) => {
