@@ -7,6 +7,7 @@ import styles from "./ItemPreviewModal.module.css";
 import { isOfferActive } from "../../../../lib/offers";
 import { cartUnitPrice } from "../../../../lib/cartPricing";
 import { isItemUnavailable } from "../../../../lib/publicMenu";
+import { ItemDietDetails } from "./ItemDietInfo";
 
 // ── Helpers de formato (mismos criterios que en UserMenu.tsx) ──────────────────
 
@@ -301,6 +302,8 @@ export default function ItemPreviewModal({ items, index, onClose, onNavigate, ca
               ))}
             </dl>
           )}
+
+          <ItemDietDetails item={item} />
 
           {!hidePrices && (
             <div className={styles.priceRow}>

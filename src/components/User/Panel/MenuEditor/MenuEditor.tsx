@@ -56,6 +56,8 @@ import {
   buildCategoryMenu, buildEditorBoardMenu, buildItemMenu, buildSectionMenu, buildSelectionMenu, locateInMenu, visibleInMenu,
 } from "./menuEditorMenu";
 import SectorField from "../../../../features/orders/components/shared/SectorField";
+import AllergenPicker from "./AllergenPicker/AllergenPicker";
+import { labelOfDietary } from "../../../../lib/allergens";
 import type { SectorTargetType } from "../../../../features/orders/types";
 import styles from "./MenuEditor.module.css";
 import rs from "./Reorder/Reorder.module.css";
@@ -88,6 +90,10 @@ interface ItemFormState {
   hidden: boolean;
   recommended: boolean;
   options: OptionRow[];
+  // Códigos de lib/allergens.ts.
+  allergens: string[];
+  mayContain: string[];
+  dietary: string[];
 }
 
 // Al activar una programación sin horario guardado arrancamos con la semana
@@ -149,6 +155,9 @@ const EMPTY_ITEM: ItemFormState = {
   hidden: false,
   recommended: false,
   options: [],
+  allergens: [],
+  mayContain: [],
+  dietary: [],
 };
 
 // ── Subida de imagen de producto (por el backend, ver handleImageUpload) ──
@@ -158,7 +167,7 @@ const MAX_IMAGE_MB = 5;
 // ── Vistas posibles ────────────────────────────────────────────────────────────
 
 type View = "menu" | "item-form" | "categoria-form" | "seccion-form" | "massive-import" | "image-manager" | "template-picker";
-type ItemFormSection = "basics" | "promotions" | "scheduling" | "availability";
+type ItemFormSection = "basics" | "promotions" | "scheduling" | "allergens" | "availability";
 
 interface ItemFieldErrors {
   title?: string;
@@ -173,6 +182,9 @@ const cloneItemForm = (form: ItemFormState): ItemFormState => ({
   availabilityRange: { ...form.availabilityRange },
   availabilityWeek: toWeekRanges(form.availabilityWeek),
   options: form.options.map(option => ({ ...option })),
+  allergens: [...form.allergens],
+  mayContain: [...form.mayContain],
+  dietary: [...form.dietary],
 });
 
 const normalizeSearchValue = (value: string | null | undefined) =>
@@ -1169,6 +1181,9 @@ export default function MenuEditorPage() {
       recommended: item.recommended,
       image: item.image || "",
       options:     Object.entries(item.options || {}).map(([key, value]) => ({ key, value: value.toString() })),
+      allergens:   [...(item.allergens ?? [])],
+      mayContain:  [...(item.mayContain ?? [])],
+      dietary:     [...(item.dietary ?? [])],
     };
     setItemForm(nextForm);
     setInitialItemForm(cloneItemForm(nextForm));
@@ -1176,6 +1191,7 @@ export default function MenuEditorPage() {
     const initialSections = new Set<ItemFormSection>(["basics"]);
     if (nextForm.offerPrice || nextForm.options.length > 0) initialSections.add("promotions");
     if (nextForm.offerScheduled || nextForm.availabilityScheduled) initialSections.add("scheduling");
+    if (nextForm.allergens.length || nextForm.mayContain.length || nextForm.dietary.length) initialSections.add("allergens");
     if (nextForm.hidden || nextForm.recommended || !nextForm.available) initialSections.add("availability");
     setOpenItemSections(initialSections);
     setError("");
@@ -1333,6 +1349,9 @@ export default function MenuEditorPage() {
         hidden: itemForm.hidden,
         recommended: itemForm.recommended,
         options: optionsObj,
+        allergens: itemForm.allergens,
+        mayContain: itemForm.mayContain,
+        dietary: itemForm.dietary,
         // Si un plan pago venció, el horario guardado queda intacto e inactivo:
         // editar otro campo no debe borrarlo ni intentar volver a habilitarlo.
         ...(canScheduleItems || !itemForm.availabilityScheduled
@@ -2074,6 +2093,13 @@ export default function MenuEditorPage() {
     ? itemForm.availabilityScheduled ? "Oferta y disponibilidad programadas" : "Oferta programada"
     : itemForm.availabilityScheduled ? "Disponibilidad programada" : "Sin programación";
   const availabilitySummary = `${itemForm.available ? "Disponible" : "Pausado"} · ${itemForm.hidden ? "Oculto" : "Visible"}`;
+  const allergensSummary = [
+    itemForm.dietary.map(labelOfDietary).join(", "),
+    itemForm.allergens.length > 0
+      ? `${itemForm.allergens.length} alérgeno${itemForm.allergens.length !== 1 ? "s" : ""}`
+      : "",
+    itemForm.mayContain.length > 0 ? "Con trazas" : "",
+  ].filter(Boolean).join(" · ") || "Sin cargar";
 
   // Cerrar el panel, abrir otro producto o crear algo nuevo pasa por acá: con
   // cambios sin guardar se pide confirmación y la acción queda en espera.
@@ -3203,6 +3229,19 @@ export default function MenuEditorPage() {
 
       <FormSection
         number={4}
+        title="Alérgenos"
+        summary={allergensSummary}
+        expanded={openItemSections.has("allergens")}
+        onToggle={() => toggleItemSection("allergens")}
+      >
+        <AllergenPicker
+          value={{ allergens: itemForm.allergens, mayContain: itemForm.mayContain, dietary: itemForm.dietary }}
+          onChange={(next) => setItemForm(f => ({ ...f, ...next }))}
+        />
+      </FormSection>
+
+      <FormSection
+        number={5}
         title="Disponibilidad y visibilidad"
         summary={availabilitySummary}
         expanded={openItemSections.has("availability")}

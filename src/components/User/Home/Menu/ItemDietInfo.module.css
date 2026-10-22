@@ -1,0 +1,206 @@
+/* ── Tarjeta ── */
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin-top: 6px;
+}
+
+.dietPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--t-accent) 12%, transparent);
+  color: var(--t-accent);
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.summaryText {
+  font-size: 0.7rem;
+  color: var(--t-muted);
+  line-height: 1.4;
+}
+
+/* ── Detalle (modal) ── */
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--t-border);
+}
+
+.detailList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.detailRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.detailRow dt {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--t-muted);
+}
+
+.detailChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.allergenChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border: 1px solid var(--t-border-md, var(--t-border));
+  border-radius: 999px;
+  color: var(--t-text);
+  font-size: 0.75rem;
+}
+
+.disclaimer {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: var(--t-muted);
+}
+
+/* ── Filtro ── */
+.filter {
+  padding: 0 1.25rem 0.6rem;
+  background: var(--t-bg);
+}
+
+.filterHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.filterToggle,
+.filterClear,
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.filterToggle {
+  min-height: 36px;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--t-border-md, var(--t-border));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--t-text);
+  font-size: 0.8rem;
+}
+
+.filterToggleOn {
+  border-color: var(--t-accent);
+  color: var(--t-accent);
+}
+
+.filterCount {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--t-accent);
+  color: var(--t-btn-text);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.filterResult {
+  font-size: 0.75rem;
+  color: var(--t-muted);
+}
+
+.filterClear {
+  padding: 0.25rem 0;
+  border: 0;
+  background: none;
+  color: var(--t-accent);
+  font-size: 0.75rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.filterPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 0.6rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--t-border);
+  border-radius: 12px;
+  background: var(--t-surface, var(--t-bg));
+}
+
+.filterGroup {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.filterGroup legend {
+  padding: 0;
+  margin-bottom: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--t-muted);
+}
+
+.filterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.filterChip {
+  min-height: 34px;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--t-border-md, var(--t-border));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--t-text);
+  font-size: 0.78rem;
+}
+
+.filterChipOn {
+  border-color: var(--t-accent);
+  background: var(--t-accent);
+  color: var(--t-btn-text);
+}
+
+.filterToggle:focus-visible,
+.filterClear:focus-visible,
+.filterChip:focus-visible {
+  outline: 2px solid var(--t-accent);
+  outline-offset: 2px;
+}
