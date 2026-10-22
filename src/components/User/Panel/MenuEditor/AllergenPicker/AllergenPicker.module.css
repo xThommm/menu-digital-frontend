@@ -1,0 +1,86 @@
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.legend {
+  padding: 0;
+  font-size: 0.87rem;
+  font-weight: 500;
+  color: var(--admin-text-primary);
+}
+
+.hint {
+  margin: 2px 0 0;
+  font-size: 0.73rem;
+  line-height: 1.4;
+  color: var(--admin-text-muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 34px;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--admin-border-default);
+  border-radius: 999px;
+  background: var(--admin-bg-surface);
+  color: var(--admin-text-secondary);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background var(--admin-transition), border-color var(--admin-transition), color var(--admin-transition);
+}
+
+.chip:hover:not(:disabled) {
+  border-color: var(--admin-border-gold-mid);
+  color: var(--admin-text-primary);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
+}
+
+.chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Contiene: el estado más fuerte, en rojo como el resto de las alertas. */
+.chipOn {
+  background: var(--admin-red-bg);
+  border-color: var(--admin-red-border);
+  color: var(--admin-red-text);
+  font-weight: 500;
+}
+
+/* Trazas: mismo tono, más suave y con borde punteado para distinguirlo. */
+.chipTrace {
+  border-style: dashed;
+  border-color: var(--admin-red-border);
+  color: var(--admin-red-text);
+}
+
+.chipDiet {
+  background: var(--admin-success-bg);
+  border-color: var(--admin-success-core);
+  color: var(--admin-text-primary);
+  font-weight: 500;
+}

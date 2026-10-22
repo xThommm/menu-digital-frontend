@@ -247,6 +247,11 @@ export interface Item {
   recommended: boolean
   hidden: boolean
   apt: Record<string, unknown>
+  // Códigos del catálogo de lib/allergens.ts. Opcionales: los productos
+  // anteriores a estos campos pueden no traerlos.
+  allergens?: string[]
+  mayContain?: string[]
+  dietary?: string[]
   createdAt: string
   updatedAt: string
 }
@@ -345,6 +350,10 @@ export interface PublicMenuItem {
   options?: Record<string, number>
   recommended?: boolean
   apt?: Record<string, unknown>
+  // Códigos de lib/allergens.ts; v2 los omite si están vacíos.
+  allergens?: string[]
+  mayContain?: string[]
+  dietary?: string[]
   // v2 lo manda solo en false (pausado o fuera de su programación); los
   // disponibles no llevan la clave. Usar isItemUnavailable()
   // (lib/publicMenu.ts), no `!item.available`.
@@ -444,6 +453,9 @@ export interface AdminItem {
   hidden: boolean
   recommended: boolean
   code: string
+  allergens?: string[]
+  mayContain?: string[]
+  dietary?: string[]
 }
 
 export interface AdminCategoria {

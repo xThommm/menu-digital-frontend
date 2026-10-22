@@ -28,6 +28,10 @@ import { resolveTemplate } from "../../../../lib/templates";
 import { pageScrollbarRef } from "../../../../lib/pageScrollbar";
 import { buildMenuTabs, categoryKey, isItemUnavailable, tabHasItems } from "../../../../lib/publicMenu";
 import {
+  EMPTY_DIET_FILTER, dietCodesInMenu, filterMenuTabs, isDietFilterActive, menuHasDietInfo, type MenuDietFilter,
+} from "../../../../lib/allergens";
+import { DietFilterBar, ItemDietSummary } from "./ItemDietInfo";
+import {
   decideVisit, isStaffViewer, markOnce, orderKey, sendMenuEvent, visitQuery, type VisitDecision,
 } from "../../../../lib/menuAnalytics";
 // Gestión de pedidos (módulo aparte): pedidos desde la mesa al escanear el QR del local.
@@ -118,6 +122,8 @@ export default function MenuPage() {
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  // Filtro de alérgenos y dietas del comensal (ver lib/allergens.ts).
+  const [dietFilter, setDietFilter] = useState<MenuDietFilter>(EMPTY_DIET_FILTER);
   const [cartOpen, setCartOpen] = useState(false);
   // Confirmación de "Vaciar pedido", compartida por el drawer y el resumen.
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
@@ -228,6 +234,7 @@ export default function MenuPage() {
         // la carta anterior.
         setOpenCats(new Set());
         setActiveTab(0);
+        setDietFilter(EMPTY_DIET_FILTER);
         setPreview(deepLinkPreview(data.menu));
         setMenuSlug(slug ?? "");
       } catch (err) {
@@ -244,7 +251,18 @@ export default function MenuPage() {
 
   const goBack = useCallback(() => navigate(`/${slug}`), [slug, navigate]);
 
-  const tabs = useMemo(() => buildMenuTabs(menu), [menu]);
+  // allTabs es la carta completa; tabs, la que se dibuja (con el filtro de
+  // alérgenos aplicado). El carrito y los juegos usan siempre la completa:
+  // filtrar no puede sacar del pedido algo que ya se eligió.
+  const allTabs = useMemo(() => buildMenuTabs(menu), [menu]);
+  const tabs = useMemo(() => filterMenuTabs(allTabs, dietFilter), [allTabs, dietFilter]);
+  const showDietFilter = useMemo(() => menuHasDietInfo(allTabs), [allTabs]);
+  const dietCodes = useMemo(() => dietCodesInMenu(allTabs), [allTabs]);
+  const dietFilterOn = isDietFilterActive(dietFilter);
+  const filteredItemCount = useMemo(
+    () => tabs.reduce((acc, tab) => acc + tab.categorias.reduce((n, cat) => n + cat.items.length, 0), 0),
+    [tabs]
+  );
 
   // Opciones del dueño sobre cómo se ve la carta (panel de Configuración).
   // Ausentes = todo apagado: la carta se ve como siempre.
@@ -293,8 +311,8 @@ export default function MenuPage() {
   // Todos los productos de la carta (todas las pestañas): contra estos se
   // actualiza el carrito guardado al abrirla.
   const menuItems = useMemo(
-    () => tabs.flatMap(tab => tab.categorias.flatMap(cat => cat.items)),
-    [tabs]
+    () => allTabs.flatMap(tab => tab.categorias.flatMap(cat => cat.items)),
+    [allTabs]
   );
 
   const toggleCategory = useCallback((key: string) => {
@@ -631,6 +649,16 @@ export default function MenuPage() {
 
           {inGroup && <GroupBanner group={group} onOpen={() => setCartOpen(true)} />}
 
+          {showDietFilter && (
+            <DietFilterBar
+              filter={dietFilter}
+              onChange={setDietFilter}
+              dietaryCodes={dietCodes.dietary}
+              allergenCodes={dietCodes.allergens}
+              resultCount={filteredItemCount}
+            />
+          )}
+
           <div className={styles.mpShell}>
             {/* ── Contenido del tab activo ── */}
             <main
@@ -650,7 +678,9 @@ export default function MenuPage() {
 
               {totalItems === 0 ? (
                 <p className={styles.mpCatEmpty}>
-                  Esta sección no tiene productos disponibles por ahora.
+                  {dietFilterOn
+                    ? "Ningún producto cumple el filtro de alérgenos y dietas."
+                    : "Esta sección no tiene productos disponibles por ahora."}
                 </p>
               ) : (
                 currentTab.categorias.map((cat, catIndex) => {
@@ -1168,6 +1198,8 @@ function ItemCard({
         {item.description && (
           <span className={styles.itemDesc}>{item.description}</span>
         )}
+
+        <ItemDietSummary item={item} />
 
         <div className={styles.itemBottom}>
           {/* Precio — un solo estado a la vez: oferta (precio nuevo + tachado

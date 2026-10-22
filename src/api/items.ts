@@ -16,6 +16,9 @@ export const createItem = async (data: {
   recommended?: boolean
   code?: string
   apt?: Record<string, unknown>
+  allergens?: string[]
+  mayContain?: string[]
+  dietary?: string[]
 }): Promise<Item> => {
   const res = await apiClient.post<Item>('/items', data)
   return res.data
