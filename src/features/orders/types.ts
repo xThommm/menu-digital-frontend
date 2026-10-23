@@ -461,6 +461,8 @@ export interface SettingsResponse {
   settings: OrderSettings;
   tables: OrderTable[];
   slug: string;
+  // Nombre del local (encabezado de la cuenta impresa). Ausente con un backend anterior.
+  businessName?: string;
   openShift?: Shift | null;
 }
 

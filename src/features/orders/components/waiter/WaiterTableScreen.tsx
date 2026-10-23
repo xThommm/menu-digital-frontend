@@ -40,9 +40,11 @@ interface Props {
   onAuthError: (err: unknown) => boolean;
   // Pedido enviado o mesa cerrada: vuelve al salón con este aviso.
   onDone: (message: string) => void;
+  // Para el encabezado de la cuenta impresa.
+  businessName?: string | null;
 }
 
-export default function WaiterTableScreen({ slug, token, tableNumber, menu, menuError, draft, onDraftChange, onAuthError, onDone }: Props) {
+export default function WaiterTableScreen({ slug, token, tableNumber, menu, menuError, draft, onDraftChange, onAuthError, onDone, businessName = null }: Props) {
   const [session, setSession] = useState<TableSession | null>(null);
   const [occupiedBy, setOccupiedBy] = useState<OccupiedTable | null>(null);
   const [group, setGroup] = useState<GroupSession | null>(null);
@@ -174,6 +176,7 @@ export default function WaiterTableScreen({ slug, token, tableNumber, menu, menu
             onReload={load}
             onNotice={setNotice}
             onUpdated={setSession}
+            businessName={businessName}
           />
         ) : (
           <div className={p.stack}>

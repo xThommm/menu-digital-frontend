@@ -1,5 +1,7 @@
 import type { PaperWidth } from "../../types";
 import { CHARS_PER_LINE, wrapText, type TicketLayout } from "./ticketLayout.ts";
+import { BILL_FOOTER, columns, type BillLayout } from "./billLayout.ts";
+import { formatAmount } from "../bill.ts";
 
 // Codificador ESC/POS: arma los bytes que entiende una comandera térmica
 // (Epson TM-T20, Xprinter, 3nStar, Gadnic y la mayoría de las genéricas).
@@ -28,7 +30,9 @@ const PC850: Record<string, number> = {
 
 // Tipografía y comillas "lindas" que llegan desde el menú.
 const REPLACEMENTS: Record<string, string> = {
-  "“": "\"", "”": "\"", "‘": "'", "’": "'", "–": "-", "—": "-", "…": "...", "×": "x", " ": " ",
+  "“": "\"", "”": "\"", "‘": "'", "’": "'", "–": "-", "—": "-", "…": "...", "×": "x",
+  // Espacios duros: los usa el formato de moneda ("$ 1.500").
+  " ": " ", " ": " ",
 };
 
 export function encodeText(text: string): number[] {
@@ -98,6 +102,65 @@ export function encodeTicket(layout: TicketLayout, { paperWidth, copies = 1 }: {
       wrapText(layout.notes, width).forEach(row => b.line(row));
     }
     b.line(rule).feed(3).cut();
+  }
+  return b.toBytes();
+}
+
+/**
+ * Bytes de la cuenta (ticket para el cliente) para una comandera ESC/POS:
+ * productos con su precio, subtotal, descuento, total, la división y los pagos.
+ */
+export function encodeBill(layout: BillLayout, { paperWidth, copies = 1 }: { paperWidth: PaperWidth; copies?: number }): Uint8Array {
+  const width = CHARS_PER_LINE[paperWidth];
+  const bigWidth = Math.floor(width / 2);
+  const rule = "-".repeat(width);
+  const b = new Builder().init();
+  const row = (left: string, amount: number) => { columns(left, formatAmount(amount), width).forEach(line => b.line(line)); };
+
+  for (let copy = 0; copy < Math.max(1, copies); copy += 1) {
+    b.align("center");
+    if (layout.business) {
+      b.bold(true).size(true);
+      for (const line of wrapText(layout.business, bigWidth)) b.line(line);
+      b.size(false).bold(false);
+    }
+    b.bold(true).line("CUENTA").bold(false);
+    for (const line of wrapText([layout.place, layout.orders].filter(Boolean).join(" · "), width)) b.line(line);
+    b.line([layout.dateTime, layout.waiter].filter(Boolean).join(" · "));
+    b.align("left").line(rule);
+
+    for (const item of layout.lines) row(`${item.quantity} x ${item.title}`, item.amount);
+    b.line(rule);
+
+    if (layout.discount > 0) {
+      row("Subtotal", layout.subtotal);
+      row("Descuento", -layout.discount);
+    }
+    // El total en doble alto: es lo primero que se busca.
+    b.bold(true).raw(GS, 0x21, 0x01);
+    row("TOTAL", layout.total);
+    b.raw(GS, 0x21, 0x00).bold(false);
+
+    if (layout.split.length > 0) {
+      b.line(rule).line("Dividida:");
+      for (const guest of layout.split) row(`  ${guest.name}`, guest.amount);
+    }
+
+    if (layout.payments.length > 0) {
+      b.line(rule).line("Pagos:");
+      for (const payment of layout.payments) row(`  ${payment.label}`, payment.amount);
+      if (layout.pending > 0) {
+        b.bold(true);
+        row("FALTA PAGAR", layout.pending);
+        b.bold(false);
+      } else {
+        b.align("center").bold(true).line("PAGADO").bold(false).align("left");
+      }
+    }
+
+    b.line(rule).align("center");
+    for (const line of BILL_FOOTER) b.line(line);
+    b.align("left").feed(3).cut();
   }
   return b.toBytes();
 }

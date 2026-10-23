@@ -11,8 +11,9 @@ import { ownerHello, useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { useOrderSettings, useWaiters } from "../../hooks/usePanelData";
 import { errorMessage } from "../../lib/errors";
 import { formatTime, placeLabel } from "../../lib/format";
-import { PrintError, printTicket } from "../../lib/print/printers";
-import { reprintOrderTickets, ReprintError } from "../../lib/print/reprint";
+import { PrintError, printBill, printTicket } from "../../lib/print/printers";
+import { billLayoutFromOrder } from "../../lib/print/billLayout";
+import { readBillPrinter } from "../../lib/print/billPrinter";import { reprintOrderTickets, ReprintError } from "../../lib/print/reprint";
 import type { Order, OrderStatus, Shift } from "../../types";
 import { useOwnerAlerts } from "../../../ownerAlerts/useOwnerAlerts";
 import ManualOrderModal from "./ManualOrderModal";
@@ -185,6 +186,7 @@ export default function OrdersBoard() {
   // ── Menú contextual: las mismas acciones de los botones, más copiar, mapas,
   // reimprimir e ir a la mesa (ordersBoardMenu.ts).
   const env = useMenuEnv();
+  const businessName = settings.data?.businessName || null;
   const orderMenu = useMemo(() => buildOrderMenu(env), [env]);
   const itemMenu = useMemo(() => buildOrderItemMenu(), []);
   const boardMenu = useMemo(() => buildBoardMenu(env), [env]);
@@ -203,6 +205,15 @@ export default function OrdersBoard() {
         await reprintOrderTickets(order.id, { load: getOrderTickets, print: printTicket, markPrinted: markOwnerTicketPrinted });
       } catch (err) {
         if (err instanceof ReprintError || err instanceof PrintError) throw new MenuActionError(err.message);
+        throw err;
+      }
+    },
+    printBill: async (order) => {
+      const printer = readBillPrinter();
+      try {
+        await printBill(printer.mode, billLayoutFromOrder(order, { business: businessName }), printer);
+      } catch (err) {
+        if (err instanceof PrintError) throw new MenuActionError(err.message);
         throw err;
       }
     },

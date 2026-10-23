@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
-import { Minus, Plus, X } from "lucide-react";
+import { Minus, Plus, Printer, X } from "lucide-react";
+import { billLayoutFromTable } from "../../lib/print/billLayout";
+import { readBillPrinter } from "../../lib/print/billPrinter";
+import { printBill } from "../../lib/print/printers";
 import { errorMessage } from "../../lib/errors";
 import { formatDateTime, formatTime } from "../../lib/format";
 import {
@@ -36,14 +39,18 @@ interface Props {
   onChanged?: () => void;
   // true si el error era de sesión y ya lo manejó la pantalla (app del operador).
   onAuthError?: (err: unknown) => boolean;
+  // Nombre del local, para el encabezado de la cuenta impresa.
+  businessName?: string | null;
 }
 
-export default function BillPanel({ api, sessionId, tableNumber, refreshKey = 0, onClose, onChanged, onAuthError }: Props) {
+export default function BillPanel({ api, sessionId, tableNumber, refreshKey = 0, onClose, onChanged, onAuthError, businessName = null }: Props) {
   const dialogs = useDialogs();
   const [bill, setBill] = useState<Bill | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [printer] = useState(readBillPrinter);
+  const [printed, setPrinted] = useState(false);
   const openGuestMenu = useContextMenu(GUEST_MENU, { highlightTarget: true });
   const openPaymentMenu = useContextMenu(PAYMENT_MENU, { highlightTarget: true });
 
@@ -72,6 +79,19 @@ export default function BillPanel({ api, sessionId, tableNumber, refreshKey = 0,
       return false;
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Imprime la cuenta tal como está ahora, con lo cobrado.
+  const printNow = async () => {
+    if (!bill) return;
+    setError(null);
+    setPrinted(false);
+    try {
+      await printBill(printer.mode, billLayoutFromTable(bill, { business: businessName }), printer);
+      setPrinted(true);
+    } catch (err) {
+      setError(errorMessage(err, "No se pudo imprimir la cuenta."));
     }
   };
 
@@ -113,11 +133,25 @@ export default function BillPanel({ api, sessionId, tableNumber, refreshKey = 0,
       <div className={p.modal} onClick={event => event.stopPropagation()}>
         <header className={p.modalHeader}>
           <h2 className={p.modalTitle}>Cuenta · Mesa {tableNumber}</h2>
+          {printer.mode !== "none" && (
+            <button
+              type="button"
+              className={p.iconBtn}
+              onClick={printNow}
+              disabled={!bill || bill.items.length === 0}
+              aria-label="Imprimir cuenta"
+              title="Imprimir cuenta"
+              style={{ marginLeft: "auto" }}
+            >
+              <Printer size={18} aria-hidden />
+            </button>
+          )}
           <button type="button" className={p.iconBtn} onClick={onClose} aria-label="Cerrar"><X size={18} aria-hidden /></button>
         </header>
 
         <div className={`${p.modalBody} ${p.stack}`}>
           {error && <p className={p.error} role="alert">{error}</p>}
+          {printed && !error && <p className={p.success} role="status">Cuenta enviada a la impresora.</p>}
           {!bill && !error && <p className={p.loading}>Cargando…</p>}
 
           {bill && (
