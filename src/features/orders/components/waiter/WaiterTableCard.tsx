@@ -17,7 +17,7 @@ import p from "../panel/panel.module.css";
 // Avisos del cierre que piden confirmar: pedidos sin entregar o cuenta sin terminar de cobrar.
 const CLOSE_WARNINGS = ["ACTIVE_ORDERS", "BILL_PENDING"];
 
-export default function WaiterTableCard({ session, group, now, slug, token, billApi, groupApi, onAuthError, onNewOrder, onClosed, onReload, onNotice, onUpdated }: {
+export default function WaiterTableCard({ session, group, now, slug, token, billApi, groupApi, onAuthError, onNewOrder, onClosed, onReload, onNotice, onUpdated, businessName = null }: {
   session: TableSession;
   group: GroupSession | null;
   now: number;
@@ -31,6 +31,7 @@ export default function WaiterTableCard({ session, group, now, slug, token, bill
   onReload: () => void;
   onNotice: (message: string) => void;
   onUpdated: (session: TableSession) => void;
+  businessName?: string | null;
 }) {
   const [showOrders, setShowOrders] = useState(false);
   const [showBill, setShowBill] = useState(false);
@@ -149,6 +150,7 @@ export default function WaiterTableCard({ session, group, now, slug, token, bill
           onClose={() => setShowBill(false)}
           onChanged={onReload}
           onAuthError={onAuthError}
+          businessName={businessName}
         />
       )}
     </article>

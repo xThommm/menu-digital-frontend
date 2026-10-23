@@ -34,6 +34,8 @@ export interface OrderMenuActions {
   /** Abre la devolución (RefundModal): ese modal es la confirmación. */
   refund: (order: Order, cancel: boolean, amount?: number) => void;
   reprint: (order: Order) => Promise<void>;
+  /** Cuenta de un pedido suelto, por la impresora de la cuenta de este equipo. */
+  printBill: (order: Order) => Promise<void>;
 }
 
 export interface OrderMenuContext {
@@ -180,6 +182,17 @@ export function buildOrderMenu(env: MenuEnv): ContextMenuItem<OrderMenuContext>[
       run: ({ order, actions }) => actions.reprint(order),
       successMessage: "Comanda enviada a la impresora.",
       errorMessage: "No se pudo reimprimir la comanda.",
+    },
+    {
+      // Pedido suelto (take away, delivery, barra). La de una mesa se imprime
+      // desde su cuenta, con todos los pedidos de la mesa.
+      id: "print-bill",
+      label: "Imprimir cuenta",
+      icon: Receipt,
+      visible: ({ order }) => !order.tableSessionId && order.status !== "pending" && order.items.length > 0,
+      run: ({ order, actions }) => actions.printBill(order),
+      successMessage: "Cuenta enviada a la impresora.",
+      errorMessage: "No se pudo imprimir la cuenta.",
     },
     { type: "separator" },
     {

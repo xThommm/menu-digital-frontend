@@ -364,6 +364,7 @@ function WaiterWorkspace({ slug, token, info, onLocked }: {
         <WaiterTableScreen
           key={tableNumber}
           slug={info.business.slug || slug}
+          businessName={info.business.name || null}
           token={token}
           tableNumber={tableNumber}
           menu={menu}

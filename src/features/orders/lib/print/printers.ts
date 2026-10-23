@@ -1,8 +1,11 @@
 import type { PaperWidth, PrintMode } from "../../types";
-import { encodeTicket } from "./escpos.ts";
+import { formatAmount } from "../bill.ts";
+import { encodeBill, encodeTicket } from "./escpos.ts";
+import { BILL_FOOTER, type BillLayout } from "./billLayout.ts";
 import type { TicketLayout } from "./ticketLayout.ts";
 
-// Cómo sale una comanda a papel, según el modo del sector:
+// Cómo sale una comanda (o la cuenta) a papel, según el modo del sector (o de
+// la impresora de la cuenta de este equipo):
 //
 // - browser: ticket HTML del ancho del papel por el diálogo de impresión del
 //   navegador. Sirve con cualquier impresora instalada en el equipo (también
@@ -67,8 +70,50 @@ export function ticketHtml(layout: TicketLayout, { paperWidth, copies }: PrintOp
 </style></head><body>${Array.from({ length: Math.max(1, copies) }, () => one).join("")}</body></html>`;
 }
 
-// Imprime en un iframe oculto: la pantalla del sector no cambia.
-function printViaBrowser(layout: TicketLayout, options: PrintOptions): Promise<void> {
+// Cuenta para el cliente: productos con precio, total, división y pagos.
+export function billHtml(layout: BillLayout, { paperWidth, copies }: PrintOptions): string {
+  const money = (value: number) => escapeHtml(formatAmount(value));
+  const row = (label: string, value: number, className = "") =>
+    `<div class="row ${className}"><span>${escapeHtml(label)}</span><span>${money(value)}</span></div>`;
+  const one = `
+    <section class="ticket">
+      ${layout.business ? `<div class="business">${escapeHtml(layout.business)}</div>` : ""}
+      <div class="title">CUENTA</div>
+      <div class="meta">${escapeHtml([layout.place, layout.orders].filter(Boolean).join(" · "))}</div>
+      <div class="meta">${escapeHtml([layout.dateTime, layout.waiter].filter(Boolean).join(" · "))}</div>
+      <hr />
+      ${layout.lines.map(line => row(`${line.quantity} × ${line.title}`, line.amount)).join("")}
+      <hr />
+      ${layout.discount > 0 ? row("Subtotal", layout.subtotal) + row("Descuento", -layout.discount) : ""}
+      ${row("TOTAL", layout.total, "total")}
+      ${layout.split.length > 0 ? `<hr /><div>Dividida:</div>${layout.split.map(guest => row(guest.name, guest.amount, "indent")).join("")}` : ""}
+      ${layout.payments.length > 0 ? `<hr /><div>Pagos:</div>${layout.payments.map(payment => row(payment.label, payment.amount, "indent")).join("")}
+        ${layout.pending > 0 ? row("FALTA PAGAR", layout.pending, "strong") : `<div class="paid">PAGADO</div>`}` : ""}
+      <hr />
+      ${BILL_FOOTER.map(line => `<div class="meta">${escapeHtml(line)}</div>`).join("")}
+    </section>`;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8" /><title>Cuenta ${escapeHtml(layout.place)}</title>
+<style>
+  @page { size: ${paperWidth}mm auto; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; width: ${paperWidth}mm; padding: 2mm 3mm; font: 12px/1.35 "Courier New", monospace; color: #000; background: #fff; }
+  .ticket { page-break-after: always; }
+  .ticket:last-child { page-break-after: auto; }
+  .business { text-align: center; font-size: 18px; font-weight: 700; }
+  .title { text-align: center; font-weight: 700; margin-top: 1mm; }
+  .meta { text-align: center; }
+  hr { border: 0; border-top: 1px dashed #000; margin: 2mm 0; }
+  .row { display: flex; justify-content: space-between; gap: 2mm; }
+  .row span:last-child { flex: none; white-space: nowrap; }
+  .indent span:first-child { padding-left: 2mm; }
+  .strong { font-weight: 700; }
+  .total { font-size: 17px; font-weight: 700; margin-top: 1mm; }
+  .paid { text-align: center; font-weight: 700; margin-top: 1mm; }
+</style></head><body>${Array.from({ length: Math.max(1, copies) }, () => one).join("")}</body></html>`;
+}
+
+// Imprime en un iframe oculto: la pantalla no cambia.
+function printHtml(html: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const frame = document.createElement("iframe");
     frame.setAttribute("aria-hidden", "true");
@@ -83,7 +128,7 @@ function printViaBrowser(layout: TicketLayout, options: PrintOptions): Promise<v
       win.print();
       resolve();
     };
-    frame.srcdoc = ticketHtml(layout, options);
+    frame.srcdoc = html;
   });
 }
 
@@ -121,7 +166,7 @@ export async function hasEscposPrinter(): Promise<boolean> {
   return api ? (await api.getPorts()).length > 0 : false;
 }
 
-async function printViaEscpos(layout: TicketLayout, options: PrintOptions): Promise<void> {
+async function writeEscpos(bytes: Uint8Array): Promise<void> {
   const api = serial();
   if (!api) throw new PrintError("Este navegador no puede hablar directo con la comandera.");
   const [port] = await api.getPorts();
@@ -131,7 +176,7 @@ async function printViaEscpos(layout: TicketLayout, options: PrintOptions): Prom
     const writer = port.writable?.getWriter();
     if (!writer) throw new PrintError("La comandera no acepta datos.");
     try {
-      await writer.write(encodeTicket(layout, options));
+      await writer.write(bytes);
     } finally {
       writer.releaseLock();
     }
@@ -141,7 +186,13 @@ async function printViaEscpos(layout: TicketLayout, options: PrintOptions): Prom
 }
 
 export async function printTicket(mode: PrintMode, layout: TicketLayout, options: PrintOptions): Promise<void> {
-  if (mode === "browser") return printViaBrowser(layout, options);
-  if (mode === "escpos") return printViaEscpos(layout, options);
+  if (mode === "browser") return printHtml(ticketHtml(layout, options));
+  if (mode === "escpos") return writeEscpos(encodeTicket(layout, options));
   throw new PrintError("Este sector trabaja solo en pantalla.");
+}
+
+export async function printBill(mode: PrintMode, layout: BillLayout, options: PrintOptions): Promise<void> {
+  if (mode === "browser") return printHtml(billHtml(layout, options));
+  if (mode === "escpos") return writeEscpos(encodeBill(layout, options));
+  throw new PrintError("Este equipo no tiene impresora para la cuenta. Configurala en Configuración de pedidos.");
 }

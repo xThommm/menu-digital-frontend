@@ -174,6 +174,7 @@ export default function TablesPage() {
               onAddOrder={() => addOrder(selectedSession.tableNumber)}
               tableLink={tableLink(selectedSession.tableNumber)}
               openBill={focus?.tableSessionId === selectedSession.id && focus.bill === true}
+              businessName={settings.data?.businessName || null}
             />
           ) : (
             <>
@@ -211,7 +212,7 @@ export default function TablesPage() {
 }
 
 function OpenTableCard({
-  session, group, slug, now, onUpdated, onClosed, onReload, onNotice, onAddOrder, tableLink, openBill,
+  session, group, slug, now, onUpdated, onClosed, onReload, onNotice, onAddOrder, tableLink, openBill, businessName,
 }: {
   session: TableSession;
   group: GroupSession | null;
@@ -224,6 +225,7 @@ function OpenTableCard({
   onAddOrder: () => void;
   tableLink: string | null;
   openBill: boolean;
+  businessName: string | null;
 }) {
   const [showOrders, setShowOrders] = useState(false);
   const [showBill, setShowBill] = useState(openBill);
@@ -374,6 +376,7 @@ function OpenTableCard({
           refreshKey={now}
           onClose={() => setShowBill(false)}
           onChanged={onReload}
+          businessName={businessName}
         />
       )}
     </article>

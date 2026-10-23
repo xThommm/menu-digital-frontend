@@ -8,6 +8,7 @@ import { ORDERS_SETTINGS_CHANGED } from "../../lib/delivery";
 import { venueQrUrl } from "../../lib/qrUrls";
 import type { DeliveryAssignMode, DeliveryConfirmBy, MpConnection, OrderSettings, PeriodMode, QrMode, SettingsResponse, ShiftScheduleEntry } from "../../types";
 import PaymentsSection from "./PaymentsSection";
+import BillPrinterCard from "./BillPrinterCard";
 import p from "./panel.module.css";
 import OwnerAlertsCard from "../../../ownerAlerts/OwnerAlertsCard";
 import { useDialogs } from "../../../../context/useDialogs";
@@ -379,6 +380,8 @@ export default function OrdersSettingsPage() {
             )}
           </div>
         </section>
+
+        <BillPrinterCard businessName={saved_.businessName || null} />
       </div>
 
       <QrSection data={saved_} onRegenerate={regenerate} onRegenerateNow={regenerateNow} pendingChanges={dirty && (draft.qrMode !== saved_.settings.qrMode || draft.tableCount !== saved_.settings.tableCount)} />

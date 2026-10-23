@@ -31,6 +31,7 @@ function orderActions() {
     markDispatched: fn("dispatch"),
     refund: fn("refund"),
     reprint: async (target) => { calls.push(`reprint #${target.id}`); },
+    printBill: async (target) => { calls.push(`bill #${target.id}`); },
   };
   return { calls, actions };
 }
@@ -108,6 +109,17 @@ test("tarjeta: copiar, WhatsApp y mapas aparecen solo con el dato cargado", asyn
   assert.equal(log[0], "copy:Av. Siempre Viva 742");
   assert.equal(log[1], `open:https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("Av. Siempre Viva 742")}`);
   assert.match(log[2], /^open:https:\/\/wa\.me\//);
+});
+
+test("tarjeta: imprimir cuenta solo en pedidos sueltos ya confirmados (la de la mesa va desde su cuenta)", async () => {
+  assert.ok(!ids(orderMenu(order()).items).includes("print-bill"), "pedido de una mesa");
+  const takeaway = order({ serviceType: "takeaway", tableNumber: null, tableSessionId: null });
+  assert.ok(!ids(orderMenu({ ...takeaway, status: "pending" }).items).includes("print-bill"));
+
+  const { items, calls } = orderMenu(takeaway);
+  const printed = await run(action(items, "print-bill"));
+  assert.deepEqual(printed.notices, ["ok:Cuenta enviada a la impresora."]);
+  assert.deepEqual(calls, ["bill #10"]);
 });
 
 test("tarjeta: reimprimir solo con comandas vigentes; ir a la mesa lleva la sesión", async () => {
